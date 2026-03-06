@@ -36,7 +36,9 @@ const CONFIG = {
     MIN_POOL_LIQUIDITY_SOL: 40,          // Kept as hard floor in SOL
     
     // ⏱️ TIMING
-    AUTO_SELL_DELAY_MS: 16000,            // Sell after 8 seconds
+    AUTO_SELL_DELAY_MS: 16000,            // Sell after N seconds
+    PRE_BUY_WAIT_MS: Number(process.env.PRE_BUY_WAIT_MS || 1500), // Wait before entering
+    PRE_BUY_MAX_LIQ_DROP_PCT: Number(process.env.PRE_BUY_MAX_LIQ_DROP_PCT || 10), // Skip if liq drops too much during wait
     
     // 🔧 SLIPPAGE
     SLIPPAGE_PERCENT: 20,                 // 20% slippage (più conservativo)
@@ -124,6 +126,21 @@ function calcSpotSolPerToken(baseReserve: BN, quoteReserve: BN, tokenDecimals: n
     const quoteTokens = Number(quoteReserve.toString()) / 10 ** tokenDecimals;
     if (!Number.isFinite(baseSol) || !Number.isFinite(quoteTokens) || quoteTokens <= 0) return 0;
     return baseSol / quoteTokens;
+}
+
+function getPoolOrientation(state: any, tokenMint: string): { solIsBase: boolean; tokenIsBase: boolean; hasWsol: boolean } {
+    const baseMintStr = state.baseMint?.toBase58?.() || String(state.baseMint);
+    const tokenIsBase = baseMintStr === tokenMint;
+    const solIsBase = baseMintStr === WSOL;
+    const hasWsol = solIsBase || !tokenIsBase; // in this bot we expect a SOL/token pool
+    return { solIsBase, tokenIsBase, hasWsol };
+}
+
+function getSolLiquidityFromState(state: any, tokenMint: string): number | null {
+    const { solIsBase, hasWsol } = getPoolOrientation(state, tokenMint);
+    if (!hasWsol) return null;
+    const solRaw = solIsBase ? state.poolBaseAmount : state.poolQuoteAmount;
+    return Number(solRaw.toString()) / 1e9;
 }
 
 // Initialize SDKs
@@ -387,7 +404,8 @@ async function handleNewPool(connection: Connection, signature: string) {
         const observerUser = walletKeypair?.publicKey ?? Keypair.generate().publicKey;
         try {
             const poolState = await onlineSdk.swapSolanaState(new PublicKey(poolAddress), observerUser);
-            liquiditySOL = Number(poolState.poolBaseAmount.toString()) / 1e9;
+            const liq = getSolLiquidityFromState(poolState, tokenMint);
+            if (liq !== null) liquiditySOL = liq;
         } catch {
             // fallback below
         }
@@ -444,6 +462,15 @@ async function handleNewPool(connection: Connection, signature: string) {
         }
 
         if (MONITOR_ONLY) {
+            if (CONFIG.PRE_BUY_WAIT_MS > 0) {
+                const preEntry = await preEntryWaitAndCheck(connection, poolAddress, liquiditySOL, ctx);
+                if (!preEntry.ok) {
+                    console.log(`🛑 ${ctx} SKIP: pre-entry guard (${preEntry.reason})`);
+                    finalStatus = "SKIP: pre-entry guard";
+                    return;
+                }
+                liquiditySOL = preEntry.currentLiquiditySol;
+            }
             console.log(`   ${ctx} STEP 5/6 Paper simulation`);
             const paper = await maybeRunPaperTradeSimulation(connection, poolAddress, tokenMint, ctx);
             if (!paper.ok) {
@@ -464,6 +491,15 @@ async function handleNewPool(connection: Connection, signature: string) {
         if (!devCheckOk) {
             finalStatus = "SKIP: dev holdings";
             return;
+        }
+
+        if (CONFIG.PRE_BUY_WAIT_MS > 0) {
+            const preEntry = await preEntryWaitAndCheck(connection, poolAddress, liquiditySOL, ctx);
+            if (!preEntry.ok) {
+                console.log(`🛑 ${ctx} SKIP: pre-entry guard (${preEntry.reason})`);
+                finalStatus = "SKIP: pre-entry guard";
+                return;
+            }
         }
 
         console.log(`✅ ${ctx} Checks passed`);
@@ -491,6 +527,38 @@ async function resolveCreatorFromPool(connection: Connection, poolAddress: strin
         return state.pool.creator.toBase58();
     } catch {
         return null;
+    }
+}
+
+async function preEntryWaitAndCheck(
+    connection: Connection,
+    poolAddress: string,
+    baselineLiquiditySol: number,
+    ctx: string,
+): Promise<{ ok: boolean; reason?: string; currentLiquiditySol: number }> {
+    console.log(`   ${ctx} Pre-entry wait: ${CONFIG.PRE_BUY_WAIT_MS}ms`);
+    await new Promise(r => setTimeout(r, CONFIG.PRE_BUY_WAIT_MS));
+
+    try {
+        const observerUser = walletKeypair?.publicKey ?? Keypair.generate().publicKey;
+        const state = await onlineSdk.swapSolanaState(new PublicKey(poolAddress), observerUser);
+        const currentLiquiditySol = Number(state.poolBaseAmount.toString()) / 1e9;
+
+        if (baselineLiquiditySol > 0) {
+            const minAllowed = baselineLiquiditySol * (1 - Math.abs(CONFIG.PRE_BUY_MAX_LIQ_DROP_PCT) / 100);
+            if (currentLiquiditySol < minAllowed) {
+                return {
+                    ok: false,
+                    reason: `liquidity dropped ${baselineLiquiditySol.toFixed(2)} -> ${currentLiquiditySol.toFixed(2)} SOL`,
+                    currentLiquiditySol,
+                };
+            }
+        }
+
+        console.log(`   ${ctx} Pre-entry liquidity check: ${currentLiquiditySol.toFixed(2)} SOL`);
+        return { ok: true, currentLiquiditySol };
+    } catch (e: any) {
+        return { ok: false, reason: e?.message || "pre-entry liquidity fetch failed", currentLiquiditySol: baselineLiquiditySol };
     }
 }
 
@@ -673,27 +741,49 @@ async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress:
             return { ok: false, reason: "entry state unavailable" };
         }
 
-        const entry = sellBaseInput({
-            base: buyAmountLamports,
-            slippage: CONFIG.SLIPPAGE_PERCENT,
-            baseReserve: entryState.poolBaseAmount,
-            quoteReserve: entryState.poolQuoteAmount,
-            baseMintAccount: entryState.baseMintAccount,
-            baseMint: entryState.baseMint,
-            coinCreator: entryState.pool.coinCreator,
-            creator: entryState.pool.creator,
-            feeConfig: entryState.feeConfig,
-            globalConfig: entryState.globalConfig,
-        });
+        const orientation = getPoolOrientation(entryState, tokenMint);
+        if (!orientation.hasWsol) {
+            return { ok: false, reason: "pool has no WSOL side" };
+        }
 
-        const tokenOutAtomic = entry.uiQuote;
+        let tokenOutAtomic: BN;
+        if (orientation.solIsBase) {
+            const entry = sellBaseInput({
+                base: buyAmountLamports,
+                slippage: CONFIG.SLIPPAGE_PERCENT,
+                baseReserve: entryState.poolBaseAmount,
+                quoteReserve: entryState.poolQuoteAmount,
+                baseMintAccount: entryState.baseMintAccount,
+                baseMint: entryState.baseMint,
+                coinCreator: entryState.pool.coinCreator,
+                creator: entryState.pool.creator,
+                feeConfig: entryState.feeConfig,
+                globalConfig: entryState.globalConfig,
+            });
+            tokenOutAtomic = entry.uiQuote;
+        } else {
+            const entry = buyQuoteInput({
+                quote: buyAmountLamports,
+                slippage: CONFIG.SLIPPAGE_PERCENT,
+                baseReserve: entryState.poolBaseAmount,
+                quoteReserve: entryState.poolQuoteAmount,
+                baseMintAccount: entryState.baseMintAccount,
+                baseMint: entryState.baseMint,
+                coinCreator: entryState.pool.coinCreator,
+                creator: entryState.pool.creator,
+                feeConfig: entryState.feeConfig,
+                globalConfig: entryState.globalConfig,
+            });
+            tokenOutAtomic = entry.base;
+        }
         const tokenOutUi = Number(tokenOutAtomic.toString()) / 10 ** tokenDecimals;
         if (tokenOutAtomic.lte(new BN(0))) {
             console.log(`⚠️ ${p}PAPER_TRADE: entry received 0 tokens`);
             return { ok: false, reason: "entry produced 0 tokens" };
         }
-        const entrySpotSolPerToken = calcSpotSolPerToken(entryState.poolBaseAmount, entryState.poolQuoteAmount, tokenDecimals);
-        const entrySolPerToken = tokenOutUi > 0 ? (CONFIG.TRADE_AMOUNT_SOL / tokenOutUi) : 0;
+        const entrySpotSolPerToken = orientation.solIsBase
+            ? calcSpotSolPerToken(entryState.poolBaseAmount, entryState.poolQuoteAmount, tokenDecimals)
+            : calcSpotSolPerToken(entryState.poolQuoteAmount, entryState.poolBaseAmount, tokenDecimals);
         console.log(`   ${p}Buy Spot:  ~${formatSolCompact(entrySpotSolPerToken)}/token`);
 
         const exitState = await waitForExitStateWithLiquidityStop(
@@ -707,24 +797,41 @@ async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress:
             return { ok: false, reason: "exit state unavailable" };
         }
 
-        const exit = buyQuoteInput({
-            quote: tokenOutAtomic,
-            slippage: CONFIG.SLIPPAGE_PERCENT,
-            baseReserve: exitState.poolBaseAmount,
-            quoteReserve: exitState.poolQuoteAmount,
-            baseMintAccount: exitState.baseMintAccount,
-            baseMint: exitState.baseMint,
-            coinCreator: exitState.pool.coinCreator,
-            creator: exitState.pool.creator,
-            feeConfig: exitState.feeConfig,
-            globalConfig: exitState.globalConfig,
-        });
-
-        const solOut = Number(exit.base.toString()) / 1e9;
+        let solOut: number;
+        if (orientation.solIsBase) {
+            const exit = buyQuoteInput({
+                quote: tokenOutAtomic,
+                slippage: CONFIG.SLIPPAGE_PERCENT,
+                baseReserve: exitState.poolBaseAmount,
+                quoteReserve: exitState.poolQuoteAmount,
+                baseMintAccount: exitState.baseMintAccount,
+                baseMint: exitState.baseMint,
+                coinCreator: exitState.pool.coinCreator,
+                creator: exitState.pool.creator,
+                feeConfig: exitState.feeConfig,
+                globalConfig: exitState.globalConfig,
+            });
+            solOut = Number(exit.base.toString()) / 1e9;
+        } else {
+            const exit = sellBaseInput({
+                base: tokenOutAtomic,
+                slippage: CONFIG.SLIPPAGE_PERCENT,
+                baseReserve: exitState.poolBaseAmount,
+                quoteReserve: exitState.poolQuoteAmount,
+                baseMintAccount: exitState.baseMintAccount,
+                baseMint: exitState.baseMint,
+                coinCreator: exitState.pool.coinCreator,
+                creator: exitState.pool.creator,
+                feeConfig: exitState.feeConfig,
+                globalConfig: exitState.globalConfig,
+            });
+            solOut = Number(exit.uiQuote.toString()) / 1e9;
+        }
         const pnlSol = solOut - CONFIG.TRADE_AMOUNT_SOL;
         const pnlPct = (pnlSol / CONFIG.TRADE_AMOUNT_SOL) * 100;
-        const exitSpotSolPerToken = calcSpotSolPerToken(exitState.poolBaseAmount, exitState.poolQuoteAmount, tokenDecimals);
-        const exitSolPerToken = tokenOutUi > 0 ? (solOut / tokenOutUi) : 0;
+        const exitSpotSolPerToken = orientation.solIsBase
+            ? calcSpotSolPerToken(exitState.poolBaseAmount, exitState.poolQuoteAmount, tokenDecimals)
+            : calcSpotSolPerToken(exitState.poolQuoteAmount, exitState.poolBaseAmount, tokenDecimals);
 
         console.log(`   ${p}Sell Spot: ~${formatSolCompact(exitSpotSolPerToken)}/token`);
         console.log(`   ${p}PnL: ${pnlSol >= 0 ? "+" : ""}${formatSolCompact(Math.abs(pnlSol))} (${pnlPct.toFixed(2)}%)`);
