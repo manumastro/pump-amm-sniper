@@ -33,10 +33,10 @@ const CONFIG = {
     
     // 🔒 ENTRY FILTERS
     MIN_POOL_LIQUIDITY_USD: 20000,        // Minimum liquidity in USD
-    MIN_POOL_LIQUIDITY_SOL: 80,          // Kept as hard floor in SOL
+    MIN_POOL_LIQUIDITY_SOL: 40,          // Kept as hard floor in SOL
     
     // ⏱️ TIMING
-    AUTO_SELL_DELAY_MS: 8000,            // Sell after 8 seconds
+    AUTO_SELL_DELAY_MS: 32000,            // Sell after 8 seconds
     
     // 🔧 SLIPPAGE
     SLIPPAGE_PERCENT: 20,                 // 20% slippage (più conservativo)
@@ -59,7 +59,6 @@ const CONFIG = {
 
     // 📈 PAPER TRADE (simulation only)
     PAPER_TRADE_ENABLED: process.env.PAPER_TRADE_ENABLED === "true",
-    PAPER_TRADE_EXIT_DELAY_MS: Number(process.env.PAPER_TRADE_EXIT_DELAY_MS || 8000),
     PAPER_TRADE_MAX_LOSS_PCT: Number(process.env.PAPER_TRADE_MAX_LOSS_PCT || 80),
 };
 
@@ -123,7 +122,7 @@ async function main() {
         console.log(`Amount: ${CONFIG.TRADE_AMOUNT_SOL} SOL`);
         console.log(`Auto-Sell: ${CONFIG.AUTO_SELL_DELAY_MS / 1000} seconds`);
     } else if (CONFIG.PAPER_TRADE_ENABLED) {
-        console.log(`Paper Trade: enabled (every valid pool, exit delay ${CONFIG.PAPER_TRADE_EXIT_DELAY_MS / 1000}s)`);
+        console.log(`Paper Trade: enabled (every valid pool, exit delay ${CONFIG.AUTO_SELL_DELAY_MS / 1000}s)`);
     }
     console.log("");
 
@@ -666,7 +665,7 @@ async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress:
         }
         console.log(`   ${p}Entry: ${CONFIG.TRADE_AMOUNT_SOL.toFixed(6)} SOL -> ~${tokenOutUi.toFixed(2)} tokens`);
 
-        await new Promise(r => setTimeout(r, CONFIG.PAPER_TRADE_EXIT_DELAY_MS));
+        await new Promise(r => setTimeout(r, CONFIG.AUTO_SELL_DELAY_MS));
 
         const exitState = await fetchStateWithRetry();
         if (!exitState) {
