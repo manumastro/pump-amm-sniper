@@ -18,7 +18,7 @@ const CONFIG = {
     
     // 🔒 ENTRY FILTERS
     MIN_POOL_LIQUIDITY_USD: 20000,        // Minimum liquidity in USD
-    MIN_POOL_LIQUIDITY_SOL: 80,          // ~20k USD at $133/SOL
+    MIN_POOL_LIQUIDITY_SOL: 80,          // Kept as hard floor in SOL
     
     // ⏱️ TIMING
     AUTO_SELL_DELAY_MS: 8000,            // Sell after 8 seconds
@@ -36,9 +36,10 @@ const CONFIG = {
     HEALTHCHECK_INTERVAL_MS: 15000,      // Healthcheck every 15s
     SIGNATURE_CACHE_TTL_MS: 10 * 60 * 1000, // Keep seen signatures for 10m
     SIGNATURE_CACHE_MAX_SIZE: 5000,      // Bound memory usage
+    SOL_PRICE_CACHE_TTL_MS: 30000,       // Refresh SOL/USD every 30s
 
     // 📈 PAPER TRADE (simulation only)
-    PAPER_TRADE_FIRST_VALID_POOL: process.env.PAPER_TRADE_FIRST_VALID_POOL === "true",
+    PAPER_TRADE_ENABLED: process.env.PAPER_TRADE_ENABLED === "true",
     PAPER_TRADE_EXIT_DELAY_MS: Number(process.env.PAPER_TRADE_EXIT_DELAY_MS || 8000),
 };
 
@@ -69,7 +70,8 @@ let logSubscriptionId: number | null = null;
 let lastLogAtMs = Date.now();
 let healthcheckInterval: NodeJS.Timeout | null = null;
 const seenSignatures = new Map<string, number>();
-let paperTradeExecuted = false;
+let cachedSolPriceUsd: number | null = null;
+let cachedSolPriceAtMs = 0;
 
 // Initialize SDKs
 let onlineSdk: OnlinePumpAmmSdk;
@@ -91,12 +93,12 @@ async function main() {
     console.log(`Program: ${PUMPFUN_AMM_PROGRAM_ID}`);
     console.log(`Mode: ${MONITOR_ONLY ? "MONITOR_ONLY" : "TRADING"}`);
     console.log(`Wallet: ${walletKeypair ? walletKeypair.publicKey.toBase58() : "N/A (no private key loaded)"}`);
-    console.log(`Min Liquidity: ${CONFIG.MIN_POOL_LIQUIDITY_SOL} SOL (~$${CONFIG.MIN_POOL_LIQUIDITY_USD})`);
+    console.log(`Min Liquidity: ${CONFIG.MIN_POOL_LIQUIDITY_SOL} SOL (~$${CONFIG.MIN_POOL_LIQUIDITY_USD}, live SOL/USD)`);
     if (!MONITOR_ONLY) {
         console.log(`Amount: ${CONFIG.TRADE_AMOUNT_SOL} SOL`);
         console.log(`Auto-Sell: ${CONFIG.AUTO_SELL_DELAY_MS / 1000} seconds`);
-    } else if (CONFIG.PAPER_TRADE_FIRST_VALID_POOL) {
-        console.log(`Paper Trade: enabled (first valid pool, exit delay ${CONFIG.PAPER_TRADE_EXIT_DELAY_MS / 1000}s)`);
+    } else if (CONFIG.PAPER_TRADE_ENABLED) {
+        console.log(`Paper Trade: enabled (every valid pool, exit delay ${CONFIG.PAPER_TRADE_EXIT_DELAY_MS / 1000}s)`);
     }
     console.log("");
 
@@ -256,6 +258,7 @@ async function handleNewPool(connection: Connection, signature: string) {
         console.log(`   📊 TX has ${accountKeys.length} accounts, checking instructions...`);
 
         // Find the create_pool instruction within the transaction
+        let creatorAddress: string | null = null;
         const instructions = tx.transaction.message.instructions;
         for (const ix of instructions) {
             // Check if this instruction is to the Pump AMM program
@@ -267,10 +270,9 @@ async function handleNewPool(connection: Connection, signature: string) {
                 if (ix.accounts && ix.accounts.length >= 5) {
                     poolAddress = accountKeys[ix.accounts[0]]?.pubkey?.toBase58() || null;
                     tokenMint = accountKeys[ix.accounts[3]]?.pubkey?.toBase58() || null;
-                    const creatorAddress = accountKeys[ix.accounts[2]]?.pubkey?.toBase58() || null;
+                    creatorAddress = accountKeys[ix.accounts[2]]?.pubkey?.toBase58() || null;
                     if (creatorAddress) {
                         console.log(`   👤 Creator: ${creatorAddress}`);
-                        (global as any).currentCreator = creatorAddress; // Store globally for later check
                     }
                 }
                 break;
@@ -301,28 +303,69 @@ async function handleNewPool(connection: Connection, signature: string) {
         console.log(`📦 Pool: ${poolAddress}`);
         console.log(`   🔗 https://pump.fun/coin/${tokenMint}`);
 
-        // Check liquidity from postTokenBalances for more accuracy
-        const postTokenBalances = tx.meta.postTokenBalances || [];
-        const quoteBalance = postTokenBalances.find((b: any) => 
-            b.mint === WSOL && b.owner === poolAddress
-        );
-        const poolSOL = quoteBalance ? (parseFloat(quoteBalance.uiTokenAmount?.amount || "0") / 1e9) : 0;
-
-        // Fallback to postBalances if no token balance found
-        let liquiditySOL = poolSOL;
-        if (liquiditySOL === 0) {
-            // Try to estimate from postBalances
-            const poolAccountIndex = instructions[0]?.accounts?.[0];
-            if (poolAccountIndex !== undefined) {
-                const poolLamports = tx.meta.postBalances[poolAccountIndex] || 0;
-                liquiditySOL = poolLamports / 1e9;
+        // Always require a creator address (fail-closed).
+        // If not present in tx accounts, resolve it from on-chain pool state.
+        if (!creatorAddress) {
+            creatorAddress = await resolveCreatorFromPool(connection, poolAddress);
+            if (creatorAddress) {
+                console.log(`   👤 Creator (resolved from pool): ${creatorAddress}`);
             }
         }
 
-        console.log(`💧 Pool Liquidity: ${liquiditySOL.toFixed(2)} SOL (~$${(liquiditySOL * 133).toFixed(0)})`);
+        if (!creatorAddress) {
+            console.log("🛑 SKIPPING: Creator address not resolvable.");
+            isPositionOpen = false;
+            return;
+        }
 
-        if (liquiditySOL < CONFIG.MIN_POOL_LIQUIDITY_SOL) {
-            console.log(`🛑 SKIPPING: Liquidity too low (${liquiditySOL.toFixed(2)} < ${CONFIG.MIN_POOL_LIQUIDITY_SOL} SOL)`);
+        // Check liquidity from on-chain pool state (preferred) with tx fallback.
+        let liquiditySOL = 0;
+        const observerUser = walletKeypair?.publicKey ?? Keypair.generate().publicKey;
+        try {
+            const poolState = await onlineSdk.swapSolanaState(new PublicKey(poolAddress), observerUser);
+            liquiditySOL = Number(poolState.poolBaseAmount.toString()) / 1e9;
+        } catch {
+            // fallback below
+        }
+
+        // Fallback to transaction balances if pool state is not yet indexable
+        const postTokenBalances = tx.meta.postTokenBalances || [];
+        if (liquiditySOL <= 0) {
+            const quoteBalance = postTokenBalances.find((b: any) =>
+                b.mint === WSOL && b.owner === poolAddress
+            );
+            const poolSOL = quoteBalance ? (parseFloat(quoteBalance.uiTokenAmount?.amount || "0") / 1e9) : 0;
+            liquiditySOL = poolSOL;
+
+            if (liquiditySOL === 0) {
+                const poolAccountIndex = instructions[0]?.accounts?.[0];
+                if (poolAccountIndex !== undefined) {
+                    const poolLamports = tx.meta.postBalances[poolAccountIndex] || 0;
+                    liquiditySOL = poolLamports / 1e9;
+                }
+            }
+        }
+
+        const solPriceUsd = await getSolPriceUsd();
+        let liquidityUSD: number | null = null;
+        if (solPriceUsd !== null) {
+            liquidityUSD = liquiditySOL * solPriceUsd;
+            console.log(`💧 Pool Liquidity: ${liquiditySOL.toFixed(2)} SOL (~$${liquidityUSD.toFixed(0)})`);
+        } else {
+            console.log(`💧 Pool Liquidity: ${liquiditySOL.toFixed(2)} SOL (USD unavailable: live SOL price fetch failed)`);
+        }
+
+        const failedSolThreshold = liquiditySOL < CONFIG.MIN_POOL_LIQUIDITY_SOL;
+        const failedUsdThreshold = liquidityUSD !== null && liquidityUSD < CONFIG.MIN_POOL_LIQUIDITY_USD;
+        if (failedSolThreshold || failedUsdThreshold) {
+            const usdPart = liquidityUSD !== null
+                ? `$${liquidityUSD.toFixed(0)}`
+                : "USD N/A";
+            console.log(
+                `🛑 SKIPPING: Liquidity too low ` +
+                `(${liquiditySOL.toFixed(2)} SOL / ${usdPart}; ` +
+                `min ${CONFIG.MIN_POOL_LIQUIDITY_SOL} SOL / $${CONFIG.MIN_POOL_LIQUIDITY_USD})`
+            );
             isPositionOpen = false;
             return;
         }
@@ -335,30 +378,26 @@ async function handleNewPool(connection: Connection, signature: string) {
             return;
         }
 
-        // Check Dev Holdings (avoid immediate dump)
-        const creatorAddress = (global as any).currentCreator;
-        if (creatorAddress) {
-            const creatorBalanceEntry = postTokenBalances.find((b: any) => 
-                b.mint === tokenMint && b.owner === creatorAddress
-            );
-            const creatorBalance = creatorBalanceEntry ? parseFloat(creatorBalanceEntry.uiTokenAmount?.amount || "0") : 0;
-            
-            // If creator has < 1 token, they dumped immediately (Rug Pull)
-            if (creatorBalance < 1) { 
-                console.log(`🛑 SKIPPING: Dev dumped tokens! (Held: ${creatorBalance} tokens)`);
-                isPositionOpen = false;
-                return;
-            }
-            console.log(`   👤 Dev Holding: ${creatorBalanceEntry?.uiTokenAmount?.uiAmountString || "0"} tokens`);
-            
-            // Percentage check
-            const totalSuppy = 1000000000; // 1B for Pump.fun
-            const devPct = (creatorBalance / totalSuppy) * 100;
-            if (devPct > CONFIG.MAX_DEV_HOLDINGS_PCT) {
-                console.log(`🛑 SKIPPING: Dev holds too much (${devPct.toFixed(1)}% > ${CONFIG.MAX_DEV_HOLDINGS_PCT}%)`);
-                isPositionOpen = false;
-                return;
-            }
+        // Check Dev Holdings (avoid immediate dump) - always enforced
+        const creatorBalanceRaw = await getCreatorTokenBalanceRawWithRetry(connection, creatorAddress, tokenMint, postTokenBalances);
+        const mintInfo = await getMint(connection, new PublicKey(tokenMint));
+        const totalSupplyRaw = 1_000_000_000n * (10n ** BigInt(mintInfo.decimals)); // Pump tokens are 1B supply
+
+        // If creator has < 1 token, they dumped immediately (Rug Pull)
+        if (creatorBalanceRaw < 1n) {
+            console.log(`🛑 SKIPPING: Dev dumped tokens! (Held raw: ${creatorBalanceRaw.toString()})`);
+            isPositionOpen = false;
+            return;
+        }
+
+        console.log(`   👤 Dev Holding (raw units): ${creatorBalanceRaw.toString()}`);
+
+        // Percentage check
+        const devPct = Number((creatorBalanceRaw * 10000n) / totalSupplyRaw) / 100;
+        if (devPct > CONFIG.MAX_DEV_HOLDINGS_PCT) {
+            console.log(`🛑 SKIPPING: Dev holds too much (${devPct.toFixed(1)}% > ${CONFIG.MAX_DEV_HOLDINGS_PCT}%)`);
+            isPositionOpen = false;
+            return;
         }
 
         console.log(`✅ Liquidity & Safety Checks Passed!`);
@@ -380,9 +419,101 @@ async function handleNewPool(connection: Connection, signature: string) {
     }
 }
 
+async function resolveCreatorFromPool(connection: Connection, poolAddress: string): Promise<string | null> {
+    try {
+        const observerUser = walletKeypair?.publicKey ?? Keypair.generate().publicKey;
+        const state = await onlineSdk.swapSolanaState(new PublicKey(poolAddress), observerUser);
+        return state.pool.creator.toBase58();
+    } catch {
+        return null;
+    }
+}
+
+async function getCreatorTokenBalanceRawWithRetry(
+    connection: Connection,
+    creatorAddress: string,
+    tokenMint: string,
+    postTokenBalances: any[],
+): Promise<bigint> {
+    const maxAttempts = 8;
+    const retryDelayMs = 400;
+    let lastBalance = 0n;
+
+    for (let i = 0; i < maxAttempts; i++) {
+        const bal = await getCreatorTokenBalanceRaw(connection, creatorAddress, tokenMint, postTokenBalances);
+        lastBalance = bal;
+        if (bal > 0n) return bal;
+        await new Promise(r => setTimeout(r, retryDelayMs));
+    }
+
+    return lastBalance;
+}
+
+async function getSolPriceUsd(): Promise<number | null> {
+    const now = Date.now();
+    if (cachedSolPriceUsd && now - cachedSolPriceAtMs < CONFIG.SOL_PRICE_CACHE_TTL_MS) {
+        return cachedSolPriceUsd;
+    }
+
+    try {
+        // Jupiter price API: fast and sufficient for runtime filtering.
+        const res = await fetch("https://price.jup.ag/v4/price?ids=SOL");
+        if (res.ok) {
+            const json: any = await res.json();
+            const p = json?.data?.SOL?.price;
+            if (typeof p === "number" && Number.isFinite(p) && p > 0) {
+                cachedSolPriceUsd = p;
+                cachedSolPriceAtMs = now;
+                return p;
+            }
+        }
+    } catch {
+        // fall through to fallback
+    }
+
+    return null;
+}
+
+async function getCreatorTokenBalanceRaw(
+    connection: Connection,
+    creatorAddress: string,
+    tokenMint: string,
+    postTokenBalances: any[],
+): Promise<bigint> {
+    // Fast path: use the current tx metadata if present.
+    const creatorBalanceEntry = postTokenBalances.find((b: any) =>
+        b.mint === tokenMint && b.owner === creatorAddress
+    );
+    if (creatorBalanceEntry?.uiTokenAmount?.amount) {
+        return BigInt(creatorBalanceEntry.uiTokenAmount.amount);
+    }
+
+    // Fallback: query creator token accounts directly (Token + Token-2022).
+    const owner = new PublicKey(creatorAddress);
+    const mint = new PublicKey(tokenMint);
+    const [tokenAccs, token2022Accs] = await Promise.all([
+        connection.getParsedTokenAccountsByOwner(owner, { mint }, "confirmed"),
+        connection.getParsedTokenAccountsByOwner(owner, { programId: TOKEN_2022_PROGRAM_ID }, "confirmed")
+            .catch(() => ({ value: [] as any[] })),
+    ]);
+
+    let total = 0n;
+    const all = [
+        ...tokenAccs.value,
+        ...token2022Accs.value.filter((acc: any) => {
+            const accMint = acc.account.data.parsed?.info?.mint;
+            return accMint === tokenMint;
+        }),
+    ];
+    for (const acc of all) {
+        const amount = acc.account.data.parsed?.info?.tokenAmount?.amount;
+        if (amount) total += BigInt(amount);
+    }
+    return total;
+}
+
 async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress: string, tokenMint: string) {
-    if (!CONFIG.PAPER_TRADE_FIRST_VALID_POOL || paperTradeExecuted) return;
-    paperTradeExecuted = true;
+    if (!CONFIG.PAPER_TRADE_ENABLED) return;
 
     const observerUser = walletKeypair?.publicKey ?? Keypair.generate().publicKey;
     const poolKey = new PublicKey(poolAddress);
@@ -402,7 +533,7 @@ async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress:
     };
 
     try {
-        console.log(`📈 PAPER_TRADE: simulating buy->sell on first valid token ${tokenMint}`);
+        console.log(`📈 PAPER_TRADE: simulating buy->sell for token ${tokenMint}`);
         let tokenDecimals = 6;
         try {
             tokenDecimals = (await getMint(connection, new PublicKey(tokenMint))).decimals;
