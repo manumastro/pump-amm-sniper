@@ -6,6 +6,7 @@
   "scripts": {
     "build": "tsc",
     "start": "ts-node src/pumpAmmSniper.ts",
+    "start:paper": "ts-node src/pumpAmmSniper.ts >> paper.log 2>&1",
     "clean": "rm -rf dist"
   },
   "dependencies": {

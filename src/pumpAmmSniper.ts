@@ -8,6 +8,21 @@ import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentIn
 
 dotenv.config();
 
+function timestampNow(): string {
+    const d = new Date();
+    const pad = (n: number, w = 2) => n.toString().padStart(w, "0");
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(), 3)}`;
+}
+
+function patchConsoleWithTimestamp() {
+    const wrap = (fn: (...args: any[]) => void) => (...args: any[]) => fn(`[${timestampNow()}]`, ...args);
+    console.log = wrap(console.log.bind(console));
+    console.warn = wrap(console.warn.bind(console));
+    console.error = wrap(console.error.bind(console));
+}
+
+patchConsoleWithTimestamp();
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🎛️ PUMP.FUN AMM SNIPER CONFIGURATION
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -30,6 +45,10 @@ const CONFIG = {
     REQUIRE_RENOUNCED_MINT: true,        // Skip if dev can still mint
     REQUIRE_NO_FREEZE: true,             // Skip if dev can freeze accounts
     MAX_DEV_HOLDINGS_PCT: 20,            // Skip if dev owns more than 20%
+    ENFORCE_DEV_HOLDINGS_CHECK: process.env.ENFORCE_DEV_HOLDINGS_CHECK !== "false", // On by default
+    DEV_HOLDINGS_MAX_ATTEMPTS: Number(process.env.DEV_HOLDINGS_MAX_ATTEMPTS || 3),
+    DEV_HOLDINGS_RETRY_DELAY_MS: Number(process.env.DEV_HOLDINGS_RETRY_DELAY_MS || 250),
+    DEV_HOLDINGS_MAX_DURATION_MS: Number(process.env.DEV_HOLDINGS_MAX_DURATION_MS || 2000),
 
     // 👀 MONITORING HARDENING
     LOG_STALE_RESUBSCRIBE_MS: 90000,     // Resubscribe if no logs for 90s
@@ -41,6 +60,7 @@ const CONFIG = {
     // 📈 PAPER TRADE (simulation only)
     PAPER_TRADE_ENABLED: process.env.PAPER_TRADE_ENABLED === "true",
     PAPER_TRADE_EXIT_DELAY_MS: Number(process.env.PAPER_TRADE_EXIT_DELAY_MS || 8000),
+    PAPER_TRADE_MAX_LOSS_PCT: Number(process.env.PAPER_TRADE_MAX_LOSS_PCT || 80),
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -72,6 +92,11 @@ let healthcheckInterval: NodeJS.Timeout | null = null;
 const seenSignatures = new Map<string, number>();
 let cachedSolPriceUsd: number | null = null;
 let cachedSolPriceAtMs = 0;
+
+function shortSig(sig: string): string {
+    if (sig.length <= 14) return sig;
+    return `${sig.slice(0, 6)}...${sig.slice(-6)}`;
+}
 
 // Initialize SDKs
 let onlineSdk: OnlinePumpAmmSdk;
@@ -132,7 +157,15 @@ async function subscribeToPoolLogs(connection: Connection) {
 
                 if (!hasCreatePool) return;
 
-                console.log(`\n✨ NEW PUMP.FUN POOL DETECTED: ${logs.signature}`);
+                console.log("");
+                console.log("────────────────────────────────────────────────────────");
+                console.log(`🆕 NEW POOL [${shortSig(logs.signature)}]`);
+                console.log(`   Signature: ${logs.signature}`);
+                if (isPositionOpen) {
+                    console.log(`   ⏭️ Busy, skip [${shortSig(logs.signature)}]`);
+                    console.log("────────────────────────────────────────────────────────");
+                    return;
+                }
                 await handleNewPool(connection, logs.signature);
             } catch (e: any) {
                 console.error(`❌ Log handler error: ${e.message}`);
@@ -222,13 +255,14 @@ function setupGracefulShutdown(connection: Connection) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 async function handleNewPool(connection: Connection, signature: string) {
-    if (isPositionOpen) {
-        console.log("⏳ Position already open. Skipping.");
-        return;
-    }
     isPositionOpen = true;
+    let keepPositionOpen = false;
+    const ctx = `[${shortSig(signature)}]`;
+    const eventStartedAt = Date.now();
+    let finalStatus = "COMPLETED";
 
-    console.log(`⏳ Processing Pool Creation: ${signature}`);
+    console.log(`⏳ ${ctx} Processing pool`);
+    console.log(`   ${ctx} STEP 1/6 Parse transaction`);
     
     try {
         // Get transaction data
@@ -243,8 +277,8 @@ async function handleNewPool(connection: Connection, signature: string) {
         }
 
         if (!tx) {
-            console.log("❌ Could not fetch transaction data. Skipping.");
-            isPositionOpen = false;
+            console.log(`❌ ${ctx} Could not fetch transaction data. Skipping.`);
+            finalStatus = "SKIP: tx unavailable";
             return;
         }
 
@@ -255,7 +289,7 @@ async function handleNewPool(connection: Connection, signature: string) {
         let tokenMint: string | null = null;
 
         // Debug: Log account keys
-        console.log(`   📊 TX has ${accountKeys.length} accounts, checking instructions...`);
+        console.log(`   ${ctx} TX accounts=${accountKeys.length}`);
 
         // Find the create_pool instruction within the transaction
         let creatorAddress: string | null = null;
@@ -281,7 +315,7 @@ async function handleNewPool(connection: Connection, signature: string) {
 
         // Fallback for tokenMint/pool if instructions didn't match (sometimes it's inner instructions)
         if (!tokenMint || !poolAddress) {
-            console.log("   🔄 Fallback: Trying to extract from postTokenBalances...");
+            console.log(`   ${ctx} Fallback: postTokenBalances`);
             const balances = tx.meta?.postTokenBalances || [];
             // Token is usually the one that IS NOT WSOL
             const tokenBalance = balances.find((b: any) => b.mint !== WSOL);
@@ -294,14 +328,15 @@ async function handleNewPool(connection: Connection, signature: string) {
         }
 
         if (!poolAddress || !tokenMint) {
-            console.log("❌ Could not extract pool/token from TX. Skipping.");
-            isPositionOpen = false;
+            console.log(`❌ ${ctx} Could not extract pool/token from TX. Skipping.`);
+            finalStatus = "SKIP: pool/token unresolved";
             return;
         }
 
-        console.log(`🎯 Token: ${tokenMint}`);
-        console.log(`📦 Pool: ${poolAddress}`);
-        console.log(`   🔗 https://pump.fun/coin/${tokenMint}`);
+        console.log(`   ${ctx} STEP 2/6 Resolve token/pool/creator`);
+        console.log(`🎯 ${ctx} Token: ${tokenMint}`);
+        console.log(`📦 ${ctx} Pool: ${poolAddress}`);
+        console.log(`🔗 ${ctx} GMGN: https://gmgn.ai/sol/token/${tokenMint}`);
 
         // Always require a creator address (fail-closed).
         // If not present in tx accounts, resolve it from on-chain pool state.
@@ -313,11 +348,12 @@ async function handleNewPool(connection: Connection, signature: string) {
         }
 
         if (!creatorAddress) {
-            console.log("🛑 SKIPPING: Creator address not resolvable.");
-            isPositionOpen = false;
+            console.log(`🛑 ${ctx} SKIP: creator not resolvable`);
+            finalStatus = "SKIP: creator unresolved";
             return;
         }
 
+        console.log(`   ${ctx} STEP 3/6 Liquidity check`);
         // Check liquidity from on-chain pool state (preferred) with tx fallback.
         let liquiditySOL = 0;
         const observerUser = walletKeypair?.publicKey ?? Keypair.generate().publicKey;
@@ -350,9 +386,9 @@ async function handleNewPool(connection: Connection, signature: string) {
         let liquidityUSD: number | null = null;
         if (solPriceUsd !== null) {
             liquidityUSD = liquiditySOL * solPriceUsd;
-            console.log(`💧 Pool Liquidity: ${liquiditySOL.toFixed(2)} SOL (~$${liquidityUSD.toFixed(0)})`);
+            console.log(`💧 ${ctx} Liquidity: ${liquiditySOL.toFixed(2)} SOL (~$${liquidityUSD.toFixed(0)})`);
         } else {
-            console.log(`💧 Pool Liquidity: ${liquiditySOL.toFixed(2)} SOL (USD unavailable: live SOL price fetch failed)`);
+            console.log(`💧 ${ctx} Liquidity: ${liquiditySOL.toFixed(2)} SOL (USD unavailable)`);
         }
 
         const failedSolThreshold = liquiditySOL < CONFIG.MIN_POOL_LIQUIDITY_SOL;
@@ -362,60 +398,61 @@ async function handleNewPool(connection: Connection, signature: string) {
                 ? `$${liquidityUSD.toFixed(0)}`
                 : "USD N/A";
             console.log(
-                `🛑 SKIPPING: Liquidity too low ` +
+                `🛑 ${ctx} SKIP: Liquidity too low ` +
                 `(${liquiditySOL.toFixed(2)} SOL / ${usdPart}; ` +
                 `min ${CONFIG.MIN_POOL_LIQUIDITY_SOL} SOL / $${CONFIG.MIN_POOL_LIQUIDITY_USD})`
             );
-            isPositionOpen = false;
+            finalStatus = "SKIP: low liquidity";
             return;
         }
 
+        console.log(`   ${ctx} STEP 4/6 Mint/freeze security`);
         // 🛡️ SAFETY CHECKS
         const isSafe = await checkTokenSecurity(connection, tokenMint);
         if (!isSafe) {
-            console.log(`🛑 SKIPPING: Token failed safety checks.`);
-            isPositionOpen = false;
+            console.log(`🛑 ${ctx} SKIP: Token failed safety checks.`);
+            finalStatus = "SKIP: token security";
             return;
         }
-
-        // Check Dev Holdings (avoid immediate dump) - always enforced
-        const creatorBalanceRaw = await getCreatorTokenBalanceRawWithRetry(connection, creatorAddress, tokenMint, postTokenBalances);
-        const mintInfo = await getMint(connection, new PublicKey(tokenMint));
-        const totalSupplyRaw = 1_000_000_000n * (10n ** BigInt(mintInfo.decimals)); // Pump tokens are 1B supply
-
-        // If creator has < 1 token, they dumped immediately (Rug Pull)
-        if (creatorBalanceRaw < 1n) {
-            console.log(`🛑 SKIPPING: Dev dumped tokens! (Held raw: ${creatorBalanceRaw.toString()})`);
-            isPositionOpen = false;
-            return;
-        }
-
-        console.log(`   👤 Dev Holding (raw units): ${creatorBalanceRaw.toString()}`);
-
-        // Percentage check
-        const devPct = Number((creatorBalanceRaw * 10000n) / totalSupplyRaw) / 100;
-        if (devPct > CONFIG.MAX_DEV_HOLDINGS_PCT) {
-            console.log(`🛑 SKIPPING: Dev holds too much (${devPct.toFixed(1)}% > ${CONFIG.MAX_DEV_HOLDINGS_PCT}%)`);
-            isPositionOpen = false;
-            return;
-        }
-
-        console.log(`✅ Liquidity & Safety Checks Passed!`);
 
         if (MONITOR_ONLY) {
-            await maybeRunPaperTradeSimulation(connection, poolAddress, tokenMint);
-            console.log("👀 MONITOR_ONLY active: skipping buy/sell execution.");
-            isPositionOpen = false;
+            console.log(`   ${ctx} STEP 5/6 Paper simulation`);
+            const paper = await maybeRunPaperTradeSimulation(connection, poolAddress, tokenMint, ctx);
+            if (!paper.ok) {
+                console.log(`🛑 ${ctx} SKIP: Paper simulation guard (${paper.reason})`);
+                finalStatus = "SKIP: paper simulation guard";
+                return;
+            }
+            console.log(`   ${ctx} STEP 6/6 Dev holdings check`);
+            const devCheckOk = await runDevHoldingsCheck(connection, creatorAddress, tokenMint, postTokenBalances, ctx, false);
+            if (devCheckOk) {
+                console.log(`✅ ${ctx} Checks passed`);
+            }
+            console.log(`👀 ${ctx} MONITOR_ONLY: no live trade`);
             return;
         }
 
+        const devCheckOk = await runDevHoldingsCheck(connection, creatorAddress, tokenMint, postTokenBalances, ctx, true);
+        if (!devCheckOk) {
+            finalStatus = "SKIP: dev holdings";
+            return;
+        }
+
+        console.log(`✅ ${ctx} Checks passed`);
+
         // Execute buy
-        console.log(`🚀 Executing Buy for ${tokenMint}...`);
-        await executeBuy(connection, poolAddress, tokenMint);
+        console.log(`🚀 ${ctx} Executing buy`);
+        keepPositionOpen = await executeBuy(connection, poolAddress, tokenMint);
 
     } catch (e: any) {
         console.error(`❌ Error in handleNewPool: ${e.message}`);
-        isPositionOpen = false;
+        finalStatus = `ERROR: ${e.message}`;
+    } finally {
+        if (!keepPositionOpen) {
+            isPositionOpen = false;
+        }
+        console.log(`🏁 ${ctx} END (${Date.now() - eventStartedAt}ms) ${finalStatus}`);
+        console.log("────────────────────────────────────────────────────────");
     }
 }
 
@@ -435,18 +472,72 @@ async function getCreatorTokenBalanceRawWithRetry(
     tokenMint: string,
     postTokenBalances: any[],
 ): Promise<bigint> {
-    const maxAttempts = 8;
-    const retryDelayMs = 400;
+    const maxAttempts = Math.max(1, CONFIG.DEV_HOLDINGS_MAX_ATTEMPTS);
+    const retryDelayMs = Math.max(0, CONFIG.DEV_HOLDINGS_RETRY_DELAY_MS);
+    const maxDurationMs = Math.max(250, CONFIG.DEV_HOLDINGS_MAX_DURATION_MS);
+    const startedAt = Date.now();
     let lastBalance = 0n;
 
     for (let i = 0; i < maxAttempts; i++) {
+        if (Date.now() - startedAt > maxDurationMs) {
+            throw new Error(`dev holdings check timed out after ${Date.now() - startedAt}ms`);
+        }
         const bal = await getCreatorTokenBalanceRaw(connection, creatorAddress, tokenMint, postTokenBalances);
         lastBalance = bal;
         if (bal > 0n) return bal;
-        await new Promise(r => setTimeout(r, retryDelayMs));
+        if (i < maxAttempts - 1) {
+            await new Promise(r => setTimeout(r, retryDelayMs));
+        }
     }
 
     return lastBalance;
+}
+
+async function runDevHoldingsCheck(
+    connection: Connection,
+    creatorAddress: string,
+    tokenMint: string,
+    postTokenBalances: any[],
+    ctx: string,
+    enforceGate: boolean,
+): Promise<boolean> {
+    if (!CONFIG.ENFORCE_DEV_HOLDINGS_CHECK) {
+        console.log(`   ${ctx} Dev holdings check: disabled`);
+        return true;
+    }
+
+    const devCheckStart = Date.now();
+    try {
+        const creatorBalanceRaw = await getCreatorTokenBalanceRawWithRetry(connection, creatorAddress, tokenMint, postTokenBalances);
+        const mintInfo = await getMintInfoRobust(connection, new PublicKey(tokenMint));
+        const totalSupplyRaw = 1_000_000_000n * (10n ** BigInt(mintInfo.decimals)); // Pump tokens are 1B supply
+
+        const devPct = Number((creatorBalanceRaw * 10000n) / totalSupplyRaw) / 100;
+        console.log(`   ${ctx} Dev holding: ${creatorBalanceRaw.toString()} (${devPct.toFixed(2)}%)`);
+        if (creatorBalanceRaw < 1n) {
+            console.log(`   ${ctx} Creator wallet token balance is 0 after create_pool (can be normal).`);
+        }
+        console.log(`   ${ctx} Dev check duration: ${Date.now() - devCheckStart}ms`);
+
+        if (devPct > CONFIG.MAX_DEV_HOLDINGS_PCT) {
+            if (enforceGate) {
+                console.log(`🛑 ${ctx} SKIP: Dev holds too much (${devPct.toFixed(1)}% > ${CONFIG.MAX_DEV_HOLDINGS_PCT}%)`);
+                return false;
+            }
+            console.log(`⚠️ ${ctx} Dev holds too much (${devPct.toFixed(1)}% > ${CONFIG.MAX_DEV_HOLDINGS_PCT}%)`);
+        }
+        return true;
+    } catch (e: any) {
+        const reason = e?.message || String(e);
+        const durationMs = Date.now() - devCheckStart;
+        if (MONITOR_ONLY && !enforceGate) {
+            console.log(`⚠️ ${ctx} Dev check failed after ${durationMs}ms: ${reason}`);
+            console.log(`   ${ctx} Dev check fail-open in MONITOR_ONLY`);
+            return true;
+        }
+        console.log(`🛑 ${ctx} SKIP: Dev check failed after ${durationMs}ms: ${reason}`);
+        return false;
+    }
 }
 
 async function getSolPriceUsd(): Promise<number | null> {
@@ -488,18 +579,22 @@ async function getCreatorTokenBalanceRaw(
         return BigInt(creatorBalanceEntry.uiTokenAmount.amount);
     }
 
-    // Fallback: query creator token accounts directly (Token + Token-2022).
+    // Fallback: query creator token accounts by program (Token + Token-2022),
+    // then filter by mint locally. This is more robust right after create_pool.
     const owner = new PublicKey(creatorAddress);
-    const mint = new PublicKey(tokenMint);
     const [tokenAccs, token2022Accs] = await Promise.all([
-        connection.getParsedTokenAccountsByOwner(owner, { mint }, "confirmed"),
+        connection.getParsedTokenAccountsByOwner(owner, { programId: TOKEN_PROGRAM_ID }, "confirmed")
+            .catch(() => ({ value: [] as any[] })),
         connection.getParsedTokenAccountsByOwner(owner, { programId: TOKEN_2022_PROGRAM_ID }, "confirmed")
             .catch(() => ({ value: [] as any[] })),
     ]);
 
     let total = 0n;
     const all = [
-        ...tokenAccs.value,
+        ...tokenAccs.value.filter((acc: any) => {
+            const accMint = acc.account.data.parsed?.info?.mint;
+            return accMint === tokenMint;
+        }),
         ...token2022Accs.value.filter((acc: any) => {
             const accMint = acc.account.data.parsed?.info?.mint;
             return accMint === tokenMint;
@@ -512,8 +607,11 @@ async function getCreatorTokenBalanceRaw(
     return total;
 }
 
-async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress: string, tokenMint: string) {
-    if (!CONFIG.PAPER_TRADE_ENABLED) return;
+type PaperTradeResult = { ok: boolean; reason?: string };
+
+async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress: string, tokenMint: string, ctx = ""): Promise<PaperTradeResult> {
+    if (!CONFIG.PAPER_TRADE_ENABLED) return { ok: true };
+    const p = ctx ? `${ctx} ` : "";
 
     const observerUser = walletKeypair?.publicKey ?? Keypair.generate().publicKey;
     const poolKey = new PublicKey(poolAddress);
@@ -533,18 +631,18 @@ async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress:
     };
 
     try {
-        console.log(`📈 PAPER_TRADE: simulating buy->sell for token ${tokenMint}`);
+        console.log(`📈 ${p}PAPER_TRADE: simulate buy->sell`);
         let tokenDecimals = 6;
         try {
-            tokenDecimals = (await getMint(connection, new PublicKey(tokenMint))).decimals;
+            tokenDecimals = (await getMintInfoRobust(connection, new PublicKey(tokenMint))).decimals;
         } catch {
             // fallback to common pump token decimals
         }
 
         const entryState = await fetchStateWithRetry();
         if (!entryState) {
-            console.log("⚠️ PAPER_TRADE: unable to load entry pool state, skipping simulation.");
-            return;
+            console.log(`⚠️ ${p}PAPER_TRADE: no entry pool state`);
+            return { ok: false, reason: "entry state unavailable" };
         }
 
         const entry = sellBaseInput({
@@ -562,14 +660,18 @@ async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress:
 
         const tokenOutAtomic = entry.uiQuote;
         const tokenOutUi = Number(tokenOutAtomic.toString()) / 10 ** tokenDecimals;
-        console.log(`   Entry (simulated): spend ${CONFIG.TRADE_AMOUNT_SOL.toFixed(6)} SOL -> receive ~${tokenOutUi.toFixed(2)} tokens`);
+        if (tokenOutAtomic.lte(new BN(0))) {
+            console.log(`⚠️ ${p}PAPER_TRADE: entry received 0 tokens`);
+            return { ok: false, reason: "entry produced 0 tokens" };
+        }
+        console.log(`   ${p}Entry: ${CONFIG.TRADE_AMOUNT_SOL.toFixed(6)} SOL -> ~${tokenOutUi.toFixed(2)} tokens`);
 
         await new Promise(r => setTimeout(r, CONFIG.PAPER_TRADE_EXIT_DELAY_MS));
 
         const exitState = await fetchStateWithRetry();
         if (!exitState) {
-            console.log("⚠️ PAPER_TRADE: unable to load exit pool state, skipping exit simulation.");
-            return;
+            console.log(`⚠️ ${p}PAPER_TRADE: no exit pool state`);
+            return { ok: false, reason: "exit state unavailable" };
         }
 
         const exit = buyQuoteInput({
@@ -589,10 +691,18 @@ async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress:
         const pnlSol = solOut - CONFIG.TRADE_AMOUNT_SOL;
         const pnlPct = (pnlSol / CONFIG.TRADE_AMOUNT_SOL) * 100;
 
-        console.log(`   Exit (simulated): sell ~${tokenOutUi.toFixed(2)} tokens -> receive ~${solOut.toFixed(6)} SOL`);
-        console.log(`   PnL (simulated): ${pnlSol >= 0 ? "+" : ""}${pnlSol.toFixed(6)} SOL (${pnlPct.toFixed(2)}%)`);
+        console.log(`   ${p}Exit: ~${tokenOutUi.toFixed(2)} tokens -> ~${solOut.toFixed(6)} SOL`);
+        console.log(`   ${p}PnL: ${pnlSol >= 0 ? "+" : ""}${pnlSol.toFixed(6)} SOL (${pnlPct.toFixed(2)}%)`);
+        if (!Number.isFinite(solOut) || solOut <= 0) {
+            return { ok: false, reason: "exit returned 0 SOL" };
+        }
+        if (pnlPct <= -Math.abs(CONFIG.PAPER_TRADE_MAX_LOSS_PCT)) {
+            return { ok: false, reason: `pnl ${pnlPct.toFixed(2)}% <= -${Math.abs(CONFIG.PAPER_TRADE_MAX_LOSS_PCT)}%` };
+        }
+        return { ok: true };
     } catch (e: any) {
-        console.log(`⚠️ PAPER_TRADE simulation failed: ${e.message}`);
+        console.log(`⚠️ ${p}PAPER_TRADE failed: ${e.message}`);
+        return { ok: false, reason: e?.message || "paper simulation failed" };
     }
 }
 
@@ -603,7 +713,7 @@ async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress:
 async function checkTokenSecurity(connection: Connection, mintAddress: string): Promise<boolean> {
     try {
         const mintKey = new PublicKey(mintAddress);
-        const mintInfo = await getMint(connection, mintKey);
+        const mintInfo = await getMintInfoRobust(connection, mintKey);
 
         if (CONFIG.REQUIRE_RENOUNCED_MINT && mintInfo.mintAuthority !== null) {
             console.log(`   ⚠️ Mint Authority NOT renounced! Owner: ${mintInfo.mintAuthority.toBase58()}`);
@@ -618,16 +728,45 @@ async function checkTokenSecurity(connection: Connection, mintAddress: string): 
         console.log(`   🛡️ Mint/Freeze Security: PASSED`);
         return true;
     } catch (e: any) {
-        console.log(`   ⚠️ Could not verify token security: ${e.message}`);
+        const reason = e?.message || String(e);
+        console.log(`   ⚠️ Could not verify token security: ${reason}`);
         return false; // Skip if uncertain
     }
+}
+
+async function getMintInfoRobust(connection: Connection, mintKey: PublicKey) {
+    const maxAttempts = 5;
+    let lastErr: unknown = null;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+            const mintAccount = await connection.getAccountInfo(mintKey, "confirmed");
+            if (!mintAccount) {
+                throw new Error("mint account not found");
+            }
+
+            const owner = mintAccount.owner;
+            if (!owner.equals(TOKEN_PROGRAM_ID) && !owner.equals(TOKEN_2022_PROGRAM_ID)) {
+                throw new Error(`unexpected mint owner program: ${owner.toBase58()}`);
+            }
+
+            return await getMint(connection, mintKey, "confirmed", owner);
+        } catch (e) {
+            lastErr = e;
+            if (attempt < maxAttempts) {
+                await new Promise(r => setTimeout(r, 300));
+            }
+        }
+    }
+
+    throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // EXECUTE BUY
 // ═══════════════════════════════════════════════════════════════════════════════
 
-async function executeBuy(connection: Connection, poolAddress: string, tokenMint: string) {
+async function executeBuy(connection: Connection, poolAddress: string, tokenMint: string): Promise<boolean> {
     try {
         if (!walletKeypair) {
             throw new Error("PRIVATE_KEY missing: cannot execute buy in monitor-only mode");
@@ -668,7 +807,7 @@ async function executeBuy(connection: Connection, poolAddress: string, tokenMint
         if (!swapSolanaState || !swapSolanaState.poolBaseAmount || swapSolanaState.poolBaseAmount.eq(new BN(0))) {
             console.log("❌ Failed to fetch valid pool state.");
             isPositionOpen = false;
-            return;
+            return false;
         }
 
         // Build buy instruction using offline SDK
@@ -711,15 +850,17 @@ async function executeBuy(connection: Connection, poolAddress: string, tokenMint
         if (confirmation.value.err) {
             console.log(`❌ Buy failed: ${JSON.stringify(confirmation.value.err)}`);
             isPositionOpen = false;
-            return;
+            return false;
         }
 
         console.log("🚀 BUY CONFIRMED! Scheduling Auto-Sell...");
         setTimeout(() => executeSell(connection, poolAddress, tokenMint), CONFIG.AUTO_SELL_DELAY_MS);
+        return true;
 
     } catch (e: any) {
         console.error("❌ Buy Error:", e.message);
         isPositionOpen = false;
+        return false;
     }
 }
 
