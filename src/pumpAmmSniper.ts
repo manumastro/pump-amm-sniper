@@ -36,7 +36,7 @@ const CONFIG = {
     MIN_POOL_LIQUIDITY_SOL: 40,          // Kept as hard floor in SOL
     
     // ⏱️ TIMING
-    AUTO_SELL_DELAY_MS: 32000,            // Sell after 8 seconds
+    AUTO_SELL_DELAY_MS: 16000,            // Sell after 8 seconds
     
     // 🔧 SLIPPAGE
     SLIPPAGE_PERCENT: 20,                 // 20% slippage (più conservativo)
@@ -60,6 +60,9 @@ const CONFIG = {
     // 📈 PAPER TRADE (simulation only)
     PAPER_TRADE_ENABLED: process.env.PAPER_TRADE_ENABLED === "true",
     PAPER_TRADE_MAX_LOSS_PCT: Number(process.env.PAPER_TRADE_MAX_LOSS_PCT || 80),
+    LIQUIDITY_STOP_ENABLED: process.env.LIQUIDITY_STOP_ENABLED !== "false",
+    LIQUIDITY_STOP_DROP_PCT: Number(process.env.LIQUIDITY_STOP_DROP_PCT || 30),
+    LIQUIDITY_STOP_CHECK_INTERVAL_MS: Number(process.env.LIQUIDITY_STOP_CHECK_INTERVAL_MS || 300),
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -95,6 +98,32 @@ let cachedSolPriceAtMs = 0;
 function shortSig(sig: string): string {
     if (sig.length <= 14) return sig;
     return `${sig.slice(0, 6)}...${sig.slice(-6)}`;
+}
+
+function toSubscriptDigits(value: number): string {
+    const map = ["₀", "₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉"];
+    return String(value).split("").map((c) => (c >= "0" && c <= "9") ? map[Number(c)] : c).join("");
+}
+
+function formatSolCompact(value: number): string {
+    if (!Number.isFinite(value) || value <= 0) return "0 SOL";
+    if (value >= 0.001) return `${value.toFixed(6)} SOL`;
+
+    const s = value.toFixed(12); // enough precision for tiny SOL values in logs
+    const frac = s.split(".")[1] || "";
+    const firstNonZero = frac.search(/[1-9]/);
+    if (firstNonZero <= 0) return `${value.toFixed(12)} SOL`;
+
+    const zeros = firstNonZero;
+    const significant = frac.slice(firstNonZero, firstNonZero + 4).replace(/0+$/, "") || "0";
+    return `0.0${toSubscriptDigits(zeros)}${significant} SOL`;
+}
+
+function calcSpotSolPerToken(baseReserve: BN, quoteReserve: BN, tokenDecimals: number): number {
+    const baseSol = Number(baseReserve.toString()) / 1e9;
+    const quoteTokens = Number(quoteReserve.toString()) / 10 ** tokenDecimals;
+    if (!Number.isFinite(baseSol) || !Number.isFinite(quoteTokens) || quoteTokens <= 0) return 0;
+    return baseSol / quoteTokens;
 }
 
 // Initialize SDKs
@@ -663,11 +692,16 @@ async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress:
             console.log(`⚠️ ${p}PAPER_TRADE: entry received 0 tokens`);
             return { ok: false, reason: "entry produced 0 tokens" };
         }
-        console.log(`   ${p}Entry: ${CONFIG.TRADE_AMOUNT_SOL.toFixed(6)} SOL -> ~${tokenOutUi.toFixed(2)} tokens`);
+        const entrySpotSolPerToken = calcSpotSolPerToken(entryState.poolBaseAmount, entryState.poolQuoteAmount, tokenDecimals);
+        const entrySolPerToken = tokenOutUi > 0 ? (CONFIG.TRADE_AMOUNT_SOL / tokenOutUi) : 0;
+        console.log(`   ${p}Buy Spot:  ~${formatSolCompact(entrySpotSolPerToken)}/token`);
 
-        await new Promise(r => setTimeout(r, CONFIG.AUTO_SELL_DELAY_MS));
-
-        const exitState = await fetchStateWithRetry();
+        const exitState = await waitForExitStateWithLiquidityStop(
+            fetchStateWithRetry,
+            entryState,
+            tokenDecimals,
+            p,
+        );
         if (!exitState) {
             console.log(`⚠️ ${p}PAPER_TRADE: no exit pool state`);
             return { ok: false, reason: "exit state unavailable" };
@@ -689,9 +723,11 @@ async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress:
         const solOut = Number(exit.base.toString()) / 1e9;
         const pnlSol = solOut - CONFIG.TRADE_AMOUNT_SOL;
         const pnlPct = (pnlSol / CONFIG.TRADE_AMOUNT_SOL) * 100;
+        const exitSpotSolPerToken = calcSpotSolPerToken(exitState.poolBaseAmount, exitState.poolQuoteAmount, tokenDecimals);
+        const exitSolPerToken = tokenOutUi > 0 ? (solOut / tokenOutUi) : 0;
 
-        console.log(`   ${p}Exit: ~${tokenOutUi.toFixed(2)} tokens -> ~${solOut.toFixed(6)} SOL`);
-        console.log(`   ${p}PnL: ${pnlSol >= 0 ? "+" : ""}${pnlSol.toFixed(6)} SOL (${pnlPct.toFixed(2)}%)`);
+        console.log(`   ${p}Sell Spot: ~${formatSolCompact(exitSpotSolPerToken)}/token`);
+        console.log(`   ${p}PnL: ${pnlSol >= 0 ? "+" : ""}${formatSolCompact(Math.abs(pnlSol))} (${pnlPct.toFixed(2)}%)`);
         if (!Number.isFinite(solOut) || solOut <= 0) {
             return { ok: false, reason: "exit returned 0 SOL" };
         }
@@ -703,6 +739,55 @@ async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress:
         console.log(`⚠️ ${p}PAPER_TRADE failed: ${e.message}`);
         return { ok: false, reason: e?.message || "paper simulation failed" };
     }
+}
+
+async function waitForExitStateWithLiquidityStop(
+    fetchStateWithRetry: () => Promise<any | null>,
+    entryState: any,
+    tokenDecimals: number,
+    logPrefix: string,
+): Promise<any | null> {
+    const deadlineMs = Date.now() + CONFIG.AUTO_SELL_DELAY_MS;
+    const entrySpot = calcSpotSolPerToken(entryState.poolBaseAmount, entryState.poolQuoteAmount, tokenDecimals);
+    const entryBaseLamports = Number(entryState.poolBaseAmount.toString());
+    const dropFactor = 1 - (Math.abs(CONFIG.LIQUIDITY_STOP_DROP_PCT) / 100);
+    let latestState: any | null = entryState;
+
+    while (Date.now() < deadlineMs) {
+        await new Promise(r => setTimeout(r, CONFIG.LIQUIDITY_STOP_CHECK_INTERVAL_MS));
+        const s = await fetchStateWithRetry();
+        if (!s) continue;
+        latestState = s;
+
+        if (!CONFIG.LIQUIDITY_STOP_ENABLED) continue;
+
+        const curSpot = calcSpotSolPerToken(s.poolBaseAmount, s.poolQuoteAmount, tokenDecimals);
+        const curBaseLamports = Number(s.poolBaseAmount.toString());
+
+        const spotTriggered =
+            Number.isFinite(entrySpot) &&
+            entrySpot > 0 &&
+            Number.isFinite(curSpot) &&
+            curSpot > 0 &&
+            curSpot <= entrySpot * dropFactor;
+
+        const baseTriggered =
+            Number.isFinite(entryBaseLamports) &&
+            entryBaseLamports > 0 &&
+            Number.isFinite(curBaseLamports) &&
+            curBaseLamports > 0 &&
+            curBaseLamports <= entryBaseLamports * dropFactor;
+
+        if (spotTriggered || baseTriggered) {
+            console.log(
+                `⚠️ ${logPrefix}LIQUIDITY STOP: trigger early exit ` +
+                `(spot ${formatSolCompact(curSpot)}/token, base ${(curBaseLamports / 1e9).toFixed(2)} SOL)`
+            );
+            return s;
+        }
+    }
+
+    return latestState || fetchStateWithRetry();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
