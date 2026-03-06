@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 import { Connection, Keypair, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
 import bs58 from "bs58";
-import { OnlinePumpAmmSdk, PumpAmmSdk } from "@pump-fun/pump-swap-sdk";
+import { OnlinePumpAmmSdk, PumpAmmSdk, buyQuoteInput, sellBaseInput } from "@pump-fun/pump-swap-sdk";
 import BN from "bn.js";
 import { getMint, TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
 import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction, createCloseAccountInstruction } from "@solana/spl-token";
@@ -30,6 +30,16 @@ const CONFIG = {
     REQUIRE_RENOUNCED_MINT: true,        // Skip if dev can still mint
     REQUIRE_NO_FREEZE: true,             // Skip if dev can freeze accounts
     MAX_DEV_HOLDINGS_PCT: 20,            // Skip if dev owns more than 20%
+
+    // 👀 MONITORING HARDENING
+    LOG_STALE_RESUBSCRIBE_MS: 90000,     // Resubscribe if no logs for 90s
+    HEALTHCHECK_INTERVAL_MS: 15000,      // Healthcheck every 15s
+    SIGNATURE_CACHE_TTL_MS: 10 * 60 * 1000, // Keep seen signatures for 10m
+    SIGNATURE_CACHE_MAX_SIZE: 5000,      // Bound memory usage
+
+    // 📈 PAPER TRADE (simulation only)
+    PAPER_TRADE_FIRST_VALID_POOL: process.env.PAPER_TRADE_FIRST_VALID_POOL === "true",
+    PAPER_TRADE_EXIT_DELAY_MS: Number(process.env.PAPER_TRADE_EXIT_DELAY_MS || 8000),
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -38,16 +48,28 @@ const CONFIG = {
 const PUMPFUN_AMM_PROGRAM_ID = "pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA";
 const WSOL = "So11111111111111111111111111111111111111112";
 
-// Load Wallet
+// Runtime mode
 const PRIVATE_KEY_B58 = process.env.PRIVATE_KEY;
-if (!PRIVATE_KEY_B58) {
-    console.error("❌ PRIVATE_KEY is missing in .env");
-    process.exit(1);
+const hasUsablePrivateKey = !!PRIVATE_KEY_B58 && !PRIVATE_KEY_B58.startsWith("YOUR_");
+
+let walletKeypair: Keypair | null = null;
+if (hasUsablePrivateKey) {
+    try {
+        walletKeypair = Keypair.fromSecretKey(bs58.decode(PRIVATE_KEY_B58!));
+    } catch {
+        console.warn("⚠️ PRIVATE_KEY is not valid base58. Falling back to monitor-only mode.");
+    }
 }
-const walletKeypair = Keypair.fromSecretKey(bs58.decode(PRIVATE_KEY_B58));
+
+const MONITOR_ONLY = process.env.MONITOR_ONLY === "true" || !walletKeypair;
 
 // State
 let isPositionOpen = false;
+let logSubscriptionId: number | null = null;
+let lastLogAtMs = Date.now();
+let healthcheckInterval: NodeJS.Timeout | null = null;
+const seenSignatures = new Map<string, number>();
+let paperTradeExecuted = false;
 
 // Initialize SDKs
 let onlineSdk: OnlinePumpAmmSdk;
@@ -67,34 +89,130 @@ async function main() {
 
     console.log("🎯 STARTING PUMP.FUN AMM SNIPER 🎯");
     console.log(`Program: ${PUMPFUN_AMM_PROGRAM_ID}`);
-    console.log(`Wallet: ${walletKeypair.publicKey.toBase58()}`);
-    console.log(`Amount: ${CONFIG.TRADE_AMOUNT_SOL} SOL`);
+    console.log(`Mode: ${MONITOR_ONLY ? "MONITOR_ONLY" : "TRADING"}`);
+    console.log(`Wallet: ${walletKeypair ? walletKeypair.publicKey.toBase58() : "N/A (no private key loaded)"}`);
     console.log(`Min Liquidity: ${CONFIG.MIN_POOL_LIQUIDITY_SOL} SOL (~$${CONFIG.MIN_POOL_LIQUIDITY_USD})`);
-    console.log(`Auto-Sell: ${CONFIG.AUTO_SELL_DELAY_MS / 1000} seconds`);
+    if (!MONITOR_ONLY) {
+        console.log(`Amount: ${CONFIG.TRADE_AMOUNT_SOL} SOL`);
+        console.log(`Auto-Sell: ${CONFIG.AUTO_SELL_DELAY_MS / 1000} seconds`);
+    } else if (CONFIG.PAPER_TRADE_FIRST_VALID_POOL) {
+        console.log(`Paper Trade: enabled (first valid pool, exit delay ${CONFIG.PAPER_TRADE_EXIT_DELAY_MS / 1000}s)`);
+    }
     console.log("");
 
-    // Subscribe to program logs
+    // Subscribe to program logs with watchdog + auto-resubscribe
+    await subscribeToPoolLogs(connection);
+    startLogHealthcheck(connection);
+    setupGracefulShutdown(connection);
+
+    // Keep process alive
+    console.log("🚀 Sniper is running. Press Ctrl+C to stop.\n");
+}
+
+async function subscribeToPoolLogs(connection: Connection) {
     console.log("👀 Listening for 'create_pool' logs...");
-    
-    connection.onLogs(
+    logSubscriptionId = connection.onLogs(
         new PublicKey(PUMPFUN_AMM_PROGRAM_ID),
         async (logs) => {
-            // Check for pool creation
-            const hasCreatePool = logs.logs.some(log => 
-                log.toLowerCase().includes("create_pool") || 
-                log.toLowerCase().includes("createpool")
-            );
+            try {
+                lastLogAtMs = Date.now();
+                pruneSignatureCache(lastLogAtMs);
 
-            if (hasCreatePool) {
+                if (alreadySeenSignature(logs.signature, lastLogAtMs)) {
+                    return;
+                }
+
+                // Check for pool creation
+                const hasCreatePool = logs.logs.some(log =>
+                    log.toLowerCase().includes("create_pool") ||
+                    log.toLowerCase().includes("createpool")
+                );
+
+                if (!hasCreatePool) return;
+
                 console.log(`\n✨ NEW PUMP.FUN POOL DETECTED: ${logs.signature}`);
-                handleNewPool(connection, logs.signature);
+                await handleNewPool(connection, logs.signature);
+            } catch (e: any) {
+                console.error(`❌ Log handler error: ${e.message}`);
             }
         },
         "confirmed"
     );
+}
 
-    // Keep process alive
-    console.log("🚀 Sniper is running. Press Ctrl+C to stop.\n");
+function alreadySeenSignature(signature: string, nowMs: number): boolean {
+    const existing = seenSignatures.get(signature);
+    if (existing && nowMs - existing < CONFIG.SIGNATURE_CACHE_TTL_MS) {
+        return true;
+    }
+    seenSignatures.set(signature, nowMs);
+    return false;
+}
+
+function pruneSignatureCache(nowMs: number) {
+    for (const [sig, timestamp] of seenSignatures) {
+        if (nowMs - timestamp > CONFIG.SIGNATURE_CACHE_TTL_MS) {
+            seenSignatures.delete(sig);
+        }
+    }
+
+    // If still too large, remove oldest entries
+    if (seenSignatures.size > CONFIG.SIGNATURE_CACHE_MAX_SIZE) {
+        const entries = Array.from(seenSignatures.entries()).sort((a, b) => a[1] - b[1]);
+        const toRemove = seenSignatures.size - CONFIG.SIGNATURE_CACHE_MAX_SIZE;
+        for (let i = 0; i < toRemove; i++) {
+            seenSignatures.delete(entries[i][0]);
+        }
+    }
+}
+
+function startLogHealthcheck(connection: Connection) {
+    if (healthcheckInterval) clearInterval(healthcheckInterval);
+
+    healthcheckInterval = setInterval(async () => {
+        const now = Date.now();
+        const staleForMs = now - lastLogAtMs;
+
+        if (staleForMs < CONFIG.LOG_STALE_RESUBSCRIBE_MS) return;
+
+        console.warn(`⚠️ Log stream stale for ${Math.floor(staleForMs / 1000)}s. Resubscribing...`);
+        try {
+            if (logSubscriptionId !== null) {
+                await connection.removeOnLogsListener(logSubscriptionId);
+            }
+        } catch (e: any) {
+            console.warn(`⚠️ Failed removing old log subscription: ${e.message}`);
+        }
+
+        logSubscriptionId = null;
+        lastLogAtMs = now;
+        await subscribeToPoolLogs(connection);
+    }, CONFIG.HEALTHCHECK_INTERVAL_MS);
+}
+
+function setupGracefulShutdown(connection: Connection) {
+    const shutdown = async () => {
+        console.log("\n🛑 Shutting down...");
+
+        if (healthcheckInterval) {
+            clearInterval(healthcheckInterval);
+            healthcheckInterval = null;
+        }
+
+        if (logSubscriptionId !== null) {
+            try {
+                await connection.removeOnLogsListener(logSubscriptionId);
+            } catch {
+                // no-op on shutdown
+            }
+            logSubscriptionId = null;
+        }
+
+        process.exit(0);
+    };
+
+    process.once("SIGINT", shutdown);
+    process.once("SIGTERM", shutdown);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -245,6 +363,13 @@ async function handleNewPool(connection: Connection, signature: string) {
 
         console.log(`✅ Liquidity & Safety Checks Passed!`);
 
+        if (MONITOR_ONLY) {
+            await maybeRunPaperTradeSimulation(connection, poolAddress, tokenMint);
+            console.log("👀 MONITOR_ONLY active: skipping buy/sell execution.");
+            isPositionOpen = false;
+            return;
+        }
+
         // Execute buy
         console.log(`🚀 Executing Buy for ${tokenMint}...`);
         await executeBuy(connection, poolAddress, tokenMint);
@@ -252,6 +377,91 @@ async function handleNewPool(connection: Connection, signature: string) {
     } catch (e: any) {
         console.error(`❌ Error in handleNewPool: ${e.message}`);
         isPositionOpen = false;
+    }
+}
+
+async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress: string, tokenMint: string) {
+    if (!CONFIG.PAPER_TRADE_FIRST_VALID_POOL || paperTradeExecuted) return;
+    paperTradeExecuted = true;
+
+    const observerUser = walletKeypair?.publicKey ?? Keypair.generate().publicKey;
+    const poolKey = new PublicKey(poolAddress);
+    const buyAmountLamports = new BN(Math.floor(CONFIG.TRADE_AMOUNT_SOL * 1e9));
+
+    const fetchStateWithRetry = async () => {
+        for (let i = 0; i < 12; i++) {
+            try {
+                const state = await onlineSdk.swapSolanaState(poolKey, observerUser);
+                if (state.poolBaseAmount.gt(new BN(0)) && state.poolQuoteAmount.gt(new BN(0))) return state;
+            } catch {
+                // wait and retry
+            }
+            await new Promise(r => setTimeout(r, 250));
+        }
+        return null;
+    };
+
+    try {
+        console.log(`📈 PAPER_TRADE: simulating buy->sell on first valid token ${tokenMint}`);
+        let tokenDecimals = 6;
+        try {
+            tokenDecimals = (await getMint(connection, new PublicKey(tokenMint))).decimals;
+        } catch {
+            // fallback to common pump token decimals
+        }
+
+        const entryState = await fetchStateWithRetry();
+        if (!entryState) {
+            console.log("⚠️ PAPER_TRADE: unable to load entry pool state, skipping simulation.");
+            return;
+        }
+
+        const entry = sellBaseInput({
+            base: buyAmountLamports,
+            slippage: CONFIG.SLIPPAGE_PERCENT,
+            baseReserve: entryState.poolBaseAmount,
+            quoteReserve: entryState.poolQuoteAmount,
+            baseMintAccount: entryState.baseMintAccount,
+            baseMint: entryState.baseMint,
+            coinCreator: entryState.pool.coinCreator,
+            creator: entryState.pool.creator,
+            feeConfig: entryState.feeConfig,
+            globalConfig: entryState.globalConfig,
+        });
+
+        const tokenOutAtomic = entry.uiQuote;
+        const tokenOutUi = Number(tokenOutAtomic.toString()) / 10 ** tokenDecimals;
+        console.log(`   Entry (simulated): spend ${CONFIG.TRADE_AMOUNT_SOL.toFixed(6)} SOL -> receive ~${tokenOutUi.toFixed(2)} tokens`);
+
+        await new Promise(r => setTimeout(r, CONFIG.PAPER_TRADE_EXIT_DELAY_MS));
+
+        const exitState = await fetchStateWithRetry();
+        if (!exitState) {
+            console.log("⚠️ PAPER_TRADE: unable to load exit pool state, skipping exit simulation.");
+            return;
+        }
+
+        const exit = buyQuoteInput({
+            quote: tokenOutAtomic,
+            slippage: CONFIG.SLIPPAGE_PERCENT,
+            baseReserve: exitState.poolBaseAmount,
+            quoteReserve: exitState.poolQuoteAmount,
+            baseMintAccount: exitState.baseMintAccount,
+            baseMint: exitState.baseMint,
+            coinCreator: exitState.pool.coinCreator,
+            creator: exitState.pool.creator,
+            feeConfig: exitState.feeConfig,
+            globalConfig: exitState.globalConfig,
+        });
+
+        const solOut = Number(exit.base.toString()) / 1e9;
+        const pnlSol = solOut - CONFIG.TRADE_AMOUNT_SOL;
+        const pnlPct = (pnlSol / CONFIG.TRADE_AMOUNT_SOL) * 100;
+
+        console.log(`   Exit (simulated): sell ~${tokenOutUi.toFixed(2)} tokens -> receive ~${solOut.toFixed(6)} SOL`);
+        console.log(`   PnL (simulated): ${pnlSol >= 0 ? "+" : ""}${pnlSol.toFixed(6)} SOL (${pnlPct.toFixed(2)}%)`);
+    } catch (e: any) {
+        console.log(`⚠️ PAPER_TRADE simulation failed: ${e.message}`);
     }
 }
 
@@ -288,6 +498,10 @@ async function checkTokenSecurity(connection: Connection, mintAddress: string): 
 
 async function executeBuy(connection: Connection, poolAddress: string, tokenMint: string) {
     try {
+        if (!walletKeypair) {
+            throw new Error("PRIVATE_KEY missing: cannot execute buy in monitor-only mode");
+        }
+
         const poolKey = new PublicKey(poolAddress);
         const user = walletKeypair.publicKey;
 
@@ -386,6 +600,10 @@ async function executeSell(connection: Connection, poolAddress: string, tokenMin
     console.log(`⏱️ Auto-Sell triggered for ${tokenMint}...`);
     
     try {
+        if (!walletKeypair) {
+            throw new Error("PRIVATE_KEY missing: cannot execute sell in monitor-only mode");
+        }
+
         const tokenMintKey = new PublicKey(tokenMint);
         const user = walletKeypair.publicKey;
         
