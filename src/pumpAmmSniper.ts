@@ -3,7 +3,7 @@ import { Connection, Keypair, PublicKey, Transaction, TransactionInstruction } f
 import bs58 from "bs58";
 import { OnlinePumpAmmSdk, PumpAmmSdk, buyQuoteInput, sellBaseInput } from "@pump-fun/pump-swap-sdk";
 import BN from "bn.js";
-import { getMint, TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
+import { AccountLayout, getMint, TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
 import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction, createCloseAccountInstruction } from "@solana/spl-token";
 
 dotenv.config();
@@ -67,6 +67,9 @@ const CONFIG = {
     LIQUIDITY_STOP_ENABLED: process.env.LIQUIDITY_STOP_ENABLED !== "false",
     LIQUIDITY_STOP_DROP_PCT: Number(process.env.LIQUIDITY_STOP_DROP_PCT || 30),
     LIQUIDITY_STOP_CHECK_INTERVAL_MS: Number(process.env.LIQUIDITY_STOP_CHECK_INTERVAL_MS || 300),
+    POST_ENTRY_STABILITY_GATE_ENABLED: process.env.POST_ENTRY_STABILITY_GATE_ENABLED !== "false",
+    POST_ENTRY_STABILITY_GATE_WINDOW_MS: Number(process.env.POST_ENTRY_STABILITY_GATE_WINDOW_MS || 5000),
+    POST_ENTRY_STABILITY_GATE_DROP_PCT: Number(process.env.POST_ENTRY_STABILITY_GATE_DROP_PCT || 4),
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -96,12 +99,17 @@ let logSubscriptionId: number | null = null;
 let lastLogAtMs = Date.now();
 let healthcheckInterval: NodeJS.Timeout | null = null;
 const seenSignatures = new Map<string, number>();
+const activeMonitorTasks = new Set<string>();
 let cachedSolPriceUsd: number | null = null;
 let cachedSolPriceAtMs = 0;
 
 function shortSig(sig: string): string {
     if (sig.length <= 14) return sig;
     return `${sig.slice(0, 6)}...${sig.slice(-6)}`;
+}
+
+function stageLog(ctx: string, stage: string, message: string) {
+    console.log(`${ctx.padEnd(18)} | ${stage.padEnd(12)} | ${message}`);
 }
 
 function toSubscriptDigits(value: number): string {
@@ -216,12 +224,16 @@ async function subscribeToPoolLogs(connection: Connection) {
                 console.log("────────────────────────────────────────────────────────");
                 console.log(`🆕 NEW POOL [${shortSig(logs.signature)}]`);
                 console.log(`   Signature: ${logs.signature}`);
-                if (isPositionOpen) {
+                if (!MONITOR_ONLY && isPositionOpen) {
                     console.log(`   ⏭️ Busy, skip [${shortSig(logs.signature)}]`);
                     console.log("────────────────────────────────────────────────────────");
                     return;
                 }
-                await handleNewPool(connection, logs.signature);
+                if (MONITOR_ONLY) {
+                    void handleNewPool(connection, logs.signature);
+                } else {
+                    await handleNewPool(connection, logs.signature);
+                }
             } catch (e: any) {
                 console.error(`❌ Log handler error: ${e.message}`);
             }
@@ -310,14 +322,20 @@ function setupGracefulShutdown(connection: Connection) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 async function handleNewPool(connection: Connection, signature: string) {
-    isPositionOpen = true;
-    let keepPositionOpen = false;
     const ctx = `[${shortSig(signature)}]`;
+    if (MONITOR_ONLY) {
+        activeMonitorTasks.add(signature);
+    } else {
+        isPositionOpen = true;
+    }
+    let keepPositionOpen = false;
     const eventStartedAt = Date.now();
     let finalStatus = "COMPLETED";
 
-    console.log(`⏳ ${ctx} Processing pool`);
-    console.log(`   ${ctx} STEP 1/6 Parse transaction`);
+    stageLog(ctx, "START", MONITOR_ONLY
+        ? `processing pool active=${activeMonitorTasks.size}`
+        : "processing pool");
+    stageLog(ctx, "STEP 1/6", "parse transaction");
     
     try {
         // Get transaction data
@@ -344,7 +362,7 @@ async function handleNewPool(connection: Connection, signature: string) {
         let tokenMint: string | null = null;
 
         // Debug: Log account keys
-        console.log(`   ${ctx} TX accounts=${accountKeys.length}`);
+        stageLog(ctx, "TX", `accounts=${accountKeys.length}`);
 
         // Find the create_pool instruction within the transaction
         let creatorAddress: string | null = null;
@@ -354,14 +372,14 @@ async function handleNewPool(connection: Connection, signature: string) {
             const programId = accountKeys[ix.programIdIndex]?.pubkey?.toBase58();
             
             if (programId === PUMPFUN_AMM_PROGRAM_ID) {
-                console.log(`   ✅ Found Pump AMM instruction with ${ix.accounts?.length || 0} accounts`);
+                stageLog(ctx, "TX", `pump-amm instruction accounts=${ix.accounts?.length || 0}`);
                 // Extract accounts based on IDL order
                 if (ix.accounts && ix.accounts.length >= 5) {
                     poolAddress = accountKeys[ix.accounts[0]]?.pubkey?.toBase58() || null;
                     tokenMint = accountKeys[ix.accounts[3]]?.pubkey?.toBase58() || null;
                     creatorAddress = accountKeys[ix.accounts[2]]?.pubkey?.toBase58() || null;
                     if (creatorAddress) {
-                        console.log(`   👤 Creator: ${creatorAddress}`);
+                        stageLog(ctx, "CREATOR", creatorAddress);
                     }
                 }
                 break;
@@ -370,7 +388,7 @@ async function handleNewPool(connection: Connection, signature: string) {
 
         // Fallback for tokenMint/pool if instructions didn't match (sometimes it's inner instructions)
         if (!tokenMint || !poolAddress) {
-            console.log(`   ${ctx} Fallback: postTokenBalances`);
+            stageLog(ctx, "TX", "fallback postTokenBalances");
             const balances = tx.meta?.postTokenBalances || [];
             // Token is usually the one that IS NOT WSOL
             const tokenBalance = balances.find((b: any) => b.mint !== WSOL);
@@ -388,17 +406,17 @@ async function handleNewPool(connection: Connection, signature: string) {
             return;
         }
 
-        console.log(`   ${ctx} STEP 2/6 Resolve token/pool/creator`);
-        console.log(`🎯 ${ctx} Token: ${tokenMint}`);
-        console.log(`📦 ${ctx} Pool: ${poolAddress}`);
-        console.log(`🔗 ${ctx} GMGN: https://gmgn.ai/sol/token/${tokenMint}`);
+        stageLog(ctx, "STEP 2/6", "resolve token/pool/creator");
+        stageLog(ctx, "TOKEN", tokenMint);
+        stageLog(ctx, "POOL", poolAddress);
+        stageLog(ctx, "GMGN", `https://gmgn.ai/sol/token/${tokenMint}`);
 
         // Always require a creator address (fail-closed).
         // If not present in tx accounts, resolve it from on-chain pool state.
         if (!creatorAddress) {
             creatorAddress = await resolveCreatorFromPool(connection, poolAddress);
             if (creatorAddress) {
-                console.log(`   👤 Creator (resolved from pool): ${creatorAddress}`);
+                stageLog(ctx, "CREATOR", `resolved ${creatorAddress}`);
             }
         }
 
@@ -408,7 +426,7 @@ async function handleNewPool(connection: Connection, signature: string) {
             return;
         }
 
-        console.log(`   ${ctx} STEP 3/6 Liquidity check`);
+        stageLog(ctx, "STEP 3/6", "liquidity check");
         // Check liquidity from on-chain pool state (preferred) with tx fallback.
         let liquiditySOL = 0;
         const observerUser = walletKeypair?.publicKey ?? Keypair.generate().publicKey;
@@ -442,9 +460,9 @@ async function handleNewPool(connection: Connection, signature: string) {
         let liquidityUSD: number | null = null;
         if (solPriceUsd !== null) {
             liquidityUSD = liquiditySOL * solPriceUsd;
-            console.log(`💧 ${ctx} Liquidity: ${liquiditySOL.toFixed(2)} SOL (~$${liquidityUSD.toFixed(0)})`);
+            stageLog(ctx, "LIQ", `${liquiditySOL.toFixed(2)} SOL (~$${liquidityUSD.toFixed(0)})`);
         } else {
-            console.log(`💧 ${ctx} Liquidity: ${liquiditySOL.toFixed(2)} SOL (USD unavailable)`);
+            stageLog(ctx, "LIQ", `${liquiditySOL.toFixed(2)} SOL (USD unavailable)`);
         }
 
         const failedSolThreshold = liquiditySOL < CONFIG.MIN_POOL_LIQUIDITY_SOL;
@@ -462,7 +480,7 @@ async function handleNewPool(connection: Connection, signature: string) {
             return;
         }
 
-        console.log(`   ${ctx} STEP 4/6 Mint/freeze security`);
+        stageLog(ctx, "STEP 4/6", "mint/freeze security");
         // 🛡️ SAFETY CHECKS
         const isSafe = await checkTokenSecurity(connection, tokenMint);
         if (!isSafe) {
@@ -481,19 +499,19 @@ async function handleNewPool(connection: Connection, signature: string) {
                 }
                 liquiditySOL = preEntry.currentLiquiditySol;
             }
-            console.log(`   ${ctx} STEP 5/6 Paper simulation`);
+            stageLog(ctx, "STEP 5/6", "paper simulation");
             const paper = await maybeRunPaperTradeSimulation(connection, poolAddress, tokenMint, ctx);
             if (!paper.ok) {
                 console.log(`🛑 ${ctx} SKIP: Paper simulation guard (${paper.reason})`);
                 finalStatus = "SKIP: paper simulation guard";
                 return;
             }
-            console.log(`   ${ctx} STEP 6/6 Dev holdings check`);
+            stageLog(ctx, "STEP 6/6", "dev holdings");
             const devCheckOk = await runDevHoldingsCheck(connection, creatorAddress, tokenMint, postTokenBalances, ctx, false);
             if (devCheckOk) {
                 console.log(`✅ ${ctx} Checks passed`);
             }
-            console.log(`👀 ${ctx} MONITOR_ONLY: no live trade`);
+            stageLog(ctx, "MODE", "MONITOR_ONLY no live trade");
             return;
         }
 
@@ -512,20 +530,23 @@ async function handleNewPool(connection: Connection, signature: string) {
             }
         }
 
-        console.log(`✅ ${ctx} Checks passed`);
+        stageLog(ctx, "CHECKS", "passed");
 
         // Execute buy
-        console.log(`🚀 ${ctx} Executing buy`);
+        stageLog(ctx, "BUY", "executing");
         keepPositionOpen = await executeBuy(connection, poolAddress, tokenMint);
 
     } catch (e: any) {
         console.error(`❌ Error in handleNewPool: ${e.message}`);
         finalStatus = `ERROR: ${e.message}`;
     } finally {
-        if (!keepPositionOpen) {
+        if (!keepPositionOpen && !MONITOR_ONLY) {
             isPositionOpen = false;
         }
-        console.log(`🏁 ${ctx} END (${Date.now() - eventStartedAt}ms) ${finalStatus}`);
+        if (MONITOR_ONLY) {
+            activeMonitorTasks.delete(signature);
+        }
+        stageLog(ctx, "END", `${finalStatus} (${Date.now() - eventStartedAt}ms, active=${activeMonitorTasks.size})`);
         console.log("────────────────────────────────────────────────────────");
     }
 }
@@ -824,6 +845,8 @@ async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress:
         console.log(`   ${p}Buy Spot:  ~${formatSolCompact(entrySpotSolPerToken)}/token`);
 
         const exitState = await waitForExitStateWithLiquidityStop(
+            connection,
+            poolAddress,
             fetchStateWithRetry,
             entryState,
             tokenMint,
@@ -885,28 +908,59 @@ async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress:
 }
 
 async function waitForExitStateWithLiquidityStop(
+    connection: Connection,
+    poolAddress: string,
     fetchStateWithRetry: () => Promise<any | null>,
     entryState: any,
     tokenMint: string,
     tokenDecimals: number,
     logPrefix: string,
 ): Promise<any | null> {
-    const deadlineMs = Date.now() + CONFIG.AUTO_SELL_DELAY_MS;
+    const startedAtMs = Date.now();
+    const deadlineMs = startedAtMs + CONFIG.AUTO_SELL_DELAY_MS;
     const entrySpot = getSpotSolPerTokenFromState(entryState, tokenMint, tokenDecimals) || 0;
     const entrySolLiquidity = getSolLiquidityFromState(entryState, tokenMint) || 0;
     const dropFactor = 1 - (Math.abs(CONFIG.LIQUIDITY_STOP_DROP_PCT) / 100);
+    const stabilityDropFactor = 1 - (Math.abs(CONFIG.POST_ENTRY_STABILITY_GATE_DROP_PCT) / 100);
     let latestState: any | null = entryState;
-
     while (Date.now() < deadlineMs) {
         await new Promise(r => setTimeout(r, CONFIG.LIQUIDITY_STOP_CHECK_INTERVAL_MS));
         const s = await fetchStateWithRetry();
         if (!s) continue;
         latestState = s;
 
-        if (!CONFIG.LIQUIDITY_STOP_ENABLED) continue;
-
         const curSpot = getSpotSolPerTokenFromState(s, tokenMint, tokenDecimals) || 0;
         const curSolLiquidity = getSolLiquidityFromState(s, tokenMint) || 0;
+        const inStabilityWindow =
+            CONFIG.POST_ENTRY_STABILITY_GATE_ENABLED &&
+            (Date.now() - startedAtMs) <= Math.max(0, CONFIG.POST_ENTRY_STABILITY_GATE_WINDOW_MS);
+
+        if (inStabilityWindow) {
+            const stabilitySpotBreak =
+                Number.isFinite(entrySpot) &&
+                entrySpot > 0 &&
+                Number.isFinite(curSpot) &&
+                curSpot > 0 &&
+                curSpot <= entrySpot * stabilityDropFactor;
+
+            const stabilityLiquidityBreak =
+                Number.isFinite(entrySolLiquidity) &&
+                entrySolLiquidity > 0 &&
+                Number.isFinite(curSolLiquidity) &&
+                curSolLiquidity > 0 &&
+                curSolLiquidity <= entrySolLiquidity * stabilityDropFactor;
+
+            if (stabilitySpotBreak || stabilityLiquidityBreak) {
+                console.log(
+                    `⚠️ ${logPrefix}STABILITY GATE: early exit ` +
+                    `(spot ${formatSolCompact(curSpot)}/token, liquidity ${curSolLiquidity.toFixed(2)} SOL, ` +
+                    `window ${CONFIG.POST_ENTRY_STABILITY_GATE_WINDOW_MS}ms, drop ${CONFIG.POST_ENTRY_STABILITY_GATE_DROP_PCT}%)`
+                );
+                return s;
+            }
+        }
+
+        if (!CONFIG.LIQUIDITY_STOP_ENABLED) continue;
 
         const spotTriggered =
             Number.isFinite(entrySpot) &&
