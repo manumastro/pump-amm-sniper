@@ -32,8 +32,8 @@ const CONFIG = {
     TRADE_AMOUNT_SOL: 0.001,               // Amount to buy per snipe
     
     // 🔒 ENTRY FILTERS
-    MIN_POOL_LIQUIDITY_USD: 20000,        // Minimum liquidity in USD
-    MIN_POOL_LIQUIDITY_SOL: 40,          // Kept as hard floor in SOL
+    MIN_POOL_LIQUIDITY_USD: 10000,        // Minimum liquidity in USD
+    MIN_POOL_LIQUIDITY_SOL: 20,          // Kept as hard floor in SOL
     
     // ⏱️ TIMING
     AUTO_SELL_DELAY_MS: Number(process.env.AUTO_SELL_DELAY_MS || 16000), // Sell after N seconds
@@ -41,6 +41,9 @@ const CONFIG = {
     PRE_BUY_MAX_LIQ_DROP_PCT: Number(process.env.PRE_BUY_MAX_LIQ_DROP_PCT || 10), // Skip if liq drops too much during wait
     PRE_BUY_CONFIRM_SNAPSHOTS: Number(process.env.PRE_BUY_CONFIRM_SNAPSHOTS || 3), // Extra confirmations after wait
     PRE_BUY_CONFIRM_INTERVAL_MS: Number(process.env.PRE_BUY_CONFIRM_INTERVAL_MS || 350), // Delay between confirmations
+    PRE_BUY_TOP10_CHECK_ENABLED: process.env.PRE_BUY_TOP10_CHECK_ENABLED !== "false",
+    PRE_BUY_TOP10_MAX_PCT: Number(process.env.PRE_BUY_TOP10_MAX_PCT || 90),
+    PRE_BUY_TOP10_EXCLUDE_POOL: process.env.PRE_BUY_TOP10_EXCLUDE_POOL !== "false",
     
     // 🔧 SLIPPAGE
     SLIPPAGE_PERCENT: 20,                 // 20% slippage (più conservativo)
@@ -70,8 +73,6 @@ const CONFIG = {
     POST_ENTRY_STABILITY_GATE_ENABLED: process.env.POST_ENTRY_STABILITY_GATE_ENABLED !== "false",
     POST_ENTRY_STABILITY_GATE_WINDOW_MS: Number(process.env.POST_ENTRY_STABILITY_GATE_WINDOW_MS || 5000),
     POST_ENTRY_STABILITY_GATE_DROP_PCT: Number(process.env.POST_ENTRY_STABILITY_GATE_DROP_PCT || 4),
-    POST_ENTRY_REAL_SELL_PANIC_ENABLED: process.env.POST_ENTRY_REAL_SELL_PANIC_ENABLED !== "false",
-    POST_ENTRY_REAL_SELL_PANIC_MIN_SOL: Number(process.env.POST_ENTRY_REAL_SELL_PANIC_MIN_SOL || 5),
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -109,8 +110,8 @@ function shortSig(sig: string): string {
     return `${sig.slice(0, 6)}...${sig.slice(-6)}`;
 }
 
-function stageLog(ctx: string, stage: string, message: string) {
-    console.log(`${ctx.padEnd(18)} | ${stage.padEnd(12)} | ${message}`);
+function stageLog(_ctx: string, stage: string, message: string) {
+    console.log(`${stage.padEnd(12)} | ${message}`);
 }
 
 function toSubscriptDigits(value: number): string {
@@ -182,7 +183,7 @@ async function main() {
     console.log(`Program: ${PUMPFUN_AMM_PROGRAM_ID}`);
     console.log(`Mode: ${MONITOR_ONLY ? "MONITOR_ONLY" : "TRADING"}`);
     console.log(`Wallet: ${walletKeypair ? walletKeypair.publicKey.toBase58() : "N/A (no private key loaded)"}`);
-    console.log(`Min Liquidity: ${CONFIG.MIN_POOL_LIQUIDITY_SOL} SOL (~$${CONFIG.MIN_POOL_LIQUIDITY_USD}, live SOL/USD)`);
+    console.log(`Min Liquidity: ${CONFIG.MIN_POOL_LIQUIDITY_SOL} SOL`);
     if (!MONITOR_ONLY) {
         console.log(`Amount: ${CONFIG.TRADE_AMOUNT_SOL} SOL`);
         console.log(`Auto-Sell: ${CONFIG.AUTO_SELL_DELAY_MS / 1000} seconds`);
@@ -221,16 +222,14 @@ async function subscribeToPoolLogs(connection: Connection) {
 
                 if (!hasCreatePool) return;
 
-                console.log("");
-                console.log("────────────────────────────────────────────────────────");
-                const ctx = `[${shortSig(logs.signature)}]`;
-                stageLog(ctx, "NEW", "pool detected");
-                stageLog(ctx, "SIGNATURE", logs.signature);
+                const ctx = shortSig(logs.signature);
                 if (isPositionOpen) {
-                    stageLog(ctx, "QUEUE", "busy skip");
-                    console.log("────────────────────────────────────────────────────────");
                     return;
                 }
+                console.log("");
+                console.log("────────────────────────────────────────────────────────");
+                stageLog(ctx, "NEW", "pool detected");
+                stageLog(ctx, "SIGNATURE", logs.signature);
                 await handleNewPool(connection, logs.signature);
             } catch (e: any) {
                 console.error(`❌ Log handler error: ${e.message}`);
@@ -320,7 +319,7 @@ function setupGracefulShutdown(connection: Connection) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 async function handleNewPool(connection: Connection, signature: string) {
-    const ctx = `[${shortSig(signature)}]`;
+    const ctx = shortSig(signature);
     isPositionOpen = true;
     let keepPositionOpen = false;
     const eventStartedAt = Date.now();
@@ -342,7 +341,7 @@ async function handleNewPool(connection: Connection, signature: string) {
         }
 
         if (!tx) {
-            console.log(`❌ ${ctx} Could not fetch transaction data. Skipping.`);
+            console.log(`❌ Could not fetch transaction data. Skipping.`);
             finalStatus = "SKIP: tx unavailable";
             return;
         }
@@ -393,7 +392,7 @@ async function handleNewPool(connection: Connection, signature: string) {
         }
 
         if (!poolAddress || !tokenMint) {
-            console.log(`❌ ${ctx} Could not extract pool/token from TX. Skipping.`);
+            console.log(`❌ Could not extract pool/token from TX. Skipping.`);
             finalStatus = "SKIP: pool/token unresolved";
             return;
         }
@@ -413,7 +412,7 @@ async function handleNewPool(connection: Connection, signature: string) {
         }
 
         if (!creatorAddress) {
-            console.log(`🛑 ${ctx} SKIP: creator not resolvable`);
+            console.log(`🛑 SKIP: creator not resolvable`);
             finalStatus = "SKIP: creator unresolved";
             return;
         }
@@ -458,15 +457,12 @@ async function handleNewPool(connection: Connection, signature: string) {
         }
 
         const failedSolThreshold = liquiditySOL < CONFIG.MIN_POOL_LIQUIDITY_SOL;
-        const failedUsdThreshold = liquidityUSD !== null && liquidityUSD < CONFIG.MIN_POOL_LIQUIDITY_USD;
-        if (failedSolThreshold || failedUsdThreshold) {
-            const usdPart = liquidityUSD !== null
-                ? `$${liquidityUSD.toFixed(0)}`
-                : "USD N/A";
+        if (failedSolThreshold) {
+            const usdPart = liquidityUSD !== null ? `$${liquidityUSD.toFixed(0)}` : "USD N/A";
             console.log(
-                `🛑 ${ctx} SKIP: Liquidity too low ` +
+                `🛑 SKIP: Liquidity too low ` +
                 `(${liquiditySOL.toFixed(2)} SOL / ${usdPart}; ` +
-                `min ${CONFIG.MIN_POOL_LIQUIDITY_SOL} SOL / $${CONFIG.MIN_POOL_LIQUIDITY_USD})`
+                `min ${CONFIG.MIN_POOL_LIQUIDITY_SOL} SOL)`
             );
             finalStatus = "SKIP: low liquidity";
             return;
@@ -476,7 +472,7 @@ async function handleNewPool(connection: Connection, signature: string) {
         // 🛡️ SAFETY CHECKS
         const isSafe = await checkTokenSecurity(connection, tokenMint);
         if (!isSafe) {
-            console.log(`🛑 ${ctx} SKIP: Token failed safety checks.`);
+            console.log(`🛑 SKIP: Token failed safety checks.`);
             finalStatus = "SKIP: token security";
             return;
         }
@@ -485,23 +481,29 @@ async function handleNewPool(connection: Connection, signature: string) {
             if (CONFIG.PRE_BUY_WAIT_MS > 0) {
                 const preEntry = await preEntryWaitAndCheck(connection, signature, poolAddress, tokenMint, liquiditySOL, ctx);
                 if (!preEntry.ok) {
-                    console.log(`🛑 ${ctx} SKIP: pre-entry guard (${preEntry.reason})`);
+                    console.log(`🛑 SKIP: pre-entry guard (${preEntry.reason})`);
                     finalStatus = "SKIP: pre-entry guard";
                     return;
                 }
                 liquiditySOL = preEntry.currentLiquiditySol;
             }
+            const top10 = await preBuyTop10ConcentrationCheck(connection, tokenMint, poolAddress, ctx);
+            if (!top10.ok) {
+                console.log(`🛑 SKIP: pre-buy top10 (${top10.reason})`);
+                finalStatus = "SKIP: pre-buy top10";
+                return;
+            }
             stageLog(ctx, "STEP 5/6", "paper simulation");
             const paper = await maybeRunPaperTradeSimulation(connection, poolAddress, tokenMint, ctx);
             if (!paper.ok) {
-                console.log(`🛑 ${ctx} SKIP: Paper simulation guard (${paper.reason})`);
+                console.log(`🛑 SKIP: Paper simulation guard (${paper.reason})`);
                 finalStatus = "SKIP: paper simulation guard";
                 return;
             }
             stageLog(ctx, "STEP 6/6", "dev holdings");
             const devCheckOk = await runDevHoldingsCheck(connection, creatorAddress, tokenMint, postTokenBalances, ctx, false);
             if (devCheckOk) {
-                console.log(`✅ ${ctx} Checks passed`);
+                console.log(`✅ Checks passed`);
             }
             stageLog(ctx, "MODE", "MONITOR_ONLY no live trade");
             return;
@@ -516,10 +518,16 @@ async function handleNewPool(connection: Connection, signature: string) {
         if (CONFIG.PRE_BUY_WAIT_MS > 0) {
             const preEntry = await preEntryWaitAndCheck(connection, signature, poolAddress, tokenMint, liquiditySOL, ctx);
             if (!preEntry.ok) {
-                console.log(`🛑 ${ctx} SKIP: pre-entry guard (${preEntry.reason})`);
+                console.log(`🛑 SKIP: pre-entry guard (${preEntry.reason})`);
                 finalStatus = "SKIP: pre-entry guard";
                 return;
             }
+        }
+        const top10 = await preBuyTop10ConcentrationCheck(connection, tokenMint, poolAddress, ctx);
+        if (!top10.ok) {
+            console.log(`🛑 SKIP: pre-buy top10 (${top10.reason})`);
+            finalStatus = "SKIP: pre-buy top10";
+            return;
         }
 
         stageLog(ctx, "CHECKS", "passed");
@@ -651,6 +659,72 @@ async function preEntryWaitAndCheck(
     }
 }
 
+async function preBuyTop10ConcentrationCheck(
+    connection: Connection,
+    tokenMint: string,
+    poolAddress: string,
+    ctx: string,
+): Promise<{ ok: boolean; reason?: string; top10Pct?: number }> {
+    if (!CONFIG.PRE_BUY_TOP10_CHECK_ENABLED) {
+        stageLog(ctx, "TOP10", "check disabled");
+        return { ok: true };
+    }
+
+    try {
+        const mintKey = new PublicKey(tokenMint);
+        const [largest, mintInfo] = await Promise.all([
+            connection.getTokenLargestAccounts(mintKey, "confirmed"),
+            getMintInfoRobust(connection, mintKey),
+        ]);
+
+        const totalSupplyRaw = Number(mintInfo.supply.toString());
+        if (!Number.isFinite(totalSupplyRaw) || totalSupplyRaw <= 0) {
+            return { ok: false, reason: "invalid token supply" };
+        }
+
+        const top10Accounts = largest.value.slice(0, 10);
+        if (top10Accounts.length === 0) {
+            return { ok: false, reason: "no holder accounts found" };
+        }
+
+        const parsed = await Promise.all(
+            top10Accounts.map((a) => connection.getParsedAccountInfo(a.address, "confirmed").catch(() => null))
+        );
+
+        let top10Raw = 0;
+        for (let i = 0; i < top10Accounts.length; i++) {
+            const amount = Number(top10Accounts[i].amount || "0");
+            if (!Number.isFinite(amount) || amount <= 0) continue;
+
+            const owner = (parsed[i] as any)?.value?.data?.parsed?.info?.owner as string | undefined;
+            if (CONFIG.PRE_BUY_TOP10_EXCLUDE_POOL && owner && owner === poolAddress) {
+                continue;
+            }
+
+            top10Raw += amount;
+        }
+
+        const top10Pct = (top10Raw / totalSupplyRaw) * 100;
+        stageLog(
+            ctx,
+            "TOP10",
+            `${top10Pct.toFixed(2)}% (max ${CONFIG.PRE_BUY_TOP10_MAX_PCT.toFixed(2)}%)`
+        );
+
+        if (top10Pct > CONFIG.PRE_BUY_TOP10_MAX_PCT) {
+            return {
+                ok: false,
+                reason: `top10 concentration ${top10Pct.toFixed(2)}% > ${CONFIG.PRE_BUY_TOP10_MAX_PCT.toFixed(2)}%`,
+                top10Pct,
+            };
+        }
+
+        return { ok: true, top10Pct };
+    } catch (e: any) {
+        return { ok: false, reason: e?.message || "top10 check failed" };
+    }
+}
+
 async function getCreatorTokenBalanceRawWithRetry(
     connection: Connection,
     creatorAddress: string,
@@ -706,21 +780,21 @@ async function runDevHoldingsCheck(
 
         if (devPct > CONFIG.MAX_DEV_HOLDINGS_PCT) {
             if (enforceGate) {
-                console.log(`🛑 ${ctx} SKIP: Dev holds too much (${devPct.toFixed(1)}% > ${CONFIG.MAX_DEV_HOLDINGS_PCT}%)`);
+                console.log(`🛑 SKIP: Dev holds too much (${devPct.toFixed(1)}% > ${CONFIG.MAX_DEV_HOLDINGS_PCT}%)`);
                 return false;
             }
-            console.log(`⚠️ ${ctx} Dev holds too much (${devPct.toFixed(1)}% > ${CONFIG.MAX_DEV_HOLDINGS_PCT}%)`);
+        console.log(`⚠️ Dev holds too much (${devPct.toFixed(1)}% > ${CONFIG.MAX_DEV_HOLDINGS_PCT}%)`);
         }
         return true;
     } catch (e: any) {
         const reason = e?.message || String(e);
         const durationMs = Date.now() - devCheckStart;
         if (MONITOR_ONLY && !enforceGate) {
-            console.log(`⚠️ ${ctx} Dev check failed after ${durationMs}ms: ${reason}`);
+            console.log(`⚠️ Dev check failed after ${durationMs}ms: ${reason}`);
             stageLog(ctx, "DEV", "check fail-open in MONITOR_ONLY");
             return true;
         }
-        console.log(`🛑 ${ctx} SKIP: Dev check failed after ${durationMs}ms: ${reason}`);
+        console.log(`🛑 SKIP: Dev check failed after ${durationMs}ms: ${reason}`);
         return false;
     }
 }
@@ -794,69 +868,6 @@ async function getCreatorTokenBalanceRaw(
 
 type PaperTradeResult = { ok: boolean; reason?: string };
 
-async function startRealSellPanicMonitor(
-    connection: Connection,
-    poolAddress: string,
-    logPrefix: string,
-): Promise<{
-    state: { triggered: boolean; sellSol: number; signature: string | null };
-    stop: () => Promise<void>;
-}> {
-    const state = { triggered: false, sellSol: 0, signature: null as string | null };
-
-    if (!CONFIG.POST_ENTRY_REAL_SELL_PANIC_ENABLED) {
-        return { state, stop: async () => {} };
-    }
-
-    const seen = new Set<string>();
-    const subId = connection.onLogs(
-        new PublicKey(poolAddress),
-        async (logs) => {
-            try {
-                if (state.triggered || seen.has(logs.signature)) return;
-                seen.add(logs.signature);
-
-                const tx = await connection.getParsedTransaction(logs.signature, {
-                    maxSupportedTransactionVersion: 0,
-                    commitment: "confirmed",
-                });
-                if (!tx?.meta?.preTokenBalances || !tx.meta.postTokenBalances) return;
-
-                const pre = tx.meta.preTokenBalances.find((b: any) => b.owner === poolAddress && b.mint === WSOL);
-                const post = tx.meta.postTokenBalances.find((b: any) => b.owner === poolAddress && b.mint === WSOL);
-                if (!pre || !post) return;
-
-                const preAmt = Number(pre.uiTokenAmount?.amount || "0") / 1e9;
-                const postAmt = Number(post.uiTokenAmount?.amount || "0") / 1e9;
-                const sellSol = preAmt - postAmt;
-                if (!Number.isFinite(sellSol) || sellSol < Math.max(0, CONFIG.POST_ENTRY_REAL_SELL_PANIC_MIN_SOL)) return;
-
-                state.triggered = true;
-                state.sellSol = sellSol;
-                state.signature = logs.signature;
-                console.log(
-                    `⚠️ ${logPrefix} PANIC EXIT: real on-chain sell detected ` +
-                    `(${sellSol.toFixed(2)} SOL, sig ${shortSig(logs.signature)})`
-                );
-            } catch {
-                // best effort; this monitor can hit 429 under heavy flow
-            }
-        },
-        "confirmed"
-    );
-
-    return {
-        state,
-        stop: async () => {
-            try {
-                await connection.removeOnLogsListener(subId);
-            } catch {
-                // best effort
-            }
-        },
-    };
-}
-
 async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress: string, tokenMint: string, ctx = ""): Promise<PaperTradeResult> {
     if (!CONFIG.PAPER_TRADE_ENABLED) return { ok: true };
 
@@ -888,7 +899,7 @@ async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress:
 
         const entryState = await fetchStateWithRetry();
         if (!entryState) {
-            console.log(`⚠️ ${ctx} PAPER_TRADE: no entry pool state`);
+            console.log(`⚠️ PAPER_TRADE: no entry pool state`);
             return { ok: false, reason: "entry state unavailable" };
         }
 
@@ -929,13 +940,12 @@ async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress:
         }
         const tokenOutUi = Number(tokenOutAtomic.toString()) / 10 ** tokenDecimals;
         if (tokenOutAtomic.lte(new BN(0))) {
-            console.log(`⚠️ ${ctx} PAPER_TRADE: entry received 0 tokens`);
+            console.log(`⚠️ PAPER_TRADE: entry received 0 tokens`);
             return { ok: false, reason: "entry produced 0 tokens" };
         }
         const entrySpotSolPerToken = getSpotSolPerTokenFromState(entryState, tokenMint, tokenDecimals) || 0;
         stageLog(ctx, "BUY_SPOT", `~${formatSolCompact(entrySpotSolPerToken)}/token`);
 
-        const panicMonitor = await startRealSellPanicMonitor(connection, poolAddress, ctx);
         const exitState = await waitForExitStateWithLiquidityStop(
             connection,
             poolAddress,
@@ -944,11 +954,9 @@ async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress:
             tokenMint,
             tokenDecimals,
             ctx,
-            panicMonitor,
         );
-        await panicMonitor.stop();
         if (!exitState) {
-            console.log(`⚠️ ${ctx} PAPER_TRADE: no exit pool state`);
+            console.log(`⚠️ PAPER_TRADE: no exit pool state`);
             return { ok: false, reason: "exit state unavailable" };
         }
 
@@ -996,20 +1004,19 @@ async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress:
         }
         return { ok: true };
     } catch (e: any) {
-        console.log(`⚠️ ${ctx} PAPER_TRADE failed: ${e.message}`);
+        console.log(`⚠️ PAPER_TRADE failed: ${e.message}`);
         return { ok: false, reason: e?.message || "paper simulation failed" };
     }
 }
 
 async function waitForExitStateWithLiquidityStop(
-    connection: Connection,
-    poolAddress: string,
+    _connection: Connection,
+    _poolAddress: string,
     fetchStateWithRetry: () => Promise<any | null>,
     entryState: any,
     tokenMint: string,
     tokenDecimals: number,
-    logPrefix: string,
-    panicMonitor?: { state: { triggered: boolean } },
+    _logPrefix: string,
 ): Promise<any | null> {
     const startedAtMs = Date.now();
     const deadlineMs = startedAtMs + CONFIG.AUTO_SELL_DELAY_MS;
@@ -1017,6 +1024,10 @@ async function waitForExitStateWithLiquidityStop(
     const entrySolLiquidity = getSolLiquidityFromState(entryState, tokenMint) || 0;
     const dropFactor = 1 - (Math.abs(CONFIG.LIQUIDITY_STOP_DROP_PCT) / 100);
     const stabilityDropFactor = 1 - (Math.abs(CONFIG.POST_ENTRY_STABILITY_GATE_DROP_PCT) / 100);
+    const liqStopSpotThreshold =
+        Number.isFinite(entrySpot) && entrySpot > 0 ? entrySpot * dropFactor : 0;
+    const liqStopLiquidityThreshold =
+        Number.isFinite(entrySolLiquidity) && entrySolLiquidity > 0 ? entrySolLiquidity * dropFactor : 0;
     let latestState: any | null = entryState;
     while (Date.now() < deadlineMs) {
         await new Promise(r => setTimeout(r, CONFIG.LIQUIDITY_STOP_CHECK_INTERVAL_MS));
@@ -1029,10 +1040,6 @@ async function waitForExitStateWithLiquidityStop(
         const inStabilityWindow =
             CONFIG.POST_ENTRY_STABILITY_GATE_ENABLED &&
             (Date.now() - startedAtMs) <= Math.max(0, CONFIG.POST_ENTRY_STABILITY_GATE_WINDOW_MS);
-
-        if (panicMonitor?.state.triggered) {
-            return s;
-        }
 
         if (inStabilityWindow) {
             const stabilitySpotBreak =
@@ -1051,8 +1058,9 @@ async function waitForExitStateWithLiquidityStop(
 
             if (stabilitySpotBreak || stabilityLiquidityBreak) {
                 console.log(
-                    `⚠️ ${logPrefix} STABILITY GATE: early exit ` +
-                    `(spot ${formatSolCompact(curSpot)}/token, liquidity ${curSolLiquidity.toFixed(2)} SOL, ` +
+                    `⚠️ STABILITY GATE: early exit ` +
+                    `(spot ${formatSolCompact(curSpot)}/token <= ${formatSolCompact(entrySpot * stabilityDropFactor)}/token, ` +
+                    `liquidity ${curSolLiquidity.toFixed(2)} SOL <= ${(entrySolLiquidity * stabilityDropFactor).toFixed(2)} SOL, ` +
                     `window ${CONFIG.POST_ENTRY_STABILITY_GATE_WINDOW_MS}ms, drop ${CONFIG.POST_ENTRY_STABILITY_GATE_DROP_PCT}%)`
                 );
                 return s;
@@ -1077,8 +1085,10 @@ async function waitForExitStateWithLiquidityStop(
 
         if (spotTriggered || liquidityTriggered) {
             console.log(
-                `⚠️ ${logPrefix} LIQUIDITY STOP: trigger early exit ` +
-                `(spot ${formatSolCompact(curSpot)}/token, liquidity ${curSolLiquidity.toFixed(2)} SOL)`
+                `⚠️ LIQUIDITY STOP: trigger early exit ` +
+                `(spot ${formatSolCompact(curSpot)}/token <= ${formatSolCompact(liqStopSpotThreshold)}/token, ` +
+                `liquidity ${curSolLiquidity.toFixed(2)} SOL <= ${liqStopLiquidityThreshold.toFixed(2)} SOL, ` +
+                `drop ${CONFIG.LIQUIDITY_STOP_DROP_PCT}%)`
             );
             return s;
         }

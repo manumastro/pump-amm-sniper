@@ -40,6 +40,8 @@ const events = new Map();
 let offset = 0;
 let carry = '';
 let lastWriteAt = 0;
+let eventSeq = 0;
+let currentEventId = null;
 
 function getEvent(id) {
   if (!events.has(id)) {
@@ -67,16 +69,34 @@ function getEvent(id) {
   return events.get(id);
 }
 
+function getCurrentEvent() {
+  if (currentEventId && events.has(currentEventId)) return events.get(currentEventId);
+  const latestOpen = [...events.values()].reverse().find(e => !e.endedAt);
+  return latestOpen || null;
+}
+
 function parseLine(line) {
   const ts = (line.match(/^\[([^\]]+)\]/) || [])[1] || null;
-  const stageLine = line.match(/^\[[^\]]+\]\s+(\[[^\]]+\])\s+\|\s+([^|]+?)\s+\|\s+(.+)$/);
+  const stageLine = line.match(/^\[[^\]]+\]\s+(?:([^\s|]+)\s+\|\s+)?([^|]+?)\s+\|\s+(.+)$/);
   if (stageLine) {
-    const id = stageLine[1].slice(1, -1);
+    const maybeId = stageLine[1] ? stageLine[1].replace(/^\[|\]$/g, '') : null;
     const stage = stageLine[2].trim();
     const message = stageLine[3].trim();
-    const ev = getEvent(id);
+
+    let ev = null;
+    if (maybeId && maybeId.includes('...')) {
+      ev = getEvent(maybeId);
+      currentEventId = maybeId;
+    } else {
+      ev = getCurrentEvent();
+    }
 
     if (stage === 'NEW') {
+      if (!ev) {
+        const id = `evt-${String(++eventSeq).padStart(6, '0')}`;
+        ev = getEvent(id);
+      }
+      currentEventId = ev.id;
       ev.startedAt = ev.startedAt || ts;
       return;
     }
@@ -132,12 +152,15 @@ function parseLine(line) {
     }
 
     if (stage === 'END') {
+      if (!ev) return;
       const m = message.match(/^(.*?)\s+\((\d+)ms(?:,\s*active=\d+)?\)$/);
       ev.endStatus = m ? m[1].trim() : message;
       ev.durationMs = m ? Number(m[2]) : ev.durationMs;
       ev.endedAt = ts || nowIso();
+      currentEventId = null;
       return;
     }
+    if (!ev) return;
   }
 
   let m = line.match(/🆕 NEW POOL \[([^\]]+)\]/);
@@ -149,7 +172,7 @@ function parseLine(line) {
 
   m = line.match(/Signature:\s*([A-Za-z0-9]+)/);
   if (m) {
-    const latest = [...events.values()].reverse().find(e => !e.signature);
+    const latest = getCurrentEvent() || [...events.values()].reverse().find(e => !e.signature);
     if (latest) latest.signature = m[1];
     return;
   }
@@ -177,7 +200,7 @@ function parseLine(line) {
 
   m = line.match(/GMGN:\s*(https:\/\/gmgn\.ai\/sol\/token\/[A-Za-z0-9]+)/);
   if (m) {
-    const latest = [...events.values()].reverse().find(e => !e.gmgn && !e.endedAt);
+    const latest = getCurrentEvent() || [...events.values()].reverse().find(e => !e.gmgn && !e.endedAt);
     if (latest) latest.gmgn = m[1];
     return;
   }
@@ -210,26 +233,29 @@ function parseLine(line) {
     return;
   }
 
-  m = line.match(/🛑 \[([^\]]+)\] SKIP:\s*(.+)$/);
+  m = line.match(/🛑 (?:\[([^\]]+)\]|([^\s]+))? ?SKIP:\s*(.+)$/);
   if (m) {
-    const ev = getEvent(m[1]);
-    ev.skipReason = m[2].trim();
+    const ev = m[1] || m[2] ? getEvent(m[1] || m[2]) : getCurrentEvent();
+    if (ev) ev.skipReason = m[3].trim();
     return;
   }
 
-  m = line.match(/✅ \[([^\]]+)\] Checks passed/);
+  m = line.match(/✅ (?:\[([^\]]+)\]|([^\s]+))? ?Checks passed/);
   if (m) {
-    const ev = getEvent(m[1]);
-    ev.checksPassed = true;
+    const ev = m[1] || m[2] ? getEvent(m[1] || m[2]) : getCurrentEvent();
+    if (ev) ev.checksPassed = true;
     return;
   }
 
-  m = line.match(/🏁 \[([^\]]+)\] END \((\d+)ms\)\s*(.+)$/);
+  m = line.match(/🏁 (?:\[([^\]]+)\]|([^\s]+))? ?END \((\d+)ms\)\s*(.+)$/);
   if (m) {
-    const ev = getEvent(m[1]);
-    ev.durationMs = Number(m[2]);
-    ev.endStatus = m[3].trim();
-    ev.endedAt = ts || nowIso();
+    const ev = m[1] || m[2] ? getEvent(m[1] || m[2]) : getCurrentEvent();
+    if (ev) {
+      ev.durationMs = Number(m[3]);
+      ev.endStatus = m[4].trim();
+      ev.endedAt = ts || nowIso();
+      currentEventId = null;
+    }
   }
 }
 
