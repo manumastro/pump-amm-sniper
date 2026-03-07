@@ -36,9 +36,11 @@ const CONFIG = {
     MIN_POOL_LIQUIDITY_SOL: 40,          // Kept as hard floor in SOL
     
     // ⏱️ TIMING
-    AUTO_SELL_DELAY_MS: 16000,            // Sell after N seconds
+    AUTO_SELL_DELAY_MS: Number(process.env.AUTO_SELL_DELAY_MS || 16000), // Sell after N seconds
     PRE_BUY_WAIT_MS: Number(process.env.PRE_BUY_WAIT_MS || 1500), // Wait before entering
     PRE_BUY_MAX_LIQ_DROP_PCT: Number(process.env.PRE_BUY_MAX_LIQ_DROP_PCT || 10), // Skip if liq drops too much during wait
+    PRE_BUY_CONFIRM_SNAPSHOTS: Number(process.env.PRE_BUY_CONFIRM_SNAPSHOTS || 3), // Extra confirmations after wait
+    PRE_BUY_CONFIRM_INTERVAL_MS: Number(process.env.PRE_BUY_CONFIRM_INTERVAL_MS || 350), // Delay between confirmations
     
     // 🔧 SLIPPAGE
     SLIPPAGE_PERCENT: 20,                 // 20% slippage (più conservativo)
@@ -141,6 +143,14 @@ function getSolLiquidityFromState(state: any, tokenMint: string): number | null 
     if (!hasWsol) return null;
     const solRaw = solIsBase ? state.poolBaseAmount : state.poolQuoteAmount;
     return Number(solRaw.toString()) / 1e9;
+}
+
+function getSpotSolPerTokenFromState(state: any, tokenMint: string, tokenDecimals: number): number | null {
+    const { solIsBase, hasWsol } = getPoolOrientation(state, tokenMint);
+    if (!hasWsol) return null;
+    return solIsBase
+        ? calcSpotSolPerToken(state.poolBaseAmount, state.poolQuoteAmount, tokenDecimals)
+        : calcSpotSolPerToken(state.poolQuoteAmount, state.poolBaseAmount, tokenDecimals);
 }
 
 // Initialize SDKs
@@ -463,7 +473,7 @@ async function handleNewPool(connection: Connection, signature: string) {
 
         if (MONITOR_ONLY) {
             if (CONFIG.PRE_BUY_WAIT_MS > 0) {
-                const preEntry = await preEntryWaitAndCheck(connection, poolAddress, liquiditySOL, ctx);
+                const preEntry = await preEntryWaitAndCheck(connection, poolAddress, tokenMint, liquiditySOL, ctx);
                 if (!preEntry.ok) {
                     console.log(`🛑 ${ctx} SKIP: pre-entry guard (${preEntry.reason})`);
                     finalStatus = "SKIP: pre-entry guard";
@@ -494,7 +504,7 @@ async function handleNewPool(connection: Connection, signature: string) {
         }
 
         if (CONFIG.PRE_BUY_WAIT_MS > 0) {
-            const preEntry = await preEntryWaitAndCheck(connection, poolAddress, liquiditySOL, ctx);
+            const preEntry = await preEntryWaitAndCheck(connection, poolAddress, tokenMint, liquiditySOL, ctx);
             if (!preEntry.ok) {
                 console.log(`🛑 ${ctx} SKIP: pre-entry guard (${preEntry.reason})`);
                 finalStatus = "SKIP: pre-entry guard";
@@ -533,6 +543,7 @@ async function resolveCreatorFromPool(connection: Connection, poolAddress: strin
 async function preEntryWaitAndCheck(
     connection: Connection,
     poolAddress: string,
+    tokenMint: string,
     baselineLiquiditySol: number,
     ctx: string,
 ): Promise<{ ok: boolean; reason?: string; currentLiquiditySol: number }> {
@@ -541,22 +552,50 @@ async function preEntryWaitAndCheck(
 
     try {
         const observerUser = walletKeypair?.publicKey ?? Keypair.generate().publicKey;
-        const state = await onlineSdk.swapSolanaState(new PublicKey(poolAddress), observerUser);
-        const currentLiquiditySol = Number(state.poolBaseAmount.toString()) / 1e9;
+        const samples = Math.max(1, CONFIG.PRE_BUY_CONFIRM_SNAPSHOTS);
+        const intervalMs = Math.max(0, CONFIG.PRE_BUY_CONFIRM_INTERVAL_MS);
+        const observed: number[] = [];
+        let latest = baselineLiquiditySol;
+        const minAllowedDrop = baselineLiquiditySol > 0
+            ? baselineLiquiditySol * (1 - Math.abs(CONFIG.PRE_BUY_MAX_LIQ_DROP_PCT) / 100)
+            : 0;
 
-        if (baselineLiquiditySol > 0) {
-            const minAllowed = baselineLiquiditySol * (1 - Math.abs(CONFIG.PRE_BUY_MAX_LIQ_DROP_PCT) / 100);
-            if (currentLiquiditySol < minAllowed) {
+        for (let i = 0; i < samples; i++) {
+            const state = await onlineSdk.swapSolanaState(new PublicKey(poolAddress), observerUser);
+            const liq = getSolLiquidityFromState(state, tokenMint);
+            if (liq === null || !Number.isFinite(liq) || liq <= 0) {
+                return { ok: false, reason: "pool has no WSOL side on pre-entry check", currentLiquiditySol: 0 };
+            }
+            latest = liq;
+            observed.push(liq);
+
+            if (liq < CONFIG.MIN_POOL_LIQUIDITY_SOL) {
                 return {
                     ok: false,
-                    reason: `liquidity dropped ${baselineLiquiditySol.toFixed(2)} -> ${currentLiquiditySol.toFixed(2)} SOL`,
-                    currentLiquiditySol,
+                    reason: `liquidity below min at pre-entry (${liq.toFixed(2)} SOL < ${CONFIG.MIN_POOL_LIQUIDITY_SOL} SOL)`,
+                    currentLiquiditySol: liq,
                 };
+            }
+
+            if (baselineLiquiditySol > 0 && liq < minAllowedDrop) {
+                return {
+                    ok: false,
+                    reason: `liquidity dropped ${baselineLiquiditySol.toFixed(2)} -> ${liq.toFixed(2)} SOL`,
+                    currentLiquiditySol: liq,
+                };
+            }
+
+            if (i < samples - 1 && intervalMs > 0) {
+                await new Promise(r => setTimeout(r, intervalMs));
             }
         }
 
-        console.log(`   ${ctx} Pre-entry liquidity check: ${currentLiquiditySol.toFixed(2)} SOL`);
-        return { ok: true, currentLiquiditySol };
+        const minObserved = Math.min(...observed);
+        console.log(
+            `   ${ctx} Pre-entry liquidity check: ${latest.toFixed(2)} SOL ` +
+            `(min observed ${minObserved.toFixed(2)} SOL over ${samples} samples)`
+        );
+        return { ok: true, currentLiquiditySol: latest };
     } catch (e: any) {
         return { ok: false, reason: e?.message || "pre-entry liquidity fetch failed", currentLiquiditySol: baselineLiquiditySol };
     }
@@ -781,14 +820,13 @@ async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress:
             console.log(`⚠️ ${p}PAPER_TRADE: entry received 0 tokens`);
             return { ok: false, reason: "entry produced 0 tokens" };
         }
-        const entrySpotSolPerToken = orientation.solIsBase
-            ? calcSpotSolPerToken(entryState.poolBaseAmount, entryState.poolQuoteAmount, tokenDecimals)
-            : calcSpotSolPerToken(entryState.poolQuoteAmount, entryState.poolBaseAmount, tokenDecimals);
+        const entrySpotSolPerToken = getSpotSolPerTokenFromState(entryState, tokenMint, tokenDecimals) || 0;
         console.log(`   ${p}Buy Spot:  ~${formatSolCompact(entrySpotSolPerToken)}/token`);
 
         const exitState = await waitForExitStateWithLiquidityStop(
             fetchStateWithRetry,
             entryState,
+            tokenMint,
             tokenDecimals,
             p,
         );
@@ -829,12 +867,10 @@ async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress:
         }
         const pnlSol = solOut - CONFIG.TRADE_AMOUNT_SOL;
         const pnlPct = (pnlSol / CONFIG.TRADE_AMOUNT_SOL) * 100;
-        const exitSpotSolPerToken = orientation.solIsBase
-            ? calcSpotSolPerToken(exitState.poolBaseAmount, exitState.poolQuoteAmount, tokenDecimals)
-            : calcSpotSolPerToken(exitState.poolQuoteAmount, exitState.poolBaseAmount, tokenDecimals);
+        const exitSpotSolPerToken = getSpotSolPerTokenFromState(exitState, tokenMint, tokenDecimals) || 0;
 
         console.log(`   ${p}Sell Spot: ~${formatSolCompact(exitSpotSolPerToken)}/token`);
-        console.log(`   ${p}PnL: ${pnlSol >= 0 ? "+" : ""}${formatSolCompact(Math.abs(pnlSol))} (${pnlPct.toFixed(2)}%)`);
+        console.log(`   ${p}PnL: ${pnlSol >= 0 ? "+" : "-"}${formatSolCompact(Math.abs(pnlSol))} (${pnlPct.toFixed(2)}%)`);
         if (!Number.isFinite(solOut) || solOut <= 0) {
             return { ok: false, reason: "exit returned 0 SOL" };
         }
@@ -851,12 +887,13 @@ async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress:
 async function waitForExitStateWithLiquidityStop(
     fetchStateWithRetry: () => Promise<any | null>,
     entryState: any,
+    tokenMint: string,
     tokenDecimals: number,
     logPrefix: string,
 ): Promise<any | null> {
     const deadlineMs = Date.now() + CONFIG.AUTO_SELL_DELAY_MS;
-    const entrySpot = calcSpotSolPerToken(entryState.poolBaseAmount, entryState.poolQuoteAmount, tokenDecimals);
-    const entryBaseLamports = Number(entryState.poolBaseAmount.toString());
+    const entrySpot = getSpotSolPerTokenFromState(entryState, tokenMint, tokenDecimals) || 0;
+    const entrySolLiquidity = getSolLiquidityFromState(entryState, tokenMint) || 0;
     const dropFactor = 1 - (Math.abs(CONFIG.LIQUIDITY_STOP_DROP_PCT) / 100);
     let latestState: any | null = entryState;
 
@@ -868,8 +905,8 @@ async function waitForExitStateWithLiquidityStop(
 
         if (!CONFIG.LIQUIDITY_STOP_ENABLED) continue;
 
-        const curSpot = calcSpotSolPerToken(s.poolBaseAmount, s.poolQuoteAmount, tokenDecimals);
-        const curBaseLamports = Number(s.poolBaseAmount.toString());
+        const curSpot = getSpotSolPerTokenFromState(s, tokenMint, tokenDecimals) || 0;
+        const curSolLiquidity = getSolLiquidityFromState(s, tokenMint) || 0;
 
         const spotTriggered =
             Number.isFinite(entrySpot) &&
@@ -878,17 +915,17 @@ async function waitForExitStateWithLiquidityStop(
             curSpot > 0 &&
             curSpot <= entrySpot * dropFactor;
 
-        const baseTriggered =
-            Number.isFinite(entryBaseLamports) &&
-            entryBaseLamports > 0 &&
-            Number.isFinite(curBaseLamports) &&
-            curBaseLamports > 0 &&
-            curBaseLamports <= entryBaseLamports * dropFactor;
+        const liquidityTriggered =
+            Number.isFinite(entrySolLiquidity) &&
+            entrySolLiquidity > 0 &&
+            Number.isFinite(curSolLiquidity) &&
+            curSolLiquidity > 0 &&
+            curSolLiquidity <= entrySolLiquidity * dropFactor;
 
-        if (spotTriggered || baseTriggered) {
+        if (spotTriggered || liquidityTriggered) {
             console.log(
                 `⚠️ ${logPrefix}LIQUIDITY STOP: trigger early exit ` +
-                `(spot ${formatSolCompact(curSpot)}/token, base ${(curBaseLamports / 1e9).toFixed(2)} SOL)`
+                `(spot ${formatSolCompact(curSpot)}/token, liquidity ${curSolLiquidity.toFixed(2)} SOL)`
             );
             return s;
         }

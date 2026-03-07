@@ -32,6 +32,10 @@ function parseCompactSol(raw) {
   return null;
 }
 
+function fmtNum(v, digits = 12) {
+  return typeof v === 'number' && Number.isFinite(v) ? Number(v.toFixed(digits)) : null;
+}
+
 const events = new Map();
 let offset = 0;
 let carry = '';
@@ -47,6 +51,9 @@ function getEvent(id) {
       tokenMint: null,
       pool: null,
       gmgn: null,
+      buyAt: null,
+      sellAt: null,
+      pnlAt: null,
       buySpotSolPerToken: null,
       sellSpotSolPerToken: null,
       pnlSol: null,
@@ -91,6 +98,13 @@ function parseLine(line) {
     return;
   }
 
+  m = line.match(/🔗 \[([^\]]+)\] GMGN:\s*(https:\/\/gmgn\.ai\/sol\/token\/[A-Za-z0-9]+)/);
+  if (m) {
+    const ev = getEvent(m[1]);
+    ev.gmgn = m[2];
+    return;
+  }
+
   m = line.match(/GMGN:\s*(https:\/\/gmgn\.ai\/sol\/token\/[A-Za-z0-9]+)/);
   if (m) {
     const latest = [...events.values()].reverse().find(e => !e.gmgn && !e.endedAt);
@@ -101,6 +115,7 @@ function parseLine(line) {
   m = line.match(/\[([^\]]+)\] Buy Spot:\s*~([^/]+)\/token/);
   if (m) {
     const ev = getEvent(m[1]);
+    ev.buyAt = ts || ev.buyAt;
     ev.buySpotSolPerToken = parseCompactSol(m[2].trim());
     return;
   }
@@ -108,6 +123,7 @@ function parseLine(line) {
   m = line.match(/\[([^\]]+)\] Sell Spot:\s*~([^/]+)\/token/);
   if (m) {
     const ev = getEvent(m[1]);
+    ev.sellAt = ts || ev.sellAt;
     ev.sellSpotSolPerToken = parseCompactSol(m[2].trim());
     return;
   }
@@ -115,10 +131,12 @@ function parseLine(line) {
   m = line.match(/\[([^\]]+)\] PnL:\s*([+-]?)([^\(]+)\s*\(([-0-9.]+)%\)/);
   if (m) {
     const ev = getEvent(m[1]);
-    const sign = m[2] === '-' ? -1 : 1;
+    ev.pnlAt = ts || ev.pnlAt;
+    const pct = Number(m[4]);
+    const sign = m[2] === '-' ? -1 : (pct < 0 ? -1 : 1);
     const abs = parseCompactSol(m[3].trim());
     ev.pnlSol = abs == null ? null : sign * abs;
-    ev.pnlPct = Number(m[4]);
+    ev.pnlPct = pct;
     return;
   }
 
@@ -154,13 +172,14 @@ function summarize() {
   const losses = pnlKnown.filter(e => e.pnlSol < 0).length;
   const checksPassed = finished.filter(e => e.checksPassed).length;
   const skipped = finished.filter(e => e.skipReason || (e.endStatus && e.endStatus.startsWith('SKIP'))).length;
-  const rugPulls = finished.filter(e => {
+  const isRugPull = (e) => {
     const s = `${e.skipReason || ''} ${e.endStatus || ''}`.toLowerCase();
     return (typeof e.pnlPct === 'number' && e.pnlPct <= -80) ||
       s.includes('paper simulation guard') ||
       s.includes('exit returned 0 sol') ||
       s.includes('liquidity stop');
-  });
+  };
+  const rugPulls = finished.filter(isRugPull);
 
   return {
     generatedAt: nowIso(),
@@ -174,6 +193,27 @@ function summarize() {
     wins,
     losses,
     winRatePct: pnlKnown.length ? Number(((wins / pnlKnown.length) * 100).toFixed(2)) : 0,
+    operations: finished.map(e => ({
+      id: e.id,
+      startedAt: e.startedAt,
+      buyAt: e.buyAt,
+      sellAt: e.sellAt,
+      pnlAt: e.pnlAt,
+      endedAt: e.endedAt,
+      signature: e.signature,
+      tokenMint: e.tokenMint,
+      pool: e.pool,
+      gmgn: e.gmgn || (e.tokenMint ? `https://gmgn.ai/sol/token/${e.tokenMint}` : null),
+      buySpotSolPerToken: fmtNum(e.buySpotSolPerToken),
+      sellSpotSolPerToken: fmtNum(e.sellSpotSolPerToken),
+      pnlSol: e.pnlSol,
+      pnlPct: e.pnlPct,
+      checksPassed: e.checksPassed,
+      skipReason: e.skipReason,
+      endStatus: e.endStatus,
+      durationMs: e.durationMs,
+      rugPull: isRugPull(e),
+    })),
     last10: finished.slice(-10).map(e => ({
       id: e.id,
       signature: e.signature,
@@ -186,8 +226,18 @@ function summarize() {
     })),
     rugPullEvents: rugPulls.slice(-20).map(e => ({
       id: e.id,
+      startedAt: e.startedAt,
+      buyAt: e.buyAt,
+      sellAt: e.sellAt,
+      pnlAt: e.pnlAt,
+      endedAt: e.endedAt,
       signature: e.signature,
       tokenMint: e.tokenMint,
+      pool: e.pool,
+      gmgn: e.gmgn || (e.tokenMint ? `https://gmgn.ai/sol/token/${e.tokenMint}` : null),
+      buySpotSolPerToken: fmtNum(e.buySpotSolPerToken),
+      sellSpotSolPerToken: fmtNum(e.sellSpotSolPerToken),
+      pnlSol: e.pnlSol,
       pnlPct: e.pnlPct,
       skipReason: e.skipReason,
       endStatus: e.endStatus,
@@ -216,8 +266,31 @@ function writeReports(force = false) {
     `wins/losses: ${report.wins}/${report.losses}`,
     `win rate: ${report.winRatePct}%`,
     '',
-    'Recent events:',
-    ...report.last10.map(e => `- ${e.id} ${e.tokenMint || ''} pnl=${e.pnlSol ?? 'n/a'} (${e.pnlPct ?? 'n/a'}%) status=${e.endStatus || 'n/a'}`),
+    'All operations:',
+    ...report.operations.map((e, i) =>
+      (() => {
+        const rugReason = `${e.skipReason || ''} ${e.endStatus || ''}`.trim() || '-';
+        return `${String(i + 1).padStart(4, '0')}. ${e.id} ${e.tokenMint || ''} ` +
+          `start=${e.startedAt || '-'} buy_ts=${e.buyAt || '-'} sell_ts=${e.sellAt || '-'} end=${e.endedAt || '-'} ` +
+          `buy_spot=${e.buySpotSolPerToken ?? 'n/a'} sell_spot=${e.sellSpotSolPerToken ?? 'n/a'} ` +
+          `pnl=${e.pnlSol ?? 'n/a'} (${e.pnlPct ?? 'n/a'}%) ` +
+          `status=${e.endStatus || 'n/a'} skip=${e.skipReason || '-'} ` +
+          `rug=${e.rugPull ? 'YES' : 'NO'} rug_reason=${e.rugPull ? rugReason : '-'} ` +
+          `gmgn=${e.gmgn || '-'}`;
+      })()
+    ),
+    '',
+    'Rug pull events:',
+    ...(report.rugPullEvents.length
+      ? report.rugPullEvents.map((e, i) =>
+        `${String(i + 1).padStart(3, '0')}. ${e.id} ${e.tokenMint || ''} ` +
+        `buy_ts=${e.buyAt || '-'} sell_ts=${e.sellAt || '-'} pnl_ts=${e.pnlAt || '-'} ` +
+        `buy_spot=${e.buySpotSolPerToken ?? 'n/a'} sell_spot=${e.sellSpotSolPerToken ?? 'n/a'} ` +
+        `pnl=${e.pnlSol ?? 'n/a'} (${e.pnlPct ?? 'n/a'}%) ` +
+        `reason=${e.skipReason || e.endStatus || '-'} ` +
+        `gmgn=${e.gmgn || '-'}`
+      )
+      : ['(none)']),
   ].join('\n');
   fs.writeFileSync(OUT_TXT, txt + '\n');
 }
