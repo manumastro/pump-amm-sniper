@@ -70,6 +70,8 @@ const CONFIG = {
     POST_ENTRY_STABILITY_GATE_ENABLED: process.env.POST_ENTRY_STABILITY_GATE_ENABLED !== "false",
     POST_ENTRY_STABILITY_GATE_WINDOW_MS: Number(process.env.POST_ENTRY_STABILITY_GATE_WINDOW_MS || 5000),
     POST_ENTRY_STABILITY_GATE_DROP_PCT: Number(process.env.POST_ENTRY_STABILITY_GATE_DROP_PCT || 4),
+    POST_ENTRY_REAL_SELL_PANIC_ENABLED: process.env.POST_ENTRY_REAL_SELL_PANIC_ENABLED !== "false",
+    POST_ENTRY_REAL_SELL_PANIC_MIN_SOL: Number(process.env.POST_ENTRY_REAL_SELL_PANIC_MIN_SOL || 5),
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -99,7 +101,6 @@ let logSubscriptionId: number | null = null;
 let lastLogAtMs = Date.now();
 let healthcheckInterval: NodeJS.Timeout | null = null;
 const seenSignatures = new Map<string, number>();
-const activeMonitorTasks = new Set<string>();
 let cachedSolPriceUsd: number | null = null;
 let cachedSolPriceAtMs = 0;
 
@@ -222,18 +223,15 @@ async function subscribeToPoolLogs(connection: Connection) {
 
                 console.log("");
                 console.log("────────────────────────────────────────────────────────");
-                console.log(`🆕 NEW POOL [${shortSig(logs.signature)}]`);
-                console.log(`   Signature: ${logs.signature}`);
-                if (!MONITOR_ONLY && isPositionOpen) {
-                    console.log(`   ⏭️ Busy, skip [${shortSig(logs.signature)}]`);
+                const ctx = `[${shortSig(logs.signature)}]`;
+                stageLog(ctx, "NEW", "pool detected");
+                stageLog(ctx, "SIGNATURE", logs.signature);
+                if (isPositionOpen) {
+                    stageLog(ctx, "QUEUE", "busy skip");
                     console.log("────────────────────────────────────────────────────────");
                     return;
                 }
-                if (MONITOR_ONLY) {
-                    void handleNewPool(connection, logs.signature);
-                } else {
-                    await handleNewPool(connection, logs.signature);
-                }
+                await handleNewPool(connection, logs.signature);
             } catch (e: any) {
                 console.error(`❌ Log handler error: ${e.message}`);
             }
@@ -323,18 +321,12 @@ function setupGracefulShutdown(connection: Connection) {
 
 async function handleNewPool(connection: Connection, signature: string) {
     const ctx = `[${shortSig(signature)}]`;
-    if (MONITOR_ONLY) {
-        activeMonitorTasks.add(signature);
-    } else {
-        isPositionOpen = true;
-    }
+    isPositionOpen = true;
     let keepPositionOpen = false;
     const eventStartedAt = Date.now();
     let finalStatus = "COMPLETED";
 
-    stageLog(ctx, "START", MONITOR_ONLY
-        ? `processing pool active=${activeMonitorTasks.size}`
-        : "processing pool");
+    stageLog(ctx, "START", "processing pool");
     stageLog(ctx, "STEP 1/6", "parse transaction");
     
     try {
@@ -491,7 +483,7 @@ async function handleNewPool(connection: Connection, signature: string) {
 
         if (MONITOR_ONLY) {
             if (CONFIG.PRE_BUY_WAIT_MS > 0) {
-                const preEntry = await preEntryWaitAndCheck(connection, poolAddress, tokenMint, liquiditySOL, ctx);
+                const preEntry = await preEntryWaitAndCheck(connection, signature, poolAddress, tokenMint, liquiditySOL, ctx);
                 if (!preEntry.ok) {
                     console.log(`🛑 ${ctx} SKIP: pre-entry guard (${preEntry.reason})`);
                     finalStatus = "SKIP: pre-entry guard";
@@ -522,7 +514,7 @@ async function handleNewPool(connection: Connection, signature: string) {
         }
 
         if (CONFIG.PRE_BUY_WAIT_MS > 0) {
-            const preEntry = await preEntryWaitAndCheck(connection, poolAddress, tokenMint, liquiditySOL, ctx);
+            const preEntry = await preEntryWaitAndCheck(connection, signature, poolAddress, tokenMint, liquiditySOL, ctx);
             if (!preEntry.ok) {
                 console.log(`🛑 ${ctx} SKIP: pre-entry guard (${preEntry.reason})`);
                 finalStatus = "SKIP: pre-entry guard";
@@ -540,13 +532,10 @@ async function handleNewPool(connection: Connection, signature: string) {
         console.error(`❌ Error in handleNewPool: ${e.message}`);
         finalStatus = `ERROR: ${e.message}`;
     } finally {
-        if (!keepPositionOpen && !MONITOR_ONLY) {
+        if (!keepPositionOpen) {
             isPositionOpen = false;
         }
-        if (MONITOR_ONLY) {
-            activeMonitorTasks.delete(signature);
-        }
-        stageLog(ctx, "END", `${finalStatus} (${Date.now() - eventStartedAt}ms, active=${activeMonitorTasks.size})`);
+        stageLog(ctx, "END", `${finalStatus} (${Date.now() - eventStartedAt}ms)`);
         console.log("────────────────────────────────────────────────────────");
     }
 }
@@ -561,15 +550,54 @@ async function resolveCreatorFromPool(connection: Connection, poolAddress: strin
     }
 }
 
+async function waitForFirstPoolTrade(
+    connection: Connection,
+    createSignature: string,
+    poolAddress: string,
+    ctx: string,
+): Promise<void> {
+    if (CONFIG.PRE_BUY_WAIT_MS <= 0) return;
+
+    stageLog(ctx, "WAIT", "waiting for first pool trade");
+    const poolKey = new PublicKey(poolAddress);
+
+    while (true) {
+        try {
+            const signatures = await connection.getSignaturesForAddress(poolKey, { limit: 20 }, "confirmed");
+            const firstTrade = signatures
+                .filter((s: any) => s.signature !== createSignature)
+                .sort((a: any, b: any) => (a.blockTime || 0) - (b.blockTime || 0))[0];
+
+            if (firstTrade) {
+                const firstTradeAtMs = firstTrade.blockTime ? firstTrade.blockTime * 1000 : Date.now();
+                const remainingMs = Math.max(0, CONFIG.PRE_BUY_WAIT_MS - (Date.now() - firstTradeAtMs));
+                stageLog(
+                    ctx,
+                    "WAIT",
+                    `first trade ${shortSig(firstTrade.signature)} seen, remaining ${remainingMs}ms from first trade`
+                );
+                if (remainingMs > 0) {
+                    await new Promise(r => setTimeout(r, remainingMs));
+                }
+                return;
+            }
+        } catch (e: any) {
+            stageLog(ctx, "WAIT", `first trade lookup retry (${e?.message || "unknown error"})`);
+        }
+
+        await new Promise(r => setTimeout(r, 500));
+    }
+}
+
 async function preEntryWaitAndCheck(
     connection: Connection,
+    createSignature: string,
     poolAddress: string,
     tokenMint: string,
     baselineLiquiditySol: number,
     ctx: string,
 ): Promise<{ ok: boolean; reason?: string; currentLiquiditySol: number }> {
-    console.log(`   ${ctx} Pre-entry wait: ${CONFIG.PRE_BUY_WAIT_MS}ms`);
-    await new Promise(r => setTimeout(r, CONFIG.PRE_BUY_WAIT_MS));
+    await waitForFirstPoolTrade(connection, createSignature, poolAddress, ctx);
 
     try {
         const observerUser = walletKeypair?.publicKey ?? Keypair.generate().publicKey;
@@ -612,9 +640,10 @@ async function preEntryWaitAndCheck(
         }
 
         const minObserved = Math.min(...observed);
-        console.log(
-            `   ${ctx} Pre-entry liquidity check: ${latest.toFixed(2)} SOL ` +
-            `(min observed ${minObserved.toFixed(2)} SOL over ${samples} samples)`
+        stageLog(
+            ctx,
+            "WAIT",
+            `pre-entry liquidity ${latest.toFixed(2)} SOL (min observed ${minObserved.toFixed(2)} SOL over ${samples} samples)`
         );
         return { ok: true, currentLiquiditySol: latest };
     } catch (e: any) {
@@ -658,7 +687,7 @@ async function runDevHoldingsCheck(
     enforceGate: boolean,
 ): Promise<boolean> {
     if (!CONFIG.ENFORCE_DEV_HOLDINGS_CHECK) {
-        console.log(`   ${ctx} Dev holdings check: disabled`);
+        stageLog(ctx, "DEV", "holdings check disabled");
         return true;
     }
 
@@ -669,11 +698,11 @@ async function runDevHoldingsCheck(
         const totalSupplyRaw = 1_000_000_000n * (10n ** BigInt(mintInfo.decimals)); // Pump tokens are 1B supply
 
         const devPct = Number((creatorBalanceRaw * 10000n) / totalSupplyRaw) / 100;
-        console.log(`   ${ctx} Dev holding: ${creatorBalanceRaw.toString()} (${devPct.toFixed(2)}%)`);
+        stageLog(ctx, "DEV", `holding ${creatorBalanceRaw.toString()} (${devPct.toFixed(2)}%)`);
         if (creatorBalanceRaw < 1n) {
-            console.log(`   ${ctx} Creator wallet token balance is 0 after create_pool (can be normal).`);
+            stageLog(ctx, "DEV", "creator wallet token balance is 0 after create_pool (can be normal)");
         }
-        console.log(`   ${ctx} Dev check duration: ${Date.now() - devCheckStart}ms`);
+        stageLog(ctx, "DEV", `check duration ${Date.now() - devCheckStart}ms`);
 
         if (devPct > CONFIG.MAX_DEV_HOLDINGS_PCT) {
             if (enforceGate) {
@@ -688,7 +717,7 @@ async function runDevHoldingsCheck(
         const durationMs = Date.now() - devCheckStart;
         if (MONITOR_ONLY && !enforceGate) {
             console.log(`⚠️ ${ctx} Dev check failed after ${durationMs}ms: ${reason}`);
-            console.log(`   ${ctx} Dev check fail-open in MONITOR_ONLY`);
+            stageLog(ctx, "DEV", "check fail-open in MONITOR_ONLY");
             return true;
         }
         console.log(`🛑 ${ctx} SKIP: Dev check failed after ${durationMs}ms: ${reason}`);
@@ -765,9 +794,71 @@ async function getCreatorTokenBalanceRaw(
 
 type PaperTradeResult = { ok: boolean; reason?: string };
 
+async function startRealSellPanicMonitor(
+    connection: Connection,
+    poolAddress: string,
+    logPrefix: string,
+): Promise<{
+    state: { triggered: boolean; sellSol: number; signature: string | null };
+    stop: () => Promise<void>;
+}> {
+    const state = { triggered: false, sellSol: 0, signature: null as string | null };
+
+    if (!CONFIG.POST_ENTRY_REAL_SELL_PANIC_ENABLED) {
+        return { state, stop: async () => {} };
+    }
+
+    const seen = new Set<string>();
+    const subId = connection.onLogs(
+        new PublicKey(poolAddress),
+        async (logs) => {
+            try {
+                if (state.triggered || seen.has(logs.signature)) return;
+                seen.add(logs.signature);
+
+                const tx = await connection.getParsedTransaction(logs.signature, {
+                    maxSupportedTransactionVersion: 0,
+                    commitment: "confirmed",
+                });
+                if (!tx?.meta?.preTokenBalances || !tx.meta.postTokenBalances) return;
+
+                const pre = tx.meta.preTokenBalances.find((b: any) => b.owner === poolAddress && b.mint === WSOL);
+                const post = tx.meta.postTokenBalances.find((b: any) => b.owner === poolAddress && b.mint === WSOL);
+                if (!pre || !post) return;
+
+                const preAmt = Number(pre.uiTokenAmount?.amount || "0") / 1e9;
+                const postAmt = Number(post.uiTokenAmount?.amount || "0") / 1e9;
+                const sellSol = preAmt - postAmt;
+                if (!Number.isFinite(sellSol) || sellSol < Math.max(0, CONFIG.POST_ENTRY_REAL_SELL_PANIC_MIN_SOL)) return;
+
+                state.triggered = true;
+                state.sellSol = sellSol;
+                state.signature = logs.signature;
+                console.log(
+                    `⚠️ ${logPrefix} PANIC EXIT: real on-chain sell detected ` +
+                    `(${sellSol.toFixed(2)} SOL, sig ${shortSig(logs.signature)})`
+                );
+            } catch {
+                // best effort; this monitor can hit 429 under heavy flow
+            }
+        },
+        "confirmed"
+    );
+
+    return {
+        state,
+        stop: async () => {
+            try {
+                await connection.removeOnLogsListener(subId);
+            } catch {
+                // best effort
+            }
+        },
+    };
+}
+
 async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress: string, tokenMint: string, ctx = ""): Promise<PaperTradeResult> {
     if (!CONFIG.PAPER_TRADE_ENABLED) return { ok: true };
-    const p = ctx ? `${ctx} ` : "";
 
     const observerUser = walletKeypair?.publicKey ?? Keypair.generate().publicKey;
     const poolKey = new PublicKey(poolAddress);
@@ -787,7 +878,7 @@ async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress:
     };
 
     try {
-        console.log(`📈 ${p}PAPER_TRADE: simulate buy->sell`);
+        stageLog(ctx, "PAPER", "simulate buy->sell");
         let tokenDecimals = 6;
         try {
             tokenDecimals = (await getMintInfoRobust(connection, new PublicKey(tokenMint))).decimals;
@@ -797,7 +888,7 @@ async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress:
 
         const entryState = await fetchStateWithRetry();
         if (!entryState) {
-            console.log(`⚠️ ${p}PAPER_TRADE: no entry pool state`);
+            console.log(`⚠️ ${ctx} PAPER_TRADE: no entry pool state`);
             return { ok: false, reason: "entry state unavailable" };
         }
 
@@ -838,12 +929,13 @@ async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress:
         }
         const tokenOutUi = Number(tokenOutAtomic.toString()) / 10 ** tokenDecimals;
         if (tokenOutAtomic.lte(new BN(0))) {
-            console.log(`⚠️ ${p}PAPER_TRADE: entry received 0 tokens`);
+            console.log(`⚠️ ${ctx} PAPER_TRADE: entry received 0 tokens`);
             return { ok: false, reason: "entry produced 0 tokens" };
         }
         const entrySpotSolPerToken = getSpotSolPerTokenFromState(entryState, tokenMint, tokenDecimals) || 0;
-        console.log(`   ${p}Buy Spot:  ~${formatSolCompact(entrySpotSolPerToken)}/token`);
+        stageLog(ctx, "BUY_SPOT", `~${formatSolCompact(entrySpotSolPerToken)}/token`);
 
+        const panicMonitor = await startRealSellPanicMonitor(connection, poolAddress, ctx);
         const exitState = await waitForExitStateWithLiquidityStop(
             connection,
             poolAddress,
@@ -851,10 +943,12 @@ async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress:
             entryState,
             tokenMint,
             tokenDecimals,
-            p,
+            ctx,
+            panicMonitor,
         );
+        await panicMonitor.stop();
         if (!exitState) {
-            console.log(`⚠️ ${p}PAPER_TRADE: no exit pool state`);
+            console.log(`⚠️ ${ctx} PAPER_TRADE: no exit pool state`);
             return { ok: false, reason: "exit state unavailable" };
         }
 
@@ -892,8 +986,8 @@ async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress:
         const pnlPct = (pnlSol / CONFIG.TRADE_AMOUNT_SOL) * 100;
         const exitSpotSolPerToken = getSpotSolPerTokenFromState(exitState, tokenMint, tokenDecimals) || 0;
 
-        console.log(`   ${p}Sell Spot: ~${formatSolCompact(exitSpotSolPerToken)}/token`);
-        console.log(`   ${p}PnL: ${pnlSol >= 0 ? "+" : "-"}${formatSolCompact(Math.abs(pnlSol))} (${pnlPct.toFixed(2)}%)`);
+        stageLog(ctx, "SELL_SPOT", `~${formatSolCompact(exitSpotSolPerToken)}/token`);
+        stageLog(ctx, "PNL", `${pnlSol >= 0 ? "+" : "-"}${formatSolCompact(Math.abs(pnlSol))} (${pnlPct.toFixed(2)}%)`);
         if (!Number.isFinite(solOut) || solOut <= 0) {
             return { ok: false, reason: "exit returned 0 SOL" };
         }
@@ -902,7 +996,7 @@ async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress:
         }
         return { ok: true };
     } catch (e: any) {
-        console.log(`⚠️ ${p}PAPER_TRADE failed: ${e.message}`);
+        console.log(`⚠️ ${ctx} PAPER_TRADE failed: ${e.message}`);
         return { ok: false, reason: e?.message || "paper simulation failed" };
     }
 }
@@ -915,6 +1009,7 @@ async function waitForExitStateWithLiquidityStop(
     tokenMint: string,
     tokenDecimals: number,
     logPrefix: string,
+    panicMonitor?: { state: { triggered: boolean } },
 ): Promise<any | null> {
     const startedAtMs = Date.now();
     const deadlineMs = startedAtMs + CONFIG.AUTO_SELL_DELAY_MS;
@@ -935,6 +1030,10 @@ async function waitForExitStateWithLiquidityStop(
             CONFIG.POST_ENTRY_STABILITY_GATE_ENABLED &&
             (Date.now() - startedAtMs) <= Math.max(0, CONFIG.POST_ENTRY_STABILITY_GATE_WINDOW_MS);
 
+        if (panicMonitor?.state.triggered) {
+            return s;
+        }
+
         if (inStabilityWindow) {
             const stabilitySpotBreak =
                 Number.isFinite(entrySpot) &&
@@ -952,7 +1051,7 @@ async function waitForExitStateWithLiquidityStop(
 
             if (stabilitySpotBreak || stabilityLiquidityBreak) {
                 console.log(
-                    `⚠️ ${logPrefix}STABILITY GATE: early exit ` +
+                    `⚠️ ${logPrefix} STABILITY GATE: early exit ` +
                     `(spot ${formatSolCompact(curSpot)}/token, liquidity ${curSolLiquidity.toFixed(2)} SOL, ` +
                     `window ${CONFIG.POST_ENTRY_STABILITY_GATE_WINDOW_MS}ms, drop ${CONFIG.POST_ENTRY_STABILITY_GATE_DROP_PCT}%)`
                 );
@@ -978,7 +1077,7 @@ async function waitForExitStateWithLiquidityStop(
 
         if (spotTriggered || liquidityTriggered) {
             console.log(
-                `⚠️ ${logPrefix}LIQUIDITY STOP: trigger early exit ` +
+                `⚠️ ${logPrefix} LIQUIDITY STOP: trigger early exit ` +
                 `(spot ${formatSolCompact(curSpot)}/token, liquidity ${curSolLiquidity.toFixed(2)} SOL)`
             );
             return s;

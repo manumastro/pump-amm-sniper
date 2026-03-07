@@ -69,6 +69,76 @@ function getEvent(id) {
 
 function parseLine(line) {
   const ts = (line.match(/^\[([^\]]+)\]/) || [])[1] || null;
+  const stageLine = line.match(/^\[[^\]]+\]\s+(\[[^\]]+\])\s+\|\s+([^|]+?)\s+\|\s+(.+)$/);
+  if (stageLine) {
+    const id = stageLine[1].slice(1, -1);
+    const stage = stageLine[2].trim();
+    const message = stageLine[3].trim();
+    const ev = getEvent(id);
+
+    if (stage === 'NEW') {
+      ev.startedAt = ev.startedAt || ts;
+      return;
+    }
+
+    if (stage === 'SIGNATURE') {
+      ev.signature = message;
+      return;
+    }
+
+    if (stage === 'TOKEN') {
+      ev.tokenMint = message;
+      return;
+    }
+
+    if (stage === 'POOL') {
+      ev.pool = message;
+      return;
+    }
+
+    if (stage === 'GMGN') {
+      ev.gmgn = message;
+      return;
+    }
+
+    if (stage === 'BUY_SPOT') {
+      ev.buyAt = ts || ev.buyAt;
+      ev.buySpotSolPerToken = parseCompactSol(message.replace(/^\~/, '').replace(/\/token$/i, '').trim());
+      return;
+    }
+
+    if (stage === 'SELL_SPOT') {
+      ev.sellAt = ts || ev.sellAt;
+      ev.sellSpotSolPerToken = parseCompactSol(message.replace(/^\~/, '').replace(/\/token$/i, '').trim());
+      return;
+    }
+
+    if (stage === 'PNL') {
+      const m = message.match(/^([+-]?)(.+)\s+\(([-0-9.]+)%\)$/);
+      if (m) {
+        ev.pnlAt = ts || ev.pnlAt;
+        const pct = Number(m[3]);
+        const sign = m[1] === '-' ? -1 : (pct < 0 ? -1 : 1);
+        const abs = parseCompactSol(m[2].trim());
+        ev.pnlSol = abs == null ? null : sign * abs;
+        ev.pnlPct = pct;
+      }
+      return;
+    }
+
+    if (stage === 'CHECKS' && message === 'passed') {
+      ev.checksPassed = true;
+      return;
+    }
+
+    if (stage === 'END') {
+      const m = message.match(/^(.*?)\s+\((\d+)ms(?:,\s*active=\d+)?\)$/);
+      ev.endStatus = m ? m[1].trim() : message;
+      ev.durationMs = m ? Number(m[2]) : ev.durationMs;
+      ev.endedAt = ts || nowIso();
+      return;
+    }
+  }
 
   let m = line.match(/🆕 NEW POOL \[([^\]]+)\]/);
   if (m) {
