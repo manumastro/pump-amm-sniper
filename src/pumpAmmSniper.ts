@@ -60,9 +60,24 @@ const CONFIG = {
     CREATOR_RISK_HISTORICAL_FUNDER_CLUSTER_MIN_RUG_CREATORS: Number(
         process.env.CREATOR_RISK_HISTORICAL_FUNDER_CLUSTER_MIN_RUG_CREATORS || 2
     ),
+    CREATOR_RISK_RELAY_FUNDING_ENABLED: process.env.CREATOR_RISK_RELAY_FUNDING_ENABLED !== "false",
+    CREATOR_RISK_RELAY_SIG_LIMIT: Number(process.env.CREATOR_RISK_RELAY_SIG_LIMIT || 8),
+    CREATOR_RISK_RELAY_PARSED_TX_LIMIT: Number(process.env.CREATOR_RISK_RELAY_PARSED_TX_LIMIT || 6),
+    CREATOR_RISK_RELAY_MIN_SOL: Number(process.env.CREATOR_RISK_RELAY_MIN_SOL || 20),
+    CREATOR_RISK_RELAY_FORWARD_MIN_RATIO: Number(process.env.CREATOR_RISK_RELAY_FORWARD_MIN_RATIO || 0.9),
+    CREATOR_RISK_RELAY_WINDOW_SEC: Number(process.env.CREATOR_RISK_RELAY_WINDOW_SEC || 300),
+    CREATOR_RISK_MICRO_INBOUND_MAX_SOL: Number(process.env.CREATOR_RISK_MICRO_INBOUND_MAX_SOL || 0.001),
+    CREATOR_RISK_MICRO_INBOUND_MIN_TRANSFERS: Number(process.env.CREATOR_RISK_MICRO_INBOUND_MIN_TRANSFERS || 6),
+    CREATOR_RISK_MICRO_INBOUND_MIN_SOURCES: Number(process.env.CREATOR_RISK_MICRO_INBOUND_MIN_SOURCES || 2),
+    CREATOR_RISK_MICRO_INBOUND_WINDOW_SEC: Number(process.env.CREATOR_RISK_MICRO_INBOUND_WINDOW_SEC || 5),
     HOLD_CREATOR_RISK_RECHECK_ENABLED: process.env.HOLD_CREATOR_RISK_RECHECK_ENABLED !== "false",
     HOLD_CREATOR_RISK_RECHECK_INTERVAL_MS: Number(process.env.HOLD_CREATOR_RISK_RECHECK_INTERVAL_MS || 5000),
     CREATOR_RISK_FUNDER_REFUND_MIN_SOL: Number(process.env.CREATOR_RISK_FUNDER_REFUND_MIN_SOL || 0.05),
+    HOLD_CREATOR_CASHOUT_EXIT_ENABLED: process.env.HOLD_CREATOR_CASHOUT_EXIT_ENABLED !== "false",
+    CREATOR_RISK_CASHOUT_ABS_SOL: Number(process.env.CREATOR_RISK_CASHOUT_ABS_SOL || 5),
+    CREATOR_RISK_CASHOUT_REL_LIQ_PCT: Number(process.env.CREATOR_RISK_CASHOUT_REL_LIQ_PCT || 25),
+    CREATOR_RISK_CASHOUT_WARN_SCORE: Number(process.env.CREATOR_RISK_CASHOUT_WARN_SCORE || 0.5),
+    CREATOR_RISK_CASHOUT_EXIT_SCORE: Number(process.env.CREATOR_RISK_CASHOUT_EXIT_SCORE || 1),
     
     // 🔧 SLIPPAGE
     SLIPPAGE_PERCENT: 20,                 // 20% slippage (più conservativo)
@@ -134,6 +149,12 @@ const recentFunderCreators = new Map<string, Array<{ creator: string; seenAtMs: 
 const ROOT_DIR = process.cwd();
 const PAPER_LOG_PATH = path.join(ROOT_DIR, "paper.log");
 const PAPER_REPORT_JSON_PATH = path.join(ROOT_DIR, "logs", "paper-report.json");
+const BLACKLISTS_DIR = path.join(ROOT_DIR, "blacklists");
+const BLACKLIST_CREATORS_PATH = path.join(BLACKLISTS_DIR, "creators.txt");
+const BLACKLIST_FUNDERS_PATH = path.join(BLACKLISTS_DIR, "funders.txt");
+const BLACKLIST_MICRO_BURST_SOURCES_PATH = path.join(BLACKLISTS_DIR, "micro-burst-sources.txt");
+const BLACKLIST_CASHOUT_RELAYS_PATH = path.join(BLACKLISTS_DIR, "cashout-relays.txt");
+const BLACKLIST_FUNDER_COUNTS_PATH = path.join(BLACKLISTS_DIR, "funder-counts.json");
 
 function shortSig(sig: string): string {
     if (sig.length <= 14) return sig;
@@ -180,11 +201,18 @@ type CreatorRiskResult = {
     compressedWindowSec?: number | null;
     burner?: boolean;
     funderRefundSol?: number;
+    creatorCashoutSol?: number;
+    creatorCashoutPctOfEntryLiquidity?: number;
+    creatorCashoutScore?: number;
+    creatorCashoutDestination?: string | null;
+    relayFundingRoot?: string | null;
 };
 
 type RugHistory = {
     rugCreators: Set<string>;
     rugFunders: Set<string>;
+    rugMicroBurstSources: Set<string>;
+    rugCashoutRelays: Set<string>;
     rugFunderCounts: Map<string, number>;
 };
 
@@ -857,51 +885,37 @@ async function resolveTop10MintKey(
     return null;
 }
 
-function extractHistoricalRugCreators(): Set<string> {
+function readBlacklistSet(filePath: string): Set<string> {
     try {
-        if (!fs.existsSync(PAPER_REPORT_JSON_PATH) || !fs.existsSync(PAPER_LOG_PATH)) {
+        if (!fs.existsSync(filePath)) {
             return new Set();
         }
-
-        const report = JSON.parse(fs.readFileSync(PAPER_REPORT_JSON_PATH, "utf8"));
-        const rugEvents = Array.isArray(report?.rugPullEvents) ? report.rugPullEvents : [];
-        const rugTokens = new Set(
-            rugEvents
-                .map((e: any) => e?.tokenMint)
-                .filter((v: any) => typeof v === "string" && v.length > 0)
+        const lines = fs.readFileSync(filePath, "utf8").split(/\r?\n/);
+        return new Set(
+            lines
+                .map((line) => line.replace(/#.*/, "").trim())
+                .filter((line) => /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(line))
         );
-        if (rugTokens.size === 0) return new Set();
-
-        const rugCreators = new Set<string>();
-        const lines = fs.readFileSync(PAPER_LOG_PATH, "utf8").split(/\r?\n/);
-        let currentToken: string | null = null;
-        let currentCreator: string | null = null;
-
-        for (const line of lines) {
-            const tokenMatch = line.match(/TOKEN\s+\|\s+([1-9A-HJ-NP-Za-km-z]+)/);
-            if (tokenMatch) {
-                currentToken = tokenMatch[1];
-                currentCreator = null;
-            }
-
-            const creatorMatch = line.match(/CREATOR\s+\|\s+resolved\s+([1-9A-HJ-NP-Za-km-z]+)/);
-            if (creatorMatch) {
-                currentCreator = creatorMatch[1];
-            }
-
-            const endMatch = line.match(/END\s+\|\s+(.+)/);
-            if (endMatch && currentToken && rugTokens.has(currentToken) && endMatch[1].includes("paper simulation guard")) {
-                if (currentCreator) {
-                    rugCreators.add(currentCreator);
-                }
-                currentToken = null;
-                currentCreator = null;
-            }
-        }
-
-        return rugCreators;
     } catch {
         return new Set();
+    }
+}
+
+function readBlacklistCountMap(filePath: string): Map<string, number> {
+    try {
+        if (!fs.existsSync(filePath)) {
+            return new Map();
+        }
+        const raw = JSON.parse(fs.readFileSync(filePath, "utf8"));
+        const map = new Map<string, number>();
+        for (const [key, value] of Object.entries(raw || {})) {
+            if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(key) && Number.isFinite(Number(value))) {
+                map.set(key, Number(value));
+            }
+        }
+        return map;
+    } catch {
+        return new Map();
     }
 }
 
@@ -917,14 +931,18 @@ function walkParsedInstructions(
     solInSol: number;
     solOutSol: number;
     inboundSources: string[];
+    inboundTransfers: Array<{ source: string; sol: number }>;
     outboundDestinations: string[];
+    outboundTransfers: Array<{ destination: string; sol: number }>;
 } {
     let solInTransfers = 0;
     let solOutTransfers = 0;
     let solInSol = 0;
     let solOutSol = 0;
     const inboundSources: string[] = [];
+    const inboundTransfers: Array<{ source: string; sol: number }> = [];
     const outboundDestinations: string[] = [];
+    const outboundTransfers: Array<{ destination: string; sol: number }> = [];
 
     for (const ix of instructions || []) {
         if (!ix?.parsed) continue;
@@ -941,6 +959,7 @@ function walkParsedInstructions(
                 if (destination) {
                     counterparties.add(destination);
                     outboundDestinations.push(destination);
+                    outboundTransfers.push({ destination, sol: lamports / 1e9 });
                     if (rugCreators.has(destination)) linksToCreators.add(destination);
                 }
             }
@@ -951,13 +970,14 @@ function walkParsedInstructions(
                 if (source) {
                     counterparties.add(source);
                     inboundSources.push(source);
+                    inboundTransfers.push({ source, sol: lamports / 1e9 });
                     if (rugCreators.has(source)) linksToCreators.add(source);
                 }
             }
         }
     }
 
-    return { solInTransfers, solOutTransfers, solInSol, solOutSol, inboundSources, outboundDestinations };
+    return { solInTransfers, solOutTransfers, solInSol, solOutSol, inboundSources, inboundTransfers, outboundDestinations, outboundTransfers };
 }
 
 async function buildRugHistory(connection: Connection): Promise<RugHistory> {
@@ -966,52 +986,13 @@ async function buildRugHistory(connection: Connection): Promise<RugHistory> {
         return cachedRugHistory;
     }
 
-    const rugCreators = extractHistoricalRugCreators();
-    const rugFunders = new Set<string>();
-    const rugFunderCounts = new Map<string, number>();
-    const sigLimit = Math.max(5, CONFIG.CREATOR_RISK_SIG_LIMIT);
-    const parseLimit = Math.max(3, Math.min(CONFIG.CREATOR_RISK_PARSED_TX_LIMIT, 8));
+    const rugCreators = readBlacklistSet(BLACKLIST_CREATORS_PATH);
+    const rugFunders = readBlacklistSet(BLACKLIST_FUNDERS_PATH);
+    const rugMicroBurstSources = readBlacklistSet(BLACKLIST_MICRO_BURST_SOURCES_PATH);
+    const rugCashoutRelays = readBlacklistSet(BLACKLIST_CASHOUT_RELAYS_PATH);
+    const rugFunderCounts = readBlacklistCountMap(BLACKLIST_FUNDER_COUNTS_PATH);
 
-    for (const creator of rugCreators) {
-        try {
-            const sigs = await connection.getSignaturesForAddress(new PublicKey(creator), { limit: sigLimit }, "confirmed");
-            const chronological = [...sigs].reverse();
-
-            for (const sig of chronological.slice(0, parseLimit)) {
-                const tx = await connection.getParsedTransaction(sig.signature, {
-                    maxSupportedTransactionVersion: 0,
-                    commitment: "confirmed",
-                });
-                if (!tx) continue;
-
-                const counterparties = new Set<string>();
-                const links = new Set<string>();
-                const outer = walkParsedInstructions(
-                    tx.transaction?.message?.instructions,
-                    creator,
-                    counterparties,
-                    links,
-                    rugCreators,
-                );
-                const innerParts = (tx.meta?.innerInstructions || []).map((inner: any) =>
-                    walkParsedInstructions(inner.instructions, creator, counterparties, links, rugCreators)
-                );
-                const firstInbound =
-                    outer.inboundSources[0] ||
-                    innerParts.flatMap(p => p.inboundSources)[0];
-
-                if (firstInbound) {
-                    rugFunders.add(firstInbound);
-                    rugFunderCounts.set(firstInbound, (rugFunderCounts.get(firstInbound) || 0) + 1);
-                    break;
-                }
-            }
-        } catch {
-            // best effort only
-        }
-    }
-
-    cachedRugHistory = { rugCreators, rugFunders, rugFunderCounts };
+    cachedRugHistory = { rugCreators, rugFunders, rugMicroBurstSources, rugCashoutRelays, rugFunderCounts };
     cachedRugHistoryAtMs = now;
     return cachedRugHistory;
 }
@@ -1030,11 +1011,166 @@ function trackRecentFunderCreator(funder: string, creatorAddress: string): numbe
     return entries.length;
 }
 
+async function classifyCreatorCashoutRisk(
+    connection: Connection,
+    creatorAddress: string,
+    funder: string | null,
+    outboundTransfers: Array<{ destination: string; sol: number }>,
+    entrySolLiquidity?: number,
+): Promise<{ totalSol: number; maxSingleSol: number; pctOfEntryLiquidity: number; score: number; destination: string | null }> {
+    if (!outboundTransfers.length) {
+        return { totalSol: 0, maxSingleSol: 0, pctOfEntryLiquidity: 0, score: 0, destination: null };
+    }
+
+    const merged = new Map<string, number>();
+    for (const transfer of outboundTransfers) {
+        if (!transfer.destination || transfer.destination === creatorAddress) continue;
+        merged.set(transfer.destination, (merged.get(transfer.destination) || 0) + transfer.sol);
+    }
+
+    const ranked = [...merged.entries()]
+        .filter(([destination]) => destination !== funder)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 6);
+
+    if (!ranked.length) {
+        return { totalSol: 0, maxSingleSol: 0, pctOfEntryLiquidity: 0, score: 0, destination: null };
+    }
+
+    const infos = await Promise.all(
+        ranked.map(async ([destination]) => {
+            try {
+                return await connection.getAccountInfo(new PublicKey(destination), "confirmed");
+            } catch {
+                return null;
+            }
+        })
+    );
+
+    let totalSol = 0;
+    let maxSingleSol = 0;
+    let destination: string | null = null;
+
+    for (let i = 0; i < ranked.length; i++) {
+        const [dest, sol] = ranked[i];
+        const owner = infos[i]?.owner;
+        const isTokenProgram =
+            !!owner &&
+            (owner.equals(TOKEN_PROGRAM_ID) || owner.equals(TOKEN_2022_PROGRAM_ID));
+        if (isTokenProgram) continue;
+
+        totalSol += sol;
+        if (sol > maxSingleSol) {
+            maxSingleSol = sol;
+            destination = dest;
+        }
+    }
+
+    const pctOfEntryLiquidity =
+        entrySolLiquidity && entrySolLiquidity > 0 ? (totalSol / entrySolLiquidity) * 100 : 0;
+    const absScore = totalSol / Math.max(0.000001, CONFIG.CREATOR_RISK_CASHOUT_ABS_SOL);
+    const relScore =
+        entrySolLiquidity && entrySolLiquidity > 0
+            ? pctOfEntryLiquidity / Math.max(0.000001, CONFIG.CREATOR_RISK_CASHOUT_REL_LIQ_PCT)
+            : 0;
+    const singleScore = maxSingleSol / Math.max(0.000001, CONFIG.CREATOR_RISK_CASHOUT_ABS_SOL * 0.6);
+    const score = Math.max(absScore, relScore, singleScore);
+
+    return { totalSol, maxSingleSol, pctOfEntryLiquidity, score, destination };
+}
+
+async function classifyRecentRelayFunding(
+    connection: Connection,
+    creatorAddress: string,
+    funder: string | null,
+): Promise<{ detected: boolean; root: string | null; inboundSol: number; outboundSol: number; windowSec: number | null }> {
+    if (!CONFIG.CREATOR_RISK_RELAY_FUNDING_ENABLED || !funder) {
+        return { detected: false, root: null, inboundSol: 0, outboundSol: 0, windowSec: null };
+    }
+
+    try {
+        const sigs = await connection.getSignaturesForAddress(
+            new PublicKey(funder),
+            { limit: Math.max(3, CONFIG.CREATOR_RISK_RELAY_SIG_LIMIT) },
+            "confirmed",
+        );
+        const chronological = [...sigs].reverse().slice(-Math.max(2, CONFIG.CREATOR_RISK_RELAY_PARSED_TX_LIMIT));
+
+        let maxInboundSol = 0;
+        let root: string | null = null;
+        let maxOutboundToCreatorSol = 0;
+        let firstSeen: number | null = null;
+        let lastSeen: number | null = null;
+
+        for (const sig of chronological) {
+            const tx = await connection.getParsedTransaction(sig.signature, {
+                maxSupportedTransactionVersion: 0,
+                commitment: "confirmed",
+            });
+            if (!tx) continue;
+
+            const counterparties = new Set<string>();
+            const links = new Set<string>();
+            const walked = walkParsedInstructions(
+                tx.transaction?.message?.instructions,
+                funder,
+                counterparties,
+                links,
+                new Set<string>(),
+            );
+            const innerParts = (tx.meta?.innerInstructions || []).map((inner: any) =>
+                walkParsedInstructions(inner.instructions, funder, counterparties, links, new Set<string>())
+            );
+
+            const allInbound = [
+                ...walked.inboundTransfers,
+                ...innerParts.flatMap((p) => p.inboundTransfers),
+            ];
+            const allOutbound = [
+                ...walked.outboundTransfers,
+                ...innerParts.flatMap((p) => p.outboundTransfers),
+            ];
+
+            for (const inbound of allInbound) {
+                if (inbound.source === creatorAddress) continue;
+                if (inbound.sol > maxInboundSol) {
+                    maxInboundSol = inbound.sol;
+                    root = inbound.source;
+                }
+            }
+
+            const outboundToCreatorSol = allOutbound
+                .filter((outbound) => outbound.destination === creatorAddress)
+                .reduce((sum, outbound) => sum + outbound.sol, 0);
+            maxOutboundToCreatorSol = Math.max(maxOutboundToCreatorSol, outboundToCreatorSol);
+
+            if ((allInbound.length > 0 || outboundToCreatorSol > 0) && sig.blockTime) {
+                firstSeen = firstSeen === null ? sig.blockTime : Math.min(firstSeen, sig.blockTime);
+                lastSeen = lastSeen === null ? sig.blockTime : Math.max(lastSeen, sig.blockTime);
+            }
+        }
+
+        const windowSec =
+            firstSeen !== null && lastSeen !== null && lastSeen >= firstSeen ? lastSeen - firstSeen : null;
+        const ratio = maxOutboundToCreatorSol / Math.max(0.000001, maxInboundSol);
+        const detected =
+            maxInboundSol >= CONFIG.CREATOR_RISK_RELAY_MIN_SOL &&
+            maxOutboundToCreatorSol >= CONFIG.CREATOR_RISK_RELAY_MIN_SOL &&
+            ratio >= CONFIG.CREATOR_RISK_RELAY_FORWARD_MIN_RATIO &&
+            windowSec !== null &&
+            windowSec <= CONFIG.CREATOR_RISK_RELAY_WINDOW_SEC;
+
+        return { detected, root, inboundSol: maxInboundSol, outboundSol: maxOutboundToCreatorSol, windowSec };
+    } catch {
+        return { detected: false, root: null, inboundSol: 0, outboundSol: 0, windowSec: null };
+    }
+}
+
 async function runCreatorRiskCheck(
     connection: Connection,
     creatorAddress: string,
     ctx: string,
-    options: { forceRefresh?: boolean } = {},
+    options: { forceRefresh?: boolean; entrySolLiquidity?: number } = {},
 ): Promise<CreatorRiskResult> {
     if (!CONFIG.CREATOR_RISK_CHECK_ENABLED) {
         stageLog(ctx, "CRISK", "check disabled");
@@ -1069,6 +1205,8 @@ async function runCreatorRiskCheck(
         let funderRefundSol = 0;
         const counterparties = new Set<string>();
         const linksToCreators = new Set<string>();
+        const outboundTransfers: Array<{ destination: string; sol: number }> = [];
+        const inboundTransfers: Array<{ source: string; sol: number }> = [];
 
         for (const sig of sample) {
             const tx = await connection.getParsedTransaction(sig.signature, {
@@ -1092,13 +1230,17 @@ async function runCreatorRiskCheck(
             solOutTransfers += outer.solOutTransfers;
             solInSol += outer.solInSol;
             solOutSol += outer.solOutSol;
+            inboundTransfers.push(...outer.inboundTransfers);
 
             for (const inner of innerParts) {
                 solInTransfers += inner.solInTransfers;
                 solOutTransfers += inner.solOutTransfers;
                 solInSol += inner.solInSol;
                 solOutSol += inner.solOutSol;
+                inboundTransfers.push(...inner.inboundTransfers);
+                outboundTransfers.push(...inner.outboundTransfers);
             }
+            outboundTransfers.push(...outer.outboundTransfers);
 
             if (!funder) {
                 funder = outer.inboundSources[0] || innerParts.flatMap(p => p.inboundSources)[0] || null;
@@ -1120,18 +1262,49 @@ async function runCreatorRiskCheck(
             firstSigTime && lastSigTime && lastSigTime >= firstSigTime
                 ? lastSigTime - firstSigTime
                 : null;
+        const microInboundTransfers = inboundTransfers.filter(
+            (transfer) => transfer.sol > 0 && transfer.sol <= CONFIG.CREATOR_RISK_MICRO_INBOUND_MAX_SOL
+        );
+        const microInboundSources = new Set(microInboundTransfers.map((transfer) => transfer.source));
         const burner =
             solInTransfers === 0 &&
             solOutTransfers > 0 &&
             solOutTransfers <= 3 &&
             solOutSol >= CONFIG.CREATOR_RISK_BURNER_MIN_OUT_SOL;
+        const creatorCashout = await classifyCreatorCashoutRisk(
+            connection,
+            creatorAddress,
+            funder,
+            outboundTransfers,
+            options.entrySolLiquidity,
+        );
+        const relayFunding = await classifyRecentRelayFunding(connection, creatorAddress, funder);
 
         stageLog(
             ctx,
             "CRISK",
             `cp=${uniqueCounterparties} in=${solInTransfers} out=${solOutTransfers} ` +
-            `window=${compressedWindowSec ?? "n/a"}s funder=${funder ? shortSig(funder) : "-"} refund=${funderRefundSol.toFixed(3)}`
+            `window=${compressedWindowSec ?? "n/a"}s funder=${funder ? shortSig(funder) : "-"} refund=${funderRefundSol.toFixed(3)} ` +
+            `micro=${microInboundTransfers.length}/${microInboundSources.size}`
         );
+        if (relayFunding.detected || relayFunding.inboundSol > 0 || relayFunding.outboundSol > 0) {
+            stageLog(
+                ctx,
+                "RRELAY",
+                `root=${relayFunding.root ? shortSig(relayFunding.root) : "-"} funder=${funder ? shortSig(funder) : "-"} ` +
+                `in=${relayFunding.inboundSol.toFixed(3)} out=${relayFunding.outboundSol.toFixed(3)} ` +
+                `window=${relayFunding.windowSec ?? "n/a"}s`
+            );
+        }
+        if (creatorCashout.totalSol > 0 || creatorCashout.score >= CONFIG.CREATOR_RISK_CASHOUT_WARN_SCORE) {
+            stageLog(
+                ctx,
+                "CCASH",
+                `total=${creatorCashout.totalSol.toFixed(3)} max=${creatorCashout.maxSingleSol.toFixed(3)} ` +
+                `rel=${creatorCashout.pctOfEntryLiquidity.toFixed(2)}% score=${creatorCashout.score.toFixed(2)} ` +
+                `dest=${creatorCashout.destination ? shortSig(creatorCashout.destination) : "-"}`
+            );
+        }
 
         if (funder && (rugHistory.rugCreators.has(funder) || rugHistory.rugFunders.has(funder))) {
             const result = {
@@ -1141,6 +1314,89 @@ async function runCreatorRiskCheck(
                 uniqueCounterparties,
                 compressedWindowSec,
                 burner,
+            };
+            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
+            return result;
+        }
+
+        if (
+            funder &&
+            (rugHistory.rugMicroBurstSources.has(funder) || rugHistory.rugCashoutRelays.has(funder))
+        ) {
+            const result = {
+                ok: false,
+                reason: `funder linked to suspicious infra ${funder}`,
+                funder,
+                uniqueCounterparties,
+                compressedWindowSec,
+                burner,
+            };
+            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
+            return result;
+        }
+
+        const blacklistedMicroSource = [...microInboundSources].find((source) => rugHistory.rugMicroBurstSources.has(source));
+        if (blacklistedMicroSource) {
+            const result = {
+                ok: false,
+                reason: `micro-burst source blacklisted ${blacklistedMicroSource}`,
+                funder,
+                uniqueCounterparties,
+                compressedWindowSec,
+                burner,
+            };
+            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
+            return result;
+        }
+
+        if (
+            compressedWindowSec !== null &&
+            compressedWindowSec <= CONFIG.CREATOR_RISK_MICRO_INBOUND_WINDOW_SEC &&
+            microInboundTransfers.length >= CONFIG.CREATOR_RISK_MICRO_INBOUND_MIN_TRANSFERS &&
+            microInboundSources.size >= CONFIG.CREATOR_RISK_MICRO_INBOUND_MIN_SOURCES
+        ) {
+            const result = {
+                ok: false,
+                reason: `micro inbound burst ${microInboundTransfers.length} transfers from ${microInboundSources.size} sources in ${compressedWindowSec}s`,
+                funder,
+                uniqueCounterparties,
+                compressedWindowSec,
+                burner,
+            };
+            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
+            return result;
+        }
+
+        if (
+            relayFunding.detected &&
+            microInboundTransfers.length >= CONFIG.CREATOR_RISK_MICRO_INBOUND_MIN_TRANSFERS
+        ) {
+            const result = {
+                ok: false,
+                reason: `relay funding recent + micro burst (root ${relayFunding.root || "-"}, in ${relayFunding.inboundSol.toFixed(3)} SOL, out ${relayFunding.outboundSol.toFixed(3)} SOL)`,
+                funder,
+                uniqueCounterparties,
+                compressedWindowSec,
+                burner,
+                relayFundingRoot: relayFunding.root,
+            };
+            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
+            return result;
+        }
+
+        if (
+            relayFunding.detected &&
+            relayFunding.root &&
+            (rugHistory.rugFunders.has(relayFunding.root) || rugHistory.rugCashoutRelays.has(relayFunding.root))
+        ) {
+            const result = {
+                ok: false,
+                reason: `relay funding root blacklisted ${relayFunding.root}`,
+                funder,
+                uniqueCounterparties,
+                compressedWindowSec,
+                burner,
+                relayFundingRoot: relayFunding.root,
             };
             creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
             return result;
@@ -1199,6 +1455,32 @@ async function runCreatorRiskCheck(
                 compressedWindowSec,
                 burner,
                 funderRefundSol,
+                creatorCashoutSol: creatorCashout.totalSol,
+                creatorCashoutPctOfEntryLiquidity: creatorCashout.pctOfEntryLiquidity,
+                creatorCashoutScore: creatorCashout.score,
+                creatorCashoutDestination: creatorCashout.destination,
+            };
+            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
+            return result;
+        }
+
+        if (
+            options.entrySolLiquidity &&
+            CONFIG.HOLD_CREATOR_CASHOUT_EXIT_ENABLED &&
+            creatorCashout.score >= CONFIG.CREATOR_RISK_CASHOUT_EXIT_SCORE
+        ) {
+            const result = {
+                ok: false,
+                reason: `creator cashout ${creatorCashout.totalSol.toFixed(3)} SOL (${creatorCashout.pctOfEntryLiquidity.toFixed(2)}% liq, score ${creatorCashout.score.toFixed(2)})`,
+                funder,
+                uniqueCounterparties,
+                compressedWindowSec,
+                burner,
+                funderRefundSol,
+                creatorCashoutSol: creatorCashout.totalSol,
+                creatorCashoutPctOfEntryLiquidity: creatorCashout.pctOfEntryLiquidity,
+                creatorCashoutScore: creatorCashout.score,
+                creatorCashoutDestination: creatorCashout.destination,
             };
             creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
             return result;
@@ -1247,7 +1529,19 @@ async function runCreatorRiskCheck(
             return result;
         }
 
-        const result = { ok: true, funder, uniqueCounterparties, compressedWindowSec, burner, funderRefundSol };
+        const result = {
+            ok: true,
+            funder,
+            uniqueCounterparties,
+            compressedWindowSec,
+            burner,
+            funderRefundSol,
+            creatorCashoutSol: creatorCashout.totalSol,
+            creatorCashoutPctOfEntryLiquidity: creatorCashout.pctOfEntryLiquidity,
+            creatorCashoutScore: creatorCashout.score,
+            creatorCashoutDestination: creatorCashout.destination,
+            relayFundingRoot: relayFunding.root,
+        };
         creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
         return result;
     } catch (e: any) {
@@ -1582,7 +1876,10 @@ async function waitForExitStateWithLiquidityStop(
             Date.now() - lastCreatorRiskCheckAtMs >= Math.max(500, CONFIG.HOLD_CREATOR_RISK_RECHECK_INTERVAL_MS)
         ) {
             lastCreatorRiskCheckAtMs = Date.now();
-            const creatorRisk = await runCreatorRiskCheck(connection, creatorAddress, logPrefix, { forceRefresh: true });
+            const creatorRisk = await runCreatorRiskCheck(connection, creatorAddress, logPrefix, {
+                forceRefresh: true,
+                entrySolLiquidity,
+            });
             if (!creatorRisk.ok) {
                 console.log(`⚠️ CREATOR RISK EXIT: ${creatorRisk.reason}`);
                 return s;

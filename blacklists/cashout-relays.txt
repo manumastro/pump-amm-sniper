@@ -1,0 +1,2 @@
+# Relay wallets that received creator cashout before forwarding to the funding root
+6Ewys6cbq2RVY1vJcXirWD3V4Fu4G1LWcvxiT3nu4Fh3
