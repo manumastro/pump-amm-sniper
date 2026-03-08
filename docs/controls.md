@@ -312,3 +312,43 @@ Quando succede:
 - analizza creator, funder, relay e micro-sources
 - aggiungi gli indirizzi sospetti nelle blacklist dedicate
 - non usare i report come fonte blacklist
+
+## 7. Grey-Zone Winners
+
+Esistono token che non sono `clean`, ma nemmeno rug immediati.
+
+Caso tipico:
+- `RRELAY` presente
+- creator/funder/rete di funding con pattern infrastrutturale
+- `TOP10` basso
+- `DEV holding` a zero
+- nessun refund al funder
+- nessun drain durante il nostro hold
+- trade comunque profittevole
+
+Interpretazione:
+- `trade buono`
+- `dev non pulito`
+- quindi non e un token sicuro, ma un `grey-zone winner`
+
+Regola:
+- non classificare come `dev buono` solo perche resta vivo 5-10 minuti
+- classificare separatamente:
+  1. qualita del trade
+  2. pulizia del dev / funder / relay
+
+## 8. Tre leve di tuning
+
+Se vuoi rendere il bot piu severo sui casi grigi, le 3 leve piu utili sono:
+
+1. `RRELAY` come warning forte
+- non blocca da solo
+- ma va considerato segnale strutturale di funding coordinato
+
+2. soglia micro-burst piu bassa
+- oggi il caso passa se i micro-transfer non superano il gate
+- abbassare la soglia aumenta gli `SKIP: creator risk`
+
+3. soglia cashout piu bassa
+- se `CCASH` resta sotto la soglia critica, il bot continua
+- abbassare la soglia rende piu facile uscire dai casi sospetti ma ancora vivi

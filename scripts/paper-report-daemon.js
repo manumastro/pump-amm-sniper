@@ -64,9 +64,45 @@ function getEvent(id) {
       checksPassed: false,
       endStatus: null,
       durationMs: null,
+      sawRelayFunding: false,
+      relayFundingRoot: null,
+      relayFundingFunder: null,
+      relayFundingInboundSol: null,
+      relayFundingOutboundSol: null,
+      relayFundingWindowSec: null,
+      creatorRiskFunder: null,
+      creatorRiskRefundSol: null,
+      creatorRiskMicroTransfers: 0,
+      creatorRiskMicroSources: 0,
+      creatorCashoutTotalSol: null,
+      creatorCashoutMaxSol: null,
+      creatorCashoutRelPct: null,
+      creatorCashoutScore: null,
+      creatorCashoutDest: null,
     });
   }
   return events.get(id);
+}
+
+function classifyOperation(e) {
+  const status = `${e.skipReason || ''} ${e.endStatus || ''}`.toLowerCase();
+  const hostile =
+    (typeof e.pnlPct === 'number' && e.pnlPct <= -80) ||
+    status.includes('paper simulation guard') ||
+    status.includes('exit returned 0 sol') ||
+    status.includes('liquidity stop') ||
+    status.includes('creator risk') ||
+    status.includes('token security');
+  if (hostile) return 'hostile';
+
+  const greyZone =
+    e.sawRelayFunding ||
+    (typeof e.creatorCashoutScore === 'number' && e.creatorCashoutScore >= 0.5) ||
+    e.creatorRiskMicroTransfers >= 4 ||
+    (!!e.creatorRiskFunder && e.creatorRiskFunder !== '-');
+  if (greyZone) return 'grey-zone';
+
+  return 'clean';
 }
 
 function getCurrentEvent() {
@@ -143,6 +179,46 @@ function parseLine(line) {
         ev.pnlSol = abs == null ? null : sign * abs;
         ev.pnlPct = pct;
       }
+      return;
+    }
+
+    if (stage === 'CRISK') {
+      const funder = (message.match(/funder=([^\s]+)/) || [])[1] || null;
+      const refund = Number((message.match(/refund=([0-9.]+)/) || [])[1] || '0');
+      const micro = (message.match(/micro=(\d+)\/(\d+)/) || []);
+      ev.creatorRiskFunder = funder && funder !== '-' ? funder : ev.creatorRiskFunder;
+      ev.creatorRiskRefundSol = refund;
+      ev.creatorRiskMicroTransfers = micro[1] ? Number(micro[1]) : ev.creatorRiskMicroTransfers;
+      ev.creatorRiskMicroSources = micro[2] ? Number(micro[2]) : ev.creatorRiskMicroSources;
+      return;
+    }
+
+    if (stage === 'RRELAY') {
+      const root = (message.match(/root=([^\s]+)/) || [])[1] || null;
+      const funder = (message.match(/funder=([^\s]+)/) || [])[1] || null;
+      const inbound = Number((message.match(/in=([0-9.]+)/) || [])[1] || '0');
+      const outbound = Number((message.match(/out=([0-9.]+)/) || [])[1] || '0');
+      const windowSec = Number((message.match(/window=([0-9.]+|n\/a)s/) || [])[1]);
+      ev.sawRelayFunding = true;
+      ev.relayFundingRoot = root && root !== '-' ? root : ev.relayFundingRoot;
+      ev.relayFundingFunder = funder && funder !== '-' ? funder : ev.relayFundingFunder;
+      ev.relayFundingInboundSol = inbound || ev.relayFundingInboundSol;
+      ev.relayFundingOutboundSol = outbound || ev.relayFundingOutboundSol;
+      ev.relayFundingWindowSec = Number.isFinite(windowSec) ? windowSec : ev.relayFundingWindowSec;
+      return;
+    }
+
+    if (stage === 'CCASH') {
+      const total = Number((message.match(/total=([0-9.]+)/) || [])[1] || '0');
+      const max = Number((message.match(/max=([0-9.]+)/) || [])[1] || '0');
+      const rel = Number((message.match(/rel=([0-9.]+)/) || [])[1] || '0');
+      const score = Number((message.match(/score=([0-9.]+)/) || [])[1] || '0');
+      const dest = (message.match(/dest=([^\s]+)/) || [])[1] || null;
+      ev.creatorCashoutTotalSol = total;
+      ev.creatorCashoutMaxSol = max;
+      ev.creatorCashoutRelPct = rel;
+      ev.creatorCashoutScore = score;
+      ev.creatorCashoutDest = dest && dest !== '-' ? dest : ev.creatorCashoutDest;
       return;
     }
 
@@ -309,6 +385,22 @@ function summarize() {
       endStatus: e.endStatus,
       durationMs: e.durationMs,
       rugPull: isRugPull(e),
+      classification: classifyOperation(e),
+      sawRelayFunding: e.sawRelayFunding,
+      relayFundingRoot: e.relayFundingRoot,
+      relayFundingFunder: e.relayFundingFunder,
+      relayFundingInboundSol: e.relayFundingInboundSol,
+      relayFundingOutboundSol: e.relayFundingOutboundSol,
+      relayFundingWindowSec: e.relayFundingWindowSec,
+      creatorRiskFunder: e.creatorRiskFunder,
+      creatorRiskRefundSol: e.creatorRiskRefundSol,
+      creatorRiskMicroTransfers: e.creatorRiskMicroTransfers,
+      creatorRiskMicroSources: e.creatorRiskMicroSources,
+      creatorCashoutTotalSol: e.creatorCashoutTotalSol,
+      creatorCashoutMaxSol: e.creatorCashoutMaxSol,
+      creatorCashoutRelPct: e.creatorCashoutRelPct,
+      creatorCashoutScore: e.creatorCashoutScore,
+      creatorCashoutDest: e.creatorCashoutDest,
     })),
     last10: finished.slice(-10).map(e => ({
       id: e.id,
@@ -319,6 +411,7 @@ function summarize() {
       skipReason: e.skipReason,
       endStatus: e.endStatus,
       durationMs: e.durationMs,
+      classification: classifyOperation(e),
     })),
     rugPullEvents: rugPulls.slice(-20).map(e => ({
       id: e.id,
@@ -337,6 +430,7 @@ function summarize() {
       pnlPct: e.pnlPct,
       skipReason: e.skipReason,
       endStatus: e.endStatus,
+      classification: classifyOperation(e),
     })),
   };
 }
@@ -370,6 +464,7 @@ function writeReports(force = false) {
           `start=${e.startedAt || '-'} buy_ts=${e.buyAt || '-'} sell_ts=${e.sellAt || '-'} end=${e.endedAt || '-'} ` +
           `buy_spot=${e.buySpotSolPerToken ?? 'n/a'} sell_spot=${e.sellSpotSolPerToken ?? 'n/a'} ` +
           `pnl=${e.pnlSol ?? 'n/a'} (${e.pnlPct ?? 'n/a'}%) ` +
+          `class=${e.classification} ` +
           `status=${e.endStatus || 'n/a'} skip=${e.skipReason || '-'} ` +
           `rug=${e.rugPull ? 'YES' : 'NO'} rug_reason=${e.rugPull ? rugReason : '-'} ` +
           `gmgn=${e.gmgn || '-'}`;
@@ -383,6 +478,7 @@ function writeReports(force = false) {
         `buy_ts=${e.buyAt || '-'} sell_ts=${e.sellAt || '-'} pnl_ts=${e.pnlAt || '-'} ` +
         `buy_spot=${e.buySpotSolPerToken ?? 'n/a'} sell_spot=${e.sellSpotSolPerToken ?? 'n/a'} ` +
         `pnl=${e.pnlSol ?? 'n/a'} (${e.pnlPct ?? 'n/a'}%) ` +
+        `class=${e.classification} ` +
         `reason=${e.skipReason || e.endStatus || '-'} ` +
         `gmgn=${e.gmgn || '-'}`
       )
