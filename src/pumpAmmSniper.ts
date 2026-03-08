@@ -109,6 +109,15 @@ const CONFIG = {
     CREATOR_RISK_SPRAY_OUTBOUND_MIN_DESTINATIONS: Number(process.env.CREATOR_RISK_SPRAY_OUTBOUND_MIN_DESTINATIONS || 8),
     CREATOR_RISK_SPRAY_OUTBOUND_MAX_REL_STDDEV: Number(process.env.CREATOR_RISK_SPRAY_OUTBOUND_MAX_REL_STDDEV || 0.12),
     CREATOR_RISK_SPRAY_OUTBOUND_MAX_AMOUNT_RATIO: Number(process.env.CREATOR_RISK_SPRAY_OUTBOUND_MAX_AMOUNT_RATIO || 1.25),
+    CREATOR_RISK_INBOUND_SPRAY_BLOCK_ENABLED: process.env.CREATOR_RISK_INBOUND_SPRAY_BLOCK_ENABLED !== "false",
+    CREATOR_RISK_INBOUND_SPRAY_MIN_TRANSFERS: Number(process.env.CREATOR_RISK_INBOUND_SPRAY_MIN_TRANSFERS || 8),
+    CREATOR_RISK_INBOUND_SPRAY_MIN_SOURCES: Number(process.env.CREATOR_RISK_INBOUND_SPRAY_MIN_SOURCES || 8),
+    CREATOR_RISK_INBOUND_SPRAY_MAX_REL_STDDEV: Number(process.env.CREATOR_RISK_INBOUND_SPRAY_MAX_REL_STDDEV || 0.12),
+    CREATOR_RISK_INBOUND_SPRAY_MAX_AMOUNT_RATIO: Number(process.env.CREATOR_RISK_INBOUND_SPRAY_MAX_AMOUNT_RATIO || 1.35),
+    CREATOR_RISK_INBOUND_SPRAY_MAX_WINDOW_SEC: Number(process.env.CREATOR_RISK_INBOUND_SPRAY_MAX_WINDOW_SEC || 30),
+    CREATOR_RISK_CREATOR_SEED_RATIO_BLOCK_ENABLED: process.env.CREATOR_RISK_CREATOR_SEED_RATIO_BLOCK_ENABLED !== "false",
+    CREATOR_RISK_CREATOR_SEED_MIN_PCT_OF_CURRENT_LIQ: Number(process.env.CREATOR_RISK_CREATOR_SEED_MIN_PCT_OF_CURRENT_LIQ || 5),
+    CREATOR_RISK_CREATOR_SEED_MAX_GROWTH_MULTIPLIER: Number(process.env.CREATOR_RISK_CREATOR_SEED_MAX_GROWTH_MULTIPLIER || 20),
     CREATOR_RISK_MICRO_INBOUND_MAX_SOL: Number(process.env.CREATOR_RISK_MICRO_INBOUND_MAX_SOL || 0.001),
     CREATOR_RISK_MICRO_INBOUND_MIN_TRANSFERS: Number(process.env.CREATOR_RISK_MICRO_INBOUND_MIN_TRANSFERS || 6),
     CREATOR_RISK_MICRO_INBOUND_MIN_SOURCES: Number(process.env.CREATOR_RISK_MICRO_INBOUND_MIN_SOURCES || 2),
@@ -285,6 +294,9 @@ type CreatorRiskResult = {
     creatorCashoutDestination?: string | null;
     relayFundingRoot?: string | null;
     directAmmReentrySig?: string | null;
+    creatorSeedSol?: number;
+    creatorSeedPctOfCurrentLiq?: number;
+    inboundSpraySources?: number;
 };
 
 type RugHistory = {
@@ -696,6 +708,7 @@ async function handleNewPool(connection: Connection, signature: string) {
 
         const solPriceUsd = await getSolPriceUsd();
         let liquidityUSD: number | null = null;
+        const creatorSeedSol = creatorAddress ? extractCreatorSeedSolFromCreateTx(tx, creatorAddress) : 0;
         if (solPriceUsd !== null) {
             liquidityUSD = liquiditySOL * solPriceUsd;
             stageLog(ctx, "LIQ", `${liquiditySOL.toFixed(2)} SOL (~$${liquidityUSD.toFixed(0)})`);
@@ -729,6 +742,7 @@ async function handleNewPool(connection: Connection, signature: string) {
             entrySolLiquidity: liquiditySOL,
             createPoolSignature: signature,
             createPoolBlockTime: tx.blockTime || null,
+            creatorSeedSol,
         });
         if (!creatorRisk.ok) {
             console.log(`🛑 SKIP: creator risk (${creatorRisk.reason})`);
@@ -1407,6 +1421,70 @@ function classifySprayOutboundPattern(outboundTransfers: Array<{ destination: st
     };
 }
 
+function classifyInboundSprayPattern(inboundTransfers: Array<{ source: string; sol: number }>) {
+    const positive = inboundTransfers.filter((t) => Number.isFinite(t.sol) && t.sol > 0);
+    if (!positive.length) {
+        return {
+            detected: false,
+            transfers: 0,
+            sources: 0,
+            medianSol: 0,
+            relStdDev: Infinity,
+            amountRatio: Infinity,
+        };
+    }
+
+    const values = positive.map((t) => t.sol).sort((a, b) => a - b);
+    const sources = new Set(positive.map((t) => t.source)).size;
+    const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
+    const variance = values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / values.length;
+    const stdDev = Math.sqrt(Math.max(0, variance));
+    const relStdDev = mean > 0 ? stdDev / mean : Infinity;
+    const medianSol =
+        values.length % 2 === 0
+            ? (values[(values.length / 2) - 1] + values[values.length / 2]) / 2
+            : values[Math.floor(values.length / 2)];
+    const amountRatio = values[0] > 0 ? values[values.length - 1] / values[0] : Infinity;
+
+    const detected =
+        positive.length >= CONFIG.CREATOR_RISK_INBOUND_SPRAY_MIN_TRANSFERS &&
+        sources >= CONFIG.CREATOR_RISK_INBOUND_SPRAY_MIN_SOURCES &&
+        relStdDev <= CONFIG.CREATOR_RISK_INBOUND_SPRAY_MAX_REL_STDDEV &&
+        amountRatio <= CONFIG.CREATOR_RISK_INBOUND_SPRAY_MAX_AMOUNT_RATIO;
+
+    return {
+        detected,
+        transfers: positive.length,
+        sources,
+        medianSol,
+        relStdDev,
+        amountRatio,
+    };
+}
+
+function extractCreatorSeedSolFromCreateTx(tx: any, creatorAddress: string): number {
+    const counterparties = new Set<string>();
+    const links = new Set<string>();
+    const outer = walkParsedInstructions(
+        tx.transaction?.message?.instructions,
+        creatorAddress,
+        counterparties,
+        links,
+        new Set<string>(),
+    );
+    const innerParts = (tx.meta?.innerInstructions || []).map((inner: any) =>
+        walkParsedInstructions(inner.instructions, creatorAddress, counterparties, links, new Set<string>())
+    );
+
+    const outboundTransfers = [
+        ...outer.outboundTransfers,
+        ...innerParts.flatMap((part: any) => part.outboundTransfers),
+    ].filter((transfer) => Number.isFinite(transfer.sol) && transfer.sol > 0);
+
+    if (!outboundTransfers.length) return 0;
+    return outboundTransfers.reduce((max, transfer) => Math.max(max, transfer.sol), 0);
+}
+
 function instructionProgramIdMatches(ix: any, expectedProgramId: string): boolean {
     const raw = ix?.programId;
     const programId =
@@ -1480,7 +1558,13 @@ async function runCreatorRiskCheck(
     connection: Connection,
     creatorAddress: string,
     ctx: string,
-    options: { forceRefresh?: boolean; entrySolLiquidity?: number; createPoolSignature?: string; createPoolBlockTime?: number | null } = {},
+    options: {
+        forceRefresh?: boolean;
+        entrySolLiquidity?: number;
+        createPoolSignature?: string;
+        createPoolBlockTime?: number | null;
+        creatorSeedSol?: number;
+    } = {},
 ): Promise<CreatorRiskResult> {
     if (!CONFIG.CREATOR_RISK_CHECK_ENABLED) {
         stageLog(ctx, "CRISK", "check disabled");
@@ -1589,6 +1673,7 @@ async function runCreatorRiskCheck(
             options.entrySolLiquidity,
         );
         const sprayOutbound = classifySprayOutboundPattern(outboundTransfers);
+        const sprayInbound = classifyInboundSprayPattern(inboundTransfers);
         const relayFunding = await classifyRecentRelayFunding(connection, creatorAddress, funder);
         const directAmmReentry = await detectCreatorDirectAmmReentry(
             connection,
@@ -1596,6 +1681,15 @@ async function runCreatorRiskCheck(
             options.createPoolSignature,
             options.createPoolBlockTime,
         );
+        const creatorSeedSol = Number.isFinite(options.creatorSeedSol) ? Math.max(0, options.creatorSeedSol || 0) : 0;
+        const creatorSeedPctOfCurrentLiq =
+            options.entrySolLiquidity && options.entrySolLiquidity > 0 && creatorSeedSol > 0
+                ? (creatorSeedSol / options.entrySolLiquidity) * 100
+                : 0;
+        const creatorSeedGrowthMultiple =
+            creatorSeedSol > 0 && options.entrySolLiquidity && options.entrySolLiquidity > 0
+                ? options.entrySolLiquidity / creatorSeedSol
+                : Infinity;
 
         stageLog(
             ctx,
@@ -1620,6 +1714,21 @@ async function runCreatorRiskCheck(
                 `total=${creatorCashout.totalSol.toFixed(3)} max=${creatorCashout.maxSingleSol.toFixed(3)} ` +
                 `rel=${creatorCashout.pctOfEntryLiquidity.toFixed(2)}% score=${creatorCashout.score.toFixed(2)} ` +
                 `dest=${creatorCashout.destination ? shortSig(creatorCashout.destination) : "-"}`
+            );
+        }
+        if (creatorSeedSol > 0 && options.entrySolLiquidity && options.entrySolLiquidity > 0) {
+            stageLog(
+                ctx,
+                "SEED",
+                `creator=${creatorSeedSol.toFixed(3)} SOL pct=${creatorSeedPctOfCurrentLiq.toFixed(2)}% growth=${creatorSeedGrowthMultiple.toFixed(2)}x`
+            );
+        }
+        if (sprayInbound.detected) {
+            stageLog(
+                ctx,
+                "ISPRAY",
+                `in=${sprayInbound.transfers} src=${sprayInbound.sources} median=${sprayInbound.medianSol.toFixed(3)} ` +
+                `rel_std=${sprayInbound.relStdDev.toFixed(2)} ratio=${sprayInbound.amountRatio.toFixed(2)}`
             );
         }
         if (sprayOutbound.detected) {
@@ -1682,6 +1791,30 @@ async function runCreatorRiskCheck(
         }
 
         if (
+            CONFIG.CREATOR_RISK_CREATOR_SEED_RATIO_BLOCK_ENABLED &&
+            creatorSeedSol > 0 &&
+            options.entrySolLiquidity &&
+            options.entrySolLiquidity > 0 &&
+            creatorSeedPctOfCurrentLiq < CONFIG.CREATOR_RISK_CREATOR_SEED_MIN_PCT_OF_CURRENT_LIQ &&
+            creatorSeedGrowthMultiple >= CONFIG.CREATOR_RISK_CREATOR_SEED_MAX_GROWTH_MULTIPLIER
+        ) {
+            const result = {
+                ok: false,
+                reason:
+                    `creator seed too small ${creatorSeedSol.toFixed(3)} SOL ` +
+                    `(${creatorSeedPctOfCurrentLiq.toFixed(2)}% of liq, growth ${creatorSeedGrowthMultiple.toFixed(2)}x)`,
+                funder,
+                uniqueCounterparties,
+                compressedWindowSec,
+                burner,
+                creatorSeedSol,
+                creatorSeedPctOfCurrentLiq,
+            };
+            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
+            return result;
+        }
+
+        if (
             compressedWindowSec !== null &&
             compressedWindowSec <= CONFIG.CREATOR_RISK_MICRO_INBOUND_WINDOW_SEC &&
             microInboundTransfers.length >= CONFIG.CREATOR_RISK_MICRO_INBOUND_MIN_TRANSFERS &&
@@ -1694,6 +1827,51 @@ async function runCreatorRiskCheck(
                 uniqueCounterparties,
                 compressedWindowSec,
                 burner,
+            };
+            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
+            return result;
+        }
+
+        if (
+            CONFIG.CREATOR_RISK_INBOUND_SPRAY_BLOCK_ENABLED &&
+            compressedWindowSec !== null &&
+            compressedWindowSec <= CONFIG.CREATOR_RISK_INBOUND_SPRAY_MAX_WINDOW_SEC &&
+            sprayInbound.detected
+        ) {
+            const result = {
+                ok: false,
+                reason:
+                    `inbound collector pattern ${sprayInbound.transfers} transfers ` +
+                    `from ${sprayInbound.sources} sources in ${compressedWindowSec}s ` +
+                    `(median ${sprayInbound.medianSol.toFixed(3)} SOL, rel_std ${sprayInbound.relStdDev.toFixed(2)})`,
+                funder,
+                uniqueCounterparties,
+                compressedWindowSec,
+                burner,
+                creatorSeedSol,
+                creatorSeedPctOfCurrentLiq,
+                inboundSpraySources: sprayInbound.sources,
+            };
+            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
+            return result;
+        }
+
+        if (
+            CONFIG.CREATOR_RISK_SPRAY_OUTBOUND_BLOCK_ENABLED &&
+            sprayOutbound.detected
+        ) {
+            const result = {
+                ok: false,
+                reason:
+                    `spray outbound pattern ${sprayOutbound.transfers} transfers ` +
+                    `to ${sprayOutbound.destinations} destinations ` +
+                    `(median ${sprayOutbound.medianSol.toFixed(3)} SOL, rel_std ${sprayOutbound.relStdDev.toFixed(2)})`,
+                funder,
+                uniqueCounterparties,
+                compressedWindowSec,
+                burner,
+                creatorSeedSol,
+                creatorSeedPctOfCurrentLiq,
             };
             creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
             return result;
@@ -1976,6 +2154,9 @@ async function runCreatorRiskCheck(
             creatorCashoutDestination: creatorCashout.destination,
             relayFundingRoot: relayFunding.root,
             directAmmReentrySig: directAmmReentry.signature,
+            creatorSeedSol,
+            creatorSeedPctOfCurrentLiq,
+            inboundSpraySources: sprayInbound.sources,
         };
         creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
         return result;

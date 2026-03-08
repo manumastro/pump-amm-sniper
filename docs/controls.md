@@ -71,6 +71,7 @@ Scopo:
 - bloccare creator sospetti anche se il token sembra pulito
 
 Segnali usati:
+- seed SOL reale del creator nella `create_pool`, confrontato con la liquidity osservata prima del buy
 - creator blacklistato
 - funder blacklistato
 - micro-burst source blacklistata
@@ -86,6 +87,7 @@ Segnali usati:
 - relay funding recente su pool standard (`84.99 / 100 / 120 SOL`)
 - relay-root gia noto come sospetto + `cp` alto + `out` alto + micro quasi assente
 - relay-root sospetto + `spray outbound`: tante uscite molto simili verso molte destinazioni
+- `inbound collector pattern`: tanti inbound simili da molte source verso il creator in finestra breve
 - creator che richiama direttamente `pAMMBay...` dopo `create_pool`
 
 Blacklist lette solo da:
@@ -103,6 +105,8 @@ Log principali:
 - `RRELAY | root=... funder=... in=... out=... window=...`
 - `CAMM | creator direct pAMMBay... re-entry via ...`
 - `CCASH | total=... max=... rel=... score=... dest=...`
+- `SEED | creator=... SOL pct=...% growth=...x`
+- `ISPRAY | in=... src=... median=... rel_std=... ratio=...`
 
 Lettura pratica:
 1. `RRELAY` da solo non significa per forza rug.
@@ -110,6 +114,8 @@ Lettura pratica:
 3. `CAMM` e un segnale duro: il creator ha toccato di nuovo l'AMM dopo il `create_pool`.
 4. `cp alto + out alto + low micro + relay-root sospetto` e un pattern da wallet operativo, non retail.
 5. `spray outbound` = il creator distribuisce importi quasi uguali a molti wallet: pattern infrastrutturale, non utente normale.
+6. `seed troppo piccolo` = il creator ha quasi zero skin in the game rispetto alla liquidity che vedevamo prima del buy.
+7. `inbound collector` = molti wallet alimentano il creator con importi simili in poco tempo: pattern di coordinamento, non domanda organica.
 
 Gerarchia pratica dei segnali:
 1. `CCASH` = segnale economico forte: il creator sta gia portando via SOL.
