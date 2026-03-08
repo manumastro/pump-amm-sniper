@@ -1,14 +1,20 @@
 import dotenv from "dotenv";
 import { Connection, Keypair, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
+import { ChildProcess, spawn } from "child_process";
 import fs from "fs";
 import path from "path";
 import bs58 from "bs58";
+import util from "util";
 import { OnlinePumpAmmSdk, PumpAmmSdk, buyQuoteInput, sellBaseInput } from "@pump-fun/pump-swap-sdk";
 import BN from "bn.js";
 import { AccountLayout, getMint, TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
 import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction, createCloseAccountInstruction } from "@solana/spl-token";
 
 dotenv.config();
+
+const EARLY_ROOT_DIR = process.cwd();
+const IS_WORKER_PROCESS = !!process.env.WORKER_TASK_SIGNATURE;
+const WORKER_SLOT = Number(process.env.WORKER_SLOT || 0);
 
 function timestampNow(): string {
     const d = new Date();
@@ -17,10 +23,28 @@ function timestampNow(): string {
 }
 
 function patchConsoleWithTimestamp() {
-    const wrap = (fn: (...args: any[]) => void) => (...args: any[]) => fn(`[${timestampNow()}]`, ...args);
-    console.log = wrap(console.log.bind(console));
-    console.warn = wrap(console.warn.bind(console));
-    console.error = wrap(console.error.bind(console));
+    const targetLogPath = IS_WORKER_PROCESS
+        ? path.join(EARLY_ROOT_DIR, "logs", `paper-worker-${WORKER_SLOT || 1}.log`)
+        : path.join(EARLY_ROOT_DIR, "paper.log");
+
+    fs.mkdirSync(path.dirname(targetLogPath), { recursive: true });
+
+    const originalLog = console.log.bind(console);
+    const originalWarn = console.warn.bind(console);
+    const originalError = console.error.bind(console);
+
+    const shouldMirrorStdout = !process.env.INVOCATION_ID && !IS_WORKER_PROCESS;
+    const wrap = (fn: (...args: any[]) => void) => (...args: any[]) => {
+        const rendered = `[${timestampNow()}] ${util.format(...args)}`;
+        fs.appendFileSync(targetLogPath, `${rendered}\n`);
+        if (shouldMirrorStdout) {
+            fn(rendered);
+        }
+    };
+
+    console.log = wrap(originalLog);
+    console.warn = wrap(originalWarn);
+    console.error = wrap(originalError);
 }
 
 patchConsoleWithTimestamp();
@@ -164,6 +188,14 @@ const BLACKLIST_FUNDERS_PATH = path.join(BLACKLISTS_DIR, "funders.txt");
 const BLACKLIST_MICRO_BURST_SOURCES_PATH = path.join(BLACKLISTS_DIR, "micro-burst-sources.txt");
 const BLACKLIST_CASHOUT_RELAYS_PATH = path.join(BLACKLISTS_DIR, "cashout-relays.txt");
 const BLACKLIST_FUNDER_COUNTS_PATH = path.join(BLACKLISTS_DIR, "funder-counts.json");
+const WORKER_LOG_DIR = path.join(ROOT_DIR, "logs");
+
+type WorkerSlotState = {
+    slot: number;
+    busy: boolean;
+    signature: string | null;
+    child: ChildProcess | null;
+};
 
 function shortSig(sig: string): string {
     if (sig.length <= 14) return sig;
@@ -175,8 +207,32 @@ function stageLog(_ctx: string, stage: string, message: string) {
 }
 
 function inFlightCount(): number {
+    if (!IS_WORKER_PROCESS && workerSlots.length > 0) {
+        return workerSlots.filter((slot) => slot.busy).length;
+    }
     return activePoolJobs + activeLivePositions;
 }
+
+function getWorkerLogPath(slot: number): string {
+    return path.join(WORKER_LOG_DIR, `paper-worker-${slot}.log`);
+}
+
+function getWorkerEntryCommand(): { cmd: string; args: string[] } {
+    const distEntry = path.join(ROOT_DIR, "dist", "pumpAmmSniper.js");
+    if (fs.existsSync(distEntry)) {
+        return { cmd: process.execPath, args: [distEntry] };
+    }
+    return { cmd: "npx", args: ["ts-node", "src/pumpAmmSniper.ts"] };
+}
+
+const workerSlots: WorkerSlotState[] = !IS_WORKER_PROCESS
+    ? Array.from({ length: Math.max(1, CONFIG.MAX_CONCURRENT_OPERATIONS) }, (_, index) => ({
+        slot: index + 1,
+        busy: false,
+        signature: null,
+        child: null,
+    }))
+    : [];
 
 function toSubscriptDigits(value: number): string {
     const map = ["₀", "₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉"];
@@ -265,6 +321,15 @@ let offlineSdk: PumpAmmSdk;
 // ═══════════════════════════════════════════════════════════════════════════════
 
 async function main() {
+    if (IS_WORKER_PROCESS) {
+        await runWorkerTask();
+        return;
+    }
+
+    await runSupervisor();
+}
+
+async function runSupervisor() {
     const rpcEndpoint = process.env.SVS_UNSTAKED_RPC || "https://api.mainnet-beta.solana.com";
     const connection = new Connection(rpcEndpoint, { commitment: "confirmed" });
 
@@ -277,7 +342,7 @@ async function main() {
     console.log(`Mode: ${MONITOR_ONLY ? "MONITOR_ONLY" : "TRADING"}`);
     console.log(`Wallet: ${walletKeypair ? walletKeypair.publicKey.toBase58() : "N/A (no private key loaded)"}`);
     console.log(`Min Liquidity: ${CONFIG.MIN_POOL_LIQUIDITY_SOL} SOL`);
-    console.log(`Max Parallel Ops: ${Math.max(1, CONFIG.MAX_CONCURRENT_OPERATIONS)}`);
+    console.log(`Max Parallel Ops: ${workerSlots.length}`);
     if (!MONITOR_ONLY) {
         console.log(`Amount: ${CONFIG.TRADE_AMOUNT_SOL} SOL`);
         console.log(`Auto-Sell: ${CONFIG.AUTO_SELL_DELAY_MS / 1000} seconds`);
@@ -293,6 +358,75 @@ async function main() {
 
     // Keep process alive
     console.log("🚀 Sniper is running. Press Ctrl+C to stop.\n");
+}
+
+async function runWorkerTask() {
+    const signature = process.env.WORKER_TASK_SIGNATURE;
+    if (!signature) {
+        throw new Error("WORKER_TASK_SIGNATURE missing");
+    }
+
+    const rpcEndpoint = process.env.SVS_UNSTAKED_RPC || "https://api.mainnet-beta.solana.com";
+    const connection = new Connection(rpcEndpoint, { commitment: "confirmed" });
+
+    onlineSdk = new OnlinePumpAmmSdk(connection);
+    offlineSdk = new PumpAmmSdk();
+
+    console.log(`WORKER       | slot ${WORKER_SLOT || 1} start ${shortSig(signature)}`);
+    await handleNewPool(connection, signature);
+    console.log(`WORKER       | slot ${WORKER_SLOT || 1} done ${shortSig(signature)}`);
+}
+
+function findIdleWorkerSlot(): WorkerSlotState | null {
+    return workerSlots.find((slot) => !slot.busy) || null;
+}
+
+function dispatchPoolToWorker(signature: string) {
+    const slot = findIdleWorkerSlot();
+    if (!slot) {
+        console.log(`QUEUE        | busy skip ${shortSig(signature)}`);
+        return;
+    }
+
+    fs.mkdirSync(WORKER_LOG_DIR, { recursive: true });
+    const workerLogPath = getWorkerLogPath(slot.slot);
+    if (!fs.existsSync(workerLogPath)) {
+        fs.writeFileSync(workerLogPath, "");
+    }
+
+    slot.busy = true;
+    slot.signature = signature;
+    console.log(`DISPATCH     | worker-${slot.slot} ${shortSig(signature)}`);
+
+    const workerEntry = getWorkerEntryCommand();
+    const child = spawn(workerEntry.cmd, workerEntry.args, {
+        cwd: ROOT_DIR,
+        env: {
+            ...process.env,
+            WORKER_TASK_SIGNATURE: signature,
+            WORKER_SLOT: String(slot.slot),
+        },
+        stdio: "ignore",
+    });
+
+    slot.child = child;
+
+    child.on("exit", (code, signal) => {
+        console.log(
+            `WORKER       | worker-${slot.slot} done ${shortSig(signature)} ` +
+            `(code=${code ?? "null"} signal=${signal ?? "-"})`
+        );
+        slot.busy = false;
+        slot.signature = null;
+        slot.child = null;
+    });
+
+    child.on("error", (error) => {
+        console.error(`WORKER       | worker-${slot.slot} failed ${shortSig(signature)}: ${error.message}`);
+        slot.busy = false;
+        slot.signature = null;
+        slot.child = null;
+    });
 }
 
 async function subscribeToPoolLogs(connection: Connection) {
@@ -316,15 +450,11 @@ async function subscribeToPoolLogs(connection: Connection) {
 
                 if (!hasCreatePool) return;
 
-                const ctx = shortSig(logs.signature);
                 if (inFlightCount() >= Math.max(1, CONFIG.MAX_CONCURRENT_OPERATIONS)) {
+                    console.log(`QUEUE        | busy skip ${shortSig(logs.signature)}`);
                     return;
                 }
-                console.log("");
-                console.log("────────────────────────────────────────────────────────");
-                stageLog(ctx, "NEW", "pool detected");
-                stageLog(ctx, "SIGNATURE", logs.signature);
-                await handleNewPool(connection, logs.signature);
+                dispatchPoolToWorker(logs.signature);
             } catch (e: any) {
                 console.error(`❌ Log handler error: ${e.message}`);
             }
@@ -399,6 +529,16 @@ function setupGracefulShutdown(connection: Connection) {
                 // no-op on shutdown
             }
             logSubscriptionId = null;
+        }
+
+        for (const slot of workerSlots) {
+            if (slot.child && !slot.child.killed) {
+                try {
+                    slot.child.kill("SIGTERM");
+                } catch {
+                    // no-op on shutdown
+                }
+            }
         }
 
         process.exit(0);

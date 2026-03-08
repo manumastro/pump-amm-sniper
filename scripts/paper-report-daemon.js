@@ -3,7 +3,8 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = process.cwd();
-const LOG_PATH = path.join(ROOT, 'paper.log');
+const SUPERVISOR_LOG_PATH = path.join(ROOT, 'paper.log');
+const LOG_DIR = path.join(ROOT, 'logs');
 const OUT_JSON = path.join(ROOT, 'logs', 'paper-report.json');
 const OUT_TXT = path.join(ROOT, 'logs', 'paper-report.txt');
 
@@ -37,11 +38,22 @@ function fmtNum(v, digits = 12) {
 }
 
 const events = new Map();
-let offset = 0;
-let carry = '';
+const offsets = new Map();
+const carries = new Map();
 let lastWriteAt = 0;
 let eventSeq = 0;
-let currentEventId = null;
+const currentEventIds = new Map();
+
+function discoverLogPaths() {
+  const workerLogs = fs.existsSync(LOG_DIR)
+    ? fs.readdirSync(LOG_DIR)
+      .filter(name => /^paper-worker-\d+\.log$/.test(name))
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+      .map(name => path.join(LOG_DIR, name))
+    : [];
+
+  return workerLogs.length ? workerLogs : [SUPERVISOR_LOG_PATH];
+}
 
 function getEvent(id) {
   if (!events.has(id)) {
@@ -105,13 +117,24 @@ function classifyOperation(e) {
   return 'clean';
 }
 
-function getCurrentEvent() {
+function getCurrentEvent(logPath) {
+  const currentEventId = currentEventIds.get(logPath) || null;
   if (currentEventId && events.has(currentEventId)) return events.get(currentEventId);
   const latestOpen = [...events.values()].reverse().find(e => !e.endedAt);
   return latestOpen || null;
 }
 
-function parseLine(line) {
+function ensureCurrentEvent(logPath, ts) {
+  let ev = getCurrentEvent(logPath);
+  if (ev) return ev;
+  const id = `evt-${String(++eventSeq).padStart(6, '0')}`;
+  ev = getEvent(id);
+  ev.startedAt = ev.startedAt || ts || null;
+  currentEventIds.set(logPath, ev.id);
+  return ev;
+}
+
+function parseLine(logPath, line) {
   const ts = (line.match(/^\[([^\]]+)\]/) || [])[1] || null;
   const stageLine = line.match(/^\[[^\]]+\]\s+(?:([^\s|]+)\s+\|\s+)?([^|]+?)\s+\|\s+(.+)$/);
   if (stageLine) {
@@ -122,9 +145,9 @@ function parseLine(line) {
     let ev = null;
     if (maybeId && maybeId.includes('...')) {
       ev = getEvent(maybeId);
-      currentEventId = maybeId;
+      currentEventIds.set(logPath, maybeId);
     } else {
-      ev = getCurrentEvent();
+      ev = getCurrentEvent(logPath);
     }
 
     if (stage === 'NEW') {
@@ -132,44 +155,57 @@ function parseLine(line) {
         const id = `evt-${String(++eventSeq).padStart(6, '0')}`;
         ev = getEvent(id);
       }
-      currentEventId = ev.id;
+      currentEventIds.set(logPath, ev.id);
+      ev.startedAt = ev.startedAt || ts;
+      return;
+    }
+
+    if (stage === 'START') {
+      ev = ev || ensureCurrentEvent(logPath, ts);
       ev.startedAt = ev.startedAt || ts;
       return;
     }
 
     if (stage === 'SIGNATURE') {
+      ev = ev || ensureCurrentEvent(logPath, ts);
       ev.signature = message;
       return;
     }
 
     if (stage === 'TOKEN') {
+      ev = ev || ensureCurrentEvent(logPath, ts);
       ev.tokenMint = message;
       return;
     }
 
     if (stage === 'POOL') {
+      ev = ev || ensureCurrentEvent(logPath, ts);
       ev.pool = message;
       return;
     }
 
     if (stage === 'GMGN') {
+      ev = ev || ensureCurrentEvent(logPath, ts);
       ev.gmgn = message;
       return;
     }
 
     if (stage === 'BUY_SPOT') {
+      ev = ev || ensureCurrentEvent(logPath, ts);
       ev.buyAt = ts || ev.buyAt;
       ev.buySpotSolPerToken = parseCompactSol(message.replace(/^\~/, '').replace(/\/token$/i, '').trim());
       return;
     }
 
     if (stage === 'SELL_SPOT') {
+      ev = ev || ensureCurrentEvent(logPath, ts);
       ev.sellAt = ts || ev.sellAt;
       ev.sellSpotSolPerToken = parseCompactSol(message.replace(/^\~/, '').replace(/\/token$/i, '').trim());
       return;
     }
 
     if (stage === 'PNL') {
+      ev = ev || ensureCurrentEvent(logPath, ts);
       const m = message.match(/^([+-]?)(.+)\s+\(([-0-9.]+)%\)$/);
       if (m) {
         ev.pnlAt = ts || ev.pnlAt;
@@ -183,6 +219,7 @@ function parseLine(line) {
     }
 
     if (stage === 'CRISK') {
+      ev = ev || ensureCurrentEvent(logPath, ts);
       const funder = (message.match(/funder=([^\s]+)/) || [])[1] || null;
       const refund = Number((message.match(/refund=([0-9.]+)/) || [])[1] || '0');
       const micro = (message.match(/micro=(\d+)\/(\d+)/) || []);
@@ -194,6 +231,7 @@ function parseLine(line) {
     }
 
     if (stage === 'RRELAY') {
+      ev = ev || ensureCurrentEvent(logPath, ts);
       const root = (message.match(/root=([^\s]+)/) || [])[1] || null;
       const funder = (message.match(/funder=([^\s]+)/) || [])[1] || null;
       const inbound = Number((message.match(/in=([0-9.]+)/) || [])[1] || '0');
@@ -209,6 +247,7 @@ function parseLine(line) {
     }
 
     if (stage === 'CCASH') {
+      ev = ev || ensureCurrentEvent(logPath, ts);
       const total = Number((message.match(/total=([0-9.]+)/) || [])[1] || '0');
       const max = Number((message.match(/max=([0-9.]+)/) || [])[1] || '0');
       const rel = Number((message.match(/rel=([0-9.]+)/) || [])[1] || '0');
@@ -223,6 +262,7 @@ function parseLine(line) {
     }
 
     if (stage === 'CHECKS' && message === 'passed') {
+      ev = ev || ensureCurrentEvent(logPath, ts);
       ev.checksPassed = true;
       return;
     }
@@ -233,7 +273,7 @@ function parseLine(line) {
       ev.endStatus = m ? m[1].trim() : message;
       ev.durationMs = m ? Number(m[2]) : ev.durationMs;
       ev.endedAt = ts || nowIso();
-      currentEventId = null;
+      currentEventIds.delete(logPath);
       return;
     }
     if (!ev) return;
@@ -248,7 +288,7 @@ function parseLine(line) {
 
   m = line.match(/Signature:\s*([A-Za-z0-9]+)/);
   if (m) {
-    const latest = getCurrentEvent() || [...events.values()].reverse().find(e => !e.signature);
+    const latest = getCurrentEvent(logPath) || [...events.values()].reverse().find(e => !e.signature);
     if (latest) latest.signature = m[1];
     return;
   }
@@ -311,26 +351,26 @@ function parseLine(line) {
 
   m = line.match(/🛑 (?:\[([^\]]+)\]|([^\s]+))? ?SKIP:\s*(.+)$/);
   if (m) {
-    const ev = m[1] || m[2] ? getEvent(m[1] || m[2]) : getCurrentEvent();
+    const ev = m[1] || m[2] ? getEvent(m[1] || m[2]) : getCurrentEvent(logPath);
     if (ev) ev.skipReason = m[3].trim();
     return;
   }
 
   m = line.match(/✅ (?:\[([^\]]+)\]|([^\s]+))? ?Checks passed/);
   if (m) {
-    const ev = m[1] || m[2] ? getEvent(m[1] || m[2]) : getCurrentEvent();
+    const ev = m[1] || m[2] ? getEvent(m[1] || m[2]) : getCurrentEvent(logPath);
     if (ev) ev.checksPassed = true;
     return;
   }
 
   m = line.match(/🏁 (?:\[([^\]]+)\]|([^\s]+))? ?END \((\d+)ms\)\s*(.+)$/);
   if (m) {
-    const ev = m[1] || m[2] ? getEvent(m[1] || m[2]) : getCurrentEvent();
+    const ev = m[1] || m[2] ? getEvent(m[1] || m[2]) : getCurrentEvent(logPath);
     if (ev) {
       ev.durationMs = Number(m[3]);
       ev.endStatus = m[4].trim();
       ev.endedAt = ts || nowIso();
-      currentEventId = null;
+      currentEventIds.delete(logPath);
     }
   }
 }
@@ -344,14 +384,19 @@ function summarize() {
   const losses = pnlKnown.filter(e => e.pnlSol < 0).length;
   const checksPassed = finished.filter(e => e.checksPassed).length;
   const skipped = finished.filter(e => e.skipReason || (e.endStatus && e.endStatus.startsWith('SKIP'))).length;
-  const isRugPull = (e) => {
+  const isRugLikeSignal = (e) => {
     const s = `${e.skipReason || ''} ${e.endStatus || ''}`.toLowerCase();
     return (typeof e.pnlPct === 'number' && e.pnlPct <= -80) ||
       s.includes('paper simulation guard') ||
       s.includes('exit returned 0 sol') ||
       s.includes('liquidity stop');
   };
-  const rugPulls = finished.filter(isRugPull);
+  const rugLosses = finished.filter(e => typeof e.pnlPct === 'number' && e.pnlPct <= -80);
+  const rugLikeAvoided = finished.filter(e => isRugLikeSignal(e) && !(typeof e.pnlPct === 'number' && e.pnlPct <= -80));
+  const hostileSkips = finished.filter(e =>
+    classifyOperation(e) === 'hostile' &&
+    (e.skipReason || (e.endStatus && e.endStatus.startsWith('SKIP')))
+  );
 
   return {
     generatedAt: nowIso(),
@@ -359,7 +404,10 @@ function summarize() {
     finishedEvents: finished.length,
     checksPassed,
     skipped,
-    rugPullCount: rugPulls.length,
+    hostileSkipCount: hostileSkips.length,
+    avoidedRugLikeCount: rugLikeAvoided.length,
+    rugLossCount: rugLosses.length,
+    rugPullCount: rugLosses.length,
     totalPnlSol: Number(totalPnl.toFixed(9)),
     avgPnlPct: Number(avgPnlPct.toFixed(4)),
     wins,
@@ -384,7 +432,8 @@ function summarize() {
       skipReason: e.skipReason,
       endStatus: e.endStatus,
       durationMs: e.durationMs,
-      rugPull: isRugPull(e),
+      rugPull: isRugLikeSignal(e),
+      rugLoss: typeof e.pnlPct === 'number' && e.pnlPct <= -80,
       classification: classifyOperation(e),
       sawRelayFunding: e.sawRelayFunding,
       relayFundingRoot: e.relayFundingRoot,
@@ -402,7 +451,7 @@ function summarize() {
       creatorCashoutScore: e.creatorCashoutScore,
       creatorCashoutDest: e.creatorCashoutDest,
     })),
-    rugPullEvents: rugPulls.slice(-20).map(e => ({
+    rugPullEvents: rugLosses.slice(-20).map(e => ({
       id: e.id,
       startedAt: e.startedAt,
       buyAt: e.buyAt,
@@ -439,7 +488,9 @@ function writeReports(force = false) {
     `finished: ${report.finishedEvents}`,
     `checks passed: ${report.checksPassed}`,
     `skipped: ${report.skipped}`,
-    `rug pulls: ${report.rugPullCount}`,
+    `hostile skips: ${report.hostileSkipCount}`,
+    `rug-like avoided: ${report.avoidedRugLikeCount}`,
+    `rug losses (-100%): ${report.rugLossCount}`,
     `total pnl (SOL): ${report.totalPnlSol}`,
     `avg pnl (%): ${report.avgPnlPct}`,
     `wins/losses: ${report.wins}/${report.losses}`,
@@ -455,12 +506,12 @@ function writeReports(force = false) {
           `pnl=${e.pnlSol ?? 'n/a'} (${e.pnlPct ?? 'n/a'}%) ` +
           `class=${e.classification} ` +
           `status=${e.endStatus || 'n/a'} skip=${e.skipReason || '-'} ` +
-          `rug=${e.rugPull ? 'YES' : 'NO'} rug_reason=${e.rugPull ? rugReason : '-'} ` +
+          `rug_like=${e.rugPull ? 'YES' : 'NO'} rug_loss=${e.rugLoss ? 'YES' : 'NO'} rug_reason=${e.rugPull ? rugReason : '-'} ` +
           `gmgn=${e.gmgn || '-'}`;
       })()
     ),
     '',
-    'Rug pull events:',
+    'Rug loss events (-100%):',
     ...(report.rugPullEvents.length
       ? report.rugPullEvents.map((e, i) =>
         `${String(i + 1).padStart(3, '0')}. ${e.id} ${e.tokenMint || ''} ` +
@@ -476,52 +527,64 @@ function writeReports(force = false) {
   fs.writeFileSync(OUT_TXT, txt + '\n');
 }
 
-function processChunk(chunk) {
+function processChunk(logPath, chunk) {
+  const carry = carries.get(logPath) || '';
   const combined = carry + chunk;
   const lines = combined.split(/\r?\n/);
-  carry = lines.pop() || '';
+  carries.set(logPath, lines.pop() || '');
   for (const line of lines) {
     if (!line.trim()) continue;
-    parseLine(line);
+    parseLine(logPath, line);
   }
   writeReports();
 }
 
 function initialLoad() {
-  if (!fs.existsSync(LOG_PATH)) {
-    fs.writeFileSync(LOG_PATH, '');
+  for (const logPath of discoverLogPaths()) {
+    if (!fs.existsSync(logPath)) {
+      fs.mkdirSync(path.dirname(logPath), { recursive: true });
+      fs.writeFileSync(logPath, '');
+    }
+    const content = fs.readFileSync(logPath, 'utf8');
+    offsets.set(logPath, Buffer.byteLength(content));
+    processChunk(logPath, content);
   }
-  const content = fs.readFileSync(LOG_PATH, 'utf8');
-  offset = Buffer.byteLength(content);
-  processChunk(content);
   writeReports(true);
 }
 
 function pollLoop() {
   setInterval(() => {
-    try {
-      const stat = fs.statSync(LOG_PATH);
-      if (stat.size < offset) {
-        offset = 0;
-        carry = '';
-      }
-      if (stat.size === offset) return;
+    for (const logPath of discoverLogPaths()) {
+      try {
+        if (!offsets.has(logPath)) {
+          offsets.set(logPath, 0);
+          carries.set(logPath, '');
+        }
+        const stat = fs.statSync(logPath);
+        const offset = offsets.get(logPath) || 0;
+        if (stat.size < offset) {
+          offsets.set(logPath, 0);
+          carries.set(logPath, '');
+        }
+        if (stat.size === (offsets.get(logPath) || 0)) continue;
 
-      const stream = fs.createReadStream(LOG_PATH, { start: offset, end: stat.size - 1, encoding: 'utf8' });
-      let chunk = '';
-      stream.on('data', (d) => { chunk += d; });
-      stream.on('end', () => {
-        offset = stat.size;
-        if (chunk) processChunk(chunk);
-      });
-    } catch (e) {
-      // keep daemon alive; write heartbeat report
-      writeReports(true);
+        const currentOffset = offsets.get(logPath) || 0;
+        const stream = fs.createReadStream(logPath, { start: currentOffset, end: stat.size - 1, encoding: 'utf8' });
+        let chunk = '';
+        stream.on('data', (d) => { chunk += d; });
+        stream.on('end', () => {
+          offsets.set(logPath, stat.size);
+          if (chunk) processChunk(logPath, chunk);
+        });
+      } catch (e) {
+        // keep daemon alive; write heartbeat report
+        writeReports(true);
+      }
     }
   }, 1000);
 }
 
 initialLoad();
 pollLoop();
-console.log(`[paper-report-daemon] watching ${LOG_PATH}`);
+console.log(`[paper-report-daemon] watching supervisor/workers logs under ${ROOT}`);
 console.log(`[paper-report-daemon] writing ${OUT_JSON} and ${OUT_TXT}`);
