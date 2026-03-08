@@ -96,6 +96,9 @@ const CONFIG = {
         .split(",")
         .map((v) => Number(v.trim()))
         .filter((v) => Number.isFinite(v) && v > 0),
+    CREATOR_RISK_STANDARD_POOL_MICRO_BLOCK_ENABLED: process.env.CREATOR_RISK_STANDARD_POOL_MICRO_BLOCK_ENABLED !== "false",
+    CREATOR_RISK_STANDARD_POOL_MICRO_MIN_TRANSFERS: Number(process.env.CREATOR_RISK_STANDARD_POOL_MICRO_MIN_TRANSFERS || 4),
+    CREATOR_RISK_STANDARD_POOL_MICRO_MIN_SOURCES: Number(process.env.CREATOR_RISK_STANDARD_POOL_MICRO_MIN_SOURCES || 2),
     CREATOR_RISK_MICRO_INBOUND_MAX_SOL: Number(process.env.CREATOR_RISK_MICRO_INBOUND_MAX_SOL || 0.001),
     CREATOR_RISK_MICRO_INBOUND_MIN_TRANSFERS: Number(process.env.CREATOR_RISK_MICRO_INBOUND_MIN_TRANSFERS || 6),
     CREATOR_RISK_MICRO_INBOUND_MIN_SOURCES: Number(process.env.CREATOR_RISK_MICRO_INBOUND_MIN_SOURCES || 2),
@@ -373,6 +376,7 @@ async function runWorkerTask() {
     offlineSdk = new PumpAmmSdk();
 
     console.log(`WORKER       | slot ${WORKER_SLOT || 1} start ${shortSig(signature)}`);
+    stageLog("", "SIGNATURE", signature);
     await handleNewPool(connection, signature);
     console.log(`WORKER       | slot ${WORKER_SLOT || 1} done ${shortSig(signature)}`);
 }
@@ -1617,6 +1621,29 @@ async function runCreatorRiskCheck(
             const result = {
                 ok: false,
                 reason: `micro inbound burst ${microInboundTransfers.length} transfers from ${microInboundSources.size} sources in ${compressedWindowSec}s`,
+                funder,
+                uniqueCounterparties,
+                compressedWindowSec,
+                burner,
+            };
+            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
+            return result;
+        }
+
+        if (
+            isStandardRelayRiskPool(options.entrySolLiquidity) &&
+            CONFIG.CREATOR_RISK_STANDARD_POOL_MICRO_BLOCK_ENABLED &&
+            compressedWindowSec !== null &&
+            compressedWindowSec <= CONFIG.CREATOR_RISK_MICRO_INBOUND_WINDOW_SEC &&
+            microInboundTransfers.length >= CONFIG.CREATOR_RISK_STANDARD_POOL_MICRO_MIN_TRANSFERS &&
+            microInboundSources.size >= CONFIG.CREATOR_RISK_STANDARD_POOL_MICRO_MIN_SOURCES
+        ) {
+            const result = {
+                ok: false,
+                reason:
+                    `standard pool micro burst ${microInboundTransfers.length} transfers ` +
+                    `from ${microInboundSources.size} sources in ${compressedWindowSec}s ` +
+                    `(${options.entrySolLiquidity?.toFixed(2)} SOL pool)`,
                 funder,
                 uniqueCounterparties,
                 compressedWindowSec,
