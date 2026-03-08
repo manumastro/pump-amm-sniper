@@ -104,6 +104,11 @@ const CONFIG = {
     CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_MIN_OUT_TRANSFERS: Number(process.env.CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_MIN_OUT_TRANSFERS || 7),
     CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_MAX_MICRO_TRANSFERS: Number(process.env.CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_MAX_MICRO_TRANSFERS || 1),
     CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_MAX_MICRO_SOURCES: Number(process.env.CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_MAX_MICRO_SOURCES || 1),
+    CREATOR_RISK_SPRAY_OUTBOUND_BLOCK_ENABLED: process.env.CREATOR_RISK_SPRAY_OUTBOUND_BLOCK_ENABLED !== "false",
+    CREATOR_RISK_SPRAY_OUTBOUND_MIN_TRANSFERS: Number(process.env.CREATOR_RISK_SPRAY_OUTBOUND_MIN_TRANSFERS || 8),
+    CREATOR_RISK_SPRAY_OUTBOUND_MIN_DESTINATIONS: Number(process.env.CREATOR_RISK_SPRAY_OUTBOUND_MIN_DESTINATIONS || 8),
+    CREATOR_RISK_SPRAY_OUTBOUND_MAX_REL_STDDEV: Number(process.env.CREATOR_RISK_SPRAY_OUTBOUND_MAX_REL_STDDEV || 0.12),
+    CREATOR_RISK_SPRAY_OUTBOUND_MAX_AMOUNT_RATIO: Number(process.env.CREATOR_RISK_SPRAY_OUTBOUND_MAX_AMOUNT_RATIO || 1.25),
     CREATOR_RISK_MICRO_INBOUND_MAX_SOL: Number(process.env.CREATOR_RISK_MICRO_INBOUND_MAX_SOL || 0.001),
     CREATOR_RISK_MICRO_INBOUND_MIN_TRANSFERS: Number(process.env.CREATOR_RISK_MICRO_INBOUND_MIN_TRANSFERS || 6),
     CREATOR_RISK_MICRO_INBOUND_MIN_SOURCES: Number(process.env.CREATOR_RISK_MICRO_INBOUND_MIN_SOURCES || 2),
@@ -1361,6 +1366,47 @@ function isSuspiciousRelayRoot(root: string | null | undefined, rugHistory: RugH
     );
 }
 
+function classifySprayOutboundPattern(outboundTransfers: Array<{ destination: string; sol: number }>) {
+    const positive = outboundTransfers.filter((t) => Number.isFinite(t.sol) && t.sol > 0);
+    if (!positive.length) {
+        return {
+            detected: false,
+            transfers: 0,
+            destinations: 0,
+            medianSol: 0,
+            relStdDev: Infinity,
+            amountRatio: Infinity,
+        };
+    }
+
+    const values = positive.map((t) => t.sol).sort((a, b) => a - b);
+    const destinations = new Set(positive.map((t) => t.destination)).size;
+    const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
+    const variance = values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / values.length;
+    const stdDev = Math.sqrt(Math.max(0, variance));
+    const relStdDev = mean > 0 ? stdDev / mean : Infinity;
+    const medianSol =
+        values.length % 2 === 0
+            ? (values[(values.length / 2) - 1] + values[values.length / 2]) / 2
+            : values[Math.floor(values.length / 2)];
+    const amountRatio = values[0] > 0 ? values[values.length - 1] / values[0] : Infinity;
+
+    const detected =
+        positive.length >= CONFIG.CREATOR_RISK_SPRAY_OUTBOUND_MIN_TRANSFERS &&
+        destinations >= CONFIG.CREATOR_RISK_SPRAY_OUTBOUND_MIN_DESTINATIONS &&
+        relStdDev <= CONFIG.CREATOR_RISK_SPRAY_OUTBOUND_MAX_REL_STDDEV &&
+        amountRatio <= CONFIG.CREATOR_RISK_SPRAY_OUTBOUND_MAX_AMOUNT_RATIO;
+
+    return {
+        detected,
+        transfers: positive.length,
+        destinations,
+        medianSol,
+        relStdDev,
+        amountRatio,
+    };
+}
+
 function instructionProgramIdMatches(ix: any, expectedProgramId: string): boolean {
     const raw = ix?.programId;
     const programId =
@@ -1542,6 +1588,7 @@ async function runCreatorRiskCheck(
             outboundTransfers,
             options.entrySolLiquidity,
         );
+        const sprayOutbound = classifySprayOutboundPattern(outboundTransfers);
         const relayFunding = await classifyRecentRelayFunding(connection, creatorAddress, funder);
         const directAmmReentry = await detectCreatorDirectAmmReentry(
             connection,
@@ -1573,6 +1620,14 @@ async function runCreatorRiskCheck(
                 `total=${creatorCashout.totalSol.toFixed(3)} max=${creatorCashout.maxSingleSol.toFixed(3)} ` +
                 `rel=${creatorCashout.pctOfEntryLiquidity.toFixed(2)}% score=${creatorCashout.score.toFixed(2)} ` +
                 `dest=${creatorCashout.destination ? shortSig(creatorCashout.destination) : "-"}`
+            );
+        }
+        if (sprayOutbound.detected) {
+            stageLog(
+                ctx,
+                "SPRAY",
+                `out=${sprayOutbound.transfers} dest=${sprayOutbound.destinations} median=${sprayOutbound.medianSol.toFixed(3)} ` +
+                `rel_std=${sprayOutbound.relStdDev.toFixed(2)} ratio=${sprayOutbound.amountRatio.toFixed(2)}`
             );
         }
         if (directAmmReentry.detected) {
@@ -1682,6 +1737,28 @@ async function runCreatorRiskCheck(
                     `suspicious relay-root pattern root=${relayFunding.root} ` +
                     `cp=${uniqueCounterparties} out=${solOutTransfers} ` +
                     `micro=${microInboundTransfers.length}/${microInboundSources.size}`,
+                funder,
+                uniqueCounterparties,
+                compressedWindowSec,
+                burner,
+                relayFundingRoot: relayFunding.root,
+            };
+            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
+            return result;
+        }
+
+        if (
+            CONFIG.CREATOR_RISK_SPRAY_OUTBOUND_BLOCK_ENABLED &&
+            relayFunding.root &&
+            isSuspiciousRelayRoot(relayFunding.root, rugHistory) &&
+            sprayOutbound.detected
+        ) {
+            const result = {
+                ok: false,
+                reason:
+                    `spray outbound pattern root=${relayFunding.root} ` +
+                    `out=${sprayOutbound.transfers} dest=${sprayOutbound.destinations} ` +
+                    `median=${sprayOutbound.medianSol.toFixed(3)} rel_std=${sprayOutbound.relStdDev.toFixed(2)}`,
                 funder,
                 uniqueCounterparties,
                 compressedWindowSec,

@@ -85,6 +85,7 @@ Segnali usati:
 - relay funding recente combinato con micro-burst
 - relay funding recente su pool standard (`84.99 / 100 / 120 SOL`)
 - relay-root gia noto come sospetto + `cp` alto + `out` alto + micro quasi assente
+- relay-root sospetto + `spray outbound`: tante uscite molto simili verso molte destinazioni
 - creator che richiama direttamente `pAMMBay...` dopo `create_pool`
 
 Blacklist lette solo da:
@@ -108,6 +109,7 @@ Lettura pratica:
 2. Su pool standard da creator fresh/relay-funded e molto piu pericoloso.
 3. `CAMM` e un segnale duro: il creator ha toccato di nuovo l'AMM dopo il `create_pool`.
 4. `cp alto + out alto + low micro + relay-root sospetto` e un pattern da wallet operativo, non retail.
+5. `spray outbound` = il creator distribuisce importi quasi uguali a molti wallet: pattern infrastrutturale, non utente normale.
 
 Gerarchia pratica dei segnali:
 1. `CCASH` = segnale economico forte: il creator sta gia portando via SOL.
