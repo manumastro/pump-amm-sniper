@@ -83,6 +83,8 @@ Segnali usati:
 - micro-transfer burst verso il creator
 - relay funding recente: `root -> funder -> creator`
 - relay funding recente combinato con micro-burst
+- relay funding recente su pool standard (`84.99 / 100 / 120 SOL`)
+- creator che richiama direttamente `pAMMBay...` dopo `create_pool`
 
 Blacklist lette solo da:
 - `blacklists/creators.txt`
@@ -97,7 +99,13 @@ Esito:
 Log principali:
 - `CRISK | cp=... in=... out=... window=... funder=... refund=... micro=.../...`
 - `RRELAY | root=... funder=... in=... out=... window=...`
+- `CAMM | creator direct pAMMBay... re-entry via ...`
 - `CCASH | total=... max=... rel=... score=... dest=...`
+
+Lettura pratica:
+1. `RRELAY` da solo non significa per forza rug.
+2. Su pool standard da creator fresh/relay-funded e molto piu pericoloso.
+3. `CAMM` e un segnale duro: il creator ha toccato di nuovo l'AMM dopo il `create_pool`.
 
 ### 1.5 Pre-Buy Wait
 Scopo:
@@ -167,6 +175,7 @@ Esito:
 Log:
 - `CRISK | ...`
 - `RRELAY | ...`
+- `CAMM | ...`
 - `CREATOR RISK EXIT: ...`
 
 ### 2.2 Creator Cashout Risk
