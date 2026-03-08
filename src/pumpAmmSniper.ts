@@ -99,6 +99,11 @@ const CONFIG = {
     CREATOR_RISK_STANDARD_POOL_MICRO_BLOCK_ENABLED: process.env.CREATOR_RISK_STANDARD_POOL_MICRO_BLOCK_ENABLED !== "false",
     CREATOR_RISK_STANDARD_POOL_MICRO_MIN_TRANSFERS: Number(process.env.CREATOR_RISK_STANDARD_POOL_MICRO_MIN_TRANSFERS || 4),
     CREATOR_RISK_STANDARD_POOL_MICRO_MIN_SOURCES: Number(process.env.CREATOR_RISK_STANDARD_POOL_MICRO_MIN_SOURCES || 2),
+    CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_BLOCK_ENABLED: process.env.CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_BLOCK_ENABLED !== "false",
+    CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_MIN_COUNTERPARTIES: Number(process.env.CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_MIN_COUNTERPARTIES || 8),
+    CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_MIN_OUT_TRANSFERS: Number(process.env.CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_MIN_OUT_TRANSFERS || 7),
+    CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_MAX_MICRO_TRANSFERS: Number(process.env.CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_MAX_MICRO_TRANSFERS || 1),
+    CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_MAX_MICRO_SOURCES: Number(process.env.CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_MAX_MICRO_SOURCES || 1),
     CREATOR_RISK_MICRO_INBOUND_MAX_SOL: Number(process.env.CREATOR_RISK_MICRO_INBOUND_MAX_SOL || 0.001),
     CREATOR_RISK_MICRO_INBOUND_MIN_TRANSFERS: Number(process.env.CREATOR_RISK_MICRO_INBOUND_MIN_TRANSFERS || 6),
     CREATOR_RISK_MICRO_INBOUND_MIN_SOURCES: Number(process.env.CREATOR_RISK_MICRO_INBOUND_MIN_SOURCES || 2),
@@ -1347,6 +1352,15 @@ function isStandardRelayRiskPool(entrySolLiquidity?: number): boolean {
     );
 }
 
+function isSuspiciousRelayRoot(root: string | null | undefined, rugHistory: RugHistory): boolean {
+    if (!root) return false;
+    return (
+        rugHistory.rugFunders.has(root) ||
+        rugHistory.rugCashoutRelays.has(root) ||
+        rugHistory.rugMicroBurstSources.has(root)
+    );
+}
+
 function instructionProgramIdMatches(ix: any, expectedProgramId: string): boolean {
     const raw = ix?.programId;
     const programId =
@@ -1648,6 +1662,31 @@ async function runCreatorRiskCheck(
                 uniqueCounterparties,
                 compressedWindowSec,
                 burner,
+            };
+            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
+            return result;
+        }
+
+        if (
+            CONFIG.CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_BLOCK_ENABLED &&
+            relayFunding.root &&
+            isSuspiciousRelayRoot(relayFunding.root, rugHistory) &&
+            uniqueCounterparties >= CONFIG.CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_MIN_COUNTERPARTIES &&
+            solOutTransfers >= CONFIG.CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_MIN_OUT_TRANSFERS &&
+            microInboundTransfers.length <= CONFIG.CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_MAX_MICRO_TRANSFERS &&
+            microInboundSources.size <= CONFIG.CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_MAX_MICRO_SOURCES
+        ) {
+            const result = {
+                ok: false,
+                reason:
+                    `suspicious relay-root pattern root=${relayFunding.root} ` +
+                    `cp=${uniqueCounterparties} out=${solOutTransfers} ` +
+                    `micro=${microInboundTransfers.length}/${microInboundSources.size}`,
+                funder,
+                uniqueCounterparties,
+                compressedWindowSec,
+                burner,
+                relayFundingRoot: relayFunding.root,
             };
             creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
             return result;
@@ -2146,15 +2185,29 @@ async function maybeRunPaperTradeSimulation(
             });
             solOut = Number(exit.uiQuote.toString()) / 1e9;
         }
-        const pnlSol = solOut - CONFIG.TRADE_AMOUNT_SOL;
-        const pnlPct = (pnlSol / CONFIG.TRADE_AMOUNT_SOL) * 100;
         const exitSpotSolPerToken = getSpotSolPerTokenFromState(exitState, tokenMint, tokenDecimals) || 0;
+        const exitSolLiquidity = getSolLiquidityFromState(exitState, tokenMint) || 0;
 
-        stageLog(ctx, "SELL_SPOT", `~${formatSolCompact(exitSpotSolPerToken)}/token`);
-        stageLog(ctx, "PNL", `${pnlSol >= 0 ? "+" : "-"}${formatSolDecimal(Math.abs(pnlSol))} (${pnlPct.toFixed(2)}%)`);
         if (!Number.isFinite(solOut) || solOut <= 0) {
             return { ok: false, reason: "exit returned 0 SOL" };
         }
+        if (
+            Number.isFinite(exitSolLiquidity) &&
+            exitSolLiquidity > 0 &&
+            solOut > exitSolLiquidity * 1.001
+        ) {
+            console.log(
+                `⚠️ PAPER_TRADE invalid exit quote: ` +
+                `${solOut.toFixed(6)} SOL exceeds exit liquidity ${exitSolLiquidity.toFixed(6)} SOL`
+            );
+            return { ok: false, reason: "exit quote exceeded pool liquidity" };
+        }
+
+        const pnlSol = solOut - CONFIG.TRADE_AMOUNT_SOL;
+        const pnlPct = (pnlSol / CONFIG.TRADE_AMOUNT_SOL) * 100;
+
+        stageLog(ctx, "SELL_SPOT", `~${formatSolCompact(exitSpotSolPerToken)}/token`);
+        stageLog(ctx, "PNL", `${pnlSol >= 0 ? "+" : "-"}${formatSolDecimal(Math.abs(pnlSol))} (${pnlPct.toFixed(2)}%)`);
         if (pnlPct <= -Math.abs(CONFIG.PAPER_TRADE_MAX_LOSS_PCT)) {
             return { ok: false, reason: `pnl ${pnlPct.toFixed(2)}% <= -${Math.abs(CONFIG.PAPER_TRADE_MAX_LOSS_PCT)}%` };
         }

@@ -117,11 +117,38 @@ function classifyOperation(e) {
   return 'clean';
 }
 
+function isRugLossEvent(e) {
+  const status = `${e.skipReason || ''} ${e.endStatus || ''}`.toLowerCase();
+  return (
+    (typeof e.pnlPct === 'number' && e.pnlPct <= -80) ||
+    (!!e.buyAt && status.includes('exit returned 0 sol'))
+  );
+}
+
+function getPnlValidityIssue(e) {
+  if (typeof e.pnlSol !== 'number' || typeof e.pnlPct !== 'number') return null;
+  if (!Number.isFinite(e.pnlSol) || !Number.isFinite(e.pnlPct)) return 'non-finite pnl';
+
+  if (
+    typeof e.buySpotSolPerToken === 'number' &&
+    typeof e.sellSpotSolPerToken === 'number' &&
+    e.buySpotSolPerToken > 0 &&
+    e.sellSpotSolPerToken > 0
+  ) {
+    const spotRatio = e.sellSpotSolPerToken / e.buySpotSolPerToken;
+    if (!Number.isFinite(spotRatio)) return 'non-finite spot ratio';
+    if (spotRatio > 10000) return `spot ratio too high (${spotRatio.toFixed(2)}x)`;
+  }
+
+  if (Math.abs(e.pnlPct) > 10000) return `pnl pct too high (${e.pnlPct.toFixed(2)}%)`;
+  if (Math.abs(e.pnlSol) > 10) return `pnl sol too high (${e.pnlSol.toFixed(6)} SOL)`;
+  return null;
+}
+
 function getCurrentEvent(logPath) {
   const currentEventId = currentEventIds.get(logPath) || null;
   if (currentEventId && events.has(currentEventId)) return events.get(currentEventId);
-  const latestOpen = [...events.values()].reverse().find(e => !e.endedAt);
-  return latestOpen || null;
+  return null;
 }
 
 function ensureCurrentEvent(logPath, ts) {
@@ -157,6 +184,17 @@ function parseLine(logPath, line) {
       }
       currentEventIds.set(logPath, ev.id);
       ev.startedAt = ev.startedAt || ts;
+      return;
+    }
+
+    if (stage === 'WORKER') {
+      const startMatch = message.match(/^slot\s+\d+\s+start\s+([A-Za-z0-9.]+)$/);
+      if (startMatch) {
+        const id = `evt-${String(++eventSeq).padStart(6, '0')}`;
+        ev = getEvent(id);
+        ev.startedAt = ev.startedAt || ts;
+        currentEventIds.set(logPath, ev.id);
+      }
       return;
     }
 
@@ -378,21 +416,22 @@ function parseLine(logPath, line) {
 function summarize() {
   const finished = [...events.values()].filter(e => e.endedAt);
   const pnlKnown = finished.filter(e => typeof e.pnlSol === 'number');
-  const totalPnl = pnlKnown.reduce((a, e) => a + e.pnlSol, 0);
-  const avgPnlPct = pnlKnown.length ? pnlKnown.reduce((a, e) => a + (e.pnlPct || 0), 0) / pnlKnown.length : 0;
-  const wins = pnlKnown.filter(e => e.pnlSol > 0).length;
-  const losses = pnlKnown.filter(e => e.pnlSol < 0).length;
+  const validPnl = pnlKnown.filter(e => !getPnlValidityIssue(e));
+  const totalPnl = validPnl.reduce((a, e) => a + e.pnlSol, 0);
+  const avgPnlPct = validPnl.length ? validPnl.reduce((a, e) => a + (e.pnlPct || 0), 0) / validPnl.length : 0;
+  const wins = validPnl.filter(e => e.pnlSol > 0).length;
+  const losses = validPnl.filter(e => e.pnlSol < 0).length;
   const checksPassed = finished.filter(e => e.checksPassed).length;
   const skipped = finished.filter(e => e.skipReason || (e.endStatus && e.endStatus.startsWith('SKIP'))).length;
   const isRugLikeSignal = (e) => {
     const s = `${e.skipReason || ''} ${e.endStatus || ''}`.toLowerCase();
-    return (typeof e.pnlPct === 'number' && e.pnlPct <= -80) ||
+    return isRugLossEvent(e) ||
       s.includes('paper simulation guard') ||
       s.includes('exit returned 0 sol') ||
       s.includes('liquidity stop');
   };
-  const rugLosses = finished.filter(e => typeof e.pnlPct === 'number' && e.pnlPct <= -80);
-  const rugLikeAvoided = finished.filter(e => isRugLikeSignal(e) && !(typeof e.pnlPct === 'number' && e.pnlPct <= -80));
+  const rugLosses = finished.filter(e => isRugLossEvent(e));
+  const rugLikeAvoided = finished.filter(e => isRugLikeSignal(e) && !isRugLossEvent(e));
   const hostileSkips = finished.filter(e =>
     classifyOperation(e) === 'hostile' &&
     (e.skipReason || (e.endStatus && e.endStatus.startsWith('SKIP')))
@@ -408,11 +447,12 @@ function summarize() {
     avoidedRugLikeCount: rugLikeAvoided.length,
     rugLossCount: rugLosses.length,
     rugPullCount: rugLosses.length,
+    invalidPnlCount: pnlKnown.length - validPnl.length,
     totalPnlSol: Number(totalPnl.toFixed(9)),
     avgPnlPct: Number(avgPnlPct.toFixed(4)),
     wins,
     losses,
-    winRatePct: pnlKnown.length ? Number(((wins / pnlKnown.length) * 100).toFixed(2)) : 0,
+    winRatePct: validPnl.length ? Number(((wins / validPnl.length) * 100).toFixed(2)) : 0,
     operations: finished.map(e => ({
       id: e.id,
       startedAt: e.startedAt,
@@ -433,7 +473,7 @@ function summarize() {
       endStatus: e.endStatus,
       durationMs: e.durationMs,
       rugPull: isRugLikeSignal(e),
-      rugLoss: typeof e.pnlPct === 'number' && e.pnlPct <= -80,
+      rugLoss: isRugLossEvent(e),
       classification: classifyOperation(e),
       sawRelayFunding: e.sawRelayFunding,
       relayFundingRoot: e.relayFundingRoot,
@@ -450,6 +490,7 @@ function summarize() {
       creatorCashoutRelPct: e.creatorCashoutRelPct,
       creatorCashoutScore: e.creatorCashoutScore,
       creatorCashoutDest: e.creatorCashoutDest,
+      pnlValidityIssue: getPnlValidityIssue(e),
     })),
     rugPullEvents: rugLosses.slice(-20).map(e => ({
       id: e.id,
@@ -491,6 +532,7 @@ function writeReports(force = false) {
     `hostile skips: ${report.hostileSkipCount}`,
     `rug-like avoided: ${report.avoidedRugLikeCount}`,
     `rug losses (-100%): ${report.rugLossCount}`,
+    `invalid pnl excluded: ${report.invalidPnlCount}`,
     `total pnl (SOL): ${report.totalPnlSol}`,
     `avg pnl (%): ${report.avgPnlPct}`,
     `wins/losses: ${report.wins}/${report.losses}`,
@@ -504,10 +546,12 @@ function writeReports(force = false) {
           `start=${e.startedAt || '-'} buy_ts=${e.buyAt || '-'} sell_ts=${e.sellAt || '-'} end=${e.endedAt || '-'} ` +
           `buy_spot=${e.buySpotSolPerToken ?? 'n/a'} sell_spot=${e.sellSpotSolPerToken ?? 'n/a'} ` +
           `pnl=${e.pnlSol ?? 'n/a'} (${e.pnlPct ?? 'n/a'}%) ` +
+          `pnl_valid=${e.pnlValidityIssue ? 'NO' : 'YES'} ` +
           `class=${e.classification} ` +
           `status=${e.endStatus || 'n/a'} skip=${e.skipReason || '-'} ` +
           `rug_like=${e.rugPull ? 'YES' : 'NO'} rug_loss=${e.rugLoss ? 'YES' : 'NO'} rug_reason=${e.rugPull ? rugReason : '-'} ` +
-          `gmgn=${e.gmgn || '-'}`;
+          `gmgn=${e.gmgn || '-'} ` +
+          `pnl_issue=${e.pnlValidityIssue || '-'}`;
       })()
     ),
     '',
