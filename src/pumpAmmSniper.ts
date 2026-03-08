@@ -1,5 +1,7 @@
 import dotenv from "dotenv";
 import { Connection, Keypair, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
+import fs from "fs";
+import path from "path";
 import bs58 from "bs58";
 import { OnlinePumpAmmSdk, PumpAmmSdk, buyQuoteInput, sellBaseInput } from "@pump-fun/pump-swap-sdk";
 import BN from "bn.js";
@@ -29,7 +31,7 @@ patchConsoleWithTimestamp();
 
 const CONFIG = {
     // 💰 TRADING
-    TRADE_AMOUNT_SOL: 0.001,               // Amount to buy per snipe
+    TRADE_AMOUNT_SOL: 0.01,               // Amount to buy per snipe
     
     // 🔒 ENTRY FILTERS
     MIN_POOL_LIQUIDITY_USD: 10000,        // Minimum liquidity in USD
@@ -44,6 +46,23 @@ const CONFIG = {
     PRE_BUY_TOP10_CHECK_ENABLED: process.env.PRE_BUY_TOP10_CHECK_ENABLED !== "false",
     PRE_BUY_TOP10_MAX_PCT: Number(process.env.PRE_BUY_TOP10_MAX_PCT || 90),
     PRE_BUY_TOP10_EXCLUDE_POOL: process.env.PRE_BUY_TOP10_EXCLUDE_POOL !== "false",
+    CREATOR_RISK_CHECK_ENABLED: process.env.CREATOR_RISK_CHECK_ENABLED !== "false",
+    CREATOR_RISK_SIG_LIMIT: Number(process.env.CREATOR_RISK_SIG_LIMIT || 20),
+    CREATOR_RISK_PARSED_TX_LIMIT: Number(process.env.CREATOR_RISK_PARSED_TX_LIMIT || 10),
+    CREATOR_RISK_CACHE_TTL_MS: Number(process.env.CREATOR_RISK_CACHE_TTL_MS || 15 * 60 * 1000),
+    CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES: Number(process.env.CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES || 25),
+    CREATOR_RISK_COMPRESSED_MAX_COUNTERPARTIES: Number(process.env.CREATOR_RISK_COMPRESSED_MAX_COUNTERPARTIES || 20),
+    CREATOR_RISK_COMPRESSED_WINDOW_SEC: Number(process.env.CREATOR_RISK_COMPRESSED_WINDOW_SEC || 120),
+    CREATOR_RISK_BURNER_MIN_OUT_SOL: Number(process.env.CREATOR_RISK_BURNER_MIN_OUT_SOL || 100),
+    CREATOR_RISK_FUNDER_CLUSTER_ENABLED: process.env.CREATOR_RISK_FUNDER_CLUSTER_ENABLED !== "false",
+    CREATOR_RISK_FUNDER_CLUSTER_MIN_CREATORS: Number(process.env.CREATOR_RISK_FUNDER_CLUSTER_MIN_CREATORS || 2),
+    CREATOR_RISK_FUNDER_CLUSTER_WINDOW_SEC: Number(process.env.CREATOR_RISK_FUNDER_CLUSTER_WINDOW_SEC || 900),
+    CREATOR_RISK_HISTORICAL_FUNDER_CLUSTER_MIN_RUG_CREATORS: Number(
+        process.env.CREATOR_RISK_HISTORICAL_FUNDER_CLUSTER_MIN_RUG_CREATORS || 2
+    ),
+    HOLD_CREATOR_RISK_RECHECK_ENABLED: process.env.HOLD_CREATOR_RISK_RECHECK_ENABLED !== "false",
+    HOLD_CREATOR_RISK_RECHECK_INTERVAL_MS: Number(process.env.HOLD_CREATOR_RISK_RECHECK_INTERVAL_MS || 5000),
+    CREATOR_RISK_FUNDER_REFUND_MIN_SOL: Number(process.env.CREATOR_RISK_FUNDER_REFUND_MIN_SOL || 0.05),
     
     // 🔧 SLIPPAGE
     SLIPPAGE_PERCENT: 20,                 // 20% slippage (più conservativo)
@@ -63,9 +82,11 @@ const CONFIG = {
     SIGNATURE_CACHE_TTL_MS: 10 * 60 * 1000, // Keep seen signatures for 10m
     SIGNATURE_CACHE_MAX_SIZE: 5000,      // Bound memory usage
     SOL_PRICE_CACHE_TTL_MS: 30000,       // Refresh SOL/USD every 30s
+    RUG_HISTORY_CACHE_TTL_MS: Number(process.env.RUG_HISTORY_CACHE_TTL_MS || 5 * 60 * 1000),
 
     // 📈 PAPER TRADE (simulation only)
     PAPER_TRADE_ENABLED: process.env.PAPER_TRADE_ENABLED === "true",
+    MAX_CONCURRENT_OPERATIONS: Number(process.env.MAX_CONCURRENT_OPERATIONS || 2),
     PAPER_TRADE_MAX_LOSS_PCT: Number(process.env.PAPER_TRADE_MAX_LOSS_PCT || 80),
     LIQUIDITY_STOP_ENABLED: process.env.LIQUIDITY_STOP_ENABLED !== "false",
     LIQUIDITY_STOP_DROP_PCT: Number(process.env.LIQUIDITY_STOP_DROP_PCT || 30),
@@ -97,13 +118,22 @@ if (hasUsablePrivateKey) {
 const MONITOR_ONLY = process.env.MONITOR_ONLY === "true" || !walletKeypair;
 
 // State
-let isPositionOpen = false;
+let activePoolJobs = 0;
+let activeLivePositions = 0;
 let logSubscriptionId: number | null = null;
 let lastLogAtMs = Date.now();
 let healthcheckInterval: NodeJS.Timeout | null = null;
 const seenSignatures = new Map<string, number>();
 let cachedSolPriceUsd: number | null = null;
 let cachedSolPriceAtMs = 0;
+const creatorRiskCache = new Map<string, { checkedAtMs: number; result: CreatorRiskResult }>();
+let cachedRugHistoryAtMs = 0;
+let cachedRugHistory: RugHistory | null = null;
+const recentFunderCreators = new Map<string, Array<{ creator: string; seenAtMs: number }>>();
+
+const ROOT_DIR = process.cwd();
+const PAPER_LOG_PATH = path.join(ROOT_DIR, "paper.log");
+const PAPER_REPORT_JSON_PATH = path.join(ROOT_DIR, "logs", "paper-report.json");
 
 function shortSig(sig: string): string {
     if (sig.length <= 14) return sig;
@@ -112,6 +142,10 @@ function shortSig(sig: string): string {
 
 function stageLog(_ctx: string, stage: string, message: string) {
     console.log(`${stage.padEnd(12)} | ${message}`);
+}
+
+function inFlightCount(): number {
+    return activePoolJobs + activeLivePositions;
 }
 
 function toSubscriptDigits(value: number): string {
@@ -132,6 +166,27 @@ function formatSolCompact(value: number): string {
     const significant = frac.slice(firstNonZero, firstNonZero + 4).replace(/0+$/, "") || "0";
     return `0.0${toSubscriptDigits(zeros)}${significant} SOL`;
 }
+
+function formatSolDecimal(value: number): string {
+    if (!Number.isFinite(value)) return "0.000000 SOL";
+    return `${value.toFixed(6)} SOL`;
+}
+
+type CreatorRiskResult = {
+    ok: boolean;
+    reason?: string;
+    funder?: string | null;
+    uniqueCounterparties?: number;
+    compressedWindowSec?: number | null;
+    burner?: boolean;
+    funderRefundSol?: number;
+};
+
+type RugHistory = {
+    rugCreators: Set<string>;
+    rugFunders: Set<string>;
+    rugFunderCounts: Map<string, number>;
+};
 
 function calcSpotSolPerToken(baseReserve: BN, quoteReserve: BN, tokenDecimals: number): number {
     const baseSol = Number(baseReserve.toString()) / 1e9;
@@ -184,6 +239,7 @@ async function main() {
     console.log(`Mode: ${MONITOR_ONLY ? "MONITOR_ONLY" : "TRADING"}`);
     console.log(`Wallet: ${walletKeypair ? walletKeypair.publicKey.toBase58() : "N/A (no private key loaded)"}`);
     console.log(`Min Liquidity: ${CONFIG.MIN_POOL_LIQUIDITY_SOL} SOL`);
+    console.log(`Max Parallel Ops: ${Math.max(1, CONFIG.MAX_CONCURRENT_OPERATIONS)}`);
     if (!MONITOR_ONLY) {
         console.log(`Amount: ${CONFIG.TRADE_AMOUNT_SOL} SOL`);
         console.log(`Auto-Sell: ${CONFIG.AUTO_SELL_DELAY_MS / 1000} seconds`);
@@ -223,7 +279,7 @@ async function subscribeToPoolLogs(connection: Connection) {
                 if (!hasCreatePool) return;
 
                 const ctx = shortSig(logs.signature);
-                if (isPositionOpen) {
+                if (inFlightCount() >= Math.max(1, CONFIG.MAX_CONCURRENT_OPERATIONS)) {
                     return;
                 }
                 console.log("");
@@ -320,13 +376,12 @@ function setupGracefulShutdown(connection: Connection) {
 
 async function handleNewPool(connection: Connection, signature: string) {
     const ctx = shortSig(signature);
-    isPositionOpen = true;
-    let keepPositionOpen = false;
+    activePoolJobs += 1;
     const eventStartedAt = Date.now();
     let finalStatus = "COMPLETED";
 
     stageLog(ctx, "START", "processing pool");
-    stageLog(ctx, "STEP 1/6", "parse transaction");
+    stageLog(ctx, "STEP 1/7", "parse transaction");
     
     try {
         // Get transaction data
@@ -397,7 +452,7 @@ async function handleNewPool(connection: Connection, signature: string) {
             return;
         }
 
-        stageLog(ctx, "STEP 2/6", "resolve token/pool/creator");
+        stageLog(ctx, "STEP 2/7", "resolve token/pool/creator");
         stageLog(ctx, "TOKEN", tokenMint);
         stageLog(ctx, "POOL", poolAddress);
         stageLog(ctx, "GMGN", `https://gmgn.ai/sol/token/${tokenMint}`);
@@ -417,7 +472,7 @@ async function handleNewPool(connection: Connection, signature: string) {
             return;
         }
 
-        stageLog(ctx, "STEP 3/6", "liquidity check");
+        stageLog(ctx, "STEP 3/7", "liquidity check");
         // Check liquidity from on-chain pool state (preferred) with tx fallback.
         let liquiditySOL = 0;
         const observerUser = walletKeypair?.publicKey ?? Keypair.generate().publicKey;
@@ -468,12 +523,20 @@ async function handleNewPool(connection: Connection, signature: string) {
             return;
         }
 
-        stageLog(ctx, "STEP 4/6", "mint/freeze security");
+        stageLog(ctx, "STEP 4/7", "mint/freeze security");
         // 🛡️ SAFETY CHECKS
         const isSafe = await checkTokenSecurity(connection, tokenMint);
         if (!isSafe) {
             console.log(`🛑 SKIP: Token failed safety checks.`);
             finalStatus = "SKIP: token security";
+            return;
+        }
+
+        stageLog(ctx, "STEP 5/7", "creator risk");
+        const creatorRisk = await runCreatorRiskCheck(connection, creatorAddress, ctx);
+        if (!creatorRisk.ok) {
+            console.log(`🛑 SKIP: creator risk (${creatorRisk.reason})`);
+            finalStatus = "SKIP: creator risk";
             return;
         }
 
@@ -493,14 +556,14 @@ async function handleNewPool(connection: Connection, signature: string) {
                 finalStatus = "SKIP: pre-buy top10";
                 return;
             }
-            stageLog(ctx, "STEP 5/6", "paper simulation");
-            const paper = await maybeRunPaperTradeSimulation(connection, poolAddress, tokenMint, ctx);
+            stageLog(ctx, "STEP 6/7", "paper simulation");
+            const paper = await maybeRunPaperTradeSimulation(connection, poolAddress, tokenMint, ctx, creatorAddress);
             if (!paper.ok) {
                 console.log(`🛑 SKIP: Paper simulation guard (${paper.reason})`);
                 finalStatus = "SKIP: paper simulation guard";
                 return;
             }
-            stageLog(ctx, "STEP 6/6", "dev holdings");
+            stageLog(ctx, "STEP 7/7", "dev holdings");
             const devCheckOk = await runDevHoldingsCheck(connection, creatorAddress, tokenMint, postTokenBalances, ctx, false);
             if (devCheckOk) {
                 console.log(`✅ Checks passed`);
@@ -534,15 +597,13 @@ async function handleNewPool(connection: Connection, signature: string) {
 
         // Execute buy
         stageLog(ctx, "BUY", "executing");
-        keepPositionOpen = await executeBuy(connection, poolAddress, tokenMint);
+        await executeBuy(connection, poolAddress, tokenMint);
 
     } catch (e: any) {
         console.error(`❌ Error in handleNewPool: ${e.message}`);
         finalStatus = `ERROR: ${e.message}`;
     } finally {
-        if (!keepPositionOpen) {
-            isPositionOpen = false;
-        }
+        activePoolJobs = Math.max(0, activePoolJobs - 1);
         stageLog(ctx, "END", `${finalStatus} (${Date.now() - eventStartedAt}ms)`);
         console.log("────────────────────────────────────────────────────────");
     }
@@ -671,20 +732,31 @@ async function preBuyTop10ConcentrationCheck(
     }
 
     try {
-        const mintKey = new PublicKey(tokenMint);
-        const [largest, mintInfo] = await Promise.all([
-            connection.getTokenLargestAccounts(mintKey, "confirmed"),
-            getMintInfoRobust(connection, mintKey),
-        ]);
+        const mintKey = await resolveTop10MintKey(connection, tokenMint, poolAddress, ctx);
+        if (!mintKey) {
+            stageLog(ctx, "TOP10", "unavailable (no valid mint candidate) -> fail-open");
+            return { ok: true };
+        }
+
+        const mintInfo = await getMintInfoRobust(connection, mintKey).catch((e: any) => {
+            stageLog(ctx, "TOP10", `unavailable (mint info error: ${e?.message || String(e)}) -> fail-open`);
+            return null;
+        });
+        if (!mintInfo) return { ok: true };
 
         const totalSupplyRaw = Number(mintInfo.supply.toString());
         if (!Number.isFinite(totalSupplyRaw) || totalSupplyRaw <= 0) {
-            return { ok: false, reason: "invalid token supply" };
+            stageLog(ctx, "TOP10", "unavailable (invalid token supply) -> fail-open");
+            return { ok: true };
         }
+
+        const largest = await getTop10LargestAccountsWithRetry(connection, mintKey, 6, 300, ctx);
+        if (!largest) return { ok: true };
 
         const top10Accounts = largest.value.slice(0, 10);
         if (top10Accounts.length === 0) {
-            return { ok: false, reason: "no holder accounts found" };
+            stageLog(ctx, "TOP10", "unavailable (no holder accounts found) -> fail-open");
+            return { ok: true };
         }
 
         const parsed = await Promise.all(
@@ -721,7 +793,467 @@ async function preBuyTop10ConcentrationCheck(
 
         return { ok: true, top10Pct };
     } catch (e: any) {
-        return { ok: false, reason: e?.message || "top10 check failed" };
+        stageLog(ctx, "TOP10", `unavailable (${e?.message || "top10 check failed"}) -> fail-open`);
+        return { ok: true };
+    }
+}
+
+async function getTop10LargestAccountsWithRetry(
+    connection: Connection,
+    mintKey: PublicKey,
+    maxAttempts: number,
+    delayMs: number,
+    ctx: string,
+) {
+    let lastErr: any = null;
+    for (let attempt = 1; attempt <= Math.max(1, maxAttempts); attempt++) {
+        try {
+            return await connection.getTokenLargestAccounts(mintKey, "confirmed");
+        } catch (e: any) {
+            lastErr = e;
+            if (attempt < maxAttempts) {
+                await new Promise((r) => setTimeout(r, Math.max(0, delayMs)));
+            }
+        }
+    }
+    stageLog(ctx, "TOP10", `unavailable (largest accounts error: ${lastErr?.message || String(lastErr)}) -> fail-open`);
+    return null;
+}
+
+async function resolveTop10MintKey(
+    connection: Connection,
+    tokenMint: string,
+    poolAddress: string,
+    ctx: string,
+): Promise<PublicKey | null> {
+    const candidates: string[] = [tokenMint];
+
+    try {
+        const observerUser = walletKeypair?.publicKey ?? Keypair.generate().publicKey;
+        const state = await onlineSdk.swapSolanaState(new PublicKey(poolAddress), observerUser);
+        const anyState = state as any;
+        const baseMint = anyState?.baseMint?.toBase58?.() || String(anyState?.baseMint || "");
+        const quoteMint = anyState?.quoteMint?.toBase58?.() || String(anyState?.quoteMint || "");
+        if (baseMint && baseMint !== WSOL) candidates.push(baseMint);
+        if (quoteMint && quoteMint !== WSOL) candidates.push(quoteMint);
+    } catch {
+        // Keep initial extracted mint only.
+    }
+
+    const uniqueCandidates = [...new Set(candidates)];
+    for (const candidate of uniqueCandidates) {
+        try {
+            const key = new PublicKey(candidate);
+            await getMintInfoRobust(connection, key);
+            if (candidate !== tokenMint) {
+                stageLog(ctx, "TOP10", `using fallback mint ${candidate}`);
+            }
+            return key;
+        } catch {
+            // Try next candidate.
+        }
+    }
+
+    return null;
+}
+
+function extractHistoricalRugCreators(): Set<string> {
+    try {
+        if (!fs.existsSync(PAPER_REPORT_JSON_PATH) || !fs.existsSync(PAPER_LOG_PATH)) {
+            return new Set();
+        }
+
+        const report = JSON.parse(fs.readFileSync(PAPER_REPORT_JSON_PATH, "utf8"));
+        const rugEvents = Array.isArray(report?.rugPullEvents) ? report.rugPullEvents : [];
+        const rugTokens = new Set(
+            rugEvents
+                .map((e: any) => e?.tokenMint)
+                .filter((v: any) => typeof v === "string" && v.length > 0)
+        );
+        if (rugTokens.size === 0) return new Set();
+
+        const rugCreators = new Set<string>();
+        const lines = fs.readFileSync(PAPER_LOG_PATH, "utf8").split(/\r?\n/);
+        let currentToken: string | null = null;
+        let currentCreator: string | null = null;
+
+        for (const line of lines) {
+            const tokenMatch = line.match(/TOKEN\s+\|\s+([1-9A-HJ-NP-Za-km-z]+)/);
+            if (tokenMatch) {
+                currentToken = tokenMatch[1];
+                currentCreator = null;
+            }
+
+            const creatorMatch = line.match(/CREATOR\s+\|\s+resolved\s+([1-9A-HJ-NP-Za-km-z]+)/);
+            if (creatorMatch) {
+                currentCreator = creatorMatch[1];
+            }
+
+            const endMatch = line.match(/END\s+\|\s+(.+)/);
+            if (endMatch && currentToken && rugTokens.has(currentToken) && endMatch[1].includes("paper simulation guard")) {
+                if (currentCreator) {
+                    rugCreators.add(currentCreator);
+                }
+                currentToken = null;
+                currentCreator = null;
+            }
+        }
+
+        return rugCreators;
+    } catch {
+        return new Set();
+    }
+}
+
+function walkParsedInstructions(
+    instructions: any[] | undefined,
+    creatorAddress: string,
+    counterparties: Set<string>,
+    linksToCreators: Set<string>,
+    rugCreators: Set<string>,
+): {
+    solInTransfers: number;
+    solOutTransfers: number;
+    solInSol: number;
+    solOutSol: number;
+    inboundSources: string[];
+    outboundDestinations: string[];
+} {
+    let solInTransfers = 0;
+    let solOutTransfers = 0;
+    let solInSol = 0;
+    let solOutSol = 0;
+    const inboundSources: string[] = [];
+    const outboundDestinations: string[] = [];
+
+    for (const ix of instructions || []) {
+        if (!ix?.parsed) continue;
+
+        if (ix.program === "system" && ix.parsed.type === "transfer") {
+            const info = ix.parsed.info || {};
+            const source = info.source;
+            const destination = info.destination;
+            const lamports = Number(info.lamports || 0);
+
+            if (source === creatorAddress) {
+                solOutTransfers += 1;
+                solOutSol += lamports / 1e9;
+                if (destination) {
+                    counterparties.add(destination);
+                    outboundDestinations.push(destination);
+                    if (rugCreators.has(destination)) linksToCreators.add(destination);
+                }
+            }
+
+            if (destination === creatorAddress) {
+                solInTransfers += 1;
+                solInSol += lamports / 1e9;
+                if (source) {
+                    counterparties.add(source);
+                    inboundSources.push(source);
+                    if (rugCreators.has(source)) linksToCreators.add(source);
+                }
+            }
+        }
+    }
+
+    return { solInTransfers, solOutTransfers, solInSol, solOutSol, inboundSources, outboundDestinations };
+}
+
+async function buildRugHistory(connection: Connection): Promise<RugHistory> {
+    const now = Date.now();
+    if (cachedRugHistory && now - cachedRugHistoryAtMs < CONFIG.RUG_HISTORY_CACHE_TTL_MS) {
+        return cachedRugHistory;
+    }
+
+    const rugCreators = extractHistoricalRugCreators();
+    const rugFunders = new Set<string>();
+    const rugFunderCounts = new Map<string, number>();
+    const sigLimit = Math.max(5, CONFIG.CREATOR_RISK_SIG_LIMIT);
+    const parseLimit = Math.max(3, Math.min(CONFIG.CREATOR_RISK_PARSED_TX_LIMIT, 8));
+
+    for (const creator of rugCreators) {
+        try {
+            const sigs = await connection.getSignaturesForAddress(new PublicKey(creator), { limit: sigLimit }, "confirmed");
+            const chronological = [...sigs].reverse();
+
+            for (const sig of chronological.slice(0, parseLimit)) {
+                const tx = await connection.getParsedTransaction(sig.signature, {
+                    maxSupportedTransactionVersion: 0,
+                    commitment: "confirmed",
+                });
+                if (!tx) continue;
+
+                const counterparties = new Set<string>();
+                const links = new Set<string>();
+                const outer = walkParsedInstructions(
+                    tx.transaction?.message?.instructions,
+                    creator,
+                    counterparties,
+                    links,
+                    rugCreators,
+                );
+                const innerParts = (tx.meta?.innerInstructions || []).map((inner: any) =>
+                    walkParsedInstructions(inner.instructions, creator, counterparties, links, rugCreators)
+                );
+                const firstInbound =
+                    outer.inboundSources[0] ||
+                    innerParts.flatMap(p => p.inboundSources)[0];
+
+                if (firstInbound) {
+                    rugFunders.add(firstInbound);
+                    rugFunderCounts.set(firstInbound, (rugFunderCounts.get(firstInbound) || 0) + 1);
+                    break;
+                }
+            }
+        } catch {
+            // best effort only
+        }
+    }
+
+    cachedRugHistory = { rugCreators, rugFunders, rugFunderCounts };
+    cachedRugHistoryAtMs = now;
+    return cachedRugHistory;
+}
+
+function trackRecentFunderCreator(funder: string, creatorAddress: string): number {
+    const now = Date.now();
+    const windowMs = Math.max(1, CONFIG.CREATOR_RISK_FUNDER_CLUSTER_WINDOW_SEC) * 1000;
+    const entries = (recentFunderCreators.get(funder) || [])
+        .filter((entry) => now - entry.seenAtMs <= windowMs);
+
+    if (!entries.some((entry) => entry.creator === creatorAddress)) {
+        entries.push({ creator: creatorAddress, seenAtMs: now });
+    }
+
+    recentFunderCreators.set(funder, entries);
+    return entries.length;
+}
+
+async function runCreatorRiskCheck(
+    connection: Connection,
+    creatorAddress: string,
+    ctx: string,
+    options: { forceRefresh?: boolean } = {},
+): Promise<CreatorRiskResult> {
+    if (!CONFIG.CREATOR_RISK_CHECK_ENABLED) {
+        stageLog(ctx, "CRISK", "check disabled");
+        return { ok: true };
+    }
+
+    const cached = creatorRiskCache.get(creatorAddress);
+    if (!options.forceRefresh && cached && Date.now() - cached.checkedAtMs < CONFIG.CREATOR_RISK_CACHE_TTL_MS) {
+        return cached.result;
+    }
+
+    try {
+        const rugHistory = await buildRugHistory(connection);
+
+        if (rugHistory.rugCreators.has(creatorAddress)) {
+            const result = { ok: false, reason: "creator in historical rug blacklist" };
+            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
+            return result;
+        }
+
+        const sigLimit = Math.max(5, CONFIG.CREATOR_RISK_SIG_LIMIT);
+        const parseLimit = Math.max(3, CONFIG.CREATOR_RISK_PARSED_TX_LIMIT);
+        const sigs = await connection.getSignaturesForAddress(new PublicKey(creatorAddress), { limit: sigLimit }, "confirmed");
+        const chronological = [...sigs].reverse();
+        const sample = chronological.slice(-parseLimit);
+
+        let solInTransfers = 0;
+        let solOutTransfers = 0;
+        let solInSol = 0;
+        let solOutSol = 0;
+        let funder: string | null = null;
+        let funderRefundSol = 0;
+        const counterparties = new Set<string>();
+        const linksToCreators = new Set<string>();
+
+        for (const sig of sample) {
+            const tx = await connection.getParsedTransaction(sig.signature, {
+                maxSupportedTransactionVersion: 0,
+                commitment: "confirmed",
+            });
+            if (!tx) continue;
+
+            const outer = walkParsedInstructions(
+                tx.transaction?.message?.instructions,
+                creatorAddress,
+                counterparties,
+                linksToCreators,
+                rugHistory.rugCreators,
+            );
+            const innerParts = (tx.meta?.innerInstructions || []).map((inner: any) =>
+                walkParsedInstructions(inner.instructions, creatorAddress, counterparties, linksToCreators, rugHistory.rugCreators)
+            );
+
+            solInTransfers += outer.solInTransfers;
+            solOutTransfers += outer.solOutTransfers;
+            solInSol += outer.solInSol;
+            solOutSol += outer.solOutSol;
+
+            for (const inner of innerParts) {
+                solInTransfers += inner.solInTransfers;
+                solOutTransfers += inner.solOutTransfers;
+                solInSol += inner.solInSol;
+                solOutSol += inner.solOutSol;
+            }
+
+            if (!funder) {
+                funder = outer.inboundSources[0] || innerParts.flatMap(p => p.inboundSources)[0] || null;
+            }
+
+            if (funder) {
+                const outerRefunds = outer.outboundDestinations.filter((d) => d === funder).length > 0 ? outer.solOutSol : 0;
+                const innerRefunds = innerParts
+                    .filter((p) => p.outboundDestinations.filter((d) => d === funder).length > 0)
+                    .reduce((sum, p) => sum + p.solOutSol, 0);
+                funderRefundSol += outerRefunds + innerRefunds;
+            }
+        }
+
+        const uniqueCounterparties = counterparties.size;
+        const firstSigTime = sample[0]?.blockTime || null;
+        const lastSigTime = sample[sample.length - 1]?.blockTime || null;
+        const compressedWindowSec =
+            firstSigTime && lastSigTime && lastSigTime >= firstSigTime
+                ? lastSigTime - firstSigTime
+                : null;
+        const burner =
+            solInTransfers === 0 &&
+            solOutTransfers > 0 &&
+            solOutTransfers <= 3 &&
+            solOutSol >= CONFIG.CREATOR_RISK_BURNER_MIN_OUT_SOL;
+
+        stageLog(
+            ctx,
+            "CRISK",
+            `cp=${uniqueCounterparties} in=${solInTransfers} out=${solOutTransfers} ` +
+            `window=${compressedWindowSec ?? "n/a"}s funder=${funder ? shortSig(funder) : "-"} refund=${funderRefundSol.toFixed(3)}`
+        );
+
+        if (funder && (rugHistory.rugCreators.has(funder) || rugHistory.rugFunders.has(funder))) {
+            const result = {
+                ok: false,
+                reason: `funder blacklisted ${funder}`,
+                funder,
+                uniqueCounterparties,
+                compressedWindowSec,
+                burner,
+            };
+            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
+            return result;
+        }
+
+        if (funder && CONFIG.CREATOR_RISK_FUNDER_CLUSTER_ENABLED) {
+            const historicalCount = rugHistory.rugFunderCounts.get(funder) || 0;
+            if (historicalCount >= CONFIG.CREATOR_RISK_HISTORICAL_FUNDER_CLUSTER_MIN_RUG_CREATORS) {
+                const result = {
+                    ok: false,
+                    reason: `funder cluster historical ${historicalCount} rug creators`,
+                    funder,
+                    uniqueCounterparties,
+                    compressedWindowSec,
+                    burner,
+                };
+                creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
+                return result;
+            }
+
+            const recentCreatorCount = trackRecentFunderCreator(funder, creatorAddress);
+            if (recentCreatorCount >= CONFIG.CREATOR_RISK_FUNDER_CLUSTER_MIN_CREATORS) {
+                const result = {
+                    ok: false,
+                    reason: `funder cluster recent ${recentCreatorCount} creators in ${CONFIG.CREATOR_RISK_FUNDER_CLUSTER_WINDOW_SEC}s`,
+                    funder,
+                    uniqueCounterparties,
+                    compressedWindowSec,
+                    burner,
+                };
+                creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
+                return result;
+            }
+        }
+
+        if (linksToCreators.size > 0) {
+            const linked = Array.from(linksToCreators)[0];
+            const result = {
+                ok: false,
+                reason: `linked to historical rug creator ${linked}`,
+                funder,
+                uniqueCounterparties,
+                compressedWindowSec,
+                burner,
+            };
+            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
+            return result;
+        }
+
+        if (funder && funderRefundSol >= CONFIG.CREATOR_RISK_FUNDER_REFUND_MIN_SOL) {
+            const result = {
+                ok: false,
+                reason: `creator refunded funder ${funderRefundSol.toFixed(3)} SOL`,
+                funder,
+                uniqueCounterparties,
+                compressedWindowSec,
+                burner,
+                funderRefundSol,
+            };
+            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
+            return result;
+        }
+
+        if (uniqueCounterparties >= CONFIG.CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES) {
+            const result = {
+                ok: false,
+                reason: `unique counterparties ${uniqueCounterparties} >= ${CONFIG.CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES}`,
+                funder,
+                uniqueCounterparties,
+                compressedWindowSec,
+                burner,
+            };
+            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
+            return result;
+        }
+
+        if (
+            compressedWindowSec !== null &&
+            compressedWindowSec <= CONFIG.CREATOR_RISK_COMPRESSED_WINDOW_SEC &&
+            uniqueCounterparties >= CONFIG.CREATOR_RISK_COMPRESSED_MAX_COUNTERPARTIES
+        ) {
+            const result = {
+                ok: false,
+                reason: `compressed activity ${uniqueCounterparties} counterparties in ${compressedWindowSec}s`,
+                funder,
+                uniqueCounterparties,
+                compressedWindowSec,
+                burner,
+            };
+            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
+            return result;
+        }
+
+        if (burner) {
+            const result = {
+                ok: false,
+                reason: `burner profile out=${solOutSol.toFixed(2)} SOL with no inbound transfers`,
+                funder,
+                uniqueCounterparties,
+                compressedWindowSec,
+                burner,
+            };
+            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
+            return result;
+        }
+
+        const result = { ok: true, funder, uniqueCounterparties, compressedWindowSec, burner, funderRefundSol };
+        creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
+        return result;
+    } catch (e: any) {
+        const result = { ok: false, reason: e?.message || "creator risk check failed" };
+        creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
+        return result;
     }
 }
 
@@ -868,7 +1400,13 @@ async function getCreatorTokenBalanceRaw(
 
 type PaperTradeResult = { ok: boolean; reason?: string };
 
-async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress: string, tokenMint: string, ctx = ""): Promise<PaperTradeResult> {
+async function maybeRunPaperTradeSimulation(
+    connection: Connection,
+    poolAddress: string,
+    tokenMint: string,
+    ctx = "",
+    creatorAddress?: string,
+): Promise<PaperTradeResult> {
     if (!CONFIG.PAPER_TRADE_ENABLED) return { ok: true };
 
     const observerUser = walletKeypair?.publicKey ?? Keypair.generate().publicKey;
@@ -954,6 +1492,7 @@ async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress:
             tokenMint,
             tokenDecimals,
             ctx,
+            creatorAddress,
         );
         if (!exitState) {
             console.log(`⚠️ PAPER_TRADE: no exit pool state`);
@@ -995,7 +1534,7 @@ async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress:
         const exitSpotSolPerToken = getSpotSolPerTokenFromState(exitState, tokenMint, tokenDecimals) || 0;
 
         stageLog(ctx, "SELL_SPOT", `~${formatSolCompact(exitSpotSolPerToken)}/token`);
-        stageLog(ctx, "PNL", `${pnlSol >= 0 ? "+" : "-"}${formatSolCompact(Math.abs(pnlSol))} (${pnlPct.toFixed(2)}%)`);
+        stageLog(ctx, "PNL", `${pnlSol >= 0 ? "+" : "-"}${formatSolDecimal(Math.abs(pnlSol))} (${pnlPct.toFixed(2)}%)`);
         if (!Number.isFinite(solOut) || solOut <= 0) {
             return { ok: false, reason: "exit returned 0 SOL" };
         }
@@ -1010,13 +1549,14 @@ async function maybeRunPaperTradeSimulation(connection: Connection, poolAddress:
 }
 
 async function waitForExitStateWithLiquidityStop(
-    _connection: Connection,
+    connection: Connection,
     _poolAddress: string,
     fetchStateWithRetry: () => Promise<any | null>,
     entryState: any,
     tokenMint: string,
     tokenDecimals: number,
-    _logPrefix: string,
+    logPrefix: string,
+    creatorAddress?: string,
 ): Promise<any | null> {
     const startedAtMs = Date.now();
     const deadlineMs = startedAtMs + CONFIG.AUTO_SELL_DELAY_MS;
@@ -1029,11 +1569,25 @@ async function waitForExitStateWithLiquidityStop(
     const liqStopLiquidityThreshold =
         Number.isFinite(entrySolLiquidity) && entrySolLiquidity > 0 ? entrySolLiquidity * dropFactor : 0;
     let latestState: any | null = entryState;
+    let lastCreatorRiskCheckAtMs = 0;
     while (Date.now() < deadlineMs) {
         await new Promise(r => setTimeout(r, CONFIG.LIQUIDITY_STOP_CHECK_INTERVAL_MS));
         const s = await fetchStateWithRetry();
         if (!s) continue;
         latestState = s;
+
+        if (
+            creatorAddress &&
+            CONFIG.HOLD_CREATOR_RISK_RECHECK_ENABLED &&
+            Date.now() - lastCreatorRiskCheckAtMs >= Math.max(500, CONFIG.HOLD_CREATOR_RISK_RECHECK_INTERVAL_MS)
+        ) {
+            lastCreatorRiskCheckAtMs = Date.now();
+            const creatorRisk = await runCreatorRiskCheck(connection, creatorAddress, logPrefix, { forceRefresh: true });
+            if (!creatorRisk.ok) {
+                console.log(`⚠️ CREATOR RISK EXIT: ${creatorRisk.reason}`);
+                return s;
+            }
+        }
 
         const curSpot = getSpotSolPerTokenFromState(s, tokenMint, tokenDecimals) || 0;
         const curSolLiquidity = getSolLiquidityFromState(s, tokenMint) || 0;
@@ -1197,7 +1751,6 @@ async function executeBuy(connection: Connection, poolAddress: string, tokenMint
         // Check if we have valid state
         if (!swapSolanaState || !swapSolanaState.poolBaseAmount || swapSolanaState.poolBaseAmount.eq(new BN(0))) {
             console.log("❌ Failed to fetch valid pool state.");
-            isPositionOpen = false;
             return false;
         }
 
@@ -1240,17 +1793,16 @@ async function executeBuy(connection: Connection, poolAddress: string, tokenMint
         const confirmation = await connection.confirmTransaction(txSignature, "confirmed");
         if (confirmation.value.err) {
             console.log(`❌ Buy failed: ${JSON.stringify(confirmation.value.err)}`);
-            isPositionOpen = false;
             return false;
         }
 
         console.log("🚀 BUY CONFIRMED! Scheduling Auto-Sell...");
+        activeLivePositions += 1;
         setTimeout(() => executeSell(connection, poolAddress, tokenMint), CONFIG.AUTO_SELL_DELAY_MS);
         return true;
 
     } catch (e: any) {
         console.error("❌ Buy Error:", e.message);
-        isPositionOpen = false;
         return false;
     }
 }
@@ -1281,7 +1833,6 @@ async function executeSell(connection: Connection, poolAddress: string, tokenMin
         
         if (tokenBalance.isZero()) {
             console.log("❌ No tokens to sell.");
-            isPositionOpen = false;
             return;
         }
 
@@ -1320,7 +1871,7 @@ async function executeSell(connection: Connection, poolAddress: string, tokenMin
     } catch (e: any) {
         console.error("❌ Sell Error:", e.message);
     } finally {
-        isPositionOpen = false;
+        activeLivePositions = Math.max(0, activeLivePositions - 1);
     }
 }
 
