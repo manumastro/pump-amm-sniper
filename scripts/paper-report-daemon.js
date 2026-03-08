@@ -402,17 +402,6 @@ function summarize() {
       creatorCashoutScore: e.creatorCashoutScore,
       creatorCashoutDest: e.creatorCashoutDest,
     })),
-    last10: finished.slice(-10).map(e => ({
-      id: e.id,
-      signature: e.signature,
-      tokenMint: e.tokenMint,
-      pnlSol: e.pnlSol,
-      pnlPct: e.pnlPct,
-      skipReason: e.skipReason,
-      endStatus: e.endStatus,
-      durationMs: e.durationMs,
-      classification: classifyOperation(e),
-    })),
     rugPullEvents: rugPulls.slice(-20).map(e => ({
       id: e.id,
       startedAt: e.startedAt,
