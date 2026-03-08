@@ -1487,6 +1487,28 @@ async function runCreatorRiskCheck(
         }
 
         if (
+            options.entrySolLiquidity &&
+            CONFIG.HOLD_CREATOR_CASHOUT_EXIT_ENABLED &&
+            creatorCashout.score >= CONFIG.CREATOR_RISK_CASHOUT_EXIT_SCORE
+        ) {
+            const result = {
+                ok: false,
+                reason: `creator cashout ${creatorCashout.totalSol.toFixed(3)} SOL (${creatorCashout.pctOfEntryLiquidity.toFixed(2)}% liq, score ${creatorCashout.score.toFixed(2)})`,
+                funder,
+                uniqueCounterparties,
+                compressedWindowSec,
+                burner,
+                funderRefundSol,
+                creatorCashoutSol: creatorCashout.totalSol,
+                creatorCashoutPctOfEntryLiquidity: creatorCashout.pctOfEntryLiquidity,
+                creatorCashoutScore: creatorCashout.score,
+                creatorCashoutDestination: creatorCashout.destination,
+            };
+            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
+            return result;
+        }
+
+        if (
             relayFunding.detected &&
             isStandardRelayRiskPool(options.entrySolLiquidity)
         ) {
@@ -1601,28 +1623,6 @@ async function runCreatorRiskCheck(
             const result = {
                 ok: false,
                 reason: `creator refunded funder ${funderRefundSol.toFixed(3)} SOL`,
-                funder,
-                uniqueCounterparties,
-                compressedWindowSec,
-                burner,
-                funderRefundSol,
-                creatorCashoutSol: creatorCashout.totalSol,
-                creatorCashoutPctOfEntryLiquidity: creatorCashout.pctOfEntryLiquidity,
-                creatorCashoutScore: creatorCashout.score,
-                creatorCashoutDestination: creatorCashout.destination,
-            };
-            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
-            return result;
-        }
-
-        if (
-            options.entrySolLiquidity &&
-            CONFIG.HOLD_CREATOR_CASHOUT_EXIT_ENABLED &&
-            creatorCashout.score >= CONFIG.CREATOR_RISK_CASHOUT_EXIT_SCORE
-        ) {
-            const result = {
-                ok: false,
-                reason: `creator cashout ${creatorCashout.totalSol.toFixed(3)} SOL (${creatorCashout.pctOfEntryLiquidity.toFixed(2)}% liq, score ${creatorCashout.score.toFixed(2)})`,
                 funder,
                 uniqueCounterparties,
                 compressedWindowSec,

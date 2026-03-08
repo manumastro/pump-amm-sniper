@@ -107,6 +107,11 @@ Lettura pratica:
 2. Su pool standard da creator fresh/relay-funded e molto piu pericoloso.
 3. `CAMM` e un segnale duro: il creator ha toccato di nuovo l'AMM dopo il `create_pool`.
 
+Gerarchia pratica dei segnali:
+1. `CCASH` = segnale economico forte: il creator sta gia portando via SOL.
+2. `RRELAY` = segnale infrastrutturale forte: funding coordinato `root -> funder -> creator`.
+3. `micro-burst` = segnale comportamentale: attivita compressa e artificiale.
+
 ### 1.5 Pre-Buy Wait
 Scopo:
 - non comprare subito alla detection del pool
