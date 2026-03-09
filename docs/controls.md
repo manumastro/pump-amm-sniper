@@ -109,6 +109,7 @@ Controllo probation paper-only:
 Eccezioni:
 - nessun probation bypass per `relay funding recent on standard pool`
 - nessun probation bypass per `relay funding recent + micro burst`
+- nessun probation bypass per `creator direct AMM re-entry`
 
 Log principali:
 - `CRISK | cp=... in=... out=... window=... funder=... refund=... micro=.../...`
@@ -300,8 +301,15 @@ Regole:
 - se perdita oltre guard: `PAPER LOSS`
 
 Log:
+- `BUY_SPOT`
+- `BUY_QUOTE`
 - `SELL_SPOT`
+- `SELL_QUOTE`
 - `PNL`
+
+Lettura:
+- `*_SPOT` = prezzo teorico da riserve del pool
+- `*_QUOTE` = output eseguibile usato per il PnL
 
 ### 3.2 Dev Holdings Check
 Scopo:

@@ -327,11 +327,12 @@ type CreatorRiskResult = {
     precreateBurstTransfers?: number;
 };
 
-function isRelayProbationBypassForbidden(reason?: string): boolean {
+function isProbationBypassForbidden(reason?: string): boolean {
     const normalized = (reason || "").toLowerCase();
     return (
         normalized.includes("relay funding recent on standard pool") ||
-        normalized.includes("relay funding recent + micro burst")
+        normalized.includes("relay funding recent + micro burst") ||
+        normalized.includes("creator direct amm re-entry")
     );
 }
 
@@ -785,7 +786,7 @@ async function handleNewPool(connection: Connection, signature: string) {
             if (
                 MONITOR_ONLY &&
                 CONFIG.PAPER_CREATOR_RISK_PROBATION_ENABLED &&
-                !isRelayProbationBypassForbidden(creatorRisk.reason)
+                !isProbationBypassForbidden(creatorRisk.reason)
             ) {
                 creatorRiskProbation = true;
                 stageLog(
@@ -2903,6 +2904,7 @@ async function maybeRunPaperTradeSimulation(
         }
         const entrySpotSolPerToken = getSpotSolPerTokenFromState(entryState, tokenMint, tokenDecimals) || 0;
         stageLog(ctx, "BUY_SPOT", `~${formatSolCompact(entrySpotSolPerToken)}/token`);
+        stageLog(ctx, "BUY_QUOTE", `${tokenOutUi.toFixed(6)} token for ${formatSolDecimal(CONFIG.TRADE_AMOUNT_SOL)}`);
 
         const suspiciousRelay =
             CONFIG.HOLD_SUSPICIOUS_RELAY_SHORT_HOLD_ENABLED &&
@@ -2983,6 +2985,7 @@ async function maybeRunPaperTradeSimulation(
             const pnlSol = -CONFIG.TRADE_AMOUNT_SOL;
             const pnlPct = -100;
             stageLog(ctx, "SELL_SPOT", `~${formatSolCompact(0)}/token`);
+            stageLog(ctx, "SELL_QUOTE", `${formatSolDecimal(0)} for ${tokenOutUi.toFixed(6)} token`);
             stageLog(ctx, "PNL", `-${formatSolDecimal(Math.abs(pnlSol))} (${pnlPct.toFixed(2)}%)`);
             return { ok: false, reason: "exit returned 0 SOL", finalStatus: "PAPER LOSS" };
         }
@@ -3002,6 +3005,7 @@ async function maybeRunPaperTradeSimulation(
         const pnlPct = (pnlSol / CONFIG.TRADE_AMOUNT_SOL) * 100;
 
         stageLog(ctx, "SELL_SPOT", `~${formatSolCompact(exitSpotSolPerToken)}/token`);
+        stageLog(ctx, "SELL_QUOTE", `${formatSolDecimal(solOut)} for ${tokenOutUi.toFixed(6)} token`);
         stageLog(ctx, "PNL", `${pnlSol >= 0 ? "+" : "-"}${formatSolDecimal(Math.abs(pnlSol))} (${pnlPct.toFixed(2)}%)`);
         if (pnlPct <= -Math.abs(CONFIG.PAPER_TRADE_MAX_LOSS_PCT)) {
             return {
