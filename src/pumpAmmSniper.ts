@@ -15,6 +15,7 @@ dotenv.config();
 const EARLY_ROOT_DIR = process.cwd();
 const IS_WORKER_PROCESS = !!process.env.WORKER_TASK_SIGNATURE;
 const WORKER_SLOT = Number(process.env.WORKER_SLOT || 0);
+const SILENCE_RPC_429_LOGS = process.env.SILENCE_RPC_429_LOGS === "true";
 
 function timestampNow(): string {
     const d = new Date();
@@ -35,7 +36,11 @@ function patchConsoleWithTimestamp() {
 
     const shouldMirrorStdout = !process.env.INVOCATION_ID && !IS_WORKER_PROCESS;
     const wrap = (fn: (...args: any[]) => void) => (...args: any[]) => {
-        const rendered = `[${timestampNow()}] ${util.format(...args)}`;
+        const payload = util.format(...args);
+        if (SILENCE_RPC_429_LOGS && payload.includes("Server responded with 429 Too Many Requests.")) {
+            return;
+        }
+        const rendered = `[${timestampNow()}] ${payload}`;
         fs.appendFileSync(targetLogPath, `${rendered}\n`);
         if (shouldMirrorStdout) {
             fn(rendered);
@@ -69,6 +74,9 @@ const CONFIG = {
     HOLD_REMOVE_LIQ_CHECK_INTERVAL_MS: Number(process.env.HOLD_REMOVE_LIQ_CHECK_INTERVAL_MS || 1500),
     HOLD_REMOVE_LIQ_MIN_WSOL_TO_CREATOR: Number(process.env.HOLD_REMOVE_LIQ_MIN_WSOL_TO_CREATOR || 0.5),
     HOLD_REMOVE_LIQ_MIN_SOL_TO_CREATOR: Number(process.env.HOLD_REMOVE_LIQ_MIN_SOL_TO_CREATOR || 0.5),
+    HOLD_CREATOR_AMM_BURST_DETECT_ENABLED: process.env.HOLD_CREATOR_AMM_BURST_DETECT_ENABLED !== "false",
+    HOLD_CREATOR_AMM_BURST_WINDOW_SEC: Number(process.env.HOLD_CREATOR_AMM_BURST_WINDOW_SEC || 8),
+    HOLD_CREATOR_AMM_BURST_MIN_TXS: Number(process.env.HOLD_CREATOR_AMM_BURST_MIN_TXS || 3),
     PRE_BUY_WAIT_MS: Number(process.env.PRE_BUY_WAIT_MS || 1500), // Wait before entering
     PRE_BUY_MAX_LIQ_DROP_PCT: Number(process.env.PRE_BUY_MAX_LIQ_DROP_PCT || 10), // Skip if liq drops too much during wait
     PRE_BUY_CONFIRM_SNAPSHOTS: Number(process.env.PRE_BUY_CONFIRM_SNAPSHOTS || 3), // Extra confirmations after wait
@@ -80,8 +88,8 @@ const CONFIG = {
     PRE_BUY_TOP10_MAX_ATTEMPTS: Number(process.env.PRE_BUY_TOP10_MAX_ATTEMPTS || 4),
     PRE_BUY_TOP10_RETRY_BASE_MS: Number(process.env.PRE_BUY_TOP10_RETRY_BASE_MS || 400),
     CREATOR_RISK_CHECK_ENABLED: process.env.CREATOR_RISK_CHECK_ENABLED !== "false",
-    CREATOR_RISK_SIG_LIMIT: Number(process.env.CREATOR_RISK_SIG_LIMIT || 20),
-    CREATOR_RISK_PARSED_TX_LIMIT: Number(process.env.CREATOR_RISK_PARSED_TX_LIMIT || 10),
+    CREATOR_RISK_SIG_LIMIT: Number(process.env.CREATOR_RISK_SIG_LIMIT || 40),
+    CREATOR_RISK_PARSED_TX_LIMIT: Number(process.env.CREATOR_RISK_PARSED_TX_LIMIT || 25),
     CREATOR_RISK_CACHE_TTL_MS: Number(process.env.CREATOR_RISK_CACHE_TTL_MS || 15 * 60 * 1000),
     CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES: Number(process.env.CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES || 25),
     CREATOR_RISK_COMPRESSED_MAX_COUNTERPARTIES: Number(process.env.CREATOR_RISK_COMPRESSED_MAX_COUNTERPARTIES || 20),
@@ -134,6 +142,16 @@ const CONFIG = {
     CREATOR_RISK_DIRECT_AMM_REENTRY_ENABLED: process.env.CREATOR_RISK_DIRECT_AMM_REENTRY_ENABLED !== "false",
     CREATOR_RISK_DIRECT_AMM_REENTRY_SIG_LIMIT: Number(process.env.CREATOR_RISK_DIRECT_AMM_REENTRY_SIG_LIMIT || 8),
     CREATOR_RISK_DIRECT_AMM_REENTRY_WINDOW_SEC: Number(process.env.CREATOR_RISK_DIRECT_AMM_REENTRY_WINDOW_SEC || 180),
+    CREATOR_RISK_PRECREATE_BURST_BLOCK_ENABLED: process.env.CREATOR_RISK_PRECREATE_BURST_BLOCK_ENABLED !== "false",
+    CREATOR_RISK_PRECREATE_BURST_WINDOW_SEC: Number(process.env.CREATOR_RISK_PRECREATE_BURST_WINDOW_SEC || 240),
+    CREATOR_RISK_PRECREATE_BURST_SIG_LIMIT: Number(process.env.CREATOR_RISK_PRECREATE_BURST_SIG_LIMIT || 120),
+    CREATOR_RISK_PRECREATE_BURST_PARSED_TX_LIMIT: Number(process.env.CREATOR_RISK_PRECREATE_BURST_PARSED_TX_LIMIT || 80),
+    CREATOR_RISK_PRECREATE_BURST_MIN_TRANSFERS: Number(process.env.CREATOR_RISK_PRECREATE_BURST_MIN_TRANSFERS || 12),
+    CREATOR_RISK_PRECREATE_BURST_MIN_DESTINATIONS: Number(process.env.CREATOR_RISK_PRECREATE_BURST_MIN_DESTINATIONS || 12),
+    CREATOR_RISK_PRECREATE_BURST_MIN_MEDIAN_SOL: Number(process.env.CREATOR_RISK_PRECREATE_BURST_MIN_MEDIAN_SOL || 0.7),
+    CREATOR_RISK_PRECREATE_BURST_MAX_MEDIAN_SOL: Number(process.env.CREATOR_RISK_PRECREATE_BURST_MAX_MEDIAN_SOL || 1.3),
+    CREATOR_RISK_PRECREATE_BURST_MAX_REL_STDDEV: Number(process.env.CREATOR_RISK_PRECREATE_BURST_MAX_REL_STDDEV || 0.1),
+    CREATOR_RISK_PRECREATE_BURST_MAX_AMOUNT_RATIO: Number(process.env.CREATOR_RISK_PRECREATE_BURST_MAX_AMOUNT_RATIO || 1.35),
     HOLD_CREATOR_RISK_RECHECK_ENABLED: process.env.HOLD_CREATOR_RISK_RECHECK_ENABLED !== "false",
     HOLD_CREATOR_RISK_RECHECK_INTERVAL_MS: Number(process.env.HOLD_CREATOR_RISK_RECHECK_INTERVAL_MS || 5000),
     CREATOR_RISK_FUNDER_REFUND_MIN_SOL: Number(process.env.CREATOR_RISK_FUNDER_REFUND_MIN_SOL || 0.05),
@@ -165,6 +183,8 @@ const CONFIG = {
 
     // 📈 PAPER TRADE (simulation only)
     PAPER_TRADE_ENABLED: process.env.PAPER_TRADE_ENABLED === "true",
+    PAPER_CREATOR_RISK_PROBATION_ENABLED: process.env.PAPER_CREATOR_RISK_PROBATION_ENABLED === "true",
+    PAPER_CREATOR_RISK_PROBATION_HOLD_MS: Number(process.env.PAPER_CREATOR_RISK_PROBATION_HOLD_MS || 10000),
     MAX_CONCURRENT_OPERATIONS: Number(process.env.MAX_CONCURRENT_OPERATIONS || 2),
     PAPER_TRADE_MAX_LOSS_PCT: Number(process.env.PAPER_TRADE_MAX_LOSS_PCT || 80),
 };
@@ -300,6 +320,7 @@ type CreatorRiskResult = {
     creatorSeedSol?: number;
     creatorSeedPctOfCurrentLiq?: number;
     inboundSpraySources?: number;
+    precreateBurstTransfers?: number;
 };
 
 type RugHistory = {
@@ -747,10 +768,21 @@ async function handleNewPool(connection: Connection, signature: string) {
             createPoolBlockTime: tx.blockTime || null,
             creatorSeedSol,
         });
+        let creatorRiskProbation = false;
         if (!creatorRisk.ok) {
-            console.log(`🛑 SKIP: creator risk (${creatorRisk.reason})`);
-            finalStatus = "SKIP: creator risk";
-            return;
+            if (MONITOR_ONLY && CONFIG.PAPER_CREATOR_RISK_PROBATION_ENABLED) {
+                creatorRiskProbation = true;
+                stageLog(
+                    ctx,
+                    "PROBATION",
+                    `paper-only bypass creator risk (${creatorRisk.reason || "unknown"}) ` +
+                    `hold=${Math.max(1000, CONFIG.PAPER_CREATOR_RISK_PROBATION_HOLD_MS)}ms`
+                );
+            } else {
+                console.log(`🛑 SKIP: creator risk (${creatorRisk.reason})`);
+                finalStatus = "SKIP: creator risk";
+                return;
+            }
         }
 
         if (MONITOR_ONLY) {
@@ -779,6 +811,12 @@ async function handleNewPool(connection: Connection, signature: string) {
                 signature,
                 tx.blockTime || null,
                 creatorRisk,
+                creatorRiskProbation
+                    ? {
+                        forceHoldMs: CONFIG.PAPER_CREATOR_RISK_PROBATION_HOLD_MS,
+                        suppressCreatorRiskRecheck: true,
+                      }
+                    : undefined,
             );
             if (!paper.ok) {
                 if (paper.finalStatus) {
@@ -1504,6 +1542,114 @@ function classifyInboundSprayPattern(inboundTransfers: Array<{ source: string; s
     };
 }
 
+function classifyPrecreateOutboundBurst(outboundTransfers: Array<{ destination: string; sol: number }>) {
+    const positive = outboundTransfers.filter((t) => Number.isFinite(t.sol) && t.sol > 0);
+    if (!positive.length) {
+        return {
+            detected: false,
+            transfers: 0,
+            destinations: 0,
+            medianSol: 0,
+            relStdDev: Infinity,
+            amountRatio: Infinity,
+        };
+    }
+
+    const values = positive.map((t) => t.sol).sort((a, b) => a - b);
+    const destinations = new Set(positive.map((t) => t.destination)).size;
+    const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
+    const variance = values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / values.length;
+    const stdDev = Math.sqrt(Math.max(0, variance));
+    const relStdDev = mean > 0 ? stdDev / mean : Infinity;
+    const medianSol =
+        values.length % 2 === 0
+            ? (values[(values.length / 2) - 1] + values[values.length / 2]) / 2
+            : values[Math.floor(values.length / 2)];
+    const amountRatio = values[0] > 0 ? values[values.length - 1] / values[0] : Infinity;
+
+    const detected =
+        positive.length >= CONFIG.CREATOR_RISK_PRECREATE_BURST_MIN_TRANSFERS &&
+        destinations >= CONFIG.CREATOR_RISK_PRECREATE_BURST_MIN_DESTINATIONS &&
+        medianSol >= CONFIG.CREATOR_RISK_PRECREATE_BURST_MIN_MEDIAN_SOL &&
+        medianSol <= CONFIG.CREATOR_RISK_PRECREATE_BURST_MAX_MEDIAN_SOL &&
+        relStdDev <= CONFIG.CREATOR_RISK_PRECREATE_BURST_MAX_REL_STDDEV &&
+        amountRatio <= CONFIG.CREATOR_RISK_PRECREATE_BURST_MAX_AMOUNT_RATIO;
+
+    return {
+        detected,
+        transfers: positive.length,
+        destinations,
+        medianSol,
+        relStdDev,
+        amountRatio,
+    };
+}
+
+async function collectPrecreateOutboundTransfers(
+    connection: Connection,
+    creatorAddress: string,
+    createPoolSignature?: string,
+    createPoolBlockTime?: number | null,
+): Promise<Array<{ destination: string; sol: number }>> {
+    if (!createPoolSignature || !createPoolBlockTime || !CONFIG.CREATOR_RISK_PRECREATE_BURST_BLOCK_ENABLED) {
+        return [];
+    }
+
+    try {
+        const sigs = await connection.getSignaturesForAddress(
+            new PublicKey(creatorAddress),
+            {
+                limit: Math.max(20, CONFIG.CREATOR_RISK_PRECREATE_BURST_SIG_LIMIT),
+                before: createPoolSignature,
+            },
+            "confirmed",
+        );
+        const windowSec = Math.max(1, CONFIG.CREATOR_RISK_PRECREATE_BURST_WINDOW_SEC);
+        const parseLimit = Math.max(5, CONFIG.CREATOR_RISK_PRECREATE_BURST_PARSED_TX_LIMIT);
+        const candidates = sigs
+            .filter((s) => !s.err && !!s.blockTime)
+            .filter((s) => {
+                const t = s.blockTime || 0;
+                return t <= createPoolBlockTime && createPoolBlockTime - t <= windowSec;
+            })
+            .sort((a, b) => (a.blockTime || 0) - (b.blockTime || 0))
+            .slice(-parseLimit);
+
+        const outboundTransfers: Array<{ destination: string; sol: number }> = [];
+        for (const sig of candidates) {
+            const tx = await connection.getParsedTransaction(sig.signature, {
+                maxSupportedTransactionVersion: 0,
+                commitment: "confirmed",
+            });
+            if (!tx) continue;
+            const noopCounterparties = new Set<string>();
+            const noopLinks = new Set<string>();
+            const outer = walkParsedInstructions(
+                tx.transaction?.message?.instructions,
+                creatorAddress,
+                noopCounterparties,
+                noopLinks,
+                new Set<string>(),
+            );
+            outboundTransfers.push(...outer.outboundTransfers);
+
+            for (const inner of tx.meta?.innerInstructions || []) {
+                const part = walkParsedInstructions(
+                    inner.instructions,
+                    creatorAddress,
+                    noopCounterparties,
+                    noopLinks,
+                    new Set<string>(),
+                );
+                outboundTransfers.push(...part.outboundTransfers);
+            }
+        }
+        return outboundTransfers;
+    } catch {
+        return [];
+    }
+}
+
 function extractCreatorSeedSolFromCreateTx(tx: any, creatorAddress: string): number {
     const counterparties = new Set<string>();
     const links = new Set<string>();
@@ -1624,7 +1770,14 @@ async function detectRemoveLiquiditySince(
     seenSignatures: Set<string>,
     createPoolSignature?: string,
     createPoolBlockTime?: number | null,
-): Promise<{ detected: boolean; signature?: string; wsolToCreator?: number; solToCreator?: number }> {
+): Promise<{
+    detected: boolean;
+    signature?: string;
+    wsolToCreator?: number;
+    solToCreator?: number;
+    creatorAmmTouch?: boolean;
+    eventTimeSec?: number;
+}> {
     try {
         const sigs = await connection.getSignaturesForAddress(
             new PublicKey(poolAddress),
@@ -1650,6 +1803,14 @@ async function detectRemoveLiquiditySince(
             });
             if (!tx) continue;
 
+            const touchesPumpAmm = flattenParsedInstructions(tx).some((ix) =>
+                instructionProgramIdMatches(ix, PUMPFUN_AMM_PROGRAM_ID)
+            );
+            const touchesCreator = txTouchesAddress(tx, creatorAddress);
+            const touchesPool = txTouchesAddress(tx, poolAddress);
+            const creatorAmmTouch = touchesPumpAmm && touchesCreator && touchesPool;
+            const eventTimeSec = s.blockTime || Math.floor(Date.now() / 1000);
+
             const m = isRemoveLiquidityLikeTx(tx, creatorAddress, poolAddress);
             if (m.detected) {
                 return {
@@ -1657,6 +1818,17 @@ async function detectRemoveLiquiditySince(
                     signature: s.signature,
                     wsolToCreator: m.wsolToCreator,
                     solToCreator: m.solToCreator,
+                    creatorAmmTouch,
+                    eventTimeSec,
+                };
+            }
+
+            if (creatorAmmTouch) {
+                return {
+                    detected: false,
+                    creatorAmmTouch: true,
+                    signature: s.signature,
+                    eventTimeSec,
                 };
             }
         }
@@ -1875,6 +2047,14 @@ async function runCreatorRiskCheck(
         );
         const sprayOutbound = classifySprayOutboundPattern(outboundTransfers);
         const sprayInbound = classifyInboundSprayPattern(inboundTransfers);
+        const precreateBurst = classifyPrecreateOutboundBurst(
+            await collectPrecreateOutboundTransfers(
+                connection,
+                creatorAddress,
+                options.createPoolSignature,
+                options.createPoolBlockTime,
+            )
+        );
         const relayFunding = await classifyRecentRelayFunding(connection, creatorAddress, funder);
         const directAmmReentry = await detectCreatorDirectAmmReentry(
             connection,
@@ -1938,6 +2118,14 @@ async function runCreatorRiskCheck(
                 "SPRAY",
                 `out=${sprayOutbound.transfers} dest=${sprayOutbound.destinations} median=${sprayOutbound.medianSol.toFixed(3)} ` +
                 `rel_std=${sprayOutbound.relStdDev.toFixed(2)} ratio=${sprayOutbound.amountRatio.toFixed(2)}`
+            );
+        }
+        if (precreateBurst.detected) {
+            stageLog(
+                ctx,
+                "PBURST",
+                `precreate out=${precreateBurst.transfers} dest=${precreateBurst.destinations} median=${precreateBurst.medianSol.toFixed(3)} ` +
+                `rel_std=${precreateBurst.relStdDev.toFixed(2)} ratio=${precreateBurst.amountRatio.toFixed(2)}`
             );
         }
         if (directAmmReentry.detected) {
@@ -2073,6 +2261,23 @@ async function runCreatorRiskCheck(
                 burner,
                 creatorSeedSol,
                 creatorSeedPctOfCurrentLiq,
+            };
+            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
+            return result;
+        }
+
+        if (precreateBurst.detected) {
+            const result = {
+                ok: false,
+                reason:
+                    `precreate uniform outbound burst ${precreateBurst.transfers} transfers ` +
+                    `to ${precreateBurst.destinations} destinations ` +
+                    `(median ${precreateBurst.medianSol.toFixed(3)} SOL, rel_std ${precreateBurst.relStdDev.toFixed(2)})`,
+                funder,
+                uniqueCounterparties,
+                compressedWindowSec,
+                burner,
+                precreateBurstTransfers: precreateBurst.transfers,
             };
             creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
             return result;
@@ -2358,6 +2563,7 @@ async function runCreatorRiskCheck(
             creatorSeedSol,
             creatorSeedPctOfCurrentLiq,
             inboundSpraySources: sprayInbound.sources,
+            precreateBurstTransfers: precreateBurst.transfers,
         };
         creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
         return result;
@@ -2515,6 +2721,11 @@ type PaperTradeResult = {
     finalStatus?: string;
 };
 
+type PaperSimulationOptions = {
+    forceHoldMs?: number;
+    suppressCreatorRiskRecheck?: boolean;
+};
+
 async function maybeRunPaperTradeSimulation(
     connection: Connection,
     poolAddress: string,
@@ -2524,6 +2735,7 @@ async function maybeRunPaperTradeSimulation(
     createPoolSignature?: string,
     createPoolBlockTime?: number | null,
     initialCreatorRisk?: CreatorRiskResult,
+    options?: PaperSimulationOptions,
 ): Promise<PaperTradeResult> {
     if (!CONFIG.PAPER_TRADE_ENABLED) return { ok: true };
 
@@ -2605,10 +2817,18 @@ async function maybeRunPaperTradeSimulation(
         const suspiciousRelay =
             CONFIG.HOLD_SUSPICIOUS_RELAY_SHORT_HOLD_ENABLED &&
             !!initialCreatorRisk?.relayFundingRoot;
-        const effectiveHoldMs = suspiciousRelay
+        const forcedProbationHoldMs =
+            options?.forceHoldMs && Number.isFinite(options.forceHoldMs)
+                ? Math.max(1000, options.forceHoldMs)
+                : 0;
+        const effectiveHoldMs = forcedProbationHoldMs > 0
+            ? forcedProbationHoldMs
+            : suspiciousRelay
             ? Math.max(1000, CONFIG.HOLD_SUSPICIOUS_RELAY_SHORT_HOLD_MS)
             : Math.max(1000, CONFIG.AUTO_SELL_DELAY_MS);
-        if (suspiciousRelay) {
+        if (forcedProbationHoldMs > 0) {
+            stageLog(ctx, "HOLD", `probation hold ${effectiveHoldMs}ms (paper creator-risk bypass)`);
+        } else if (suspiciousRelay) {
             stageLog(
                 ctx,
                 "HOLD",
@@ -2625,6 +2845,7 @@ async function maybeRunPaperTradeSimulation(
             tokenDecimals,
             ctx,
             effectiveHoldMs,
+            !!options?.suppressCreatorRiskRecheck,
             creatorAddress,
             createPoolSignature,
             createPoolBlockTime,
@@ -2714,6 +2935,7 @@ async function waitForExitStateWithLiquidityStop(
     _tokenDecimals: number,
     logPrefix: string,
     holdMs: number,
+    suppressCreatorRiskRecheck: boolean,
     creatorAddress?: string,
     createPoolSignature?: string,
     createPoolBlockTime?: number | null,
@@ -2727,6 +2949,7 @@ async function waitForExitStateWithLiquidityStop(
     let lastCreatorRiskCheckAtMs = 0;
     let lastRemoveLiqCheckAtMs = 0;
     const seenPoolSignatures = new Set<string>();
+    const creatorAmmTouchTimesSec: number[] = [];
     if (createPoolSignature) seenPoolSignatures.add(createPoolSignature);
 
     while (Date.now() < deadlineMs) {
@@ -2736,6 +2959,7 @@ async function waitForExitStateWithLiquidityStop(
 
             if (
                 creatorAddress &&
+                !suppressCreatorRiskRecheck &&
                 CONFIG.HOLD_CREATOR_RISK_RECHECK_ENABLED &&
                 Date.now() - lastCreatorRiskCheckAtMs >= Math.max(500, CONFIG.HOLD_CREATOR_RISK_RECHECK_INTERVAL_MS)
             ) {
@@ -2775,6 +2999,24 @@ async function waitForExitStateWithLiquidityStop(
                         `entry_liq=${entrySolLiquidity.toFixed(2)} SOL)`
                     );
                     return s;
+                }
+                if (CONFIG.HOLD_CREATOR_AMM_BURST_DETECT_ENABLED && removeLiq.creatorAmmTouch) {
+                    const eventTimeSec = removeLiq.eventTimeSec || Math.floor(Date.now() / 1000);
+                    creatorAmmTouchTimesSec.push(eventTimeSec);
+                    const windowSec = Math.max(1, CONFIG.HOLD_CREATOR_AMM_BURST_WINDOW_SEC);
+                    const minTxs = Math.max(2, CONFIG.HOLD_CREATOR_AMM_BURST_MIN_TXS);
+                    const cutoff = eventTimeSec - windowSec;
+                    while (creatorAmmTouchTimesSec.length && creatorAmmTouchTimesSec[0] < cutoff) {
+                        creatorAmmTouchTimesSec.shift();
+                    }
+                    if (creatorAmmTouchTimesSec.length >= minTxs) {
+                        console.log(
+                            `⚠️ CREATOR AMM BURST EXIT: ` +
+                            `${creatorAmmTouchTimesSec.length} tx in ${windowSec}s ` +
+                            `(${shortSig(removeLiq.signature || "-")})`
+                        );
+                        return s;
+                    }
                 }
             }
         }

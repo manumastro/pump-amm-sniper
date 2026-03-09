@@ -89,6 +89,7 @@ Segnali usati:
 - relay-root sospetto + `spray outbound`: tante uscite molto simili verso molte destinazioni
 - `inbound collector pattern`: tanti inbound simili da molte source verso il creator in finestra breve
 - creator che richiama direttamente `pAMMBay...` dopo `create_pool`
+- burst outbound pre-create (tipicamente tanti trasferimenti ~1 SOL in pochi secondi verso molte destinazioni)
 
 Blacklist lette solo da:
 - `blacklists/creators.txt`
@@ -99,6 +100,11 @@ Blacklist lette solo da:
 
 Esito:
 - se il rischio e alto: `SKIP: creator risk`
+- opzionale in paper-only: `probation` (niente skip, hold corto forzato)
+
+Controllo probation paper-only:
+- `PAPER_CREATOR_RISK_PROBATION_ENABLED`
+- `PAPER_CREATOR_RISK_PROBATION_HOLD_MS`
 
 Log principali:
 - `CRISK | cp=... in=... out=... window=... funder=... refund=... micro=.../...`
@@ -107,6 +113,8 @@ Log principali:
 - `CCASH | total=... max=... rel=... score=... dest=...`
 - `SEED | creator=... SOL pct=...% growth=...x`
 - `ISPRAY | in=... src=... median=... rel_std=... ratio=...`
+- `PBURST | precreate out=... dest=... median=... rel_std=... ratio=...`
+- `PROBATION | paper-only bypass creator risk (...) hold=...ms`
 
 Lettura pratica:
 1. `RRELAY` da solo non significa per forza rug.
@@ -116,6 +124,7 @@ Lettura pratica:
 5. `spray outbound` = il creator distribuisce importi quasi uguali a molti wallet: pattern infrastrutturale, non utente normale.
 6. `seed troppo piccolo` = il creator ha quasi zero skin in the game rispetto alla liquidity che vedevamo prima del buy.
 7. `inbound collector` = molti wallet alimentano il creator con importi simili in poco tempo: pattern di coordinamento, non domanda organica.
+8. `precreate burst` = raffica di outbound quasi uguali subito prima del create_pool: pattern operativo ad alto rischio.
 
 Gerarchia pratica dei segnali:
 1. `CCASH` = segnale economico forte: il creator sta gia portando via SOL.
@@ -242,6 +251,7 @@ Esito:
 
 Log:
 - `HOLD | suspicious relay root ... -> short hold ...ms`
+- `HOLD | probation hold ...ms (paper creator-risk bypass)`
 
 ### 2.4 Remove Liquidity Exit (on-chain)
 Scopo:
@@ -252,16 +262,21 @@ Controlli:
 - `HOLD_REMOVE_LIQ_CHECK_INTERVAL_MS`
 - `HOLD_REMOVE_LIQ_MIN_WSOL_TO_CREATOR`
 - `HOLD_REMOVE_LIQ_MIN_SOL_TO_CREATOR`
+- `HOLD_CREATOR_AMM_BURST_DETECT_ENABLED`
+- `HOLD_CREATOR_AMM_BURST_WINDOW_SEC`
+- `HOLD_CREATOR_AMM_BURST_MIN_TXS`
 
 Segnali:
 - tx on-chain che tocca il programma AMM del pool
 - ingresso WSOL/SOL significativo verso creator durante la tx
+- burst di tx AMM del creator sullo stesso pool in finestra breve
 
 Esito:
 - exit anticipata immediata su `remove-liquidity-like`
 
 Log:
 - `REMOVE LIQUIDITY EXIT: ...`
+- `CREATOR AMM BURST EXIT: ...`
 - `CREATOR RISK EXIT: ...`
 
 ## 3. Post-trade
@@ -299,6 +314,7 @@ Log:
 ### Config
 - `.env`
 - `.env.example`
+- `SILENCE_RPC_429_LOGS` (se `true`, nasconde i log rumorosi di retry `429 Too Many Requests`)
 
 ### Blacklist
 - `blacklists/creators.txt`
@@ -411,3 +427,21 @@ Se vuoi rendere il bot piu severo sui casi grigi, le 3 leve piu utili sono:
 3. soglia cashout piu bassa
 - se `CCASH` resta sotto la soglia critica, il bot continua
 - abbassare la soglia rende piu facile uscire dai casi sospetti ma ancora vivi
+
+## 9. Tuning sampling creator
+
+Per ridurre i falsi negativi sui creator molto attivi:
+- `CREATOR_RISK_SIG_LIMIT` (default 40)
+- `CREATOR_RISK_PARSED_TX_LIMIT` (default 25)
+
+Gate specifico per pattern pre-create (spray quasi uniforme):
+- `CREATOR_RISK_PRECREATE_BURST_BLOCK_ENABLED`
+- `CREATOR_RISK_PRECREATE_BURST_WINDOW_SEC`
+- `CREATOR_RISK_PRECREATE_BURST_SIG_LIMIT`
+- `CREATOR_RISK_PRECREATE_BURST_PARSED_TX_LIMIT`
+- `CREATOR_RISK_PRECREATE_BURST_MIN_TRANSFERS`
+- `CREATOR_RISK_PRECREATE_BURST_MIN_DESTINATIONS`
+- `CREATOR_RISK_PRECREATE_BURST_MIN_MEDIAN_SOL`
+- `CREATOR_RISK_PRECREATE_BURST_MAX_MEDIAN_SOL`
+- `CREATOR_RISK_PRECREATE_BURST_MAX_REL_STDDEV`
+- `CREATOR_RISK_PRECREATE_BURST_MAX_AMOUNT_RATIO`
