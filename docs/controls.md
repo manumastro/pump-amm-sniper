@@ -157,20 +157,29 @@ Controlli:
 - `PRE_BUY_TOP10_CHECK_ENABLED`
 - `PRE_BUY_TOP10_MAX_PCT`
 - `PRE_BUY_TOP10_EXCLUDE_POOL`
+- `PRE_BUY_TOP10_FAIL_OPEN`
+- `PRE_BUY_TOP10_MAX_ATTEMPTS`
+- `PRE_BUY_TOP10_RETRY_BASE_MS`
 
 Comportamento:
 - prova il mint estratto
 - se serve, prova fallback dal pool
-- ritenta alcune volte
-- se il dato non e calcolabile per errore tecnico: `fail-open`
+- ritenta alcune volte con backoff crescente
+- se il dato non e calcolabile per errore tecnico:
+  - `PRE_BUY_TOP10_FAIL_OPEN=true` -> `fail-open`
+  - `PRE_BUY_TOP10_FAIL_OPEN=false` -> `fail-closed` (default consigliato)
 - se il dato e calcolabile e supera soglia: blocca
 
 Esito:
-- `SKIP: pre-buy top10` solo quando la concentrazione e davvero oltre soglia
+- `SKIP: pre-buy top10` quando:
+  - la concentrazione supera soglia
+  - oppure il check non e calcolabile in modalita fail-closed
 
 Log:
 - `TOP10 | <pct>% (max <pct>%)`
+- `TOP10 | retry X/Y after error: ...`
 - `TOP10 | unavailable (...) -> fail-open`
+- `TOP10 | unavailable (...) -> fail-closed`
 
 ## 2. Durante hold
 
@@ -262,8 +271,8 @@ Scopo:
 - marcare i casi in cui il sell simulato e di fatto non eseguibile
 
 Regole:
-- se `solOut <= 0`: `SKIP: paper simulation guard (exit returned 0 SOL)`
-- se perdita oltre guard: `SKIP: paper simulation guard`
+- se `solOut <= 0`: perdita piena `-100%` con stato `PAPER LOSS` (non `SKIP`)
+- se perdita oltre guard: `PAPER LOSS`
 
 Log:
 - `SELL_SPOT`
@@ -321,8 +330,8 @@ Log:
 - `LIQUIDITY STOP`
   - pool o spot collassati rispetto all'entry
 
-- `SKIP: paper simulation guard (exit returned 0 SOL)`
-  - la pool era di fatto gia morta al momento dell'uscita
+- `PAPER LOSS` con `exit returned 0 SOL`
+  - la pool era di fatto morta per noi al momento dell'uscita, e va in PnL come `-100%`
 
 ## 6. Regola pratica
 
@@ -336,6 +345,29 @@ Quando succede:
 - analizza creator, funder, relay e micro-sources
 - aggiungi gli indirizzi sospetti nelle blacklist dedicate
 - non usare i report come fonte blacklist
+
+## 6.0 Modifiche precedenti (prima del tuning top10)
+
+Correzioni implementate:
+- `exit returned 0 SOL` in paper trade ora e `PAPER LOSS` con PnL `-100%` (non `SKIP`)
+- in monitor-only il risultato usa `paper.finalStatus` (evita classificazioni ambigue su perdite reali)
+- `creator risk` include forzatamente la `create_pool` tx anche quando `getSignaturesForAddress` lagga
+- during hold il loop controlla subito (non aspetta il primo sleep) e usa polling capped per ridurre blind window
+- report daemon inferisce PnL effettivo `-100%` anche sui record legacy con PnL nullo e `exit returned 0 SOL`
+
+## 6.1 Scoperte operative (forensics rug-loss, 2026-03-09)
+
+Dati emersi su `logs/rug-loss-forensics.{json,txt}`:
+- `36` rug-loss analizzati
+- `32` casi `exit returned 0 SOL`
+- `29/36` con `TOP10 unavailable -> fail-open`
+- `24/36` con withdraw creator rapido dopo `create_pool`
+- `8/36` con cashout creator rapido dopo withdraw
+
+Conclusioni:
+- i casi `exit returned 0 SOL` non vanno trattati come `skip`, ma come perdita reale `-100%`
+- il `top10 fail-open` e un punto debole concreto da irrigidire quando il contesto creator/funder e sospetto
+- i pattern `create -> withdraw rapido -> cashout rapido` sono segnali dev ad alta priorita
 
 ## 7. Grey-Zone Winners
 

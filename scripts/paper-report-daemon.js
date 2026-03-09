@@ -9,6 +9,7 @@ const OUT_JSON = path.join(ROOT, 'logs', 'paper-report.json');
 const OUT_TXT = path.join(ROOT, 'logs', 'paper-report.txt');
 
 const SUB_TO_DIGIT = { '₀': '0', '₁': '1', '₂': '2', '₃': '3', '₄': '4', '₅': '5', '₆': '6', '₇': '7', '₈': '8', '₉': '9' };
+const DEFAULT_TRADE_AMOUNT_SOL = Number(process.env.TRADE_AMOUNT_SOL || '0.01');
 
 function nowIso() {
   return new Date().toISOString();
@@ -125,9 +126,23 @@ function isRugLossEvent(e) {
   );
 }
 
+function getEffectivePnl(e) {
+  if (typeof e.pnlSol === 'number' && typeof e.pnlPct === 'number') {
+    return { pnlSol: e.pnlSol, pnlPct: e.pnlPct, inferred: false };
+  }
+
+  const status = `${e.skipReason || ''} ${e.endStatus || ''}`.toLowerCase();
+  if (!!e.buyAt && status.includes('exit returned 0 sol')) {
+    return { pnlSol: -DEFAULT_TRADE_AMOUNT_SOL, pnlPct: -100, inferred: true };
+  }
+
+  return { pnlSol: null, pnlPct: null, inferred: false };
+}
+
 function getPnlValidityIssue(e) {
-  if (typeof e.pnlSol !== 'number' || typeof e.pnlPct !== 'number') return null;
-  if (!Number.isFinite(e.pnlSol) || !Number.isFinite(e.pnlPct)) return 'non-finite pnl';
+  const effective = getEffectivePnl(e);
+  if (typeof effective.pnlSol !== 'number' || typeof effective.pnlPct !== 'number') return null;
+  if (!Number.isFinite(effective.pnlSol) || !Number.isFinite(effective.pnlPct)) return 'non-finite pnl';
 
   if (
     typeof e.buySpotSolPerToken === 'number' &&
@@ -140,8 +155,8 @@ function getPnlValidityIssue(e) {
     if (spotRatio > 10000) return `spot ratio too high (${spotRatio.toFixed(2)}x)`;
   }
 
-  if (Math.abs(e.pnlPct) > 10000) return `pnl pct too high (${e.pnlPct.toFixed(2)}%)`;
-  if (Math.abs(e.pnlSol) > 10) return `pnl sol too high (${e.pnlSol.toFixed(6)} SOL)`;
+  if (Math.abs(effective.pnlPct) > 10000) return `pnl pct too high (${effective.pnlPct.toFixed(2)}%)`;
+  if (Math.abs(effective.pnlSol) > 10) return `pnl sol too high (${effective.pnlSol.toFixed(6)} SOL)`;
   return null;
 }
 
@@ -415,12 +430,16 @@ function parseLine(logPath, line) {
 
 function summarize() {
   const finished = [...events.values()].filter(e => e.endedAt);
-  const pnlKnown = finished.filter(e => typeof e.pnlSol === 'number');
+  const enriched = finished.map(e => {
+    const effective = getEffectivePnl(e);
+    return { ...e, effectivePnlSol: effective.pnlSol, effectivePnlPct: effective.pnlPct, inferredPnl: effective.inferred };
+  });
+  const pnlKnown = enriched.filter(e => typeof e.effectivePnlSol === 'number');
   const validPnl = pnlKnown.filter(e => !getPnlValidityIssue(e));
-  const totalPnl = validPnl.reduce((a, e) => a + e.pnlSol, 0);
-  const avgPnlPct = validPnl.length ? validPnl.reduce((a, e) => a + (e.pnlPct || 0), 0) / validPnl.length : 0;
-  const wins = validPnl.filter(e => e.pnlSol > 0).length;
-  const losses = validPnl.filter(e => e.pnlSol < 0).length;
+  const totalPnl = validPnl.reduce((a, e) => a + e.effectivePnlSol, 0);
+  const avgPnlPct = validPnl.length ? validPnl.reduce((a, e) => a + (e.effectivePnlPct || 0), 0) / validPnl.length : 0;
+  const wins = validPnl.filter(e => e.effectivePnlSol > 0).length;
+  const losses = validPnl.filter(e => e.effectivePnlSol < 0).length;
   const checksPassed = finished.filter(e => e.checksPassed).length;
   const skipped = finished.filter(e => e.skipReason || (e.endStatus && e.endStatus.startsWith('SKIP'))).length;
   const isRugLikeSignal = (e) => {
@@ -430,9 +449,9 @@ function summarize() {
       s.includes('exit returned 0 sol') ||
       s.includes('liquidity stop');
   };
-  const rugLosses = finished.filter(e => isRugLossEvent(e));
-  const rugLikeAvoided = finished.filter(e => isRugLikeSignal(e) && !isRugLossEvent(e));
-  const hostileSkips = finished.filter(e =>
+  const rugLosses = enriched.filter(e => isRugLossEvent(e));
+  const rugLikeAvoided = enriched.filter(e => isRugLikeSignal(e) && !isRugLossEvent(e));
+  const hostileSkips = enriched.filter(e =>
     classifyOperation(e) === 'hostile' &&
     (e.skipReason || (e.endStatus && e.endStatus.startsWith('SKIP')))
   );
@@ -453,7 +472,7 @@ function summarize() {
     wins,
     losses,
     winRatePct: validPnl.length ? Number(((wins / validPnl.length) * 100).toFixed(2)) : 0,
-    operations: finished.map(e => ({
+    operations: enriched.map(e => ({
       id: e.id,
       startedAt: e.startedAt,
       buyAt: e.buyAt,
@@ -466,8 +485,8 @@ function summarize() {
       gmgn: e.gmgn || (e.tokenMint ? `https://gmgn.ai/sol/token/${e.tokenMint}` : null),
       buySpotSolPerToken: fmtNum(e.buySpotSolPerToken),
       sellSpotSolPerToken: fmtNum(e.sellSpotSolPerToken),
-      pnlSol: e.pnlSol,
-      pnlPct: e.pnlPct,
+      pnlSol: e.effectivePnlSol,
+      pnlPct: e.effectivePnlPct,
       checksPassed: e.checksPassed,
       skipReason: e.skipReason,
       endStatus: e.endStatus,
@@ -505,8 +524,8 @@ function summarize() {
       gmgn: e.gmgn || (e.tokenMint ? `https://gmgn.ai/sol/token/${e.tokenMint}` : null),
       buySpotSolPerToken: fmtNum(e.buySpotSolPerToken),
       sellSpotSolPerToken: fmtNum(e.sellSpotSolPerToken),
-      pnlSol: e.pnlSol,
-      pnlPct: e.pnlPct,
+      pnlSol: e.effectivePnlSol,
+      pnlPct: e.effectivePnlPct,
       skipReason: e.skipReason,
       endStatus: e.endStatus,
       classification: classifyOperation(e),

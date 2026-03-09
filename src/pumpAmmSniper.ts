@@ -70,6 +70,9 @@ const CONFIG = {
     PRE_BUY_TOP10_CHECK_ENABLED: process.env.PRE_BUY_TOP10_CHECK_ENABLED !== "false",
     PRE_BUY_TOP10_MAX_PCT: Number(process.env.PRE_BUY_TOP10_MAX_PCT || 90),
     PRE_BUY_TOP10_EXCLUDE_POOL: process.env.PRE_BUY_TOP10_EXCLUDE_POOL !== "false",
+    PRE_BUY_TOP10_FAIL_OPEN: process.env.PRE_BUY_TOP10_FAIL_OPEN === "true",
+    PRE_BUY_TOP10_MAX_ATTEMPTS: Number(process.env.PRE_BUY_TOP10_MAX_ATTEMPTS || 4),
+    PRE_BUY_TOP10_RETRY_BASE_MS: Number(process.env.PRE_BUY_TOP10_RETRY_BASE_MS || 400),
     CREATOR_RISK_CHECK_ENABLED: process.env.CREATOR_RISK_CHECK_ENABLED !== "false",
     CREATOR_RISK_SIG_LIMIT: Number(process.env.CREATOR_RISK_SIG_LIMIT || 20),
     CREATOR_RISK_PARSED_TX_LIMIT: Number(process.env.CREATOR_RISK_PARSED_TX_LIMIT || 10),
@@ -777,8 +780,13 @@ async function handleNewPool(connection: Connection, signature: string) {
                 tx.blockTime || null,
             );
             if (!paper.ok) {
-                console.log(`🛑 SKIP: Paper simulation guard (${paper.reason})`);
-                finalStatus = "SKIP: paper simulation guard";
+                if (paper.finalStatus) {
+                    console.log(`⚠️ PAPER_TRADE: ${paper.reason}`);
+                    finalStatus = paper.finalStatus;
+                } else {
+                    console.log(`🛑 SKIP: Paper simulation guard (${paper.reason})`);
+                    finalStatus = "SKIP: paper simulation guard";
+                }
                 return;
             }
             stageLog(ctx, "STEP 7/7", "dev holdings");
@@ -949,71 +957,106 @@ async function preBuyTop10ConcentrationCheck(
         return { ok: true };
     }
 
-    try {
-        const mintKey = await resolveTop10MintKey(connection, tokenMint, poolAddress, ctx);
-        if (!mintKey) {
-            stageLog(ctx, "TOP10", "unavailable (no valid mint candidate) -> fail-open");
+    const unavailableResult = (reason: string) => {
+        const policy = CONFIG.PRE_BUY_TOP10_FAIL_OPEN ? "fail-open" : "fail-closed";
+        stageLog(ctx, "TOP10", `unavailable (${reason}) -> ${policy}`);
+        if (CONFIG.PRE_BUY_TOP10_FAIL_OPEN) {
             return { ok: true };
         }
+        return { ok: false, reason: `top10 unavailable: ${reason}` };
+    };
 
-        const mintInfo = await getMintInfoRobust(connection, mintKey).catch((e: any) => {
-            stageLog(ctx, "TOP10", `unavailable (mint info error: ${e?.message || String(e)}) -> fail-open`);
-            return null;
-        });
-        if (!mintInfo) return { ok: true };
+    const maxAttempts = Math.max(1, CONFIG.PRE_BUY_TOP10_MAX_ATTEMPTS);
+    const baseDelayMs = Math.max(0, CONFIG.PRE_BUY_TOP10_RETRY_BASE_MS);
+    let lastUnavailableReason = "top10 check failed";
 
-        const totalSupplyRaw = Number(mintInfo.supply.toString());
-        if (!Number.isFinite(totalSupplyRaw) || totalSupplyRaw <= 0) {
-            stageLog(ctx, "TOP10", "unavailable (invalid token supply) -> fail-open");
-            return { ok: true };
-        }
-
-        const largest = await getTop10LargestAccountsWithRetry(connection, mintKey, 6, 300, ctx);
-        if (!largest) return { ok: true };
-
-        const top10Accounts = largest.value.slice(0, 10);
-        if (top10Accounts.length === 0) {
-            stageLog(ctx, "TOP10", "unavailable (no holder accounts found) -> fail-open");
-            return { ok: true };
-        }
-
-        const parsed = await Promise.all(
-            top10Accounts.map((a) => connection.getParsedAccountInfo(a.address, "confirmed").catch(() => null))
-        );
-
-        let top10Raw = 0;
-        for (let i = 0; i < top10Accounts.length; i++) {
-            const amount = Number(top10Accounts[i].amount || "0");
-            if (!Number.isFinite(amount) || amount <= 0) continue;
-
-            const owner = (parsed[i] as any)?.value?.data?.parsed?.info?.owner as string | undefined;
-            if (CONFIG.PRE_BUY_TOP10_EXCLUDE_POOL && owner && owner === poolAddress) {
-                continue;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+            const mintKey = await resolveTop10MintKey(connection, tokenMint, poolAddress, ctx);
+            if (!mintKey) {
+                lastUnavailableReason = "no valid mint candidate";
+                throw new Error(lastUnavailableReason);
             }
 
-            top10Raw += amount;
+            let mintInfoErr: string | null = null;
+            const mintInfo = await getMintInfoRobust(connection, mintKey).catch((e: any) => {
+                mintInfoErr = e?.message || String(e);
+                return null;
+            });
+            if (!mintInfo) {
+                lastUnavailableReason = `mint info error: ${mintInfoErr || "unknown error"}`;
+                throw new Error(lastUnavailableReason);
+            }
+
+            const totalSupplyRaw = Number(mintInfo.supply.toString());
+            if (!Number.isFinite(totalSupplyRaw) || totalSupplyRaw <= 0) {
+                lastUnavailableReason = "invalid token supply";
+                throw new Error(lastUnavailableReason);
+            }
+
+            const largest = await getTop10LargestAccountsWithRetry(connection, mintKey, 8, 350);
+            if (!largest) {
+                lastUnavailableReason = "largest accounts error";
+                throw new Error(lastUnavailableReason);
+            }
+
+            const top10Accounts = largest.value.slice(0, 10);
+            if (top10Accounts.length === 0) {
+                lastUnavailableReason = "no holder accounts found";
+                throw new Error(lastUnavailableReason);
+            }
+
+            const parsed = await Promise.all(
+                top10Accounts.map((a) => connection.getParsedAccountInfo(a.address, "confirmed").catch(() => null))
+            );
+
+            let top10Raw = 0;
+            for (let i = 0; i < top10Accounts.length; i++) {
+                const amount = Number(top10Accounts[i].amount || "0");
+                if (!Number.isFinite(amount) || amount <= 0) continue;
+
+                const owner = (parsed[i] as any)?.value?.data?.parsed?.info?.owner as string | undefined;
+                if (CONFIG.PRE_BUY_TOP10_EXCLUDE_POOL && owner && owner === poolAddress) {
+                    continue;
+                }
+
+                top10Raw += amount;
+            }
+
+            const top10Pct = (top10Raw / totalSupplyRaw) * 100;
+            stageLog(
+                ctx,
+                "TOP10",
+                `${top10Pct.toFixed(2)}% (max ${CONFIG.PRE_BUY_TOP10_MAX_PCT.toFixed(2)}%)`
+            );
+
+            if (top10Pct > CONFIG.PRE_BUY_TOP10_MAX_PCT) {
+                return {
+                    ok: false,
+                    reason: `top10 concentration ${top10Pct.toFixed(2)}% > ${CONFIG.PRE_BUY_TOP10_MAX_PCT.toFixed(2)}%`,
+                    top10Pct,
+                };
+            }
+
+            return { ok: true, top10Pct };
+        } catch (e: any) {
+            lastUnavailableReason = e?.message || lastUnavailableReason;
+            if (attempt < maxAttempts) {
+                const retryDelayMs = Math.round(baseDelayMs * Math.pow(1.6, attempt - 1));
+                stageLog(
+                    ctx,
+                    "TOP10",
+                    `retry ${attempt}/${maxAttempts} after error: ${lastUnavailableReason} (wait ${retryDelayMs}ms)`
+                );
+                if (retryDelayMs > 0) {
+                    await new Promise((r) => setTimeout(r, retryDelayMs));
+                }
+                continue;
+            }
         }
-
-        const top10Pct = (top10Raw / totalSupplyRaw) * 100;
-        stageLog(
-            ctx,
-            "TOP10",
-            `${top10Pct.toFixed(2)}% (max ${CONFIG.PRE_BUY_TOP10_MAX_PCT.toFixed(2)}%)`
-        );
-
-        if (top10Pct > CONFIG.PRE_BUY_TOP10_MAX_PCT) {
-            return {
-                ok: false,
-                reason: `top10 concentration ${top10Pct.toFixed(2)}% > ${CONFIG.PRE_BUY_TOP10_MAX_PCT.toFixed(2)}%`,
-                top10Pct,
-            };
-        }
-
-        return { ok: true, top10Pct };
-    } catch (e: any) {
-        stageLog(ctx, "TOP10", `unavailable (${e?.message || "top10 check failed"}) -> fail-open`);
-        return { ok: true };
     }
+
+    return unavailableResult(lastUnavailableReason);
 }
 
 async function getTop10LargestAccountsWithRetry(
@@ -1021,7 +1064,6 @@ async function getTop10LargestAccountsWithRetry(
     mintKey: PublicKey,
     maxAttempts: number,
     delayMs: number,
-    ctx: string,
 ) {
     let lastErr: any = null;
     for (let attempt = 1; attempt <= Math.max(1, maxAttempts); attempt++) {
@@ -1034,7 +1076,6 @@ async function getTop10LargestAccountsWithRetry(
             }
         }
     }
-    stageLog(ctx, "TOP10", `unavailable (largest accounts error: ${lastErr?.message || String(lastErr)}) -> fail-open`);
     return null;
 }
 
@@ -1602,13 +1643,8 @@ async function runCreatorRiskCheck(
         const outboundTransfers: Array<{ destination: string; sol: number }> = [];
         const inboundTransfers: Array<{ source: string; sol: number }> = [];
 
-        for (const sig of sample) {
-            const tx = await connection.getParsedTransaction(sig.signature, {
-                maxSupportedTransactionVersion: 0,
-                commitment: "confirmed",
-            });
-            if (!tx) continue;
-
+        const sampleSignatures = new Set(sample.map((s) => s.signature));
+        const ingestParsedTx = (tx: any) => {
             const outer = walkParsedInstructions(
                 tx.transaction?.message?.instructions,
                 creatorAddress,
@@ -1637,24 +1673,57 @@ async function runCreatorRiskCheck(
             outboundTransfers.push(...outer.outboundTransfers);
 
             if (!funder) {
-                funder = outer.inboundSources[0] || innerParts.flatMap(p => p.inboundSources)[0] || null;
+                funder = outer.inboundSources[0] || innerParts.flatMap((p: any) => p.inboundSources)[0] || null;
             }
 
             if (funder) {
                 const outerRefunds = outer.outboundDestinations.filter((d) => d === funder).length > 0 ? outer.solOutSol : 0;
                 const innerRefunds = innerParts
-                    .filter((p) => p.outboundDestinations.filter((d) => d === funder).length > 0)
-                    .reduce((sum, p) => sum + p.solOutSol, 0);
+                    .filter((p: any) => p.outboundDestinations.filter((d: string) => d === funder).length > 0)
+                    .reduce((sum: number, p: any) => sum + p.solOutSol, 0);
                 funderRefundSol += outerRefunds + innerRefunds;
+            }
+        };
+
+        for (const sig of sample) {
+            const tx = await connection.getParsedTransaction(sig.signature, {
+                maxSupportedTransactionVersion: 0,
+                commitment: "confirmed",
+            });
+            if (!tx) continue;
+            ingestParsedTx(tx);
+        }
+
+        // When risk-check runs immediately after create_pool, address history can lag and miss
+        // the create tx in `getSignaturesForAddress`. Force-include that tx to avoid blind spots.
+        if (options.createPoolSignature && !sampleSignatures.has(options.createPoolSignature)) {
+            try {
+                const createTx = await connection.getParsedTransaction(options.createPoolSignature, {
+                    maxSupportedTransactionVersion: 0,
+                    commitment: "confirmed",
+                });
+                if (createTx) {
+                    ingestParsedTx(createTx);
+                }
+            } catch {
+                // fail-open
             }
         }
 
         const uniqueCounterparties = counterparties.size;
         const firstSigTime = sample[0]?.blockTime || null;
         const lastSigTime = sample[sample.length - 1]?.blockTime || null;
+        const augmentedFirstSigTime =
+            options.createPoolBlockTime && firstSigTime
+                ? Math.min(firstSigTime, options.createPoolBlockTime)
+                : (firstSigTime ?? options.createPoolBlockTime ?? null);
+        const augmentedLastSigTime =
+            options.createPoolBlockTime && lastSigTime
+                ? Math.max(lastSigTime, options.createPoolBlockTime)
+                : (lastSigTime ?? options.createPoolBlockTime ?? null);
         const compressedWindowSec =
-            firstSigTime && lastSigTime && lastSigTime >= firstSigTime
-                ? lastSigTime - firstSigTime
+            augmentedFirstSigTime && augmentedLastSigTime && augmentedLastSigTime >= augmentedFirstSigTime
+                ? augmentedLastSigTime - augmentedFirstSigTime
                 : null;
         const microInboundTransfers = inboundTransfers.filter(
             (transfer) => transfer.sol > 0 && transfer.sol <= CONFIG.CREATOR_RISK_MICRO_INBOUND_MAX_SOL
@@ -2308,7 +2377,11 @@ async function getCreatorTokenBalanceRaw(
     return total;
 }
 
-type PaperTradeResult = { ok: boolean; reason?: string };
+type PaperTradeResult = {
+    ok: boolean;
+    reason?: string;
+    finalStatus?: string;
+};
 
 async function maybeRunPaperTradeSimulation(
     connection: Connection,
@@ -2447,7 +2520,11 @@ async function maybeRunPaperTradeSimulation(
         const exitSolLiquidity = getSolLiquidityFromState(exitState, tokenMint) || 0;
 
         if (!Number.isFinite(solOut) || solOut <= 0) {
-            return { ok: false, reason: "exit returned 0 SOL" };
+            const pnlSol = -CONFIG.TRADE_AMOUNT_SOL;
+            const pnlPct = -100;
+            stageLog(ctx, "SELL_SPOT", `~${formatSolCompact(0)}/token`);
+            stageLog(ctx, "PNL", `-${formatSolDecimal(Math.abs(pnlSol))} (${pnlPct.toFixed(2)}%)`);
+            return { ok: false, reason: "exit returned 0 SOL", finalStatus: "PAPER LOSS" };
         }
         if (
             Number.isFinite(exitSolLiquidity) &&
@@ -2467,7 +2544,11 @@ async function maybeRunPaperTradeSimulation(
         stageLog(ctx, "SELL_SPOT", `~${formatSolCompact(exitSpotSolPerToken)}/token`);
         stageLog(ctx, "PNL", `${pnlSol >= 0 ? "+" : "-"}${formatSolDecimal(Math.abs(pnlSol))} (${pnlPct.toFixed(2)}%)`);
         if (pnlPct <= -Math.abs(CONFIG.PAPER_TRADE_MAX_LOSS_PCT)) {
-            return { ok: false, reason: `pnl ${pnlPct.toFixed(2)}% <= -${Math.abs(CONFIG.PAPER_TRADE_MAX_LOSS_PCT)}%` };
+            return {
+                ok: false,
+                reason: `pnl ${pnlPct.toFixed(2)}% <= -${Math.abs(CONFIG.PAPER_TRADE_MAX_LOSS_PCT)}%`,
+                finalStatus: "PAPER LOSS",
+            };
         }
         return { ok: true };
     } catch (e: any) {
@@ -2490,6 +2571,7 @@ async function waitForExitStateWithLiquidityStop(
 ): Promise<any | null> {
     const startedAtMs = Date.now();
     const deadlineMs = startedAtMs + CONFIG.AUTO_SELL_DELAY_MS;
+    const pollIntervalMs = Math.max(250, Math.min(CONFIG.LIQUIDITY_STOP_CHECK_INTERVAL_MS, 1500));
     const entrySpot = getSpotSolPerTokenFromState(entryState, tokenMint, tokenDecimals) || 0;
     const entrySolLiquidity = getSolLiquidityFromState(entryState, tokenMint) || 0;
     const dropFactor = 1 - (Math.abs(CONFIG.LIQUIDITY_STOP_DROP_PCT) / 100);
@@ -2501,86 +2583,88 @@ async function waitForExitStateWithLiquidityStop(
     let latestState: any | null = entryState;
     let lastCreatorRiskCheckAtMs = 0;
     while (Date.now() < deadlineMs) {
-        await new Promise(r => setTimeout(r, CONFIG.LIQUIDITY_STOP_CHECK_INTERVAL_MS));
         const s = await fetchStateWithRetry();
-        if (!s) continue;
-        latestState = s;
+        if (s) {
+            latestState = s;
 
-        if (
-            creatorAddress &&
-            CONFIG.HOLD_CREATOR_RISK_RECHECK_ENABLED &&
-            Date.now() - lastCreatorRiskCheckAtMs >= Math.max(500, CONFIG.HOLD_CREATOR_RISK_RECHECK_INTERVAL_MS)
-        ) {
-            lastCreatorRiskCheckAtMs = Date.now();
-            const creatorRisk = await runCreatorRiskCheck(connection, creatorAddress, logPrefix, {
-                forceRefresh: true,
-                entrySolLiquidity,
-                createPoolSignature,
-                createPoolBlockTime,
-            });
-            if (!creatorRisk.ok) {
-                console.log(`⚠️ CREATOR RISK EXIT: ${creatorRisk.reason}`);
-                return s;
+            if (
+                creatorAddress &&
+                CONFIG.HOLD_CREATOR_RISK_RECHECK_ENABLED &&
+                Date.now() - lastCreatorRiskCheckAtMs >= Math.max(500, CONFIG.HOLD_CREATOR_RISK_RECHECK_INTERVAL_MS)
+            ) {
+                lastCreatorRiskCheckAtMs = Date.now();
+                const creatorRisk = await runCreatorRiskCheck(connection, creatorAddress, logPrefix, {
+                    forceRefresh: true,
+                    entrySolLiquidity,
+                    createPoolSignature,
+                    createPoolBlockTime,
+                });
+                if (!creatorRisk.ok) {
+                    console.log(`⚠️ CREATOR RISK EXIT: ${creatorRisk.reason}`);
+                    return s;
+                }
+            }
+
+            const curSpot = getSpotSolPerTokenFromState(s, tokenMint, tokenDecimals) || 0;
+            const curSolLiquidity = getSolLiquidityFromState(s, tokenMint) || 0;
+            const inStabilityWindow =
+                CONFIG.POST_ENTRY_STABILITY_GATE_ENABLED &&
+                (Date.now() - startedAtMs) <= Math.max(0, CONFIG.POST_ENTRY_STABILITY_GATE_WINDOW_MS);
+
+            if (inStabilityWindow) {
+                const stabilitySpotBreak =
+                    Number.isFinite(entrySpot) &&
+                    entrySpot > 0 &&
+                    Number.isFinite(curSpot) &&
+                    curSpot > 0 &&
+                    curSpot <= entrySpot * stabilityDropFactor;
+
+                const stabilityLiquidityBreak =
+                    Number.isFinite(entrySolLiquidity) &&
+                    entrySolLiquidity > 0 &&
+                    Number.isFinite(curSolLiquidity) &&
+                    curSolLiquidity > 0 &&
+                    curSolLiquidity <= entrySolLiquidity * stabilityDropFactor;
+
+                if (stabilitySpotBreak || stabilityLiquidityBreak) {
+                    console.log(
+                        `⚠️ STABILITY GATE: early exit ` +
+                        `(spot ${formatSolCompact(curSpot)}/token <= ${formatSolCompact(entrySpot * stabilityDropFactor)}/token, ` +
+                        `liquidity ${curSolLiquidity.toFixed(2)} SOL <= ${(entrySolLiquidity * stabilityDropFactor).toFixed(2)} SOL, ` +
+                        `window ${CONFIG.POST_ENTRY_STABILITY_GATE_WINDOW_MS}ms, drop ${CONFIG.POST_ENTRY_STABILITY_GATE_DROP_PCT}%)`
+                    );
+                    return s;
+                }
+            }
+
+            if (CONFIG.LIQUIDITY_STOP_ENABLED) {
+                const spotTriggered =
+                    Number.isFinite(entrySpot) &&
+                    entrySpot > 0 &&
+                    Number.isFinite(curSpot) &&
+                    curSpot > 0 &&
+                    curSpot <= entrySpot * dropFactor;
+
+                const liquidityTriggered =
+                    Number.isFinite(entrySolLiquidity) &&
+                    entrySolLiquidity > 0 &&
+                    Number.isFinite(curSolLiquidity) &&
+                    curSolLiquidity > 0 &&
+                    curSolLiquidity <= entrySolLiquidity * dropFactor;
+
+                if (spotTriggered || liquidityTriggered) {
+                    console.log(
+                        `⚠️ LIQUIDITY STOP: trigger early exit ` +
+                        `(spot ${formatSolCompact(curSpot)}/token <= ${formatSolCompact(liqStopSpotThreshold)}/token, ` +
+                        `liquidity ${curSolLiquidity.toFixed(2)} SOL <= ${liqStopLiquidityThreshold.toFixed(2)} SOL, ` +
+                        `drop ${CONFIG.LIQUIDITY_STOP_DROP_PCT}%)`
+                    );
+                    return s;
+                }
             }
         }
 
-        const curSpot = getSpotSolPerTokenFromState(s, tokenMint, tokenDecimals) || 0;
-        const curSolLiquidity = getSolLiquidityFromState(s, tokenMint) || 0;
-        const inStabilityWindow =
-            CONFIG.POST_ENTRY_STABILITY_GATE_ENABLED &&
-            (Date.now() - startedAtMs) <= Math.max(0, CONFIG.POST_ENTRY_STABILITY_GATE_WINDOW_MS);
-
-        if (inStabilityWindow) {
-            const stabilitySpotBreak =
-                Number.isFinite(entrySpot) &&
-                entrySpot > 0 &&
-                Number.isFinite(curSpot) &&
-                curSpot > 0 &&
-                curSpot <= entrySpot * stabilityDropFactor;
-
-            const stabilityLiquidityBreak =
-                Number.isFinite(entrySolLiquidity) &&
-                entrySolLiquidity > 0 &&
-                Number.isFinite(curSolLiquidity) &&
-                curSolLiquidity > 0 &&
-                curSolLiquidity <= entrySolLiquidity * stabilityDropFactor;
-
-            if (stabilitySpotBreak || stabilityLiquidityBreak) {
-                console.log(
-                    `⚠️ STABILITY GATE: early exit ` +
-                    `(spot ${formatSolCompact(curSpot)}/token <= ${formatSolCompact(entrySpot * stabilityDropFactor)}/token, ` +
-                    `liquidity ${curSolLiquidity.toFixed(2)} SOL <= ${(entrySolLiquidity * stabilityDropFactor).toFixed(2)} SOL, ` +
-                    `window ${CONFIG.POST_ENTRY_STABILITY_GATE_WINDOW_MS}ms, drop ${CONFIG.POST_ENTRY_STABILITY_GATE_DROP_PCT}%)`
-                );
-                return s;
-            }
-        }
-
-        if (!CONFIG.LIQUIDITY_STOP_ENABLED) continue;
-
-        const spotTriggered =
-            Number.isFinite(entrySpot) &&
-            entrySpot > 0 &&
-            Number.isFinite(curSpot) &&
-            curSpot > 0 &&
-            curSpot <= entrySpot * dropFactor;
-
-        const liquidityTriggered =
-            Number.isFinite(entrySolLiquidity) &&
-            entrySolLiquidity > 0 &&
-            Number.isFinite(curSolLiquidity) &&
-            curSolLiquidity > 0 &&
-            curSolLiquidity <= entrySolLiquidity * dropFactor;
-
-        if (spotTriggered || liquidityTriggered) {
-            console.log(
-                `⚠️ LIQUIDITY STOP: trigger early exit ` +
-                `(spot ${formatSolCompact(curSpot)}/token <= ${formatSolCompact(liqStopSpotThreshold)}/token, ` +
-                `liquidity ${curSolLiquidity.toFixed(2)} SOL <= ${liqStopLiquidityThreshold.toFixed(2)} SOL, ` +
-                `drop ${CONFIG.LIQUIDITY_STOP_DROP_PCT}%)`
-            );
-            return s;
-        }
+        await new Promise(r => setTimeout(r, pollIntervalMs));
     }
 
     return latestState || fetchStateWithRetry();

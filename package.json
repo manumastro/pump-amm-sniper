@@ -8,6 +8,7 @@
     "start": "ts-node src/pumpAmmSniper.ts",
     "start:paper": "ts-node src/pumpAmmSniper.ts >> paper.log 2>&1",
     "report:paper": "node scripts/paper-report-daemon.js",
+    "forensics:rug-loss": "ts-node --transpile-only scripts/rug-loss-forensics.ts",
     "report:paper:bg": "nohup npm run report:paper >> logs/paper-report-daemon.log 2>&1 &",
     "clean": "rm -rf dist"
   },
