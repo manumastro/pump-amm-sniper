@@ -339,6 +339,8 @@ type CreatorRiskResult = {
 function isProbationBypassForbidden(result?: CreatorRiskResult): boolean {
     const normalized = (result?.reason || "").toLowerCase();
     if (
+        normalized.includes("creator in historical rug blacklist") ||
+        normalized.includes("funder blacklisted") ||
         normalized.includes("relay funding recent on standard pool") ||
         normalized.includes("relay funding recent + micro burst") ||
         normalized.includes("creator direct amm re-entry")

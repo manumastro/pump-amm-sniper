@@ -108,6 +108,8 @@ Controllo probation paper-only:
 - `PAPER_CREATOR_CASHOUT_PROBATION_HOLD_MS`
 
 Eccezioni:
+- nessun probation bypass per `creator in historical rug blacklist`
+- nessun probation bypass per `funder blacklisted ...`
 - nessun probation bypass per `relay funding recent on standard pool`
 - nessun probation bypass per `relay funding recent + micro burst`
 - nessun probation bypass per `creator direct AMM re-entry`
