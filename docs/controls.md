@@ -106,6 +106,10 @@ Controllo probation paper-only:
 - `PAPER_CREATOR_RISK_PROBATION_ENABLED`
 - `PAPER_CREATOR_RISK_PROBATION_HOLD_MS`
 
+Eccezioni:
+- nessun probation bypass per `relay funding recent on standard pool`
+- nessun probation bypass per `relay funding recent + micro burst`
+
 Log principali:
 - `CRISK | cp=... in=... out=... window=... funder=... refund=... micro=.../...`
 - `RRELAY | root=... funder=... in=... out=... window=...`
@@ -265,6 +269,10 @@ Controlli:
 - `HOLD_CREATOR_AMM_BURST_DETECT_ENABLED`
 - `HOLD_CREATOR_AMM_BURST_WINDOW_SEC`
 - `HOLD_CREATOR_AMM_BURST_MIN_TXS`
+- `HOLD_CREATOR_OUTBOUND_EXIT_ENABLED`
+- `HOLD_CREATOR_OUTBOUND_CHECK_INTERVAL_MS`
+- `HOLD_CREATOR_OUTBOUND_MIN_SOL`
+- `HOLD_PROBATION_CASHOUT_DELTA_MIN_SOL`
 
 Segnali:
 - tx on-chain che tocca il programma AMM del pool
@@ -277,7 +285,9 @@ Esito:
 Log:
 - `REMOVE LIQUIDITY EXIT: ...`
 - `CREATOR AMM BURST EXIT: ...`
+- `CREATOR OUTBOUND EXIT: ...`
 - `CREATOR RISK EXIT: ...`
+- `CREATOR RISK EXIT (probation hard): ...`
 
 ## 3. Post-trade
 

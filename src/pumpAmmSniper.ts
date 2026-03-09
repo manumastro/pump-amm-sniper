@@ -77,6 +77,10 @@ const CONFIG = {
     HOLD_CREATOR_AMM_BURST_DETECT_ENABLED: process.env.HOLD_CREATOR_AMM_BURST_DETECT_ENABLED !== "false",
     HOLD_CREATOR_AMM_BURST_WINDOW_SEC: Number(process.env.HOLD_CREATOR_AMM_BURST_WINDOW_SEC || 8),
     HOLD_CREATOR_AMM_BURST_MIN_TXS: Number(process.env.HOLD_CREATOR_AMM_BURST_MIN_TXS || 3),
+    HOLD_CREATOR_OUTBOUND_EXIT_ENABLED: process.env.HOLD_CREATOR_OUTBOUND_EXIT_ENABLED !== "false",
+    HOLD_CREATOR_OUTBOUND_CHECK_INTERVAL_MS: Number(process.env.HOLD_CREATOR_OUTBOUND_CHECK_INTERVAL_MS || 1500),
+    HOLD_CREATOR_OUTBOUND_MIN_SOL: Number(process.env.HOLD_CREATOR_OUTBOUND_MIN_SOL || 10),
+    HOLD_PROBATION_CASHOUT_DELTA_MIN_SOL: Number(process.env.HOLD_PROBATION_CASHOUT_DELTA_MIN_SOL || 5),
     PRE_BUY_WAIT_MS: Number(process.env.PRE_BUY_WAIT_MS || 1500), // Wait before entering
     PRE_BUY_MAX_LIQ_DROP_PCT: Number(process.env.PRE_BUY_MAX_LIQ_DROP_PCT || 10), // Skip if liq drops too much during wait
     PRE_BUY_CONFIRM_SNAPSHOTS: Number(process.env.PRE_BUY_CONFIRM_SNAPSHOTS || 3), // Extra confirmations after wait
@@ -322,6 +326,14 @@ type CreatorRiskResult = {
     inboundSpraySources?: number;
     precreateBurstTransfers?: number;
 };
+
+function isRelayProbationBypassForbidden(reason?: string): boolean {
+    const normalized = (reason || "").toLowerCase();
+    return (
+        normalized.includes("relay funding recent on standard pool") ||
+        normalized.includes("relay funding recent + micro burst")
+    );
+}
 
 type RugHistory = {
     rugCreators: Set<string>;
@@ -770,7 +782,11 @@ async function handleNewPool(connection: Connection, signature: string) {
         });
         let creatorRiskProbation = false;
         if (!creatorRisk.ok) {
-            if (MONITOR_ONLY && CONFIG.PAPER_CREATOR_RISK_PROBATION_ENABLED) {
+            if (
+                MONITOR_ONLY &&
+                CONFIG.PAPER_CREATOR_RISK_PROBATION_ENABLED &&
+                !isRelayProbationBypassForbidden(creatorRisk.reason)
+            ) {
                 creatorRiskProbation = true;
                 stageLog(
                     ctx,
@@ -1839,6 +1855,80 @@ async function detectRemoveLiquiditySince(
     return { detected: false };
 }
 
+async function detectCreatorLargeOutboundSince(
+    connection: Connection,
+    creatorAddress: string,
+    poolAddress: string,
+    seenSignatures: Set<string>,
+    createPoolSignature?: string,
+    createPoolBlockTime?: number | null,
+): Promise<{
+    detected: boolean;
+    signature?: string;
+    outboundSol?: number;
+    destination?: string;
+    eventTimeSec?: number;
+}> {
+    try {
+        const sigs = await connection.getSignaturesForAddress(
+            new PublicKey(creatorAddress),
+            { limit: 30 },
+            "confirmed"
+        );
+        const chronological = [...sigs]
+            .filter((s) => !s.err)
+            .filter((s) => !createPoolBlockTime || !s.blockTime || s.blockTime >= createPoolBlockTime)
+            .sort((a, b) => (a.blockTime || 0) - (b.blockTime || 0));
+
+        for (const s of chronological) {
+            if (s.signature === createPoolSignature) {
+                seenSignatures.add(s.signature);
+                continue;
+            }
+            if (seenSignatures.has(s.signature)) continue;
+            seenSignatures.add(s.signature);
+
+            const tx = await connection.getParsedTransaction(s.signature, {
+                maxSupportedTransactionVersion: 0,
+                commitment: "confirmed",
+            });
+            if (!tx) continue;
+
+            for (const ix of flattenParsedInstructions(tx)) {
+                const parsed = ix?.parsed;
+                if (!parsed || parsed.type !== "transfer") continue;
+                const info = parsed.info || {};
+                const from = info.source || info.from || null;
+                const to = info.destination || info.to || null;
+                const lamports = Number(info.lamports || 0);
+                if (
+                    from !== creatorAddress ||
+                    !to ||
+                    to === poolAddress ||
+                    !Number.isFinite(lamports) ||
+                    lamports <= 0
+                ) {
+                    continue;
+                }
+                const outboundSol = lamports / 1e9;
+                if (outboundSol >= CONFIG.HOLD_CREATOR_OUTBOUND_MIN_SOL) {
+                    return {
+                        detected: true,
+                        signature: s.signature,
+                        outboundSol,
+                        destination: to,
+                        eventTimeSec: s.blockTime || Math.floor(Date.now() / 1000),
+                    };
+                }
+            }
+        }
+    } catch {
+        // fail-open
+    }
+
+    return { detected: false };
+}
+
 async function detectCreatorDirectAmmReentry(
     connection: Connection,
     creatorAddress: string,
@@ -2849,6 +2939,7 @@ async function maybeRunPaperTradeSimulation(
             creatorAddress,
             createPoolSignature,
             createPoolBlockTime,
+            initialCreatorRisk,
         );
         if (!exitState) {
             console.log(`⚠️ PAPER_TRADE: no exit pool state`);
@@ -2939,6 +3030,7 @@ async function waitForExitStateWithLiquidityStop(
     creatorAddress?: string,
     createPoolSignature?: string,
     createPoolBlockTime?: number | null,
+    initialCreatorRisk?: CreatorRiskResult,
 ): Promise<any | null> {
     const startedAtMs = Date.now();
     const deadlineMs = startedAtMs + Math.max(1000, holdMs);
@@ -2948,9 +3040,13 @@ async function waitForExitStateWithLiquidityStop(
     let latestState: any | null = entryState;
     let lastCreatorRiskCheckAtMs = 0;
     let lastRemoveLiqCheckAtMs = 0;
+    let lastCreatorOutboundCheckAtMs = 0;
     const seenPoolSignatures = new Set<string>();
+    const seenCreatorSignatures = new Set<string>();
     const creatorAmmTouchTimesSec: number[] = [];
+    const baselineCreatorCashoutSol = Number(initialCreatorRisk?.creatorCashoutSol || 0);
     if (createPoolSignature) seenPoolSignatures.add(createPoolSignature);
+    if (createPoolSignature) seenCreatorSignatures.add(createPoolSignature);
 
     while (Date.now() < deadlineMs) {
         const s = await fetchStateWithRetry();
@@ -2971,8 +3067,29 @@ async function waitForExitStateWithLiquidityStop(
                     createPoolBlockTime,
                 });
                 if (!creatorRisk.ok) {
-                    console.log(`⚠️ CREATOR RISK EXIT: ${creatorRisk.reason}`);
-                    return s;
+                    if (suppressCreatorRiskRecheck) {
+                        const reason = (creatorRisk.reason || "").toLowerCase();
+                        const cashoutDeltaSol = Math.max(
+                            0,
+                            Number(creatorRisk.creatorCashoutSol || 0) - baselineCreatorCashoutSol
+                        );
+                        const hardReason =
+                            reason.includes("creator cashout") ||
+                            reason.includes("creator direct amm re-entry") ||
+                            reason.includes("spray outbound") ||
+                            reason.includes("micro inbound burst") ||
+                            reason.includes("relay funding recent + micro burst");
+                        if (cashoutDeltaSol >= CONFIG.HOLD_PROBATION_CASHOUT_DELTA_MIN_SOL || hardReason) {
+                            console.log(
+                                `⚠️ CREATOR RISK EXIT (probation hard): ${creatorRisk.reason}` +
+                                ` (cashout_delta=${cashoutDeltaSol.toFixed(3)} SOL)`
+                            );
+                            return s;
+                        }
+                    } else {
+                        console.log(`⚠️ CREATOR RISK EXIT: ${creatorRisk.reason}`);
+                        return s;
+                    }
                 }
             }
 
@@ -3017,6 +3134,30 @@ async function waitForExitStateWithLiquidityStop(
                         );
                         return s;
                     }
+                }
+            }
+
+            if (
+                creatorAddress &&
+                CONFIG.HOLD_CREATOR_OUTBOUND_EXIT_ENABLED &&
+                Date.now() - lastCreatorOutboundCheckAtMs >= Math.max(500, CONFIG.HOLD_CREATOR_OUTBOUND_CHECK_INTERVAL_MS)
+            ) {
+                lastCreatorOutboundCheckAtMs = Date.now();
+                const creatorOutbound = await detectCreatorLargeOutboundSince(
+                    connection,
+                    creatorAddress,
+                    poolAddress,
+                    seenCreatorSignatures,
+                    createPoolSignature,
+                    createPoolBlockTime,
+                );
+                if (creatorOutbound.detected) {
+                    console.log(
+                        `⚠️ CREATOR OUTBOUND EXIT: ` +
+                        `${shortSig(creatorOutbound.signature || "-")} ` +
+                        `(${(creatorOutbound.outboundSol || 0).toFixed(3)} SOL -> ${shortSig(creatorOutbound.destination || "-")})`
+                    );
+                    return s;
                 }
             }
         }
