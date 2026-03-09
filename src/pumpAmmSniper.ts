@@ -80,6 +80,11 @@ const CONFIG = {
     HOLD_CREATOR_OUTBOUND_EXIT_ENABLED: process.env.HOLD_CREATOR_OUTBOUND_EXIT_ENABLED !== "false",
     HOLD_CREATOR_OUTBOUND_CHECK_INTERVAL_MS: Number(process.env.HOLD_CREATOR_OUTBOUND_CHECK_INTERVAL_MS || 1500),
     HOLD_CREATOR_OUTBOUND_MIN_SOL: Number(process.env.HOLD_CREATOR_OUTBOUND_MIN_SOL || 10),
+    HOLD_CREATOR_CLOSE_ACCOUNT_BURST_EXIT_ENABLED: process.env.HOLD_CREATOR_CLOSE_ACCOUNT_BURST_EXIT_ENABLED !== "false",
+    HOLD_CREATOR_CLOSE_ACCOUNT_BURST_CHECK_INTERVAL_MS: Number(process.env.HOLD_CREATOR_CLOSE_ACCOUNT_BURST_CHECK_INTERVAL_MS || 1000),
+    HOLD_CREATOR_CLOSE_ACCOUNT_BURST_WINDOW_SEC: Number(process.env.HOLD_CREATOR_CLOSE_ACCOUNT_BURST_WINDOW_SEC || 20),
+    HOLD_CREATOR_CLOSE_ACCOUNT_BURST_MIN_TXS: Number(process.env.HOLD_CREATOR_CLOSE_ACCOUNT_BURST_MIN_TXS || 3),
+    HOLD_CREATOR_CLOSE_ACCOUNT_BURST_MIN_CLOSES: Number(process.env.HOLD_CREATOR_CLOSE_ACCOUNT_BURST_MIN_CLOSES || 12),
     HOLD_CREATOR_OUTBOUND_SPRAY_EXIT_ENABLED: process.env.HOLD_CREATOR_OUTBOUND_SPRAY_EXIT_ENABLED !== "false",
     HOLD_CREATOR_OUTBOUND_SPRAY_CHECK_INTERVAL_MS: Number(process.env.HOLD_CREATOR_OUTBOUND_SPRAY_CHECK_INTERVAL_MS || 1500),
     HOLD_CREATOR_OUTBOUND_SPRAY_WINDOW_SEC: Number(process.env.HOLD_CREATOR_OUTBOUND_SPRAY_WINDOW_SEC || 30),
@@ -107,6 +112,7 @@ const CONFIG = {
     HOLD_POOL_CHURN_SELL_DROP_PCT: Number(process.env.HOLD_POOL_CHURN_SELL_DROP_PCT || 50),
     HOLD_POOL_CHURN_CRITICAL_SELL_DROP_PCT: Number(process.env.HOLD_POOL_CHURN_CRITICAL_SELL_DROP_PCT || 35),
     HOLD_PROBATION_CASHOUT_DELTA_MIN_SOL: Number(process.env.HOLD_PROBATION_CASHOUT_DELTA_MIN_SOL || 5),
+    HOLD_PROBATION_INTERVAL_MULTIPLIER: Number(process.env.HOLD_PROBATION_INTERVAL_MULTIPLIER || 0.4),
     PRE_BUY_REVALIDATION_ENABLED: process.env.PRE_BUY_REVALIDATION_ENABLED !== "false",
     PRE_BUY_REVALIDATION_MAX_LIQ_DROP_PCT: Number(process.env.PRE_BUY_REVALIDATION_MAX_LIQ_DROP_PCT || 35),
     PRE_BUY_REVALIDATION_MAX_QUOTE_VS_SPOT_RATIO: Number(process.env.PRE_BUY_REVALIDATION_MAX_QUOTE_VS_SPOT_RATIO || 25),
@@ -219,6 +225,9 @@ const CONFIG = {
     PAPER_CREATOR_RISK_PROBATION_ENABLED: process.env.PAPER_CREATOR_RISK_PROBATION_ENABLED === "true",
     PAPER_CREATOR_RISK_PROBATION_HOLD_MS: Number(process.env.PAPER_CREATOR_RISK_PROBATION_HOLD_MS || 10000),
     PAPER_CREATOR_CASHOUT_PROBATION_HOLD_MS: Number(process.env.PAPER_CREATOR_CASHOUT_PROBATION_HOLD_MS || 45000),
+    PAPER_CREATOR_RISK_EXTREME_CASHOUT_BLOCK_ENABLED: process.env.PAPER_CREATOR_RISK_EXTREME_CASHOUT_BLOCK_ENABLED !== "false",
+    PAPER_CREATOR_RISK_EXTREME_CASHOUT_MIN_PCT_OF_LIQ: Number(process.env.PAPER_CREATOR_RISK_EXTREME_CASHOUT_MIN_PCT_OF_LIQ || 95),
+    PAPER_CREATOR_RISK_EXTREME_CASHOUT_MIN_SCORE: Number(process.env.PAPER_CREATOR_RISK_EXTREME_CASHOUT_MIN_SCORE || 25),
     MAX_CONCURRENT_OPERATIONS: Number(process.env.MAX_CONCURRENT_OPERATIONS || 2),
     PAPER_TRADE_MAX_LOSS_PCT: Number(process.env.PAPER_TRADE_MAX_LOSS_PCT || 80),
 };
@@ -359,6 +368,8 @@ type CreatorRiskResult = {
 
 function isProbationBypassForbidden(result?: CreatorRiskResult): boolean {
     const normalized = (result?.reason || "").toLowerCase();
+    const creatorCashoutPct = Number(result?.creatorCashoutPctOfEntryLiquidity || 0);
+    const creatorCashoutScore = Number(result?.creatorCashoutScore || 0);
     if (
         normalized.includes("creator in historical rug blacklist") ||
         normalized.includes("funder blacklisted") ||
@@ -368,6 +379,14 @@ function isProbationBypassForbidden(result?: CreatorRiskResult): boolean {
         normalized.includes("creator seed too small") ||
         normalized.includes("429 too many requests") ||
         normalized.includes("rate limited")
+    ) {
+        return true;
+    }
+
+    if (
+        CONFIG.PAPER_CREATOR_RISK_EXTREME_CASHOUT_BLOCK_ENABLED &&
+        creatorCashoutPct >= CONFIG.PAPER_CREATOR_RISK_EXTREME_CASHOUT_MIN_PCT_OF_LIQ &&
+        creatorCashoutScore >= CONFIG.PAPER_CREATOR_RISK_EXTREME_CASHOUT_MIN_SCORE
     ) {
         return true;
     }
@@ -870,13 +889,14 @@ async function handleNewPool(connection: Connection, signature: string) {
             createPoolBlockTime: tx.blockTime || null,
             creatorSeedSol,
         });
+        const creatorRiskProbationForbidden = isProbationBypassForbidden(creatorRisk);
         let creatorRiskProbation = false;
         let creatorRiskProbationHoldMs = Math.max(1000, CONFIG.PAPER_CREATOR_RISK_PROBATION_HOLD_MS);
         if (!creatorRisk.ok) {
             if (
                 MONITOR_ONLY &&
                 CONFIG.PAPER_CREATOR_RISK_PROBATION_ENABLED &&
-                !isProbationBypassForbidden(creatorRisk)
+                !creatorRiskProbationForbidden
             ) {
                 creatorRiskProbation = true;
                 creatorRiskProbationHoldMs = getProbationHoldMs(creatorRisk.reason);
@@ -887,6 +907,17 @@ async function handleNewPool(connection: Connection, signature: string) {
                     `hold=${creatorRiskProbationHoldMs}ms`
                 );
             } else {
+                if (
+                    creatorRiskProbationForbidden &&
+                    Number(creatorRisk.creatorCashoutPctOfEntryLiquidity || 0) >= CONFIG.PAPER_CREATOR_RISK_EXTREME_CASHOUT_MIN_PCT_OF_LIQ
+                ) {
+                    stageLog(
+                        ctx,
+                        "RISK",
+                        `extreme creator cashout ${Number(creatorRisk.creatorCashoutPctOfEntryLiquidity || 0).toFixed(2)}% liq ` +
+                        `(score ${Number(creatorRisk.creatorCashoutScore || 0).toFixed(2)})`
+                    );
+                }
                 console.log(`🛑 SKIP: creator risk (${creatorRisk.reason})`);
                 finalStatus = "SKIP: creator risk";
                 return;
@@ -2125,6 +2156,69 @@ async function collectCreatorOutboundTransfersSince(
     return events;
 }
 
+async function collectCreatorCloseAccountEventsSince(
+    connection: Connection,
+    creatorAddress: string,
+    seenSignatures: Set<string>,
+    createPoolSignature?: string,
+    minBlockTimeSec?: number | null,
+): Promise<Array<{ closeCount: number; eventTimeSec: number; signature: string }>> {
+    const events: Array<{ closeCount: number; eventTimeSec: number; signature: string }> = [];
+
+    try {
+        const sigs = await connection.getSignaturesForAddress(
+            new PublicKey(creatorAddress),
+            { limit: 40 },
+            "confirmed"
+        );
+        const chronological = [...sigs]
+            .filter((s) => !s.err)
+            .filter((s) => !minBlockTimeSec || !s.blockTime || s.blockTime >= minBlockTimeSec)
+            .sort((a, b) => (a.blockTime || 0) - (b.blockTime || 0));
+
+        for (const s of chronological) {
+            if (s.signature === createPoolSignature) {
+                seenSignatures.add(s.signature);
+                continue;
+            }
+            if (seenSignatures.has(s.signature)) continue;
+            seenSignatures.add(s.signature);
+
+            const tx = await connection.getParsedTransaction(s.signature, {
+                maxSupportedTransactionVersion: 0,
+                commitment: "confirmed",
+            });
+            if (!tx) continue;
+
+            const feePayer = tx?.transaction?.message?.accountKeys?.[0]?.pubkey?.toBase58?.()
+                || tx?.transaction?.message?.accountKeys?.[0]?.pubkey
+                || null;
+            if (feePayer !== creatorAddress) continue;
+
+            let closeCount = 0;
+            for (const ix of flattenParsedInstructions(tx)) {
+                const parsed = ix?.parsed;
+                const type = String(parsed?.type || "").toLowerCase();
+                if (type === "closeaccount" || type === "close_account") {
+                    closeCount += 1;
+                }
+            }
+
+            if (closeCount > 0) {
+                events.push({
+                    closeCount,
+                    eventTimeSec: s.blockTime || Math.floor(Date.now() / 1000),
+                    signature: s.signature,
+                });
+            }
+        }
+    } catch {
+        // fail-open
+    }
+
+    return events;
+}
+
 async function collectCreatorInboundTransfersSince(
     connection: Connection,
     creatorAddress: string,
@@ -2275,6 +2369,22 @@ function classifyHoldCreatorInboundSpray(
         medianSol,
         relStdDev,
         amountRatio,
+    };
+}
+
+function classifyHoldCreatorCloseAccountBurst(
+    closeEvents: Array<{ closeCount: number; signature: string }>
+) {
+    const positive = closeEvents.filter((e) => Number.isFinite(e.closeCount) && e.closeCount > 0);
+    const totalCloseCount = positive.reduce((sum, e) => sum + e.closeCount, 0);
+
+    return {
+        detected:
+            positive.length >= Math.max(1, CONFIG.HOLD_CREATOR_CLOSE_ACCOUNT_BURST_MIN_TXS) &&
+            totalCloseCount >= Math.max(1, CONFIG.HOLD_CREATOR_CLOSE_ACCOUNT_BURST_MIN_CLOSES),
+        txCount: positive.length,
+        totalCloseCount,
+        latestSignature: positive[positive.length - 1]?.signature || "-",
     };
 }
 
@@ -3510,6 +3620,7 @@ async function waitForExitStateWithLiquidityStop(
     let lastCreatorRiskCheckAtMs = 0;
     let lastRemoveLiqCheckAtMs = 0;
     let lastCreatorOutboundCheckAtMs = 0;
+    let lastCreatorCloseAccountCheckAtMs = 0;
     let lastCreatorOutboundSprayCheckAtMs = 0;
     let lastCreatorInboundSprayCheckAtMs = 0;
     let lastPoolChurnCheckAtMs = 0;
@@ -3518,15 +3629,24 @@ async function waitForExitStateWithLiquidityStop(
     const seenCreatorSignatures = new Set<string>();
     const seenCreatorSpraySignatures = new Set<string>();
     const seenCreatorInboundSpraySignatures = new Set<string>();
+    const seenCreatorCloseAccountSignatures = new Set<string>();
     const creatorAmmTouchTimesSec: number[] = [];
     const creatorOutboundSprayEvents: Array<{ destination: string; sol: number; eventTimeSec: number; signature: string }> = [];
     const creatorInboundSprayEvents: Array<{ source: string; sol: number; eventTimeSec: number; signature: string }> = [];
+    const creatorCloseAccountEvents: Array<{ closeCount: number; eventTimeSec: number; signature: string }> = [];
     const baselineCreatorCashoutSol = Number(initialCreatorRisk?.creatorCashoutSol || 0);
     const baselineExitQuoteSol = getExitQuoteSolFromState(entryState, _tokenMint, tokenOutAtomic);
     if (createPoolSignature) seenPoolSignatures.add(createPoolSignature);
     if (createPoolSignature) seenCreatorSignatures.add(createPoolSignature);
     if (createPoolSignature) seenCreatorSpraySignatures.add(createPoolSignature);
     if (createPoolSignature) seenCreatorInboundSpraySignatures.add(createPoolSignature);
+    if (createPoolSignature) seenCreatorCloseAccountSignatures.add(createPoolSignature);
+
+    const holdIntervalScale =
+        suppressCreatorRiskRecheck
+            ? Math.min(1, Math.max(0.1, CONFIG.HOLD_PROBATION_INTERVAL_MULTIPLIER))
+            : 1;
+    const scaledInterval = (baseMs: number) => Math.max(500, Math.round(baseMs * holdIntervalScale));
 
     while (Date.now() < deadlineMs) {
         const s = await fetchStateWithRetry();
@@ -3537,7 +3657,7 @@ async function waitForExitStateWithLiquidityStop(
                 creatorAddress &&
                 !suppressCreatorRiskRecheck &&
                 CONFIG.HOLD_CREATOR_RISK_RECHECK_ENABLED &&
-                Date.now() - lastCreatorRiskCheckAtMs >= Math.max(500, CONFIG.HOLD_CREATOR_RISK_RECHECK_INTERVAL_MS)
+                Date.now() - lastCreatorRiskCheckAtMs >= scaledInterval(CONFIG.HOLD_CREATOR_RISK_RECHECK_INTERVAL_MS)
             ) {
                 lastCreatorRiskCheckAtMs = Date.now();
                 const creatorRisk = await runCreatorRiskCheck(connection, creatorAddress, logPrefix, {
@@ -3576,7 +3696,7 @@ async function waitForExitStateWithLiquidityStop(
             if (
                 creatorAddress &&
                 CONFIG.HOLD_REMOVE_LIQ_DETECT_ENABLED &&
-                Date.now() - lastRemoveLiqCheckAtMs >= removeLiqCheckIntervalMs
+                Date.now() - lastRemoveLiqCheckAtMs >= scaledInterval(removeLiqCheckIntervalMs)
             ) {
                 lastRemoveLiqCheckAtMs = Date.now();
                 const removeLiq = await detectRemoveLiquiditySince(
@@ -3621,7 +3741,7 @@ async function waitForExitStateWithLiquidityStop(
                 CONFIG.HOLD_POOL_CHURN_DETECT_ENABLED &&
                 baselineExitQuoteSol &&
                 baselineExitQuoteSol > 0 &&
-                Date.now() - lastPoolChurnCheckAtMs >= Math.max(500, CONFIG.HOLD_POOL_CHURN_CHECK_INTERVAL_MS)
+                Date.now() - lastPoolChurnCheckAtMs >= scaledInterval(CONFIG.HOLD_POOL_CHURN_CHECK_INTERVAL_MS)
             ) {
                 lastPoolChurnCheckAtMs = Date.now();
                 const churn = await getPoolRecentChurnStats(
@@ -3672,7 +3792,7 @@ async function waitForExitStateWithLiquidityStop(
             if (
                 creatorAddress &&
                 CONFIG.HOLD_CREATOR_OUTBOUND_EXIT_ENABLED &&
-                Date.now() - lastCreatorOutboundCheckAtMs >= Math.max(500, CONFIG.HOLD_CREATOR_OUTBOUND_CHECK_INTERVAL_MS)
+                Date.now() - lastCreatorOutboundCheckAtMs >= scaledInterval(CONFIG.HOLD_CREATOR_OUTBOUND_CHECK_INTERVAL_MS)
             ) {
                 lastCreatorOutboundCheckAtMs = Date.now();
                 const creatorOutbound = await detectCreatorLargeOutboundSince(
@@ -3695,8 +3815,45 @@ async function waitForExitStateWithLiquidityStop(
 
             if (
                 creatorAddress &&
+                CONFIG.HOLD_CREATOR_CLOSE_ACCOUNT_BURST_EXIT_ENABLED &&
+                Date.now() - lastCreatorCloseAccountCheckAtMs >= scaledInterval(CONFIG.HOLD_CREATOR_CLOSE_ACCOUNT_BURST_CHECK_INTERVAL_MS)
+            ) {
+                lastCreatorCloseAccountCheckAtMs = Date.now();
+                const minBlockTimeSec = Math.max(
+                    createPoolBlockTime || 0,
+                    Math.floor(startedAtMs / 1000)
+                );
+                const newEvents = await collectCreatorCloseAccountEventsSince(
+                    connection,
+                    creatorAddress,
+                    seenCreatorCloseAccountSignatures,
+                    createPoolSignature,
+                    minBlockTimeSec,
+                );
+                if (newEvents.length) {
+                    creatorCloseAccountEvents.push(...newEvents);
+                }
+                const windowSec = Math.max(5, CONFIG.HOLD_CREATOR_CLOSE_ACCOUNT_BURST_WINDOW_SEC);
+                const nowSec = Math.floor(Date.now() / 1000);
+                const cutoff = nowSec - windowSec;
+                while (creatorCloseAccountEvents.length && creatorCloseAccountEvents[0].eventTimeSec < cutoff) {
+                    creatorCloseAccountEvents.shift();
+                }
+                const burst = classifyHoldCreatorCloseAccountBurst(creatorCloseAccountEvents);
+                if (burst.detected) {
+                    console.log(
+                        `⚠️ CREATOR CLOSE ACCOUNT BURST EXIT: ` +
+                        `${burst.txCount} tx / ${burst.totalCloseCount} closes in ${windowSec}s ` +
+                        `(sig=${shortSig(burst.latestSignature)})`
+                    );
+                    return s;
+                }
+            }
+
+            if (
+                creatorAddress &&
                 CONFIG.HOLD_CREATOR_OUTBOUND_SPRAY_EXIT_ENABLED &&
-                Date.now() - lastCreatorOutboundSprayCheckAtMs >= Math.max(500, CONFIG.HOLD_CREATOR_OUTBOUND_SPRAY_CHECK_INTERVAL_MS)
+                Date.now() - lastCreatorOutboundSprayCheckAtMs >= scaledInterval(CONFIG.HOLD_CREATOR_OUTBOUND_SPRAY_CHECK_INTERVAL_MS)
             ) {
                 lastCreatorOutboundSprayCheckAtMs = Date.now();
                 const minBlockTimeSec = Math.max(
@@ -3736,7 +3893,7 @@ async function waitForExitStateWithLiquidityStop(
             if (
                 creatorAddress &&
                 CONFIG.HOLD_CREATOR_INBOUND_SPRAY_EXIT_ENABLED &&
-                Date.now() - lastCreatorInboundSprayCheckAtMs >= Math.max(500, CONFIG.HOLD_CREATOR_INBOUND_SPRAY_CHECK_INTERVAL_MS)
+                Date.now() - lastCreatorInboundSprayCheckAtMs >= scaledInterval(CONFIG.HOLD_CREATOR_INBOUND_SPRAY_CHECK_INTERVAL_MS)
             ) {
                 lastCreatorInboundSprayCheckAtMs = Date.now();
                 const minBlockTimeSec = Math.max(
