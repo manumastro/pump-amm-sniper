@@ -88,6 +88,13 @@ const CONFIG = {
     HOLD_CREATOR_OUTBOUND_SPRAY_MAX_MEDIAN_SOL: Number(process.env.HOLD_CREATOR_OUTBOUND_SPRAY_MAX_MEDIAN_SOL || 0.05),
     HOLD_CREATOR_OUTBOUND_SPRAY_MAX_REL_STDDEV: Number(process.env.HOLD_CREATOR_OUTBOUND_SPRAY_MAX_REL_STDDEV || 0.2),
     HOLD_CREATOR_OUTBOUND_SPRAY_MAX_AMOUNT_RATIO: Number(process.env.HOLD_CREATOR_OUTBOUND_SPRAY_MAX_AMOUNT_RATIO || 3),
+    HOLD_CREATOR_INBOUND_SPRAY_EXIT_ENABLED: process.env.HOLD_CREATOR_INBOUND_SPRAY_EXIT_ENABLED !== "false",
+    HOLD_CREATOR_INBOUND_SPRAY_CHECK_INTERVAL_MS: Number(process.env.HOLD_CREATOR_INBOUND_SPRAY_CHECK_INTERVAL_MS || 1500),
+    HOLD_CREATOR_INBOUND_SPRAY_WINDOW_SEC: Number(process.env.HOLD_CREATOR_INBOUND_SPRAY_WINDOW_SEC || 30),
+    HOLD_CREATOR_INBOUND_SPRAY_MIN_TRANSFERS: Number(process.env.HOLD_CREATOR_INBOUND_SPRAY_MIN_TRANSFERS || 8),
+    HOLD_CREATOR_INBOUND_SPRAY_MIN_SOURCES: Number(process.env.HOLD_CREATOR_INBOUND_SPRAY_MIN_SOURCES || 8),
+    HOLD_CREATOR_INBOUND_SPRAY_MAX_REL_STDDEV: Number(process.env.HOLD_CREATOR_INBOUND_SPRAY_MAX_REL_STDDEV || 0.12),
+    HOLD_CREATOR_INBOUND_SPRAY_MAX_AMOUNT_RATIO: Number(process.env.HOLD_CREATOR_INBOUND_SPRAY_MAX_AMOUNT_RATIO || 1.35),
     HOLD_PROBATION_CASHOUT_DELTA_MIN_SOL: Number(process.env.HOLD_PROBATION_CASHOUT_DELTA_MIN_SOL || 5),
     PRE_BUY_WAIT_MS: Number(process.env.PRE_BUY_WAIT_MS || 1500), // Wait before entering
     PRE_BUY_MAX_LIQ_DROP_PCT: Number(process.env.PRE_BUY_MAX_LIQ_DROP_PCT || 10), // Skip if liq drops too much during wait
@@ -343,7 +350,8 @@ function isProbationBypassForbidden(result?: CreatorRiskResult): boolean {
         normalized.includes("funder blacklisted") ||
         normalized.includes("relay funding recent on standard pool") ||
         normalized.includes("relay funding recent + micro burst") ||
-        normalized.includes("creator direct amm re-entry")
+        normalized.includes("creator direct amm re-entry") ||
+        normalized.includes("creator seed too small")
     ) {
         return true;
     }
@@ -2021,6 +2029,72 @@ async function collectCreatorOutboundTransfersSince(
     return events;
 }
 
+async function collectCreatorInboundTransfersSince(
+    connection: Connection,
+    creatorAddress: string,
+    poolAddress: string,
+    seenSignatures: Set<string>,
+    createPoolSignature?: string,
+    minBlockTimeSec?: number | null,
+): Promise<Array<{ source: string; sol: number; eventTimeSec: number; signature: string }>> {
+    const events: Array<{ source: string; sol: number; eventTimeSec: number; signature: string }> = [];
+
+    try {
+        const sigs = await connection.getSignaturesForAddress(
+            new PublicKey(creatorAddress),
+            { limit: 40 },
+            "confirmed"
+        );
+        const chronological = [...sigs]
+            .filter((s) => !s.err)
+            .filter((s) => !minBlockTimeSec || !s.blockTime || s.blockTime >= minBlockTimeSec)
+            .sort((a, b) => (a.blockTime || 0) - (b.blockTime || 0));
+
+        for (const s of chronological) {
+            if (s.signature === createPoolSignature) {
+                seenSignatures.add(s.signature);
+                continue;
+            }
+            if (seenSignatures.has(s.signature)) continue;
+            seenSignatures.add(s.signature);
+
+            const tx = await connection.getParsedTransaction(s.signature, {
+                maxSupportedTransactionVersion: 0,
+                commitment: "confirmed",
+            });
+            if (!tx) continue;
+
+            for (const ix of flattenParsedInstructions(tx)) {
+                const parsed = ix?.parsed;
+                if (!parsed || parsed.type !== "transfer") continue;
+                const info = parsed.info || {};
+                const from = info.source || info.from || null;
+                const to = info.destination || info.to || null;
+                const lamports = Number(info.lamports || 0);
+                if (
+                    to !== creatorAddress ||
+                    !from ||
+                    from === poolAddress ||
+                    !Number.isFinite(lamports) ||
+                    lamports <= 0
+                ) {
+                    continue;
+                }
+                events.push({
+                    source: from,
+                    sol: lamports / 1e9,
+                    eventTimeSec: s.blockTime || Math.floor(Date.now() / 1000),
+                    signature: s.signature,
+                });
+            }
+        }
+    } catch {
+        // fail-open
+    }
+
+    return events;
+}
+
 function classifyHoldCreatorOutboundSpray(
     outboundTransfers: Array<{ destination: string; sol: number }>
 ) {
@@ -2059,6 +2133,49 @@ function classifyHoldCreatorOutboundSpray(
         detected,
         transfers: positive.length,
         destinations,
+        medianSol,
+        relStdDev,
+        amountRatio,
+    };
+}
+
+function classifyHoldCreatorInboundSpray(
+    inboundTransfers: Array<{ source: string; sol: number }>
+) {
+    const positive = inboundTransfers.filter((t) => Number.isFinite(t.sol) && t.sol > 0);
+    if (!positive.length) {
+        return {
+            detected: false,
+            transfers: 0,
+            sources: 0,
+            medianSol: 0,
+            relStdDev: Infinity,
+            amountRatio: Infinity,
+        };
+    }
+
+    const values = positive.map((t) => t.sol).sort((a, b) => a - b);
+    const sources = new Set(positive.map((t) => t.source)).size;
+    const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
+    const variance = values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / values.length;
+    const stdDev = Math.sqrt(Math.max(0, variance));
+    const relStdDev = mean > 0 ? stdDev / mean : Infinity;
+    const medianSol =
+        values.length % 2 === 0
+            ? (values[(values.length / 2) - 1] + values[values.length / 2]) / 2
+            : values[Math.floor(values.length / 2)];
+    const amountRatio = values[0] > 0 ? values[values.length - 1] / values[0] : Infinity;
+
+    const detected =
+        positive.length >= CONFIG.HOLD_CREATOR_INBOUND_SPRAY_MIN_TRANSFERS &&
+        sources >= CONFIG.HOLD_CREATOR_INBOUND_SPRAY_MIN_SOURCES &&
+        relStdDev <= CONFIG.HOLD_CREATOR_INBOUND_SPRAY_MAX_REL_STDDEV &&
+        amountRatio <= CONFIG.HOLD_CREATOR_INBOUND_SPRAY_MAX_AMOUNT_RATIO;
+
+    return {
+        detected,
+        transfers: positive.length,
+        sources,
         medianSol,
         relStdDev,
         amountRatio,
@@ -3181,15 +3298,19 @@ async function waitForExitStateWithLiquidityStop(
     let lastRemoveLiqCheckAtMs = 0;
     let lastCreatorOutboundCheckAtMs = 0;
     let lastCreatorOutboundSprayCheckAtMs = 0;
+    let lastCreatorInboundSprayCheckAtMs = 0;
     const seenPoolSignatures = new Set<string>();
     const seenCreatorSignatures = new Set<string>();
     const seenCreatorSpraySignatures = new Set<string>();
+    const seenCreatorInboundSpraySignatures = new Set<string>();
     const creatorAmmTouchTimesSec: number[] = [];
     const creatorOutboundSprayEvents: Array<{ destination: string; sol: number; eventTimeSec: number; signature: string }> = [];
+    const creatorInboundSprayEvents: Array<{ source: string; sol: number; eventTimeSec: number; signature: string }> = [];
     const baselineCreatorCashoutSol = Number(initialCreatorRisk?.creatorCashoutSol || 0);
     if (createPoolSignature) seenPoolSignatures.add(createPoolSignature);
     if (createPoolSignature) seenCreatorSignatures.add(createPoolSignature);
     if (createPoolSignature) seenCreatorSpraySignatures.add(createPoolSignature);
+    if (createPoolSignature) seenCreatorInboundSpraySignatures.add(createPoolSignature);
 
     while (Date.now() < deadlineMs) {
         const s = await fetchStateWithRetry();
@@ -3337,6 +3458,46 @@ async function waitForExitStateWithLiquidityStop(
                     console.log(
                         `⚠️ CREATOR OUTBOUND SPRAY EXIT: ` +
                         `${spray.transfers} transfers to ${spray.destinations} destinations in ${windowSec}s ` +
+                        `(median ${spray.medianSol.toFixed(3)} SOL, rel_std ${spray.relStdDev.toFixed(2)}, ` +
+                        `ratio ${spray.amountRatio.toFixed(2)}, sig=${shortSig(latestSig)})`
+                    );
+                    return s;
+                }
+            }
+
+            if (
+                creatorAddress &&
+                CONFIG.HOLD_CREATOR_INBOUND_SPRAY_EXIT_ENABLED &&
+                Date.now() - lastCreatorInboundSprayCheckAtMs >= Math.max(500, CONFIG.HOLD_CREATOR_INBOUND_SPRAY_CHECK_INTERVAL_MS)
+            ) {
+                lastCreatorInboundSprayCheckAtMs = Date.now();
+                const minBlockTimeSec = Math.max(
+                    createPoolBlockTime || 0,
+                    Math.floor(startedAtMs / 1000)
+                );
+                const newEvents = await collectCreatorInboundTransfersSince(
+                    connection,
+                    creatorAddress,
+                    poolAddress,
+                    seenCreatorInboundSpraySignatures,
+                    createPoolSignature,
+                    minBlockTimeSec,
+                );
+                if (newEvents.length) {
+                    creatorInboundSprayEvents.push(...newEvents);
+                }
+                const windowSec = Math.max(5, CONFIG.HOLD_CREATOR_INBOUND_SPRAY_WINDOW_SEC);
+                const nowSec = Math.floor(Date.now() / 1000);
+                const cutoff = nowSec - windowSec;
+                while (creatorInboundSprayEvents.length && creatorInboundSprayEvents[0].eventTimeSec < cutoff) {
+                    creatorInboundSprayEvents.shift();
+                }
+                const spray = classifyHoldCreatorInboundSpray(creatorInboundSprayEvents);
+                if (spray.detected) {
+                    const latestSig = creatorInboundSprayEvents[creatorInboundSprayEvents.length - 1]?.signature || "-";
+                    console.log(
+                        `⚠️ CREATOR INBOUND SPRAY EXIT: ` +
+                        `${spray.transfers} transfers from ${spray.sources} sources in ${windowSec}s ` +
                         `(median ${spray.medianSol.toFixed(3)} SOL, rel_std ${spray.relStdDev.toFixed(2)}, ` +
                         `ratio ${spray.amountRatio.toFixed(2)}, sig=${shortSig(latestSig)})`
                     );

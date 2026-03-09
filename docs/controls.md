@@ -113,6 +113,7 @@ Eccezioni:
 - nessun probation bypass per `relay funding recent on standard pool`
 - nessun probation bypass per `relay funding recent + micro burst`
 - nessun probation bypass per `creator direct AMM re-entry`
+- nessun probation bypass per `creator seed too small ...`
 
 Durata:
 - probation normale: `PAPER_CREATOR_RISK_PROBATION_HOLD_MS`
@@ -288,6 +289,13 @@ Controlli:
 - `HOLD_CREATOR_OUTBOUND_SPRAY_MAX_MEDIAN_SOL`
 - `HOLD_CREATOR_OUTBOUND_SPRAY_MAX_REL_STDDEV`
 - `HOLD_CREATOR_OUTBOUND_SPRAY_MAX_AMOUNT_RATIO`
+- `HOLD_CREATOR_INBOUND_SPRAY_EXIT_ENABLED`
+- `HOLD_CREATOR_INBOUND_SPRAY_CHECK_INTERVAL_MS`
+- `HOLD_CREATOR_INBOUND_SPRAY_WINDOW_SEC`
+- `HOLD_CREATOR_INBOUND_SPRAY_MIN_TRANSFERS`
+- `HOLD_CREATOR_INBOUND_SPRAY_MIN_SOURCES`
+- `HOLD_CREATOR_INBOUND_SPRAY_MAX_REL_STDDEV`
+- `HOLD_CREATOR_INBOUND_SPRAY_MAX_AMOUNT_RATIO`
 - `HOLD_PROBATION_CASHOUT_DELTA_MIN_SOL`
 
 Segnali:
@@ -298,6 +306,7 @@ Segnali:
 Esito:
 - exit anticipata immediata su `remove-liquidity-like`
 - exit anticipata immediata su burst outbound piccoli/uniformi del creator durante l'hold
+- exit anticipata immediata su burst inbound piccoli/uniformi verso il creator durante l'hold
 
 Log:
 - `REMOVE LIQUIDITY EXIT: ...`
