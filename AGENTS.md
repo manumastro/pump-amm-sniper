@@ -27,6 +27,15 @@ Preferire:
 - Report JSON: `logs/paper-report.json`
 - Report testo: `logs/paper-report.txt`
 
+Regola operativa:
+- dopo modifiche importanti a logica/controlli del bot, prima del restart dei servizi va sempre fatto reset completo di log e report:
+  - `paper.log`
+  - `logs/paper-report.json`
+  - `logs/paper-report.txt`
+  - `logs/paper-worker-1.log`
+  - `logs/paper-worker-2.log`
+  - `logs/paper-report-daemon.log`
+
 ## Servizi
 - Bot: `pump-sniper.service`
 - Reporter: `pump-report.service`

@@ -226,43 +226,43 @@ Esito:
 Log:
 - `CCASH | total=... max=... rel=... score=... dest=...`
 
-### 2.3 Post-Entry Stability Gate
+### 2.3 Short Hold su RRELAY
 Scopo:
-- uscire se i primi secondi dopo il buy sono troppo instabili
+- ridurre la finestra di esposizione quando c'e relay funding sospetto
 
 Controlli:
-- `POST_ENTRY_STABILITY_GATE_ENABLED`
-- `POST_ENTRY_STABILITY_GATE_WINDOW_MS`
-- `POST_ENTRY_STABILITY_GATE_DROP_PCT`
+- `HOLD_SUSPICIOUS_RELAY_SHORT_HOLD_ENABLED`
+- `HOLD_SUSPICIOUS_RELAY_SHORT_HOLD_MS`
 
-Segnali:
-- calo spot
-- calo liquidita
+Segnale:
+- `RRELAY` presente nel creator-risk pre-entry
 
 Esito:
-- exit veloce nei primi secondi
+- hold ridotto (es. 10s) invece di `AUTO_SELL_DELAY_MS`
 
 Log:
-- `STABILITY GATE: early exit ...`
+- `HOLD | suspicious relay root ... -> short hold ...ms`
 
-### 2.4 Liquidity Stop
+### 2.4 Remove Liquidity Exit (on-chain)
 Scopo:
-- uscire se spot o liquidita collassano durante hold
+- uscire quando il creator inizia a rimuovere liquidita dal pool
 
 Controlli:
-- `LIQUIDITY_STOP_ENABLED`
-- `LIQUIDITY_STOP_DROP_PCT`
-- `LIQUIDITY_STOP_CHECK_INTERVAL_MS`
+- `HOLD_REMOVE_LIQ_DETECT_ENABLED`
+- `HOLD_REMOVE_LIQ_CHECK_INTERVAL_MS`
+- `HOLD_REMOVE_LIQ_MIN_WSOL_TO_CREATOR`
+- `HOLD_REMOVE_LIQ_MIN_SOL_TO_CREATOR`
 
 Segnali:
-- spot rispetto all'entry
-- liquidita rispetto all'entry
+- tx on-chain che tocca il programma AMM del pool
+- ingresso WSOL/SOL significativo verso creator durante la tx
 
 Esito:
-- exit anticipata
+- exit anticipata immediata su `remove-liquidity-like`
 
 Log:
-- `LIQUIDITY STOP: trigger early exit ...`
+- `REMOVE LIQUIDITY EXIT: ...`
+- `CREATOR RISK EXIT: ...`
 
 ## 3. Post-trade
 
@@ -327,8 +327,8 @@ Log:
 - `CREATOR RISK EXIT`
   - creator diventato sospetto durante hold
 
-- `LIQUIDITY STOP`
-  - pool o spot collassati rispetto all'entry
+- `REMOVE LIQUIDITY EXIT`
+  - rilevata rimozione liquidita on-chain verso creator durante hold
 
 - `PAPER LOSS` con `exit returned 0 SOL`
   - la pool era di fatto morta per noi al momento dell'uscita, e va in PnL come `-100%`
@@ -345,6 +345,9 @@ Quando succede:
 - analizza creator, funder, relay e micro-sources
 - aggiungi gli indirizzi sospetti nelle blacklist dedicate
 - non usare i report come fonte blacklist
+
+Regola operativa restart:
+- dopo modifiche importanti ai controlli, fermare i servizi, azzerare log/report e poi riavviare.
 
 ## 6.0 Modifiche precedenti (prima del tuning top10)
 

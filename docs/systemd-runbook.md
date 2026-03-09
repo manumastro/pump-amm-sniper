@@ -49,6 +49,30 @@ systemctl --user stop pump-sniper.service pump-report.service
 systemctl --user restart pump-sniper.service pump-report.service
 ```
 
+## Restart post-modifiche importanti (obbligatorio)
+
+Quando cambi logica di trading/controlli/report:
+
+1. Stop servizi:
+```bash
+systemctl --user stop pump-sniper.service pump-report.service
+```
+
+2. Reset log/report:
+```bash
+truncate -s 0 /home/manu/pump-amm-sniper/paper.log
+printf '{}\n' > /home/manu/pump-amm-sniper/logs/paper-report.json
+printf '\n' > /home/manu/pump-amm-sniper/logs/paper-report.txt
+truncate -s 0 /home/manu/pump-amm-sniper/logs/paper-worker-1.log \
+  /home/manu/pump-amm-sniper/logs/paper-worker-2.log \
+  /home/manu/pump-amm-sniper/logs/paper-report-daemon.log
+```
+
+3. Start servizi:
+```bash
+systemctl --user start pump-sniper.service pump-report.service
+```
+
 Abilitazione al boot utente:
 
 ```bash
@@ -80,4 +104,3 @@ Verifica:
 ```bash
 loginctl show-user manu -p Linger
 ```
-

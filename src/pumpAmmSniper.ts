@@ -63,6 +63,12 @@ const CONFIG = {
     
     // ⏱️ TIMING
     AUTO_SELL_DELAY_MS: Number(process.env.AUTO_SELL_DELAY_MS || 16000), // Sell after N seconds
+    HOLD_SUSPICIOUS_RELAY_SHORT_HOLD_ENABLED: process.env.HOLD_SUSPICIOUS_RELAY_SHORT_HOLD_ENABLED !== "false",
+    HOLD_SUSPICIOUS_RELAY_SHORT_HOLD_MS: Number(process.env.HOLD_SUSPICIOUS_RELAY_SHORT_HOLD_MS || 10000),
+    HOLD_REMOVE_LIQ_DETECT_ENABLED: process.env.HOLD_REMOVE_LIQ_DETECT_ENABLED !== "false",
+    HOLD_REMOVE_LIQ_CHECK_INTERVAL_MS: Number(process.env.HOLD_REMOVE_LIQ_CHECK_INTERVAL_MS || 1500),
+    HOLD_REMOVE_LIQ_MIN_WSOL_TO_CREATOR: Number(process.env.HOLD_REMOVE_LIQ_MIN_WSOL_TO_CREATOR || 0.5),
+    HOLD_REMOVE_LIQ_MIN_SOL_TO_CREATOR: Number(process.env.HOLD_REMOVE_LIQ_MIN_SOL_TO_CREATOR || 0.5),
     PRE_BUY_WAIT_MS: Number(process.env.PRE_BUY_WAIT_MS || 1500), // Wait before entering
     PRE_BUY_MAX_LIQ_DROP_PCT: Number(process.env.PRE_BUY_MAX_LIQ_DROP_PCT || 10), // Skip if liq drops too much during wait
     PRE_BUY_CONFIRM_SNAPSHOTS: Number(process.env.PRE_BUY_CONFIRM_SNAPSHOTS || 3), // Extra confirmations after wait
@@ -161,12 +167,6 @@ const CONFIG = {
     PAPER_TRADE_ENABLED: process.env.PAPER_TRADE_ENABLED === "true",
     MAX_CONCURRENT_OPERATIONS: Number(process.env.MAX_CONCURRENT_OPERATIONS || 2),
     PAPER_TRADE_MAX_LOSS_PCT: Number(process.env.PAPER_TRADE_MAX_LOSS_PCT || 80),
-    LIQUIDITY_STOP_ENABLED: process.env.LIQUIDITY_STOP_ENABLED !== "false",
-    LIQUIDITY_STOP_DROP_PCT: Number(process.env.LIQUIDITY_STOP_DROP_PCT || 30),
-    LIQUIDITY_STOP_CHECK_INTERVAL_MS: Number(process.env.LIQUIDITY_STOP_CHECK_INTERVAL_MS || 300),
-    POST_ENTRY_STABILITY_GATE_ENABLED: process.env.POST_ENTRY_STABILITY_GATE_ENABLED !== "false",
-    POST_ENTRY_STABILITY_GATE_WINDOW_MS: Number(process.env.POST_ENTRY_STABILITY_GATE_WINDOW_MS || 5000),
-    POST_ENTRY_STABILITY_GATE_DROP_PCT: Number(process.env.POST_ENTRY_STABILITY_GATE_DROP_PCT || 4),
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -778,6 +778,7 @@ async function handleNewPool(connection: Connection, signature: string) {
                 creatorAddress,
                 signature,
                 tx.blockTime || null,
+                creatorRisk,
             );
             if (!paper.ok) {
                 if (paper.finalStatus) {
@@ -1533,6 +1534,137 @@ function instructionProgramIdMatches(ix: any, expectedProgramId: string): boolea
             ? raw
             : raw?.toBase58?.() || "";
     return programId === expectedProgramId;
+}
+
+function flattenParsedInstructions(tx: any): any[] {
+    const all: any[] = [];
+    const outer = tx?.transaction?.message?.instructions || [];
+    for (const ix of outer) all.push(ix);
+    const innerGroups = tx?.meta?.innerInstructions || [];
+    for (const g of innerGroups) {
+        for (const ix of (g.instructions || [])) all.push(ix);
+    }
+    return all;
+}
+
+function getOwnerMintDelta(tx: any, owner: string, mint: string): number {
+    const pre = tx?.meta?.preTokenBalances || [];
+    const post = tx?.meta?.postTokenBalances || [];
+    let preAmt = 0;
+    let postAmt = 0;
+
+    for (const b of pre) {
+        if (b?.owner !== owner || b?.mint !== mint) continue;
+        const raw = Number(b?.uiTokenAmount?.amount || 0);
+        const dec = Number(b?.uiTokenAmount?.decimals || 0);
+        if (Number.isFinite(raw) && Number.isFinite(dec)) preAmt += raw / (10 ** dec);
+    }
+    for (const b of post) {
+        if (b?.owner !== owner || b?.mint !== mint) continue;
+        const raw = Number(b?.uiTokenAmount?.amount || 0);
+        const dec = Number(b?.uiTokenAmount?.decimals || 0);
+        if (Number.isFinite(raw) && Number.isFinite(dec)) postAmt += raw / (10 ** dec);
+    }
+
+    return postAmt - preAmt;
+}
+
+function getSystemInboundSolToCreator(tx: any, creatorAddress: string): number {
+    let totalSol = 0;
+    for (const ix of flattenParsedInstructions(tx)) {
+        const parsed = ix?.parsed;
+        if (!parsed || parsed.type !== "transfer") continue;
+        const info = parsed.info || {};
+        const from = info.source || info.from || null;
+        const to = info.destination || info.to || null;
+        const lamports = Number(info.lamports || 0);
+        if (!from || !to || !Number.isFinite(lamports) || lamports <= 0) continue;
+        if (to === creatorAddress) {
+            totalSol += lamports / 1e9;
+        }
+    }
+    return totalSol;
+}
+
+function txTouchesAddress(tx: any, address: string): boolean {
+    const keys = tx?.transaction?.message?.accountKeys || [];
+    return keys.some((k: any) => {
+        const v = typeof k === "string"
+            ? k
+            : (k?.pubkey?.toBase58?.() || k?.toBase58?.() || null);
+        return v === address;
+    });
+}
+
+function isRemoveLiquidityLikeTx(tx: any, creatorAddress: string, poolAddress: string): {
+    detected: boolean;
+    wsolToCreator: number;
+    solToCreator: number;
+} {
+    const touchesPumpAmm = flattenParsedInstructions(tx).some((ix) =>
+        instructionProgramIdMatches(ix, PUMPFUN_AMM_PROGRAM_ID)
+    );
+    if (!touchesPumpAmm || !txTouchesAddress(tx, poolAddress)) {
+        return { detected: false, wsolToCreator: 0, solToCreator: 0 };
+    }
+
+    const wsolToCreator = getOwnerMintDelta(tx, creatorAddress, WSOL);
+    const solToCreator = getSystemInboundSolToCreator(tx, creatorAddress);
+    const detected =
+        wsolToCreator >= CONFIG.HOLD_REMOVE_LIQ_MIN_WSOL_TO_CREATOR ||
+        solToCreator >= CONFIG.HOLD_REMOVE_LIQ_MIN_SOL_TO_CREATOR;
+
+    return { detected, wsolToCreator, solToCreator };
+}
+
+async function detectRemoveLiquiditySince(
+    connection: Connection,
+    poolAddress: string,
+    creatorAddress: string,
+    seenSignatures: Set<string>,
+    createPoolSignature?: string,
+    createPoolBlockTime?: number | null,
+): Promise<{ detected: boolean; signature?: string; wsolToCreator?: number; solToCreator?: number }> {
+    try {
+        const sigs = await connection.getSignaturesForAddress(
+            new PublicKey(poolAddress),
+            { limit: 15 },
+            "confirmed"
+        );
+        const chronological = [...sigs]
+            .filter((s) => !s.err)
+            .filter((s) => !createPoolBlockTime || !s.blockTime || s.blockTime >= createPoolBlockTime)
+            .sort((a, b) => (a.blockTime || 0) - (b.blockTime || 0));
+
+        for (const s of chronological) {
+            if (s.signature === createPoolSignature) {
+                seenSignatures.add(s.signature);
+                continue;
+            }
+            if (seenSignatures.has(s.signature)) continue;
+            seenSignatures.add(s.signature);
+
+            const tx = await connection.getParsedTransaction(s.signature, {
+                maxSupportedTransactionVersion: 0,
+                commitment: "confirmed",
+            });
+            if (!tx) continue;
+
+            const m = isRemoveLiquidityLikeTx(tx, creatorAddress, poolAddress);
+            if (m.detected) {
+                return {
+                    detected: true,
+                    signature: s.signature,
+                    wsolToCreator: m.wsolToCreator,
+                    solToCreator: m.solToCreator,
+                };
+            }
+        }
+    } catch {
+        // fail-open
+    }
+
+    return { detected: false };
 }
 
 async function detectCreatorDirectAmmReentry(
@@ -2391,6 +2523,7 @@ async function maybeRunPaperTradeSimulation(
     creatorAddress?: string,
     createPoolSignature?: string,
     createPoolBlockTime?: number | null,
+    initialCreatorRisk?: CreatorRiskResult,
 ): Promise<PaperTradeResult> {
     if (!CONFIG.PAPER_TRADE_ENABLED) return { ok: true };
 
@@ -2469,6 +2602,20 @@ async function maybeRunPaperTradeSimulation(
         const entrySpotSolPerToken = getSpotSolPerTokenFromState(entryState, tokenMint, tokenDecimals) || 0;
         stageLog(ctx, "BUY_SPOT", `~${formatSolCompact(entrySpotSolPerToken)}/token`);
 
+        const suspiciousRelay =
+            CONFIG.HOLD_SUSPICIOUS_RELAY_SHORT_HOLD_ENABLED &&
+            !!initialCreatorRisk?.relayFundingRoot;
+        const effectiveHoldMs = suspiciousRelay
+            ? Math.max(1000, CONFIG.HOLD_SUSPICIOUS_RELAY_SHORT_HOLD_MS)
+            : Math.max(1000, CONFIG.AUTO_SELL_DELAY_MS);
+        if (suspiciousRelay) {
+            stageLog(
+                ctx,
+                "HOLD",
+                `suspicious relay root ${shortSig(initialCreatorRisk?.relayFundingRoot || "-")} -> short hold ${effectiveHoldMs}ms`
+            );
+        }
+
         const exitState = await waitForExitStateWithLiquidityStop(
             connection,
             poolAddress,
@@ -2477,6 +2624,7 @@ async function maybeRunPaperTradeSimulation(
             tokenMint,
             tokenDecimals,
             ctx,
+            effectiveHoldMs,
             creatorAddress,
             createPoolSignature,
             createPoolBlockTime,
@@ -2559,29 +2707,28 @@ async function maybeRunPaperTradeSimulation(
 
 async function waitForExitStateWithLiquidityStop(
     connection: Connection,
-    _poolAddress: string,
+    poolAddress: string,
     fetchStateWithRetry: () => Promise<any | null>,
     entryState: any,
-    tokenMint: string,
-    tokenDecimals: number,
+    _tokenMint: string,
+    _tokenDecimals: number,
     logPrefix: string,
+    holdMs: number,
     creatorAddress?: string,
     createPoolSignature?: string,
     createPoolBlockTime?: number | null,
 ): Promise<any | null> {
     const startedAtMs = Date.now();
-    const deadlineMs = startedAtMs + CONFIG.AUTO_SELL_DELAY_MS;
-    const pollIntervalMs = Math.max(250, Math.min(CONFIG.LIQUIDITY_STOP_CHECK_INTERVAL_MS, 1500));
-    const entrySpot = getSpotSolPerTokenFromState(entryState, tokenMint, tokenDecimals) || 0;
-    const entrySolLiquidity = getSolLiquidityFromState(entryState, tokenMint) || 0;
-    const dropFactor = 1 - (Math.abs(CONFIG.LIQUIDITY_STOP_DROP_PCT) / 100);
-    const stabilityDropFactor = 1 - (Math.abs(CONFIG.POST_ENTRY_STABILITY_GATE_DROP_PCT) / 100);
-    const liqStopSpotThreshold =
-        Number.isFinite(entrySpot) && entrySpot > 0 ? entrySpot * dropFactor : 0;
-    const liqStopLiquidityThreshold =
-        Number.isFinite(entrySolLiquidity) && entrySolLiquidity > 0 ? entrySolLiquidity * dropFactor : 0;
+    const deadlineMs = startedAtMs + Math.max(1000, holdMs);
+    const pollIntervalMs = Math.max(250, Math.min(CONFIG.HOLD_REMOVE_LIQ_CHECK_INTERVAL_MS, 1500));
+    const removeLiqCheckIntervalMs = Math.max(500, CONFIG.HOLD_REMOVE_LIQ_CHECK_INTERVAL_MS);
+    const entrySolLiquidity = getSolLiquidityFromState(entryState, _tokenMint) || 0;
     let latestState: any | null = entryState;
     let lastCreatorRiskCheckAtMs = 0;
+    let lastRemoveLiqCheckAtMs = 0;
+    const seenPoolSignatures = new Set<string>();
+    if (createPoolSignature) seenPoolSignatures.add(createPoolSignature);
+
     while (Date.now() < deadlineMs) {
         const s = await fetchStateWithRetry();
         if (s) {
@@ -2605,59 +2752,27 @@ async function waitForExitStateWithLiquidityStop(
                 }
             }
 
-            const curSpot = getSpotSolPerTokenFromState(s, tokenMint, tokenDecimals) || 0;
-            const curSolLiquidity = getSolLiquidityFromState(s, tokenMint) || 0;
-            const inStabilityWindow =
-                CONFIG.POST_ENTRY_STABILITY_GATE_ENABLED &&
-                (Date.now() - startedAtMs) <= Math.max(0, CONFIG.POST_ENTRY_STABILITY_GATE_WINDOW_MS);
-
-            if (inStabilityWindow) {
-                const stabilitySpotBreak =
-                    Number.isFinite(entrySpot) &&
-                    entrySpot > 0 &&
-                    Number.isFinite(curSpot) &&
-                    curSpot > 0 &&
-                    curSpot <= entrySpot * stabilityDropFactor;
-
-                const stabilityLiquidityBreak =
-                    Number.isFinite(entrySolLiquidity) &&
-                    entrySolLiquidity > 0 &&
-                    Number.isFinite(curSolLiquidity) &&
-                    curSolLiquidity > 0 &&
-                    curSolLiquidity <= entrySolLiquidity * stabilityDropFactor;
-
-                if (stabilitySpotBreak || stabilityLiquidityBreak) {
+            if (
+                creatorAddress &&
+                CONFIG.HOLD_REMOVE_LIQ_DETECT_ENABLED &&
+                Date.now() - lastRemoveLiqCheckAtMs >= removeLiqCheckIntervalMs
+            ) {
+                lastRemoveLiqCheckAtMs = Date.now();
+                const removeLiq = await detectRemoveLiquiditySince(
+                    connection,
+                    poolAddress,
+                    creatorAddress,
+                    seenPoolSignatures,
+                    createPoolSignature,
+                    createPoolBlockTime,
+                );
+                if (removeLiq.detected) {
                     console.log(
-                        `⚠️ STABILITY GATE: early exit ` +
-                        `(spot ${formatSolCompact(curSpot)}/token <= ${formatSolCompact(entrySpot * stabilityDropFactor)}/token, ` +
-                        `liquidity ${curSolLiquidity.toFixed(2)} SOL <= ${(entrySolLiquidity * stabilityDropFactor).toFixed(2)} SOL, ` +
-                        `window ${CONFIG.POST_ENTRY_STABILITY_GATE_WINDOW_MS}ms, drop ${CONFIG.POST_ENTRY_STABILITY_GATE_DROP_PCT}%)`
-                    );
-                    return s;
-                }
-            }
-
-            if (CONFIG.LIQUIDITY_STOP_ENABLED) {
-                const spotTriggered =
-                    Number.isFinite(entrySpot) &&
-                    entrySpot > 0 &&
-                    Number.isFinite(curSpot) &&
-                    curSpot > 0 &&
-                    curSpot <= entrySpot * dropFactor;
-
-                const liquidityTriggered =
-                    Number.isFinite(entrySolLiquidity) &&
-                    entrySolLiquidity > 0 &&
-                    Number.isFinite(curSolLiquidity) &&
-                    curSolLiquidity > 0 &&
-                    curSolLiquidity <= entrySolLiquidity * dropFactor;
-
-                if (spotTriggered || liquidityTriggered) {
-                    console.log(
-                        `⚠️ LIQUIDITY STOP: trigger early exit ` +
-                        `(spot ${formatSolCompact(curSpot)}/token <= ${formatSolCompact(liqStopSpotThreshold)}/token, ` +
-                        `liquidity ${curSolLiquidity.toFixed(2)} SOL <= ${liqStopLiquidityThreshold.toFixed(2)} SOL, ` +
-                        `drop ${CONFIG.LIQUIDITY_STOP_DROP_PCT}%)`
+                        `⚠️ REMOVE LIQUIDITY EXIT: ` +
+                        `${shortSig(removeLiq.signature || "-")} ` +
+                        `(wsol_to_creator=${(removeLiq.wsolToCreator || 0).toFixed(3)} ` +
+                        `sol_to_creator=${(removeLiq.solToCreator || 0).toFixed(3)} ` +
+                        `entry_liq=${entrySolLiquidity.toFixed(2)} SOL)`
                     );
                     return s;
                 }
