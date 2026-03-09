@@ -167,7 +167,28 @@ Log:
 - `WAIT | first trade ... remaining ...`
 - `WAIT | pre-entry liquidity ... (min observed ...)`
 
-### 1.6 Top 10 Concentration
+### 1.6 Pre-Buy Revalidation
+Scopo:
+- rifare il check del pool immediatamente prima del buy
+- evitare ingressi dopo wait/probation su pool gia degradati o svuotati
+
+Controlli:
+- `PRE_BUY_REVALIDATION_ENABLED`
+- `PRE_BUY_REVALIDATION_MAX_LIQ_DROP_PCT`
+- `PRE_BUY_REVALIDATION_MAX_QUOTE_VS_SPOT_RATIO`
+
+Segnali:
+- liquidity live troppo bassa rispetto alla baseline osservata
+- `buy quote` molto peggiore dello `spot`
+
+Esito:
+- `SKIP: pre-buy revalidation`
+
+Log:
+- `PREBUY | liq ...`
+- `PREBUY | quote_vs_spot=...x ...`
+
+### 1.7 Top 10 Concentration
 Scopo:
 - evitare distribuzioni esterne troppo concentrate
 
