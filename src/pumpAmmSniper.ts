@@ -1464,6 +1464,7 @@ async function classifyCreatorCashoutRisk(
     funder: string | null,
     outboundTransfers: Array<{ destination: string; sol: number }>,
     entrySolLiquidity?: number,
+    excludedDestinations?: Set<string>,
 ): Promise<{ totalSol: number; maxSingleSol: number; pctOfEntryLiquidity: number; score: number; destination: string | null }> {
     if (!outboundTransfers.length) {
         return { totalSol: 0, maxSingleSol: 0, pctOfEntryLiquidity: 0, score: 0, destination: null };
@@ -1472,6 +1473,7 @@ async function classifyCreatorCashoutRisk(
     const merged = new Map<string, number>();
     for (const transfer of outboundTransfers) {
         if (!transfer.destination || transfer.destination === creatorAddress) continue;
+        if (excludedDestinations?.has(transfer.destination)) continue;
         merged.set(transfer.destination, (merged.get(transfer.destination) || 0) + transfer.sol);
     }
 
@@ -2536,9 +2538,10 @@ async function runCreatorRiskCheck(
         const linksToCreators = new Set<string>();
         const outboundTransfers: Array<{ destination: string; sol: number }> = [];
         const inboundTransfers: Array<{ source: string; sol: number }> = [];
+        const createPoolOutboundDestinations = new Set<string>();
 
         const sampleSignatures = new Set(sample.map((s) => s.signature));
-        const ingestParsedTx = (tx: any) => {
+        const ingestParsedTx = (tx: any, options: { recordCreatePoolDestinations?: boolean } = {}) => {
             const outer = walkParsedInstructions(
                 tx.transaction?.message?.instructions,
                 creatorAddress,
@@ -2566,6 +2569,17 @@ async function runCreatorRiskCheck(
             }
             outboundTransfers.push(...outer.outboundTransfers);
 
+            if (options.recordCreatePoolDestinations) {
+                for (const dest of outer.outboundDestinations) {
+                    if (dest && dest !== creatorAddress) createPoolOutboundDestinations.add(dest);
+                }
+                for (const inner of innerParts) {
+                    for (const dest of inner.outboundDestinations) {
+                        if (dest && dest !== creatorAddress) createPoolOutboundDestinations.add(dest);
+                    }
+                }
+            }
+
             if (!funder) {
                 funder = outer.inboundSources[0] || innerParts.flatMap((p: any) => p.inboundSources)[0] || null;
             }
@@ -2585,7 +2599,7 @@ async function runCreatorRiskCheck(
                 commitment: "confirmed",
             });
             if (!tx) continue;
-            ingestParsedTx(tx);
+            ingestParsedTx(tx, { recordCreatePoolDestinations: sig.signature === options.createPoolSignature });
         }
 
         // When risk-check runs immediately after create_pool, address history can lag and miss
@@ -2597,7 +2611,7 @@ async function runCreatorRiskCheck(
                     commitment: "confirmed",
                 });
                 if (createTx) {
-                    ingestParsedTx(createTx);
+                    ingestParsedTx(createTx, { recordCreatePoolDestinations: true });
                 }
             } catch {
                 // fail-open
@@ -2634,6 +2648,7 @@ async function runCreatorRiskCheck(
             funder,
             outboundTransfers,
             options.entrySolLiquidity,
+            createPoolOutboundDestinations,
         );
         const sprayOutbound = classifySprayOutboundPattern(outboundTransfers);
         const sprayInbound = classifyInboundSprayPattern(inboundTransfers);
