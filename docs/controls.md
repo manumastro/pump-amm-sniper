@@ -296,22 +296,36 @@ Controlli:
 - `HOLD_CREATOR_INBOUND_SPRAY_MIN_SOURCES`
 - `HOLD_CREATOR_INBOUND_SPRAY_MAX_REL_STDDEV`
 - `HOLD_CREATOR_INBOUND_SPRAY_MAX_AMOUNT_RATIO`
+- `HOLD_POOL_CHURN_DETECT_ENABLED`
+- `HOLD_POOL_CHURN_CHECK_INTERVAL_MS`
+- `HOLD_POOL_CHURN_SIG_LIMIT`
+- `HOLD_POOL_CHURN_WINDOW_SHORT_MS`
+- `HOLD_POOL_CHURN_WINDOW_LONG_MS`
+- `HOLD_POOL_CHURN_WINDOW_CRITICAL_MS`
+- `HOLD_POOL_CHURN_TX_SHORT_MIN`
+- `HOLD_POOL_CHURN_TX_LONG_MIN`
+- `HOLD_POOL_CHURN_TX_CRITICAL_MIN`
+- `HOLD_POOL_CHURN_SELL_DROP_PCT`
+- `HOLD_POOL_CHURN_CRITICAL_SELL_DROP_PCT`
 - `HOLD_PROBATION_CASHOUT_DELTA_MIN_SOL`
 
 Segnali:
 - tx on-chain che tocca il programma AMM del pool
 - ingresso WSOL/SOL significativo verso creator durante la tx
 - burst di tx AMM del creator sullo stesso pool in finestra breve
+- churn anomalo del pool in finestra breve combinato con collasso della `SELL_QUOTE`
 
 Esito:
 - exit anticipata immediata su `remove-liquidity-like`
 - exit anticipata immediata su burst outbound piccoli/uniformi del creator durante l'hold
 - exit anticipata immediata su burst inbound piccoli/uniformi verso il creator durante l'hold
+- exit anticipata immediata su `POOL CHURN EXIT` quando il numero di tx recenti e la `SELL_QUOTE` peggiorano insieme
 
 Log:
 - `REMOVE LIQUIDITY EXIT: ...`
 - `CREATOR AMM BURST EXIT: ...`
 - `CREATOR OUTBOUND EXIT: ...`
+- `POOL CHURN EXIT: ...`
 - `CREATOR RISK EXIT: ...`
 - `CREATOR RISK EXIT (probation hard): ...`
 

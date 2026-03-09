@@ -95,6 +95,17 @@ const CONFIG = {
     HOLD_CREATOR_INBOUND_SPRAY_MIN_SOURCES: Number(process.env.HOLD_CREATOR_INBOUND_SPRAY_MIN_SOURCES || 8),
     HOLD_CREATOR_INBOUND_SPRAY_MAX_REL_STDDEV: Number(process.env.HOLD_CREATOR_INBOUND_SPRAY_MAX_REL_STDDEV || 0.12),
     HOLD_CREATOR_INBOUND_SPRAY_MAX_AMOUNT_RATIO: Number(process.env.HOLD_CREATOR_INBOUND_SPRAY_MAX_AMOUNT_RATIO || 1.35),
+    HOLD_POOL_CHURN_DETECT_ENABLED: process.env.HOLD_POOL_CHURN_DETECT_ENABLED !== "false",
+    HOLD_POOL_CHURN_CHECK_INTERVAL_MS: Number(process.env.HOLD_POOL_CHURN_CHECK_INTERVAL_MS || 1500),
+    HOLD_POOL_CHURN_SIG_LIMIT: Number(process.env.HOLD_POOL_CHURN_SIG_LIMIT || 60),
+    HOLD_POOL_CHURN_WINDOW_SHORT_MS: Number(process.env.HOLD_POOL_CHURN_WINDOW_SHORT_MS || 10000),
+    HOLD_POOL_CHURN_WINDOW_LONG_MS: Number(process.env.HOLD_POOL_CHURN_WINDOW_LONG_MS || 20000),
+    HOLD_POOL_CHURN_WINDOW_CRITICAL_MS: Number(process.env.HOLD_POOL_CHURN_WINDOW_CRITICAL_MS || 40000),
+    HOLD_POOL_CHURN_TX_SHORT_MIN: Number(process.env.HOLD_POOL_CHURN_TX_SHORT_MIN || 10),
+    HOLD_POOL_CHURN_TX_LONG_MIN: Number(process.env.HOLD_POOL_CHURN_TX_LONG_MIN || 20),
+    HOLD_POOL_CHURN_TX_CRITICAL_MIN: Number(process.env.HOLD_POOL_CHURN_TX_CRITICAL_MIN || 30),
+    HOLD_POOL_CHURN_SELL_DROP_PCT: Number(process.env.HOLD_POOL_CHURN_SELL_DROP_PCT || 50),
+    HOLD_POOL_CHURN_CRITICAL_SELL_DROP_PCT: Number(process.env.HOLD_POOL_CHURN_CRITICAL_SELL_DROP_PCT || 35),
     HOLD_PROBATION_CASHOUT_DELTA_MIN_SOL: Number(process.env.HOLD_PROBATION_CASHOUT_DELTA_MIN_SOL || 5),
     PRE_BUY_WAIT_MS: Number(process.env.PRE_BUY_WAIT_MS || 1500), // Wait before entering
     PRE_BUY_MAX_LIQ_DROP_PCT: Number(process.env.PRE_BUY_MAX_LIQ_DROP_PCT || 10), // Skip if liq drops too much during wait
@@ -403,6 +414,48 @@ function getSpotSolPerTokenFromState(state: any, tokenMint: string, tokenDecimal
     return solIsBase
         ? calcSpotSolPerToken(state.poolBaseAmount, state.poolQuoteAmount, tokenDecimals)
         : calcSpotSolPerToken(state.poolQuoteAmount, state.poolBaseAmount, tokenDecimals);
+}
+
+function getExitQuoteSolFromState(state: any, tokenMint: string, tokenOutAtomic: BN): number | null {
+    if (!state || !tokenOutAtomic || tokenOutAtomic.lte(new BN(0))) return null;
+    const orientation = getPoolOrientation(state, tokenMint);
+    if (!orientation.hasWsol) return null;
+
+    try {
+        if (orientation.solIsBase) {
+            const exit = buyQuoteInput({
+                quote: tokenOutAtomic,
+                slippage: CONFIG.SLIPPAGE_PERCENT,
+                baseReserve: state.poolBaseAmount,
+                quoteReserve: state.poolQuoteAmount,
+                baseMintAccount: state.baseMintAccount,
+                baseMint: state.baseMint,
+                coinCreator: state.pool.coinCreator,
+                creator: state.pool.creator,
+                feeConfig: state.feeConfig,
+                globalConfig: state.globalConfig,
+            });
+            const solOut = Number(exit.base.toString()) / 1e9;
+            return Number.isFinite(solOut) ? solOut : null;
+        }
+
+        const exit = sellBaseInput({
+            base: tokenOutAtomic,
+            slippage: CONFIG.SLIPPAGE_PERCENT,
+            baseReserve: state.poolBaseAmount,
+            quoteReserve: state.poolQuoteAmount,
+            baseMintAccount: state.baseMintAccount,
+            baseMint: state.baseMint,
+            coinCreator: state.pool.coinCreator,
+            creator: state.pool.creator,
+            feeConfig: state.feeConfig,
+            globalConfig: state.globalConfig,
+        });
+        const solOut = Number(exit.uiQuote.toString()) / 1e9;
+        return Number.isFinite(solOut) ? solOut : null;
+    } catch {
+        return null;
+    }
 }
 
 // Initialize SDKs
@@ -2242,6 +2295,47 @@ async function detectCreatorDirectAmmReentry(
     return { detected: false, signature: null, blockTime: null };
 }
 
+async function getPoolRecentChurnStats(
+    connection: Connection,
+    poolAddress: string,
+    createPoolSignature?: string,
+    minBlockTimeSec?: number | null,
+): Promise<{
+    shortCount: number;
+    longCount: number;
+    criticalCount: number;
+}> {
+    try {
+        const sigs = await connection.getSignaturesForAddress(
+            new PublicKey(poolAddress),
+            { limit: Math.max(10, CONFIG.HOLD_POOL_CHURN_SIG_LIMIT) },
+            "confirmed",
+        );
+        const nowSec = Math.floor(Date.now() / 1000);
+        const shortCutoff = nowSec - Math.max(1, Math.floor(CONFIG.HOLD_POOL_CHURN_WINDOW_SHORT_MS / 1000));
+        const longCutoff = nowSec - Math.max(1, Math.floor(CONFIG.HOLD_POOL_CHURN_WINDOW_LONG_MS / 1000));
+        const criticalCutoff = nowSec - Math.max(1, Math.floor(CONFIG.HOLD_POOL_CHURN_WINDOW_CRITICAL_MS / 1000));
+        let shortCount = 0;
+        let longCount = 0;
+        let criticalCount = 0;
+
+        for (const sig of sigs) {
+            if (sig.err) continue;
+            if (sig.signature === createPoolSignature) continue;
+            if (!sig.blockTime) continue;
+            if (minBlockTimeSec && sig.blockTime < minBlockTimeSec) continue;
+
+            if (sig.blockTime >= criticalCutoff) criticalCount++;
+            if (sig.blockTime >= longCutoff) longCount++;
+            if (sig.blockTime >= shortCutoff) shortCount++;
+        }
+
+        return { shortCount, longCount, criticalCount };
+    } catch {
+        return { shortCount: 0, longCount: 0, criticalCount: 0 };
+    }
+}
+
 async function runCreatorRiskCheck(
     connection: Connection,
     creatorAddress: string,
@@ -3187,6 +3281,7 @@ async function maybeRunPaperTradeSimulation(
             entryState,
             tokenMint,
             tokenDecimals,
+            tokenOutAtomic,
             ctx,
             effectiveHoldMs,
             !!options?.suppressCreatorRiskRecheck,
@@ -3280,6 +3375,7 @@ async function waitForExitStateWithLiquidityStop(
     entryState: any,
     _tokenMint: string,
     _tokenDecimals: number,
+    tokenOutAtomic: BN,
     logPrefix: string,
     holdMs: number,
     suppressCreatorRiskRecheck: boolean,
@@ -3299,6 +3395,8 @@ async function waitForExitStateWithLiquidityStop(
     let lastCreatorOutboundCheckAtMs = 0;
     let lastCreatorOutboundSprayCheckAtMs = 0;
     let lastCreatorInboundSprayCheckAtMs = 0;
+    let lastPoolChurnCheckAtMs = 0;
+    let lastPoolChurnWarnAtMs = 0;
     const seenPoolSignatures = new Set<string>();
     const seenCreatorSignatures = new Set<string>();
     const seenCreatorSpraySignatures = new Set<string>();
@@ -3307,6 +3405,7 @@ async function waitForExitStateWithLiquidityStop(
     const creatorOutboundSprayEvents: Array<{ destination: string; sol: number; eventTimeSec: number; signature: string }> = [];
     const creatorInboundSprayEvents: Array<{ source: string; sol: number; eventTimeSec: number; signature: string }> = [];
     const baselineCreatorCashoutSol = Number(initialCreatorRisk?.creatorCashoutSol || 0);
+    const baselineExitQuoteSol = getExitQuoteSolFromState(entryState, _tokenMint, tokenOutAtomic);
     if (createPoolSignature) seenPoolSignatures.add(createPoolSignature);
     if (createPoolSignature) seenCreatorSignatures.add(createPoolSignature);
     if (createPoolSignature) seenCreatorSpraySignatures.add(createPoolSignature);
@@ -3395,6 +3494,58 @@ async function waitForExitStateWithLiquidityStop(
                             `⚠️ CREATOR AMM BURST EXIT: ` +
                             `${creatorAmmTouchTimesSec.length} tx in ${windowSec}s ` +
                             `(${shortSig(removeLiq.signature || "-")})`
+                        );
+                        return s;
+                    }
+                }
+            }
+
+            if (
+                CONFIG.HOLD_POOL_CHURN_DETECT_ENABLED &&
+                baselineExitQuoteSol &&
+                baselineExitQuoteSol > 0 &&
+                Date.now() - lastPoolChurnCheckAtMs >= Math.max(500, CONFIG.HOLD_POOL_CHURN_CHECK_INTERVAL_MS)
+            ) {
+                lastPoolChurnCheckAtMs = Date.now();
+                const churn = await getPoolRecentChurnStats(
+                    connection,
+                    poolAddress,
+                    createPoolSignature,
+                    Math.max(createPoolBlockTime || 0, Math.floor(startedAtMs / 1000)),
+                );
+                const currentExitQuoteSol = getExitQuoteSolFromState(s, _tokenMint, tokenOutAtomic);
+                if (currentExitQuoteSol && currentExitQuoteSol > 0) {
+                    const dropPct = ((baselineExitQuoteSol - currentExitQuoteSol) / baselineExitQuoteSol) * 100;
+                    const shortTriggered =
+                        churn.shortCount >= Math.max(1, CONFIG.HOLD_POOL_CHURN_TX_SHORT_MIN);
+                    const criticalTriggered =
+                        churn.criticalCount >= Math.max(1, CONFIG.HOLD_POOL_CHURN_TX_CRITICAL_MIN) &&
+                        dropPct >= Math.abs(CONFIG.HOLD_POOL_CHURN_CRITICAL_SELL_DROP_PCT);
+                    const longTriggered =
+                        churn.longCount >= Math.max(1, CONFIG.HOLD_POOL_CHURN_TX_LONG_MIN) &&
+                        dropPct >= Math.abs(CONFIG.HOLD_POOL_CHURN_SELL_DROP_PCT);
+
+                    if (
+                        shortTriggered &&
+                        Date.now() - lastPoolChurnWarnAtMs >= Math.max(5000, CONFIG.HOLD_POOL_CHURN_WINDOW_SHORT_MS)
+                    ) {
+                        lastPoolChurnWarnAtMs = Date.now();
+                        console.log(
+                            `⚠️ POOL CHURN WARN: ${churn.shortCount} tx in ${(CONFIG.HOLD_POOL_CHURN_WINDOW_SHORT_MS / 1000).toFixed(0)}s ` +
+                            `(sell_quote ${baselineExitQuoteSol.toFixed(6)} -> ${currentExitQuoteSol.toFixed(6)} SOL, ` +
+                            `drop ${dropPct.toFixed(2)}%)`
+                        );
+                    }
+
+                    if (criticalTriggered || longTriggered) {
+                        const windowMs = criticalTriggered
+                            ? CONFIG.HOLD_POOL_CHURN_WINDOW_CRITICAL_MS
+                            : CONFIG.HOLD_POOL_CHURN_WINDOW_LONG_MS;
+                        const txCount = criticalTriggered ? churn.criticalCount : churn.longCount;
+                        console.log(
+                            `⚠️ POOL CHURN EXIT: ${txCount} tx in ${(windowMs / 1000).toFixed(0)}s ` +
+                            `(sell_quote ${baselineExitQuoteSol.toFixed(6)} -> ${currentExitQuoteSol.toFixed(6)} SOL, ` +
+                            `drop ${dropPct.toFixed(2)}%)`
                         );
                         return s;
                     }
