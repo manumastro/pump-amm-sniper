@@ -189,6 +189,7 @@ const CONFIG = {
     PAPER_TRADE_ENABLED: process.env.PAPER_TRADE_ENABLED === "true",
     PAPER_CREATOR_RISK_PROBATION_ENABLED: process.env.PAPER_CREATOR_RISK_PROBATION_ENABLED === "true",
     PAPER_CREATOR_RISK_PROBATION_HOLD_MS: Number(process.env.PAPER_CREATOR_RISK_PROBATION_HOLD_MS || 10000),
+    PAPER_CREATOR_CASHOUT_PROBATION_HOLD_MS: Number(process.env.PAPER_CREATOR_CASHOUT_PROBATION_HOLD_MS || 45000),
     MAX_CONCURRENT_OPERATIONS: Number(process.env.MAX_CONCURRENT_OPERATIONS || 2),
     PAPER_TRADE_MAX_LOSS_PCT: Number(process.env.PAPER_TRADE_MAX_LOSS_PCT || 80),
 };
@@ -334,6 +335,14 @@ function isProbationBypassForbidden(reason?: string): boolean {
         normalized.includes("relay funding recent + micro burst") ||
         normalized.includes("creator direct amm re-entry")
     );
+}
+
+function getProbationHoldMs(reason?: string): number {
+    const normalized = (reason || "").toLowerCase();
+    if (normalized.includes("creator cashout")) {
+        return Math.max(1000, CONFIG.PAPER_CREATOR_CASHOUT_PROBATION_HOLD_MS);
+    }
+    return Math.max(1000, CONFIG.PAPER_CREATOR_RISK_PROBATION_HOLD_MS);
 }
 
 type RugHistory = {
@@ -782,6 +791,7 @@ async function handleNewPool(connection: Connection, signature: string) {
             creatorSeedSol,
         });
         let creatorRiskProbation = false;
+        let creatorRiskProbationHoldMs = Math.max(1000, CONFIG.PAPER_CREATOR_RISK_PROBATION_HOLD_MS);
         if (!creatorRisk.ok) {
             if (
                 MONITOR_ONLY &&
@@ -789,11 +799,12 @@ async function handleNewPool(connection: Connection, signature: string) {
                 !isProbationBypassForbidden(creatorRisk.reason)
             ) {
                 creatorRiskProbation = true;
+                creatorRiskProbationHoldMs = getProbationHoldMs(creatorRisk.reason);
                 stageLog(
                     ctx,
                     "PROBATION",
                     `paper-only bypass creator risk (${creatorRisk.reason || "unknown"}) ` +
-                    `hold=${Math.max(1000, CONFIG.PAPER_CREATOR_RISK_PROBATION_HOLD_MS)}ms`
+                    `hold=${creatorRiskProbationHoldMs}ms`
                 );
             } else {
                 console.log(`🛑 SKIP: creator risk (${creatorRisk.reason})`);
@@ -830,7 +841,7 @@ async function handleNewPool(connection: Connection, signature: string) {
                 creatorRisk,
                 creatorRiskProbation
                     ? {
-                        forceHoldMs: CONFIG.PAPER_CREATOR_RISK_PROBATION_HOLD_MS,
+                        forceHoldMs: creatorRiskProbationHoldMs,
                         suppressCreatorRiskRecheck: true,
                       }
                     : undefined,

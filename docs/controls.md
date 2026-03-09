@@ -105,11 +105,16 @@ Esito:
 Controllo probation paper-only:
 - `PAPER_CREATOR_RISK_PROBATION_ENABLED`
 - `PAPER_CREATOR_RISK_PROBATION_HOLD_MS`
+- `PAPER_CREATOR_CASHOUT_PROBATION_HOLD_MS`
 
 Eccezioni:
 - nessun probation bypass per `relay funding recent on standard pool`
 - nessun probation bypass per `relay funding recent + micro burst`
 - nessun probation bypass per `creator direct AMM re-entry`
+
+Durata:
+- probation normale: `PAPER_CREATOR_RISK_PROBATION_HOLD_MS`
+- probation per `creator cashout ...`: `PAPER_CREATOR_CASHOUT_PROBATION_HOLD_MS`
 
 Log principali:
 - `CRISK | cp=... in=... out=... window=... funder=... refund=... micro=.../...`
