@@ -80,6 +80,14 @@ const CONFIG = {
     HOLD_CREATOR_OUTBOUND_EXIT_ENABLED: process.env.HOLD_CREATOR_OUTBOUND_EXIT_ENABLED !== "false",
     HOLD_CREATOR_OUTBOUND_CHECK_INTERVAL_MS: Number(process.env.HOLD_CREATOR_OUTBOUND_CHECK_INTERVAL_MS || 1500),
     HOLD_CREATOR_OUTBOUND_MIN_SOL: Number(process.env.HOLD_CREATOR_OUTBOUND_MIN_SOL || 10),
+    HOLD_CREATOR_OUTBOUND_SPRAY_EXIT_ENABLED: process.env.HOLD_CREATOR_OUTBOUND_SPRAY_EXIT_ENABLED !== "false",
+    HOLD_CREATOR_OUTBOUND_SPRAY_CHECK_INTERVAL_MS: Number(process.env.HOLD_CREATOR_OUTBOUND_SPRAY_CHECK_INTERVAL_MS || 1500),
+    HOLD_CREATOR_OUTBOUND_SPRAY_WINDOW_SEC: Number(process.env.HOLD_CREATOR_OUTBOUND_SPRAY_WINDOW_SEC || 30),
+    HOLD_CREATOR_OUTBOUND_SPRAY_MIN_TRANSFERS: Number(process.env.HOLD_CREATOR_OUTBOUND_SPRAY_MIN_TRANSFERS || 20),
+    HOLD_CREATOR_OUTBOUND_SPRAY_MIN_DESTINATIONS: Number(process.env.HOLD_CREATOR_OUTBOUND_SPRAY_MIN_DESTINATIONS || 20),
+    HOLD_CREATOR_OUTBOUND_SPRAY_MAX_MEDIAN_SOL: Number(process.env.HOLD_CREATOR_OUTBOUND_SPRAY_MAX_MEDIAN_SOL || 0.05),
+    HOLD_CREATOR_OUTBOUND_SPRAY_MAX_REL_STDDEV: Number(process.env.HOLD_CREATOR_OUTBOUND_SPRAY_MAX_REL_STDDEV || 0.2),
+    HOLD_CREATOR_OUTBOUND_SPRAY_MAX_AMOUNT_RATIO: Number(process.env.HOLD_CREATOR_OUTBOUND_SPRAY_MAX_AMOUNT_RATIO || 3),
     HOLD_PROBATION_CASHOUT_DELTA_MIN_SOL: Number(process.env.HOLD_PROBATION_CASHOUT_DELTA_MIN_SOL || 5),
     PRE_BUY_WAIT_MS: Number(process.env.PRE_BUY_WAIT_MS || 1500), // Wait before entering
     PRE_BUY_MAX_LIQ_DROP_PCT: Number(process.env.PRE_BUY_MAX_LIQ_DROP_PCT || 10), // Skip if liq drops too much during wait
@@ -328,13 +336,17 @@ type CreatorRiskResult = {
     precreateBurstTransfers?: number;
 };
 
-function isProbationBypassForbidden(reason?: string): boolean {
-    const normalized = (reason || "").toLowerCase();
-    return (
+function isProbationBypassForbidden(result?: CreatorRiskResult): boolean {
+    const normalized = (result?.reason || "").toLowerCase();
+    if (
         normalized.includes("relay funding recent on standard pool") ||
         normalized.includes("relay funding recent + micro burst") ||
         normalized.includes("creator direct amm re-entry")
-    );
+    ) {
+        return true;
+    }
+
+    return false;
 }
 
 function getProbationHoldMs(reason?: string): number {
@@ -796,7 +808,7 @@ async function handleNewPool(connection: Connection, signature: string) {
             if (
                 MONITOR_ONLY &&
                 CONFIG.PAPER_CREATOR_RISK_PROBATION_ENABLED &&
-                !isProbationBypassForbidden(creatorRisk.reason)
+                !isProbationBypassForbidden(creatorRisk)
             ) {
                 creatorRiskProbation = true;
                 creatorRiskProbationHoldMs = getProbationHoldMs(creatorRisk.reason);
@@ -1941,6 +1953,116 @@ async function detectCreatorLargeOutboundSince(
     return { detected: false };
 }
 
+async function collectCreatorOutboundTransfersSince(
+    connection: Connection,
+    creatorAddress: string,
+    poolAddress: string,
+    seenSignatures: Set<string>,
+    createPoolSignature?: string,
+    minBlockTimeSec?: number | null,
+): Promise<Array<{ destination: string; sol: number; eventTimeSec: number; signature: string }>> {
+    const events: Array<{ destination: string; sol: number; eventTimeSec: number; signature: string }> = [];
+
+    try {
+        const sigs = await connection.getSignaturesForAddress(
+            new PublicKey(creatorAddress),
+            { limit: 40 },
+            "confirmed"
+        );
+        const chronological = [...sigs]
+            .filter((s) => !s.err)
+            .filter((s) => !minBlockTimeSec || !s.blockTime || s.blockTime >= minBlockTimeSec)
+            .sort((a, b) => (a.blockTime || 0) - (b.blockTime || 0));
+
+        for (const s of chronological) {
+            if (s.signature === createPoolSignature) {
+                seenSignatures.add(s.signature);
+                continue;
+            }
+            if (seenSignatures.has(s.signature)) continue;
+            seenSignatures.add(s.signature);
+
+            const tx = await connection.getParsedTransaction(s.signature, {
+                maxSupportedTransactionVersion: 0,
+                commitment: "confirmed",
+            });
+            if (!tx) continue;
+
+            for (const ix of flattenParsedInstructions(tx)) {
+                const parsed = ix?.parsed;
+                if (!parsed || parsed.type !== "transfer") continue;
+                const info = parsed.info || {};
+                const from = info.source || info.from || null;
+                const to = info.destination || info.to || null;
+                const lamports = Number(info.lamports || 0);
+                if (
+                    from !== creatorAddress ||
+                    !to ||
+                    to === poolAddress ||
+                    !Number.isFinite(lamports) ||
+                    lamports <= 0
+                ) {
+                    continue;
+                }
+                events.push({
+                    destination: to,
+                    sol: lamports / 1e9,
+                    eventTimeSec: s.blockTime || Math.floor(Date.now() / 1000),
+                    signature: s.signature,
+                });
+            }
+        }
+    } catch {
+        // fail-open
+    }
+
+    return events;
+}
+
+function classifyHoldCreatorOutboundSpray(
+    outboundTransfers: Array<{ destination: string; sol: number }>
+) {
+    const positive = outboundTransfers.filter((t) => Number.isFinite(t.sol) && t.sol > 0);
+    if (!positive.length) {
+        return {
+            detected: false,
+            transfers: 0,
+            destinations: 0,
+            medianSol: 0,
+            relStdDev: Infinity,
+            amountRatio: Infinity,
+        };
+    }
+
+    const values = positive.map((t) => t.sol).sort((a, b) => a - b);
+    const destinations = new Set(positive.map((t) => t.destination)).size;
+    const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
+    const variance = values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / values.length;
+    const stdDev = Math.sqrt(Math.max(0, variance));
+    const relStdDev = mean > 0 ? stdDev / mean : Infinity;
+    const medianSol =
+        values.length % 2 === 0
+            ? (values[(values.length / 2) - 1] + values[values.length / 2]) / 2
+            : values[Math.floor(values.length / 2)];
+    const amountRatio = values[0] > 0 ? values[values.length - 1] / values[0] : Infinity;
+
+    const detected =
+        positive.length >= CONFIG.HOLD_CREATOR_OUTBOUND_SPRAY_MIN_TRANSFERS &&
+        destinations >= CONFIG.HOLD_CREATOR_OUTBOUND_SPRAY_MIN_DESTINATIONS &&
+        medianSol <= CONFIG.HOLD_CREATOR_OUTBOUND_SPRAY_MAX_MEDIAN_SOL &&
+        relStdDev <= CONFIG.HOLD_CREATOR_OUTBOUND_SPRAY_MAX_REL_STDDEV &&
+        amountRatio <= CONFIG.HOLD_CREATOR_OUTBOUND_SPRAY_MAX_AMOUNT_RATIO;
+
+    return {
+        detected,
+        transfers: positive.length,
+        destinations,
+        medianSol,
+        relStdDev,
+        amountRatio,
+    };
+}
+
 async function detectCreatorDirectAmmReentry(
     connection: Connection,
     creatorAddress: string,
@@ -3056,12 +3178,16 @@ async function waitForExitStateWithLiquidityStop(
     let lastCreatorRiskCheckAtMs = 0;
     let lastRemoveLiqCheckAtMs = 0;
     let lastCreatorOutboundCheckAtMs = 0;
+    let lastCreatorOutboundSprayCheckAtMs = 0;
     const seenPoolSignatures = new Set<string>();
     const seenCreatorSignatures = new Set<string>();
+    const seenCreatorSpraySignatures = new Set<string>();
     const creatorAmmTouchTimesSec: number[] = [];
+    const creatorOutboundSprayEvents: Array<{ destination: string; sol: number; eventTimeSec: number; signature: string }> = [];
     const baselineCreatorCashoutSol = Number(initialCreatorRisk?.creatorCashoutSol || 0);
     if (createPoolSignature) seenPoolSignatures.add(createPoolSignature);
     if (createPoolSignature) seenCreatorSignatures.add(createPoolSignature);
+    if (createPoolSignature) seenCreatorSpraySignatures.add(createPoolSignature);
 
     while (Date.now() < deadlineMs) {
         const s = await fetchStateWithRetry();
@@ -3171,6 +3297,46 @@ async function waitForExitStateWithLiquidityStop(
                         `⚠️ CREATOR OUTBOUND EXIT: ` +
                         `${shortSig(creatorOutbound.signature || "-")} ` +
                         `(${(creatorOutbound.outboundSol || 0).toFixed(3)} SOL -> ${shortSig(creatorOutbound.destination || "-")})`
+                    );
+                    return s;
+                }
+            }
+
+            if (
+                creatorAddress &&
+                CONFIG.HOLD_CREATOR_OUTBOUND_SPRAY_EXIT_ENABLED &&
+                Date.now() - lastCreatorOutboundSprayCheckAtMs >= Math.max(500, CONFIG.HOLD_CREATOR_OUTBOUND_SPRAY_CHECK_INTERVAL_MS)
+            ) {
+                lastCreatorOutboundSprayCheckAtMs = Date.now();
+                const minBlockTimeSec = Math.max(
+                    createPoolBlockTime || 0,
+                    Math.floor(startedAtMs / 1000)
+                );
+                const newEvents = await collectCreatorOutboundTransfersSince(
+                    connection,
+                    creatorAddress,
+                    poolAddress,
+                    seenCreatorSpraySignatures,
+                    createPoolSignature,
+                    minBlockTimeSec,
+                );
+                if (newEvents.length) {
+                    creatorOutboundSprayEvents.push(...newEvents);
+                }
+                const windowSec = Math.max(5, CONFIG.HOLD_CREATOR_OUTBOUND_SPRAY_WINDOW_SEC);
+                const nowSec = Math.floor(Date.now() / 1000);
+                const cutoff = nowSec - windowSec;
+                while (creatorOutboundSprayEvents.length && creatorOutboundSprayEvents[0].eventTimeSec < cutoff) {
+                    creatorOutboundSprayEvents.shift();
+                }
+                const spray = classifyHoldCreatorOutboundSpray(creatorOutboundSprayEvents);
+                if (spray.detected) {
+                    const latestSig = creatorOutboundSprayEvents[creatorOutboundSprayEvents.length - 1]?.signature || "-";
+                    console.log(
+                        `⚠️ CREATOR OUTBOUND SPRAY EXIT: ` +
+                        `${spray.transfers} transfers to ${spray.destinations} destinations in ${windowSec}s ` +
+                        `(median ${spray.medianSol.toFixed(3)} SOL, rel_std ${spray.relStdDev.toFixed(2)}, ` +
+                        `ratio ${spray.amountRatio.toFixed(2)}, sig=${shortSig(latestSig)})`
                     );
                     return s;
                 }
