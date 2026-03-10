@@ -111,6 +111,11 @@ const CONFIG = {
     HOLD_POOL_CHURN_TX_CRITICAL_MIN: Number(process.env.HOLD_POOL_CHURN_TX_CRITICAL_MIN || 30),
     HOLD_POOL_CHURN_SELL_DROP_PCT: Number(process.env.HOLD_POOL_CHURN_SELL_DROP_PCT || 50),
     HOLD_POOL_CHURN_CRITICAL_SELL_DROP_PCT: Number(process.env.HOLD_POOL_CHURN_CRITICAL_SELL_DROP_PCT || 35),
+    HOLD_SELL_QUOTE_COLLAPSE_EXIT_ENABLED: process.env.HOLD_SELL_QUOTE_COLLAPSE_EXIT_ENABLED !== "false",
+    HOLD_SELL_QUOTE_COLLAPSE_CHECK_INTERVAL_MS: Number(process.env.HOLD_SELL_QUOTE_COLLAPSE_CHECK_INTERVAL_MS || 1000),
+    HOLD_SELL_QUOTE_COLLAPSE_MIN_HOLD_MS: Number(process.env.HOLD_SELL_QUOTE_COLLAPSE_MIN_HOLD_MS || 3000),
+    HOLD_SELL_QUOTE_COLLAPSE_DROP_PCT: Number(process.env.HOLD_SELL_QUOTE_COLLAPSE_DROP_PCT || 60),
+    HOLD_SELL_QUOTE_COLLAPSE_MIN_SOL: Number(process.env.HOLD_SELL_QUOTE_COLLAPSE_MIN_SOL || 0.0025),
     HOLD_PROBATION_CASHOUT_DELTA_MIN_SOL: Number(process.env.HOLD_PROBATION_CASHOUT_DELTA_MIN_SOL || 5),
     HOLD_PROBATION_INTERVAL_MULTIPLIER: Number(process.env.HOLD_PROBATION_INTERVAL_MULTIPLIER || 0.4),
     PRE_BUY_REVALIDATION_ENABLED: process.env.PRE_BUY_REVALIDATION_ENABLED !== "false",
@@ -3640,6 +3645,7 @@ async function waitForExitStateWithLiquidityStop(
     let lastCreatorInboundSprayCheckAtMs = 0;
     let lastPoolChurnCheckAtMs = 0;
     let lastPoolChurnWarnAtMs = 0;
+    let lastSellQuoteCollapseCheckAtMs = 0;
     const seenPoolSignatures = new Set<string>();
     const seenCreatorSignatures = new Set<string>();
     const seenCreatorSpraySignatures = new Set<string>();
@@ -3746,6 +3752,31 @@ async function waitForExitStateWithLiquidityStop(
                             `⚠️ CREATOR AMM BURST EXIT: ` +
                             `${creatorAmmTouchTimesSec.length} tx in ${windowSec}s ` +
                             `(${shortSig(removeLiq.signature || "-")})`
+                        );
+                        return s;
+                    }
+                }
+            }
+
+            if (
+                CONFIG.HOLD_SELL_QUOTE_COLLAPSE_EXIT_ENABLED &&
+                baselineExitQuoteSol &&
+                baselineExitQuoteSol > 0 &&
+                Date.now() - startedAtMs >= Math.max(0, CONFIG.HOLD_SELL_QUOTE_COLLAPSE_MIN_HOLD_MS) &&
+                Date.now() - lastSellQuoteCollapseCheckAtMs >= scaledInterval(CONFIG.HOLD_SELL_QUOTE_COLLAPSE_CHECK_INTERVAL_MS)
+            ) {
+                lastSellQuoteCollapseCheckAtMs = Date.now();
+                const currentExitQuoteSol = getExitQuoteSolFromState(s, _tokenMint, tokenOutAtomic);
+                if (currentExitQuoteSol !== null) {
+                    const dropPct = ((baselineExitQuoteSol - currentExitQuoteSol) / baselineExitQuoteSol) * 100;
+                    const minExitSol = Math.max(0, CONFIG.HOLD_SELL_QUOTE_COLLAPSE_MIN_SOL);
+                    const dropTriggered = dropPct >= Math.abs(CONFIG.HOLD_SELL_QUOTE_COLLAPSE_DROP_PCT);
+                    const floorTriggered = currentExitQuoteSol <= minExitSol;
+                    if (dropTriggered || floorTriggered) {
+                        console.log(
+                            `⚠️ SELL QUOTE COLLAPSE EXIT: ` +
+                            `${baselineExitQuoteSol.toFixed(6)} -> ${currentExitQuoteSol.toFixed(6)} SOL ` +
+                            `(drop ${dropPct.toFixed(2)}%, floor ${minExitSol.toFixed(6)} SOL)`
                         );
                         return s;
                     }

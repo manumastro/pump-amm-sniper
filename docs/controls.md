@@ -338,6 +338,11 @@ Controlli:
 - `HOLD_POOL_CHURN_TX_CRITICAL_MIN`
 - `HOLD_POOL_CHURN_SELL_DROP_PCT`
 - `HOLD_POOL_CHURN_CRITICAL_SELL_DROP_PCT`
+- `HOLD_SELL_QUOTE_COLLAPSE_EXIT_ENABLED`
+- `HOLD_SELL_QUOTE_COLLAPSE_CHECK_INTERVAL_MS`
+- `HOLD_SELL_QUOTE_COLLAPSE_MIN_HOLD_MS`
+- `HOLD_SELL_QUOTE_COLLAPSE_DROP_PCT`
+- `HOLD_SELL_QUOTE_COLLAPSE_MIN_SOL`
 - `HOLD_PROBATION_CASHOUT_DELTA_MIN_SOL`
 - `HOLD_PROBATION_INTERVAL_MULTIPLIER`
 
@@ -347,6 +352,7 @@ Segnali:
 - burst di tx AMM del creator sullo stesso pool in finestra breve
 - burst di `closeAccount` firmati/pagati dal creator durante l'hold
 - churn anomalo del pool in finestra breve combinato con collasso della `SELL_QUOTE`
+- collasso diretto della `SELL_QUOTE` rispetto alla baseline del buy anche senza churn sufficiente
 
 Esito:
 - exit anticipata immediata su `remove-liquidity-like`
@@ -354,6 +360,7 @@ Esito:
 - exit anticipata immediata su burst inbound piccoli/uniformi verso il creator durante l'hold
 - exit anticipata immediata su `CREATOR CLOSE ACCOUNT BURST EXIT`
 - exit anticipata immediata su `POOL CHURN EXIT` quando il numero di tx recenti e la `SELL_QUOTE` peggiorano insieme
+- exit anticipata immediata su `SELL QUOTE COLLAPSE EXIT` quando la quote perde troppo o scende sotto una soglia minima assoluta
 - in probation i polling di hold diventano piu aggressivi usando `HOLD_PROBATION_INTERVAL_MULTIPLIER`
 
 Log:
@@ -362,6 +369,7 @@ Log:
 - `CREATOR OUTBOUND EXIT: ...`
 - `CREATOR CLOSE ACCOUNT BURST EXIT: ...`
 - `POOL CHURN EXIT: ...`
+- `SELL QUOTE COLLAPSE EXIT: ...`
 - `CREATOR RISK EXIT: ...`
 - `CREATOR RISK EXIT (probation hard): ...`
 

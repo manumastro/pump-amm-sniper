@@ -34,7 +34,11 @@ Regola operativa:
   - `logs/paper-report.txt`
   - `logs/paper-worker-1.log`
   - `logs/paper-worker-2.log`
+  - `logs/paper-worker-3.log`
   - `logs/paper-report-daemon.log`
+
+Nota:
+- se il numero di worker aumenta, il reset deve includere tutti i file `logs/paper-worker-*.log` presenti
 
 ## Servizi
 - Bot: `pump-sniper.service`

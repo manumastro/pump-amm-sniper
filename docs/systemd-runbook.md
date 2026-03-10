@@ -65,8 +65,12 @@ printf '{}\n' > /home/manu/pump-amm-sniper/logs/paper-report.json
 printf '\n' > /home/manu/pump-amm-sniper/logs/paper-report.txt
 truncate -s 0 /home/manu/pump-amm-sniper/logs/paper-worker-1.log \
   /home/manu/pump-amm-sniper/logs/paper-worker-2.log \
+  /home/manu/pump-amm-sniper/logs/paper-worker-3.log \
   /home/manu/pump-amm-sniper/logs/paper-report-daemon.log
 ```
+
+Nota:
+- se usi piu worker, azzera sempre tutti i file `logs/paper-worker-*.log` presenti prima del restart
 
 3. Start servizi:
 ```bash
