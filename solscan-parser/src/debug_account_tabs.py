@@ -3,7 +3,7 @@ import json
 import re
 import shutil
 import time
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -27,6 +27,7 @@ class ScrapeRow:
     page: int
     timestamp_utc: str | None
     timestamp_local: str | None
+    timestamp_source: str
     in_range: bool
     text: str
 
@@ -136,26 +137,53 @@ class SolscanDebugParser:
             raise RuntimeError(f"Tab not found: {tab_name}")
         tab.click(by_js=True)
         time.sleep(self.settle_sec)
+        self._try_enable_absolute_timestamps()
         if not self.page.ele("xpath://table//tbody//tr", timeout=self.timeout_sec):
             raise RuntimeError(f"No table rows found on tab {tab_name}")
 
-    def _row_timestamp_utc(self, text: str, now_utc: datetime) -> datetime | None:
+    def _try_enable_absolute_timestamps(self):
+        if not self.page:
+            return
+
+        selectors = [
+            "xpath://th[.//*[contains(normalize-space(.), 'Time')]]//*[name()='svg' and contains(@class, 'lucide-clock')]/parent::*",
+            "xpath://th[.//*[contains(normalize-space(.), 'Time')]]//*[name()='svg' and contains(@class, 'lucide-clock')]",
+            "xpath://th[.//*[contains(normalize-space(.), 'Time')]]//*[contains(@class, 'cursor-pointer')][1]",
+        ]
+
+        for selector in selectors:
+            try:
+                control = self.page.ele(selector, timeout=1)
+                if not control:
+                    continue
+                before = (self.page.ele("xpath://table//tbody//tr[1]", timeout=1).text or "").strip()
+                control.click(by_js=True)
+                time.sleep(0.5)
+                after = (self.page.ele("xpath://table//tbody//tr[1]", timeout=1).text or "").strip()
+                if after and after != before:
+                    return
+            except Exception:
+                continue
+
+    def _row_timestamp_utc(
+        self, text: str, now_utc: datetime
+    ) -> tuple[datetime | None, str]:
         match = TIMESTAMP_RE.search(text)
         if match:
             raw = match.group(1)
             try:
                 dt = datetime.strptime(raw, "%H:%M:%S %b %d, %Y")
-                return dt.replace(tzinfo=UTC)
+                return dt.replace(tzinfo=UTC), "absolute"
             except ValueError:
                 pass
 
         lowered = text.lower()
         if "just now" in lowered:
-            return now_utc
+            return now_utc, "relative"
 
         rel = RELATIVE_RE.search(lowered)
         if not rel:
-            return None
+            return None, "unknown"
         qty = int(rel.group(1))
         unit = rel.group(2).lower()
         seconds = 0
@@ -172,8 +200,8 @@ class SolscanDebugParser:
         elif unit.startswith("month"):
             seconds = qty * 2592000
         if seconds <= 0:
-            return None
-        return now_utc - timedelta(seconds=seconds)
+            return None, "unknown"
+        return now_utc - timedelta(seconds=seconds), "relative"
 
     def _extract_page_rows(
         self,
@@ -192,7 +220,7 @@ class SolscanDebugParser:
             text = (row.text or "").strip()
             if not text:
                 continue
-            ts_utc = self._row_timestamp_utc(text, now_utc)
+            ts_utc, timestamp_source = self._row_timestamp_utc(text, now_utc)
             in_range = False
             ts_utc_iso = None
             ts_local_iso = None
@@ -206,6 +234,7 @@ class SolscanDebugParser:
                     page=page_num,
                     timestamp_utc=ts_utc_iso,
                     timestamp_local=ts_local_iso,
+                    timestamp_source=timestamp_source,
                     in_range=in_range,
                     text=text,
                 )
@@ -244,12 +273,23 @@ class SolscanDebugParser:
         self._open_account(account)
         self._dismiss_cookie_banner()
 
-        result: dict[str, list[dict]] = {}
+        result: dict[str, dict] = {}
         for tab in tabs:
             try:
                 self._open_tab(tab)
-            except Exception:
-                result[tab] = []
+            except Exception as exc:
+                result[tab] = {
+                    "rows_seen": [],
+                    "rows_in_range": [],
+                    "diagnostics": {
+                        "status": "tab_open_failed",
+                        "error": str(exc),
+                        "rows_seen_count": 0,
+                        "rows_in_range_count": 0,
+                        "rows_with_parsed_timestamp_count": 0,
+                        "rows_without_parsed_timestamp_count": 0,
+                    },
+                }
                 continue
 
             all_rows: list[ScrapeRow] = []
@@ -275,18 +315,40 @@ class SolscanDebugParser:
                 if not self._go_next_page():
                     break
 
-            result[tab] = [
-                {
-                    "tab": row.tab,
-                    "page": row.page,
-                    "timestamp_utc": row.timestamp_utc,
-                    "timestamp_local": row.timestamp_local,
-                    "in_range": row.in_range,
-                    "text": row.text,
-                }
-                for row in all_rows
-                if row.in_range
-            ]
+            rows_seen = [asdict(row) for row in all_rows]
+            rows_in_range = [asdict(row) for row in all_rows if row.in_range]
+            rows_with_parsed_timestamp = sum(1 for row in all_rows if row.timestamp_utc)
+            rows_without_parsed_timestamp = len(all_rows) - rows_with_parsed_timestamp
+            rows_with_relative_timestamp = sum(
+                1 for row in all_rows if row.timestamp_source == "relative"
+            )
+            rows_with_absolute_timestamp = sum(
+                1 for row in all_rows if row.timestamp_source == "absolute"
+            )
+
+            status = "ok"
+            if not all_rows:
+                status = "no_rows_seen"
+            elif not rows_in_range and rows_without_parsed_timestamp == len(all_rows):
+                status = "rows_seen_but_timestamps_unparsed"
+            elif not rows_in_range and rows_with_relative_timestamp > 0:
+                status = "rows_seen_but_none_in_range_relative_time_only"
+            elif not rows_in_range:
+                status = "rows_seen_but_none_in_range"
+
+            result[tab] = {
+                "rows_seen": rows_seen,
+                "rows_in_range": rows_in_range,
+                "diagnostics": {
+                    "status": status,
+                    "rows_seen_count": len(rows_seen),
+                    "rows_in_range_count": len(rows_in_range),
+                    "rows_with_parsed_timestamp_count": rows_with_parsed_timestamp,
+                    "rows_without_parsed_timestamp_count": rows_without_parsed_timestamp,
+                    "rows_with_relative_timestamp_count": rows_with_relative_timestamp,
+                    "rows_with_absolute_timestamp_count": rows_with_absolute_timestamp,
+                },
+            }
         return result
 
 
@@ -309,6 +371,54 @@ def normalize_tabs(raw: str) -> list[str]:
     if not tabs:
         tabs = ["Transactions", "Transfers", "Activities"]
     return tabs
+
+
+def build_warnings(results: dict) -> list[str]:
+    warnings: list[str] = []
+    for scope, scope_data in results.items():
+        for tab, tab_data in scope_data.items():
+            diagnostics = tab_data["diagnostics"]
+            status = diagnostics["status"]
+            if status != "ok":
+                warnings.append(
+                    f"{scope}.{tab}: {status} "
+                    f"(seen={diagnostics['rows_seen_count']}, in_range={diagnostics['rows_in_range_count']}, "
+                    f"unparsed_ts={diagnostics['rows_without_parsed_timestamp_count']})"
+                )
+    return warnings
+
+
+def write_payload_files(
+    output_path: Path,
+    payload: dict,
+    creator_data: dict,
+    token_data: dict,
+):
+    payload_json = json.dumps(payload, indent=2)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(payload_json, encoding="utf-8")
+
+    raw_creator_path = output_path.with_name(f"{output_path.stem}_raw_creator_tabs.json")
+    raw_token_path = output_path.with_name(f"{output_path.stem}_raw_token_tabs.json")
+    raw_creator_payload = {
+        "query": payload["query"],
+        "scope": "creator",
+        "account": payload["query"]["creator"],
+        "results": creator_data,
+        "warnings": [w for w in payload["warnings"] if w.startswith("creator.")],
+    }
+    raw_token_payload = {
+        "query": payload["query"],
+        "scope": "token",
+        "account": payload["query"]["token"],
+        "results": token_data,
+        "warnings": [w for w in payload["warnings"] if w.startswith("token.")],
+    }
+    raw_creator_path.write_text(
+        json.dumps(raw_creator_payload, indent=2), encoding="utf-8"
+    )
+    raw_token_path.write_text(json.dumps(raw_token_payload, indent=2), encoding="utf-8")
+    return raw_creator_path, raw_token_path
 
 
 def main():
@@ -338,6 +448,12 @@ def main():
         "--tabs",
         default="transactions,transfers,activities",
         help="Comma-separated tabs: transactions,transfers,activities",
+    )
+    parser.add_argument(
+        "--scope",
+        choices=["both", "creator", "token"],
+        default="both",
+        help="Which account scopes to scrape",
     )
     parser.add_argument(
         "--max-pages",
@@ -389,34 +505,12 @@ def main():
     end_utc = end_local.astimezone(UTC)
     tabs = normalize_tabs(args.tabs)
 
-    with SolscanDebugParser(
-        headless=args.headless,
-        timeout_sec=args.timeout_sec,
-        settle_sec=args.settle_sec,
-        cloudflare_wait_sec=args.cloudflare_wait_sec,
-    ) as scraper:
-        creator_data = scraper.collect_account_tabs(
-            account=args.creator,
-            tabs=tabs,
-            start_utc=start_utc,
-            end_utc=end_utc,
-            local_tz=local_tz,
-            max_pages=args.max_pages,
-        )
-        token_data = scraper.collect_account_tabs(
-            account=args.token,
-            tabs=tabs,
-            start_utc=start_utc,
-            end_utc=end_utc,
-            local_tz=local_tz,
-            max_pages=args.max_pages,
-        )
-
     payload = {
         "query": {
             "creator": args.creator,
             "token": args.token,
             "tabs": tabs,
+            "scope": args.scope,
             "tz": args.tz,
             "from_local": start_local.isoformat(),
             "to_local": end_local.isoformat(),
@@ -426,20 +520,111 @@ def main():
             "headless": args.headless,
         },
         "results": {
-            "creator": creator_data,
-            "token": token_data,
+            "creator": {},
+            "token": {},
         },
+        "partial": False,
     }
-
-    payload_json = json.dumps(payload, indent=2)
     if args.stdout_only:
-        print(payload_json)
+        with SolscanDebugParser(
+            headless=args.headless,
+            timeout_sec=args.timeout_sec,
+            settle_sec=args.settle_sec,
+            cloudflare_wait_sec=args.cloudflare_wait_sec,
+        ) as scraper:
+            if args.scope in ("both", "creator"):
+                payload["results"]["creator"] = scraper.collect_account_tabs(
+                    account=args.creator,
+                    tabs=tabs,
+                    start_utc=start_utc,
+                    end_utc=end_utc,
+                    local_tz=local_tz,
+                    max_pages=args.max_pages,
+                )
+            if args.scope in ("both", "token"):
+                payload["results"]["token"] = scraper.collect_account_tabs(
+                    account=args.token,
+                    tabs=tabs,
+                    start_utc=start_utc,
+                    end_utc=end_utc,
+                    local_tz=local_tz,
+                    max_pages=args.max_pages,
+                )
+        payload["warnings"] = build_warnings(payload["results"])
+        for warning in payload["warnings"]:
+            print(f"[warn] {warning}")
+        print(json.dumps(payload, indent=2))
         return
 
     output_path = Path(args.output)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(payload_json, encoding="utf-8")
+    creator_data: dict = {}
+    token_data: dict = {}
+    payload["warnings"] = []
+    payload["partial"] = True
+    payload["warnings"] = ["bootstrap: scrape started, results may be incomplete if Solscan stalls"]
+    raw_creator_path, raw_token_path = write_payload_files(
+        output_path=output_path,
+        payload=payload,
+        creator_data=creator_data,
+        token_data=token_data,
+    )
+    print(f"[ok] wrote bootstrap {output_path}")
+    print(f"[ok] wrote bootstrap {raw_creator_path}")
+    print(f"[ok] wrote bootstrap {raw_token_path}")
+
+    with SolscanDebugParser(
+        headless=args.headless,
+        timeout_sec=args.timeout_sec,
+        settle_sec=args.settle_sec,
+        cloudflare_wait_sec=args.cloudflare_wait_sec,
+    ) as scraper:
+        if args.scope in ("both", "creator"):
+            creator_data = scraper.collect_account_tabs(
+                account=args.creator,
+                tabs=tabs,
+                start_utc=start_utc,
+                end_utc=end_utc,
+                local_tz=local_tz,
+                max_pages=args.max_pages,
+            )
+            payload["results"]["creator"] = creator_data
+            payload["partial"] = args.scope == "both"
+            payload["warnings"] = build_warnings(payload["results"])
+            raw_creator_path, raw_token_path = write_payload_files(
+                output_path=output_path,
+                payload=payload,
+                creator_data=creator_data,
+                token_data=token_data,
+            )
+            label = "partial " if args.scope == "both" else ""
+            print(f"[ok] wrote {label}{output_path}")
+            print(f"[ok] wrote {label}{raw_creator_path}")
+            print(f"[ok] wrote {label}{raw_token_path}")
+
+        if args.scope in ("both", "token"):
+            token_data = scraper.collect_account_tabs(
+                account=args.token,
+                tabs=tabs,
+                start_utc=start_utc,
+                end_utc=end_utc,
+                local_tz=local_tz,
+                max_pages=args.max_pages,
+            )
+
+    payload["results"]["token"] = token_data
+    payload["partial"] = False if args.scope == "both" else False
+    payload["warnings"] = build_warnings(payload["results"])
+    raw_creator_path, raw_token_path = write_payload_files(
+        output_path=output_path,
+        payload=payload,
+        creator_data=creator_data,
+        token_data=token_data,
+    )
     print(f"[ok] wrote {output_path}")
+    print(f"[ok] wrote {raw_creator_path}")
+    print(f"[ok] wrote {raw_token_path}")
+    for warning in payload["warnings"]:
+        print(f"[warn] {warning}")
 
 
 if __name__ == "__main__":

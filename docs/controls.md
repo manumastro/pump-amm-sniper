@@ -90,6 +90,7 @@ Segnali usati:
 - `inbound collector pattern`: tanti inbound simili da molte source verso il creator in finestra breve
 - creator che richiama direttamente `pAMMBay...` dopo `create_pool`
 - burst outbound pre-create (tipicamente tanti trasferimenti ~1 SOL in pochi secondi verso molte destinazioni)
+- pattern ripetuto `create_pool -> remove_liquidity -> cashout`, seguito da un nuovo `create_pool` nella stessa finestra breve
 
 Blacklist lette solo da:
 - `blacklists/creators.txt`
@@ -115,6 +116,7 @@ Eccezioni:
 - nessun probation bypass per `funder blacklisted ...`
 - nessun probation bypass per `relay funding recent on standard pool`
 - nessun probation bypass per `relay funding recent + micro burst`
+- nessun probation bypass per `micro inbound burst`
 - nessun probation bypass per `creator direct AMM re-entry`
 - nessun probation bypass per `creator seed too small ...`
 - nessun probation bypass per `creator cashout` gia estremo rispetto alla liquidity iniziale
@@ -132,6 +134,7 @@ Log principali:
 - `SEED | creator=... SOL pct=...% growth=...x`
 - `ISPRAY | in=... src=... median=... rel_std=... ratio=...`
 - `PBURST | precreate out=... dest=... median=... rel_std=... ratio=...`
+- `RREPEAT | create=... remove=... cashout=... window=... max_out=...`
 - `PROBATION | paper-only bypass creator risk (...) hold=...ms`
 
 Lettura pratica:
@@ -143,6 +146,7 @@ Lettura pratica:
 6. `seed troppo piccolo` = il creator ha quasi zero skin in the game rispetto alla liquidity che vedevamo prima del buy.
 7. `inbound collector` = molti wallet alimentano il creator con importi simili in poco tempo: pattern di coordinamento, non domanda organica.
 8. `precreate burst` = raffica di outbound quasi uguali subito prima del create_pool: pattern operativo ad alto rischio.
+9. `RREPEAT` = il creator ha gia fatto almeno un ciclo `create/remove/cashout` recente e sta riprovando: da trattare come skip pre-buy, non come segnale da hold.
 
 Gerarchia pratica dei segnali:
 1. `CCASH` = segnale economico forte: il creator sta gia portando via SOL.
@@ -179,10 +183,14 @@ Scopo:
 
 Controlli:
 - `PRE_BUY_REVALIDATION_ENABLED`
+- `PRE_BUY_FINAL_CREATOR_RISK_RECHECK_ENABLED`
+- `PRE_BUY_FINAL_REMOVE_LIQ_CHECK_ENABLED`
 - `PRE_BUY_REVALIDATION_MAX_LIQ_DROP_PCT`
 - `PRE_BUY_REVALIDATION_MAX_QUOTE_VS_SPOT_RATIO`
 
 Segnali:
+- creator risk peggiorato nell'ultima frazione di secondo prima del buy
+- `remove liquidity` gia visibile sul pool prima dell'ingresso
 - liquidity live troppo bassa rispetto alla baseline osservata
 - `buy quote` molto peggiore dello `spot`
 

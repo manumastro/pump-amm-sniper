@@ -119,6 +119,8 @@ const CONFIG = {
     HOLD_PROBATION_CASHOUT_DELTA_MIN_SOL: Number(process.env.HOLD_PROBATION_CASHOUT_DELTA_MIN_SOL || 5),
     HOLD_PROBATION_INTERVAL_MULTIPLIER: Number(process.env.HOLD_PROBATION_INTERVAL_MULTIPLIER || 0.4),
     PRE_BUY_REVALIDATION_ENABLED: process.env.PRE_BUY_REVALIDATION_ENABLED !== "false",
+    PRE_BUY_FINAL_CREATOR_RISK_RECHECK_ENABLED: process.env.PRE_BUY_FINAL_CREATOR_RISK_RECHECK_ENABLED !== "false",
+    PRE_BUY_FINAL_REMOVE_LIQ_CHECK_ENABLED: process.env.PRE_BUY_FINAL_REMOVE_LIQ_CHECK_ENABLED !== "false",
     PRE_BUY_REVALIDATION_MAX_LIQ_DROP_PCT: Number(process.env.PRE_BUY_REVALIDATION_MAX_LIQ_DROP_PCT || 35),
     PRE_BUY_REVALIDATION_MAX_QUOTE_VS_SPOT_RATIO: Number(process.env.PRE_BUY_REVALIDATION_MAX_QUOTE_VS_SPOT_RATIO || 25),
     PRE_BUY_WAIT_MS: Number(process.env.PRE_BUY_WAIT_MS || 1500), // Wait before entering
@@ -196,6 +198,14 @@ const CONFIG = {
     CREATOR_RISK_PRECREATE_BURST_MAX_MEDIAN_SOL: Number(process.env.CREATOR_RISK_PRECREATE_BURST_MAX_MEDIAN_SOL || 1.3),
     CREATOR_RISK_PRECREATE_BURST_MAX_REL_STDDEV: Number(process.env.CREATOR_RISK_PRECREATE_BURST_MAX_REL_STDDEV || 0.1),
     CREATOR_RISK_PRECREATE_BURST_MAX_AMOUNT_RATIO: Number(process.env.CREATOR_RISK_PRECREATE_BURST_MAX_AMOUNT_RATIO || 1.35),
+    CREATOR_RISK_REPEAT_CREATE_REMOVE_BLOCK_ENABLED: process.env.CREATOR_RISK_REPEAT_CREATE_REMOVE_BLOCK_ENABLED !== "false",
+    CREATOR_RISK_REPEAT_CREATE_REMOVE_WINDOW_SEC: Number(process.env.CREATOR_RISK_REPEAT_CREATE_REMOVE_WINDOW_SEC || 600),
+    CREATOR_RISK_REPEAT_CREATE_REMOVE_MIN_CREATES: Number(process.env.CREATOR_RISK_REPEAT_CREATE_REMOVE_MIN_CREATES || 2),
+    CREATOR_RISK_REPEAT_CREATE_REMOVE_MIN_REMOVES: Number(process.env.CREATOR_RISK_REPEAT_CREATE_REMOVE_MIN_REMOVES || 1),
+    CREATOR_RISK_REPEAT_CREATE_REMOVE_MIN_CASHOUTS: Number(process.env.CREATOR_RISK_REPEAT_CREATE_REMOVE_MIN_CASHOUTS || 1),
+    CREATOR_RISK_REPEAT_CREATE_REMOVE_MIN_CREATE_SOL: Number(process.env.CREATOR_RISK_REPEAT_CREATE_REMOVE_MIN_CREATE_SOL || 20),
+    CREATOR_RISK_REPEAT_CREATE_REMOVE_MIN_REMOVE_SOL: Number(process.env.CREATOR_RISK_REPEAT_CREATE_REMOVE_MIN_REMOVE_SOL || 20),
+    CREATOR_RISK_REPEAT_CREATE_REMOVE_MIN_CASHOUT_SOL: Number(process.env.CREATOR_RISK_REPEAT_CREATE_REMOVE_MIN_CASHOUT_SOL || 2),
     HOLD_CREATOR_RISK_RECHECK_ENABLED: process.env.HOLD_CREATOR_RISK_RECHECK_ENABLED !== "false",
     HOLD_CREATOR_RISK_RECHECK_INTERVAL_MS: Number(process.env.HOLD_CREATOR_RISK_RECHECK_INTERVAL_MS || 5000),
     CREATOR_RISK_FUNDER_REFUND_MIN_SOL: Number(process.env.CREATOR_RISK_FUNDER_REFUND_MIN_SOL || 0.05),
@@ -369,6 +379,13 @@ type CreatorRiskResult = {
     creatorSeedPctOfCurrentLiq?: number;
     inboundSpraySources?: number;
     precreateBurstTransfers?: number;
+    microInboundTransfers?: number;
+    microInboundSources?: number;
+    repeatedCreateRemoveCreates?: number;
+    repeatedCreateRemoveRemoves?: number;
+    repeatedCreateRemoveCashouts?: number;
+    repeatedCreateRemoveWindowSec?: number | null;
+    repeatedCreateRemoveMaxCashoutSol?: number;
 };
 
 function isProbationBypassForbidden(result?: CreatorRiskResult): boolean {
@@ -380,7 +397,9 @@ function isProbationBypassForbidden(result?: CreatorRiskResult): boolean {
         normalized.includes("funder blacklisted") ||
         normalized.includes("relay funding recent on standard pool") ||
         normalized.includes("relay funding recent + micro burst") ||
+        normalized.includes("micro inbound burst") ||
         normalized.includes("creator direct amm re-entry") ||
+        normalized.includes("creator repeated create-remove pattern") ||
         normalized.includes("creator seed too small") ||
         normalized.includes("429 too many requests") ||
         normalized.includes("rate limited")
@@ -1026,12 +1045,17 @@ async function handleNewPool(connection: Connection, signature: string) {
                 return null;
             };
             const preBuy = await validatePreBuyEntryState(
+                connection,
                 fetchStateWithRetry,
                 tokenMint,
                 tokenDecimals,
                 buyAmountLamports,
                 liquiditySOL,
                 ctx,
+                creatorAddress,
+                poolAddress,
+                signature,
+                tx.blockTime || null,
             );
             if (!preBuy.ok) {
                 console.log(`🛑 SKIP: pre-buy revalidation (${preBuy.reason})`);
@@ -1947,6 +1971,150 @@ function isRemoveLiquidityLikeTx(tx: any, creatorAddress: string, poolAddress: s
     return { detected, wsolToCreator, solToCreator };
 }
 
+type ParsedCreatorRiskTx = {
+    signature: string;
+    blockTime: number | null;
+    tx: any;
+};
+
+type CreatorRepeatPatternRisk = {
+    detected: boolean;
+    creates: number;
+    removes: number;
+    cashouts: number;
+    windowSec: number | null;
+    maxCashoutSol: number;
+    signatures: string[];
+};
+
+function getCreatorTxFlowSummary(tx: any, creatorAddress: string): {
+    solOutSol: number;
+    solInSol: number;
+    outboundTransfers: Array<{ destination: string; sol: number }>;
+} {
+    const empty = new Set<string>();
+    const outer = walkParsedInstructions(tx?.transaction?.message?.instructions, creatorAddress, empty, empty, empty);
+    const innerParts = (tx?.meta?.innerInstructions || []).map((inner: any) =>
+        walkParsedInstructions(inner.instructions, creatorAddress, empty, empty, empty)
+    );
+
+    let solOutSol = outer.solOutSol;
+    let solInSol = outer.solInSol;
+    const outboundTransfers = [...outer.outboundTransfers];
+
+    for (const inner of innerParts) {
+        solOutSol += inner.solOutSol;
+        solInSol += inner.solInSol;
+        outboundTransfers.push(...inner.outboundTransfers);
+    }
+
+    return { solOutSol, solInSol, outboundTransfers };
+}
+
+function classifyRecentCreateRemovePattern(
+    entries: ParsedCreatorRiskTx[],
+    creatorAddress: string,
+    options: {
+        currentCreatePoolSignature?: string;
+        currentCreatePoolBlockTime?: number | null;
+    } = {},
+): CreatorRepeatPatternRisk {
+    if (!CONFIG.CREATOR_RISK_REPEAT_CREATE_REMOVE_BLOCK_ENABLED) {
+        return {
+            detected: false,
+            creates: 0,
+            removes: 0,
+            cashouts: 0,
+            windowSec: null,
+            maxCashoutSol: 0,
+            signatures: [],
+        };
+    }
+
+    const anchorTime =
+        options.currentCreatePoolBlockTime ??
+        (entries.reduce((max, entry) => Math.max(max, entry.blockTime || 0), 0) || null);
+    if (!anchorTime) {
+        return {
+            detected: false,
+            creates: 0,
+            removes: 0,
+            cashouts: 0,
+            windowSec: null,
+            maxCashoutSol: 0,
+            signatures: [],
+        };
+    }
+
+    const minTime = anchorTime - CONFIG.CREATOR_RISK_REPEAT_CREATE_REMOVE_WINDOW_SEC;
+    const recentEntries = entries
+        .filter((entry) => entry.blockTime && entry.blockTime >= minTime && entry.blockTime <= anchorTime)
+        .sort((a, b) => (a.blockTime || 0) - (b.blockTime || 0));
+
+    let creates = 0;
+    let removes = 0;
+    let cashouts = 0;
+    let maxCashoutSol = 0;
+    const signatures: string[] = [];
+
+    for (const entry of recentEntries) {
+        const tx = entry.tx;
+        const touchesPumpAmm = flattenParsedInstructions(tx).some((ix) =>
+            instructionProgramIdMatches(ix, PUMPFUN_AMM_PROGRAM_ID)
+        );
+        const { solOutSol, solInSol, outboundTransfers } = getCreatorTxFlowSummary(tx, creatorAddress);
+        const wsolDelta = getOwnerMintDelta(tx, creatorAddress, WSOL);
+        const maxOutboundSol = outboundTransfers.reduce((max, transfer) => Math.max(max, transfer.sol), 0);
+
+        const isCreateLike =
+            touchesPumpAmm &&
+            (
+                entry.signature === options.currentCreatePoolSignature ||
+                solOutSol >= CONFIG.CREATOR_RISK_REPEAT_CREATE_REMOVE_MIN_CREATE_SOL ||
+                Math.abs(Math.min(wsolDelta, 0)) >= CONFIG.CREATOR_RISK_REPEAT_CREATE_REMOVE_MIN_CREATE_SOL
+            );
+        const isRemoveLike =
+            touchesPumpAmm &&
+            (
+                wsolDelta >= CONFIG.CREATOR_RISK_REPEAT_CREATE_REMOVE_MIN_REMOVE_SOL ||
+                solInSol >= CONFIG.CREATOR_RISK_REPEAT_CREATE_REMOVE_MIN_REMOVE_SOL
+            );
+        const isCashoutLike =
+            !touchesPumpAmm &&
+            maxOutboundSol >= CONFIG.CREATOR_RISK_REPEAT_CREATE_REMOVE_MIN_CASHOUT_SOL;
+
+        if (isCreateLike) {
+            creates += 1;
+            signatures.push(entry.signature);
+        }
+        if (isRemoveLike) {
+            removes += 1;
+            signatures.push(entry.signature);
+        }
+        if (isCashoutLike) {
+            cashouts += 1;
+            maxCashoutSol = Math.max(maxCashoutSol, maxOutboundSol);
+            signatures.push(entry.signature);
+        }
+    }
+
+    const uniqueSignatures = [...new Set(signatures)];
+    const detected =
+        creates >= CONFIG.CREATOR_RISK_REPEAT_CREATE_REMOVE_MIN_CREATES &&
+        removes >= CONFIG.CREATOR_RISK_REPEAT_CREATE_REMOVE_MIN_REMOVES &&
+        cashouts >= CONFIG.CREATOR_RISK_REPEAT_CREATE_REMOVE_MIN_CASHOUTS;
+
+    return {
+        detected,
+        creates,
+        removes,
+        cashouts,
+        windowSec: CONFIG.CREATOR_RISK_REPEAT_CREATE_REMOVE_WINDOW_SEC,
+        maxCashoutSol,
+        signatures: uniqueSignatures,
+    };
+}
+
 async function detectRemoveLiquiditySince(
     connection: Connection,
     poolAddress: string,
@@ -2544,9 +2712,14 @@ async function runCreatorRiskCheck(
         const outboundTransfers: Array<{ destination: string; sol: number }> = [];
         const inboundTransfers: Array<{ source: string; sol: number }> = [];
         const createPoolOutboundDestinations = new Set<string>();
+        const parsedCreatorRiskTxs: ParsedCreatorRiskTx[] = [];
+        const parsedCreatorRiskTxSignatures = new Set<string>();
 
         const sampleSignatures = new Set(sample.map((s) => s.signature));
-        const ingestParsedTx = (tx: any, options: { recordCreatePoolDestinations?: boolean } = {}) => {
+        const ingestParsedTx = (
+            tx: any,
+            options: { recordCreatePoolDestinations?: boolean; signature?: string; blockTime?: number | null } = {},
+        ) => {
             const outer = walkParsedInstructions(
                 tx.transaction?.message?.instructions,
                 creatorAddress,
@@ -2573,6 +2746,15 @@ async function runCreatorRiskCheck(
                 outboundTransfers.push(...inner.outboundTransfers);
             }
             outboundTransfers.push(...outer.outboundTransfers);
+
+            if (options.signature && !parsedCreatorRiskTxSignatures.has(options.signature)) {
+                parsedCreatorRiskTxSignatures.add(options.signature);
+                parsedCreatorRiskTxs.push({
+                    signature: options.signature,
+                    blockTime: options.blockTime ?? tx.blockTime ?? null,
+                    tx,
+                });
+            }
 
             if (options.recordCreatePoolDestinations) {
                 for (const dest of outer.outboundDestinations) {
@@ -2604,7 +2786,11 @@ async function runCreatorRiskCheck(
                 commitment: "confirmed",
             });
             if (!tx) continue;
-            ingestParsedTx(tx, { recordCreatePoolDestinations: sig.signature === options.createPoolSignature });
+            ingestParsedTx(tx, {
+                recordCreatePoolDestinations: sig.signature === options.createPoolSignature,
+                signature: sig.signature,
+                blockTime: sig.blockTime ?? null,
+            });
         }
 
         // When risk-check runs immediately after create_pool, address history can lag and miss
@@ -2616,7 +2802,11 @@ async function runCreatorRiskCheck(
                     commitment: "confirmed",
                 });
                 if (createTx) {
-                    ingestParsedTx(createTx, { recordCreatePoolDestinations: true });
+                    ingestParsedTx(createTx, {
+                        recordCreatePoolDestinations: true,
+                        signature: options.createPoolSignature,
+                        blockTime: options.createPoolBlockTime ?? createTx.blockTime ?? null,
+                    });
                 }
             } catch {
                 // fail-open
@@ -2665,6 +2855,10 @@ async function runCreatorRiskCheck(
                 options.createPoolBlockTime,
             )
         );
+        const repeatCreateRemovePattern = classifyRecentCreateRemovePattern(parsedCreatorRiskTxs, creatorAddress, {
+            currentCreatePoolSignature: options.createPoolSignature,
+            currentCreatePoolBlockTime: options.createPoolBlockTime,
+        });
         const relayFunding = await classifyRecentRelayFunding(connection, creatorAddress, funder);
         const directAmmReentry = await detectCreatorDirectAmmReentry(
             connection,
@@ -2736,6 +2930,15 @@ async function runCreatorRiskCheck(
                 "PBURST",
                 `precreate out=${precreateBurst.transfers} dest=${precreateBurst.destinations} median=${precreateBurst.medianSol.toFixed(3)} ` +
                 `rel_std=${precreateBurst.relStdDev.toFixed(2)} ratio=${precreateBurst.amountRatio.toFixed(2)}`
+            );
+        }
+        if (repeatCreateRemovePattern.creates > 0 || repeatCreateRemovePattern.removes > 0 || repeatCreateRemovePattern.cashouts > 0) {
+            stageLog(
+                ctx,
+                "RREPEAT",
+                `create=${repeatCreateRemovePattern.creates} remove=${repeatCreateRemovePattern.removes} ` +
+                `cashout=${repeatCreateRemovePattern.cashouts} window=${repeatCreateRemovePattern.windowSec ?? "n/a"}s ` +
+                `max_out=${repeatCreateRemovePattern.maxCashoutSol.toFixed(3)}`
             );
         }
         if (directAmmReentry.detected) {
@@ -2826,6 +3029,8 @@ async function runCreatorRiskCheck(
                 uniqueCounterparties,
                 compressedWindowSec,
                 burner,
+                microInboundTransfers: microInboundTransfers.length,
+                microInboundSources: microInboundSources.size,
             };
             creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
             return result;
@@ -2888,6 +3093,28 @@ async function runCreatorRiskCheck(
                 compressedWindowSec,
                 burner,
                 precreateBurstTransfers: precreateBurst.transfers,
+            };
+            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
+            return result;
+        }
+
+        if (repeatCreateRemovePattern.detected) {
+            const result = {
+                ok: false,
+                reason:
+                    `creator repeated create-remove pattern ` +
+                    `create=${repeatCreateRemovePattern.creates} remove=${repeatCreateRemovePattern.removes} ` +
+                    `cashout=${repeatCreateRemovePattern.cashouts} in ${repeatCreateRemovePattern.windowSec ?? "n/a"}s ` +
+                    `(max_out ${repeatCreateRemovePattern.maxCashoutSol.toFixed(3)} SOL)`,
+                funder,
+                uniqueCounterparties,
+                compressedWindowSec,
+                burner,
+                repeatedCreateRemoveCreates: repeatCreateRemovePattern.creates,
+                repeatedCreateRemoveRemoves: repeatCreateRemovePattern.removes,
+                repeatedCreateRemoveCashouts: repeatCreateRemovePattern.cashouts,
+                repeatedCreateRemoveWindowSec: repeatCreateRemovePattern.windowSec,
+                repeatedCreateRemoveMaxCashoutSol: repeatCreateRemovePattern.maxCashoutSol,
             };
             creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
             return result;
@@ -3174,6 +3401,11 @@ async function runCreatorRiskCheck(
             creatorSeedPctOfCurrentLiq,
             inboundSpraySources: sprayInbound.sources,
             precreateBurstTransfers: precreateBurst.transfers,
+            repeatedCreateRemoveCreates: repeatCreateRemovePattern.creates,
+            repeatedCreateRemoveRemoves: repeatCreateRemovePattern.removes,
+            repeatedCreateRemoveCashouts: repeatCreateRemovePattern.cashouts,
+            repeatedCreateRemoveWindowSec: repeatCreateRemovePattern.windowSec,
+            repeatedCreateRemoveMaxCashoutSol: repeatCreateRemovePattern.maxCashoutSol,
         };
         creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
         return result;
@@ -3346,13 +3578,51 @@ type PreBuyEntryValidationResult = {
 };
 
 async function validatePreBuyEntryState(
+    connection: Connection,
     fetchStateWithRetry: () => Promise<any | null>,
     tokenMint: string,
     tokenDecimals: number,
     buyAmountLamports: BN,
     baselineLiquiditySol: number,
     ctx: string,
+    creatorAddress?: string,
+    poolAddress?: string,
+    createPoolSignature?: string,
+    createPoolBlockTime?: number | null,
 ): Promise<PreBuyEntryValidationResult> {
+    if (creatorAddress && CONFIG.PRE_BUY_FINAL_CREATOR_RISK_RECHECK_ENABLED) {
+        const creatorRisk = await runCreatorRiskCheck(connection, creatorAddress, ctx, {
+            forceRefresh: true,
+            entrySolLiquidity: baselineLiquiditySol,
+            createPoolSignature,
+            createPoolBlockTime,
+        });
+        if (!creatorRisk.ok) {
+            return { ok: false, reason: `creator risk recheck (${creatorRisk.reason})` };
+        }
+    }
+
+    if (creatorAddress && poolAddress && CONFIG.PRE_BUY_FINAL_REMOVE_LIQ_CHECK_ENABLED) {
+        const removeLiq = await detectRemoveLiquiditySince(
+            connection,
+            poolAddress,
+            creatorAddress,
+            new Set<string>(),
+            createPoolSignature,
+            createPoolBlockTime,
+        );
+        if (removeLiq.detected) {
+            return {
+                ok: false,
+                reason:
+                    `remove liquidity detected before entry ` +
+                    `(${shortSig(removeLiq.signature || "-")}, ` +
+                    `wsol=${Number(removeLiq.wsolToCreator || 0).toFixed(3)} ` +
+                    `sol=${Number(removeLiq.solToCreator || 0).toFixed(3)})`,
+            };
+        }
+    }
+
     const entryState = await fetchStateWithRetry();
     if (!entryState) {
         return { ok: false, reason: "entry state unavailable" };
@@ -3481,12 +3751,17 @@ async function maybeRunPaperTradeSimulation(
         }
 
         const preBuy = await validatePreBuyEntryState(
+            connection,
             fetchStateWithRetry,
             tokenMint,
             tokenDecimals,
             buyAmountLamports,
             baselineLiquiditySol,
             ctx,
+            creatorAddress,
+            poolAddress,
+            createPoolSignature,
+            createPoolBlockTime,
         );
         if (!preBuy.ok || !preBuy.entryState || !preBuy.tokenOutAtomic || !preBuy.tokenOutUi) {
             return { ok: false, reason: preBuy.reason || "pre-buy validation failed" };

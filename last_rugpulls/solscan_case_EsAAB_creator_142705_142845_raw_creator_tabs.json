@@ -1,0 +1,609 @@
+{
+  "query": {
+    "creator": "4xsqYeWdZs1tg9M6CUFoki1n4TYUnaCgP3yLFLvQnkh1",
+    "token": "EsAABGbsR8aGjiCHf4uXmcVEyFnVmZ3EcBfpqsMNRp99",
+    "tabs": [
+      "Transactions",
+      "Transfers",
+      "Activities"
+    ],
+    "scope": "creator",
+    "tz": "Europe/Berlin",
+    "from_local": "2026-03-10T14:27:05+01:00",
+    "to_local": "2026-03-10T14:28:45+01:00",
+    "from_utc": "2026-03-10T13:27:05+00:00",
+    "to_utc": "2026-03-10T13:28:45+00:00",
+    "max_pages": 3,
+    "headless": false
+  },
+  "scope": "creator",
+  "account": "4xsqYeWdZs1tg9M6CUFoki1n4TYUnaCgP3yLFLvQnkh1",
+  "results": {
+    "Transactions": {
+      "rows_seen": [
+        {
+          "tab": "Transactions",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:28:38+00:00",
+          "timestamp_local": "2026-03-10T14:28:38+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "2DHcsytwxUrjeR7J5WeRn6RGsMEcBq7xGe3DnBu8pMZHgNPya5eeeFLxZuipjsUcqUnAQAdesfDt9nYU59UcLCVT\n\t13:28:38 Mar 10, 2026\n\tTransfer\n\t4xsqYeWdZs...yLFLvQnkh1\n\t192.08"
+        },
+        {
+          "tab": "Transactions",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:59+00:00",
+          "timestamp_local": "2026-03-10T14:27:59+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "4Zcvuf4o1oX23ReBk3kT4Y5MSGAbopBoR6Zw33qUkqeMKAALQwgM9jpEXR1L2HBVBNWx5yDtW4rkgmrjfc2cSXBS\n\t13:27:59 Mar 10, 2026\n\tburn\n1+\n\t4xsqYeWdZs...yLFLvQnkh1\n\t0.002039"
+        },
+        {
+          "tab": "Transactions",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:27+00:00",
+          "timestamp_local": "2026-03-10T14:27:27+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "2dtt61XDjErqpeEgKZnjy87UuDzm8Q6hgt1c1Gj4vDHPgjgTqtp2TbcGaLPbSkgHmer9DXS78pjonxXt1zdg76F2\n\t13:27:27 Mar 10, 2026\n\tLiquidity: Remove\n\t4xsqYeWdZs...yLFLvQnkh1\n\t113.07\n\t+2"
+        },
+        {
+          "tab": "Transactions",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:12+00:00",
+          "timestamp_local": "2026-03-10T14:27:12+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "LQhz97NpKsv9Z9qDUsTNS7Zqvr6mhfmYR4thGfNCseEwQcsqfs35kVd765kSAqNfcRHA1fc4eFpKefraGr5p6yi\n\t13:27:12 Mar 10, 2026\n\tTransfer\n\tEligible wallet? \u2192 Flip.gg\ud83c\udf40\ud83c\udfb0-32890.flipgg.sol\n\t0.45"
+        },
+        {
+          "tab": "Transactions",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:12+00:00",
+          "timestamp_local": "2026-03-10T14:27:12+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "4BaNhvUG1JLMYaziNjuXwzWTiGGeHNrLpdidfjhvAfxX83dB85bnNeEwMqVCrLHaJdYGKCDCK26LwZV2L8igxmJT\n\t13:27:12 Mar 10, 2026\n\tTransfer\n\tEligible wallet? \u2192 Flip.gg\ud83c\udf40\ud83c\udfb0-32890.flipgg.sol\n\t0.48"
+        },
+        {
+          "tab": "Transactions",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:12+00:00",
+          "timestamp_local": "2026-03-10T14:27:12+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "uD9SBonCpX6aWVsWbpsPJrLvf3Qu3G97oXbL4m2PNrjAKEdzobZ7UFFBTazgWVsdhwLyA6mvoDZ8Gg5LujhnEqE\n\t13:27:12 Mar 10, 2026\n\tTransfer\n\tEligible wallet? \u2192 Flip.gg\ud83c\udf40\ud83c\udfb0-32890.flipgg.sol\n\t0.43"
+        },
+        {
+          "tab": "Transactions",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:12+00:00",
+          "timestamp_local": "2026-03-10T14:27:12+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "dtkrSzQvHxcMNCUwoA9BtUApsu33KCgm8viJU8mkyVK4e3EUfZWfUX4Gd7LfEywASEfbMP5vHP1Rb8WaipFHvTs\n\t13:27:12 Mar 10, 2026\n\tTransfer\n\tFlip.gg \u2192 Trusted Since 2021......-32891.flipgg.sol\n\t0.44"
+        },
+        {
+          "tab": "Transactions",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:12+00:00",
+          "timestamp_local": "2026-03-10T14:27:12+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "oBnsD35KmNsok5pkn2ZeySfHTm4h62fabQQ8yWW9HA6h8HgeAhLE9GQ7fHTZZA64tPH86qEUtqg96ciAvqcdD4T\n\t13:27:12 Mar 10, 2026\n\tTransfer\n\tEligible wallet? \u2192 Flip.gg\ud83c\udf40\ud83c\udfb0-32890.flipgg.sol\n\t0.47"
+        },
+        {
+          "tab": "Transactions",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:12+00:00",
+          "timestamp_local": "2026-03-10T14:27:12+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "56QGXJNhR5x5DGyMCuFMieefF6c4wWSpx42sJbYeqyRoKKghZD8dpMk3CGHQbAxBAjghbNtUzLoHuMggpHn93cCk\n\t13:27:12 Mar 10, 2026\n\tTransfer\n\tFlip.gg \u2192 Trusted Since 2021......-32891.flipgg.sol\n\t0.46"
+        },
+        {
+          "tab": "Transactions",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:12+00:00",
+          "timestamp_local": "2026-03-10T14:27:12+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "3EeSA8bRxbfguj7RJJphS7uPro9vmb3aTvgwnJ1TL6Ve7HcveTr6Kona5EK6azgCytR1iGhvkjz8XHMYvacHT8LK\n\t13:27:12 Mar 10, 2026\n\tTransfer\n\tEligible wallet? \u2192 Flip.gg\ud83c\udf40\ud83c\udfb0-32890.flipgg.sol\n\t0.44"
+        }
+      ],
+      "rows_in_range": [
+        {
+          "tab": "Transactions",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:28:38+00:00",
+          "timestamp_local": "2026-03-10T14:28:38+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "2DHcsytwxUrjeR7J5WeRn6RGsMEcBq7xGe3DnBu8pMZHgNPya5eeeFLxZuipjsUcqUnAQAdesfDt9nYU59UcLCVT\n\t13:28:38 Mar 10, 2026\n\tTransfer\n\t4xsqYeWdZs...yLFLvQnkh1\n\t192.08"
+        },
+        {
+          "tab": "Transactions",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:59+00:00",
+          "timestamp_local": "2026-03-10T14:27:59+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "4Zcvuf4o1oX23ReBk3kT4Y5MSGAbopBoR6Zw33qUkqeMKAALQwgM9jpEXR1L2HBVBNWx5yDtW4rkgmrjfc2cSXBS\n\t13:27:59 Mar 10, 2026\n\tburn\n1+\n\t4xsqYeWdZs...yLFLvQnkh1\n\t0.002039"
+        },
+        {
+          "tab": "Transactions",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:27+00:00",
+          "timestamp_local": "2026-03-10T14:27:27+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "2dtt61XDjErqpeEgKZnjy87UuDzm8Q6hgt1c1Gj4vDHPgjgTqtp2TbcGaLPbSkgHmer9DXS78pjonxXt1zdg76F2\n\t13:27:27 Mar 10, 2026\n\tLiquidity: Remove\n\t4xsqYeWdZs...yLFLvQnkh1\n\t113.07\n\t+2"
+        },
+        {
+          "tab": "Transactions",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:12+00:00",
+          "timestamp_local": "2026-03-10T14:27:12+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "LQhz97NpKsv9Z9qDUsTNS7Zqvr6mhfmYR4thGfNCseEwQcsqfs35kVd765kSAqNfcRHA1fc4eFpKefraGr5p6yi\n\t13:27:12 Mar 10, 2026\n\tTransfer\n\tEligible wallet? \u2192 Flip.gg\ud83c\udf40\ud83c\udfb0-32890.flipgg.sol\n\t0.45"
+        },
+        {
+          "tab": "Transactions",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:12+00:00",
+          "timestamp_local": "2026-03-10T14:27:12+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "4BaNhvUG1JLMYaziNjuXwzWTiGGeHNrLpdidfjhvAfxX83dB85bnNeEwMqVCrLHaJdYGKCDCK26LwZV2L8igxmJT\n\t13:27:12 Mar 10, 2026\n\tTransfer\n\tEligible wallet? \u2192 Flip.gg\ud83c\udf40\ud83c\udfb0-32890.flipgg.sol\n\t0.48"
+        },
+        {
+          "tab": "Transactions",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:12+00:00",
+          "timestamp_local": "2026-03-10T14:27:12+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "uD9SBonCpX6aWVsWbpsPJrLvf3Qu3G97oXbL4m2PNrjAKEdzobZ7UFFBTazgWVsdhwLyA6mvoDZ8Gg5LujhnEqE\n\t13:27:12 Mar 10, 2026\n\tTransfer\n\tEligible wallet? \u2192 Flip.gg\ud83c\udf40\ud83c\udfb0-32890.flipgg.sol\n\t0.43"
+        },
+        {
+          "tab": "Transactions",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:12+00:00",
+          "timestamp_local": "2026-03-10T14:27:12+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "dtkrSzQvHxcMNCUwoA9BtUApsu33KCgm8viJU8mkyVK4e3EUfZWfUX4Gd7LfEywASEfbMP5vHP1Rb8WaipFHvTs\n\t13:27:12 Mar 10, 2026\n\tTransfer\n\tFlip.gg \u2192 Trusted Since 2021......-32891.flipgg.sol\n\t0.44"
+        },
+        {
+          "tab": "Transactions",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:12+00:00",
+          "timestamp_local": "2026-03-10T14:27:12+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "oBnsD35KmNsok5pkn2ZeySfHTm4h62fabQQ8yWW9HA6h8HgeAhLE9GQ7fHTZZA64tPH86qEUtqg96ciAvqcdD4T\n\t13:27:12 Mar 10, 2026\n\tTransfer\n\tEligible wallet? \u2192 Flip.gg\ud83c\udf40\ud83c\udfb0-32890.flipgg.sol\n\t0.47"
+        },
+        {
+          "tab": "Transactions",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:12+00:00",
+          "timestamp_local": "2026-03-10T14:27:12+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "56QGXJNhR5x5DGyMCuFMieefF6c4wWSpx42sJbYeqyRoKKghZD8dpMk3CGHQbAxBAjghbNtUzLoHuMggpHn93cCk\n\t13:27:12 Mar 10, 2026\n\tTransfer\n\tFlip.gg \u2192 Trusted Since 2021......-32891.flipgg.sol\n\t0.46"
+        },
+        {
+          "tab": "Transactions",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:12+00:00",
+          "timestamp_local": "2026-03-10T14:27:12+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "3EeSA8bRxbfguj7RJJphS7uPro9vmb3aTvgwnJ1TL6Ve7HcveTr6Kona5EK6azgCytR1iGhvkjz8XHMYvacHT8LK\n\t13:27:12 Mar 10, 2026\n\tTransfer\n\tEligible wallet? \u2192 Flip.gg\ud83c\udf40\ud83c\udfb0-32890.flipgg.sol\n\t0.44"
+        }
+      ],
+      "diagnostics": {
+        "status": "ok",
+        "rows_seen_count": 10,
+        "rows_in_range_count": 10,
+        "rows_with_parsed_timestamp_count": 10,
+        "rows_without_parsed_timestamp_count": 0,
+        "rows_with_relative_timestamp_count": 0,
+        "rows_with_absolute_timestamp_count": 10
+      }
+    },
+    "Transfers": {
+      "rows_seen": [
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:28:15.937546+00:00",
+          "timestamp_local": "2026-03-10T14:28:15.937546+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "2DHcsytwxUrjeR7J5WeRn6RGsMEcBq7xGe3DnBu8pMZHgNPya5eeeFLxZuipjsUcqUnAQAdesfDt9nYU59UcLCVT\n\t12 mins ago\n\tTransfer\n\t4xsqYeWdZs...yLFLvQnkh1\n\t192.08"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:28:15.937546+00:00",
+          "timestamp_local": "2026-03-10T14:28:15.937546+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "4Zcvuf4o1oX23ReBk3kT4Y5MSGAbopBoR6Zw33qUkqeMKAALQwgM9jpEXR1L2HBVBNWx5yDtW4rkgmrjfc2cSXBS\n\t12 mins ago\n\tburn\n1+\n\t4xsqYeWdZs...yLFLvQnkh1\n\t0.002039"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:15.937546+00:00",
+          "timestamp_local": "2026-03-10T14:27:15.937546+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "2dtt61XDjErqpeEgKZnjy87UuDzm8Q6hgt1c1Gj4vDHPgjgTqtp2TbcGaLPbSkgHmer9DXS78pjonxXt1zdg76F2\n\t13 mins ago\n\tLiquidity: Remove\n\t4xsqYeWdZs...yLFLvQnkh1\n\t113.07\n\t+2"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:15.937546+00:00",
+          "timestamp_local": "2026-03-10T14:27:15.937546+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "LQhz97NpKsv9Z9qDUsTNS7Zqvr6mhfmYR4thGfNCseEwQcsqfs35kVd765kSAqNfcRHA1fc4eFpKefraGr5p6yi\n\t13 mins ago\n\tTransfer\n\tEligible wallet? \u2192 Flip.gg\ud83c\udf40\ud83c\udfb0-32890.flipgg.sol\n\t0.45"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:15.937546+00:00",
+          "timestamp_local": "2026-03-10T14:27:15.937546+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "4BaNhvUG1JLMYaziNjuXwzWTiGGeHNrLpdidfjhvAfxX83dB85bnNeEwMqVCrLHaJdYGKCDCK26LwZV2L8igxmJT\n\t13 mins ago\n\tTransfer\n\tEligible wallet? \u2192 Flip.gg\ud83c\udf40\ud83c\udfb0-32890.flipgg.sol\n\t0.48"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:15.937546+00:00",
+          "timestamp_local": "2026-03-10T14:27:15.937546+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "uD9SBonCpX6aWVsWbpsPJrLvf3Qu3G97oXbL4m2PNrjAKEdzobZ7UFFBTazgWVsdhwLyA6mvoDZ8Gg5LujhnEqE\n\t13 mins ago\n\tTransfer\n\tEligible wallet? \u2192 Flip.gg\ud83c\udf40\ud83c\udfb0-32890.flipgg.sol\n\t0.43"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:15.937546+00:00",
+          "timestamp_local": "2026-03-10T14:27:15.937546+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "dtkrSzQvHxcMNCUwoA9BtUApsu33KCgm8viJU8mkyVK4e3EUfZWfUX4Gd7LfEywASEfbMP5vHP1Rb8WaipFHvTs\n\t13 mins ago\n\tTransfer\n\tFlip.gg \u2192 Trusted Since 2021......-32891.flipgg.sol\n\t0.44"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:15.937546+00:00",
+          "timestamp_local": "2026-03-10T14:27:15.937546+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "oBnsD35KmNsok5pkn2ZeySfHTm4h62fabQQ8yWW9HA6h8HgeAhLE9GQ7fHTZZA64tPH86qEUtqg96ciAvqcdD4T\n\t13 mins ago\n\tTransfer\n\tEligible wallet? \u2192 Flip.gg\ud83c\udf40\ud83c\udfb0-32890.flipgg.sol\n\t0.47"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:15.937546+00:00",
+          "timestamp_local": "2026-03-10T14:27:15.937546+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "56QGXJNhR5x5DGyMCuFMieefF6c4wWSpx42sJbYeqyRoKKghZD8dpMk3CGHQbAxBAjghbNtUzLoHuMggpHn93cCk\n\t13 mins ago\n\tTransfer\n\tFlip.gg \u2192 Trusted Since 2021......-32891.flipgg.sol\n\t0.46"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:15.937546+00:00",
+          "timestamp_local": "2026-03-10T14:27:15.937546+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "3EeSA8bRxbfguj7RJJphS7uPro9vmb3aTvgwnJ1TL6Ve7HcveTr6Kona5EK6azgCytR1iGhvkjz8XHMYvacHT8LK\n\t13 mins ago\n\tTransfer\n\tEligible wallet? \u2192 Flip.gg\ud83c\udf40\ud83c\udfb0-32890.flipgg.sol\n\t0.44"
+        }
+      ],
+      "rows_in_range": [
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:28:15.937546+00:00",
+          "timestamp_local": "2026-03-10T14:28:15.937546+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "2DHcsytwxUrjeR7J5WeRn6RGsMEcBq7xGe3DnBu8pMZHgNPya5eeeFLxZuipjsUcqUnAQAdesfDt9nYU59UcLCVT\n\t12 mins ago\n\tTransfer\n\t4xsqYeWdZs...yLFLvQnkh1\n\t192.08"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:28:15.937546+00:00",
+          "timestamp_local": "2026-03-10T14:28:15.937546+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "4Zcvuf4o1oX23ReBk3kT4Y5MSGAbopBoR6Zw33qUkqeMKAALQwgM9jpEXR1L2HBVBNWx5yDtW4rkgmrjfc2cSXBS\n\t12 mins ago\n\tburn\n1+\n\t4xsqYeWdZs...yLFLvQnkh1\n\t0.002039"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:15.937546+00:00",
+          "timestamp_local": "2026-03-10T14:27:15.937546+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "2dtt61XDjErqpeEgKZnjy87UuDzm8Q6hgt1c1Gj4vDHPgjgTqtp2TbcGaLPbSkgHmer9DXS78pjonxXt1zdg76F2\n\t13 mins ago\n\tLiquidity: Remove\n\t4xsqYeWdZs...yLFLvQnkh1\n\t113.07\n\t+2"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:15.937546+00:00",
+          "timestamp_local": "2026-03-10T14:27:15.937546+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "LQhz97NpKsv9Z9qDUsTNS7Zqvr6mhfmYR4thGfNCseEwQcsqfs35kVd765kSAqNfcRHA1fc4eFpKefraGr5p6yi\n\t13 mins ago\n\tTransfer\n\tEligible wallet? \u2192 Flip.gg\ud83c\udf40\ud83c\udfb0-32890.flipgg.sol\n\t0.45"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:15.937546+00:00",
+          "timestamp_local": "2026-03-10T14:27:15.937546+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "4BaNhvUG1JLMYaziNjuXwzWTiGGeHNrLpdidfjhvAfxX83dB85bnNeEwMqVCrLHaJdYGKCDCK26LwZV2L8igxmJT\n\t13 mins ago\n\tTransfer\n\tEligible wallet? \u2192 Flip.gg\ud83c\udf40\ud83c\udfb0-32890.flipgg.sol\n\t0.48"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:15.937546+00:00",
+          "timestamp_local": "2026-03-10T14:27:15.937546+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "uD9SBonCpX6aWVsWbpsPJrLvf3Qu3G97oXbL4m2PNrjAKEdzobZ7UFFBTazgWVsdhwLyA6mvoDZ8Gg5LujhnEqE\n\t13 mins ago\n\tTransfer\n\tEligible wallet? \u2192 Flip.gg\ud83c\udf40\ud83c\udfb0-32890.flipgg.sol\n\t0.43"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:15.937546+00:00",
+          "timestamp_local": "2026-03-10T14:27:15.937546+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "dtkrSzQvHxcMNCUwoA9BtUApsu33KCgm8viJU8mkyVK4e3EUfZWfUX4Gd7LfEywASEfbMP5vHP1Rb8WaipFHvTs\n\t13 mins ago\n\tTransfer\n\tFlip.gg \u2192 Trusted Since 2021......-32891.flipgg.sol\n\t0.44"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:15.937546+00:00",
+          "timestamp_local": "2026-03-10T14:27:15.937546+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "oBnsD35KmNsok5pkn2ZeySfHTm4h62fabQQ8yWW9HA6h8HgeAhLE9GQ7fHTZZA64tPH86qEUtqg96ciAvqcdD4T\n\t13 mins ago\n\tTransfer\n\tEligible wallet? \u2192 Flip.gg\ud83c\udf40\ud83c\udfb0-32890.flipgg.sol\n\t0.47"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:15.937546+00:00",
+          "timestamp_local": "2026-03-10T14:27:15.937546+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "56QGXJNhR5x5DGyMCuFMieefF6c4wWSpx42sJbYeqyRoKKghZD8dpMk3CGHQbAxBAjghbNtUzLoHuMggpHn93cCk\n\t13 mins ago\n\tTransfer\n\tFlip.gg \u2192 Trusted Since 2021......-32891.flipgg.sol\n\t0.46"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:15.937546+00:00",
+          "timestamp_local": "2026-03-10T14:27:15.937546+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "3EeSA8bRxbfguj7RJJphS7uPro9vmb3aTvgwnJ1TL6Ve7HcveTr6Kona5EK6azgCytR1iGhvkjz8XHMYvacHT8LK\n\t13 mins ago\n\tTransfer\n\tEligible wallet? \u2192 Flip.gg\ud83c\udf40\ud83c\udfb0-32890.flipgg.sol\n\t0.44"
+        }
+      ],
+      "diagnostics": {
+        "status": "ok",
+        "rows_seen_count": 10,
+        "rows_in_range_count": 10,
+        "rows_with_parsed_timestamp_count": 10,
+        "rows_without_parsed_timestamp_count": 0,
+        "rows_with_relative_timestamp_count": 10,
+        "rows_with_absolute_timestamp_count": 0
+      }
+    },
+    "Activities": {
+      "rows_seen": [
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:28:38+00:00",
+          "timestamp_local": "2026-03-10T14:28:38+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "2DHcsytwxUrjeR7J5WeRn6RGsMEcBq7xGe3DnBu8pMZHgNPya5eeeFLxZuipjsUcqUnAQAdesfDt9nYU59UcLCVT\n\t13:28:38 Mar 10, 2026\n\tTransfer\n\t4xsqYeWdZs...yLFLvQnkh1\n\t192.08"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:59+00:00",
+          "timestamp_local": "2026-03-10T14:27:59+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "4Zcvuf4o1oX23ReBk3kT4Y5MSGAbopBoR6Zw33qUkqeMKAALQwgM9jpEXR1L2HBVBNWx5yDtW4rkgmrjfc2cSXBS\n\t13:27:59 Mar 10, 2026\n\tburn\n1+\n\t4xsqYeWdZs...yLFLvQnkh1\n\t0.002039"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:27+00:00",
+          "timestamp_local": "2026-03-10T14:27:27+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "2dtt61XDjErqpeEgKZnjy87UuDzm8Q6hgt1c1Gj4vDHPgjgTqtp2TbcGaLPbSkgHmer9DXS78pjonxXt1zdg76F2\n\t13:27:27 Mar 10, 2026\n\tLiquidity: Remove\n\t4xsqYeWdZs...yLFLvQnkh1\n\t113.07\n\t+2"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:12+00:00",
+          "timestamp_local": "2026-03-10T14:27:12+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "LQhz97NpKsv9Z9qDUsTNS7Zqvr6mhfmYR4thGfNCseEwQcsqfs35kVd765kSAqNfcRHA1fc4eFpKefraGr5p6yi\n\t13:27:12 Mar 10, 2026\n\tTransfer\n\tEligible wallet? \u2192 Flip.gg\ud83c\udf40\ud83c\udfb0-32890.flipgg.sol\n\t0.45"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:12+00:00",
+          "timestamp_local": "2026-03-10T14:27:12+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "4BaNhvUG1JLMYaziNjuXwzWTiGGeHNrLpdidfjhvAfxX83dB85bnNeEwMqVCrLHaJdYGKCDCK26LwZV2L8igxmJT\n\t13:27:12 Mar 10, 2026\n\tTransfer\n\tEligible wallet? \u2192 Flip.gg\ud83c\udf40\ud83c\udfb0-32890.flipgg.sol\n\t0.48"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:12+00:00",
+          "timestamp_local": "2026-03-10T14:27:12+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "uD9SBonCpX6aWVsWbpsPJrLvf3Qu3G97oXbL4m2PNrjAKEdzobZ7UFFBTazgWVsdhwLyA6mvoDZ8Gg5LujhnEqE\n\t13:27:12 Mar 10, 2026\n\tTransfer\n\tEligible wallet? \u2192 Flip.gg\ud83c\udf40\ud83c\udfb0-32890.flipgg.sol\n\t0.43"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:12+00:00",
+          "timestamp_local": "2026-03-10T14:27:12+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "dtkrSzQvHxcMNCUwoA9BtUApsu33KCgm8viJU8mkyVK4e3EUfZWfUX4Gd7LfEywASEfbMP5vHP1Rb8WaipFHvTs\n\t13:27:12 Mar 10, 2026\n\tTransfer\n\tFlip.gg \u2192 Trusted Since 2021......-32891.flipgg.sol\n\t0.44"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:12+00:00",
+          "timestamp_local": "2026-03-10T14:27:12+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "oBnsD35KmNsok5pkn2ZeySfHTm4h62fabQQ8yWW9HA6h8HgeAhLE9GQ7fHTZZA64tPH86qEUtqg96ciAvqcdD4T\n\t13:27:12 Mar 10, 2026\n\tTransfer\n\tEligible wallet? \u2192 Flip.gg\ud83c\udf40\ud83c\udfb0-32890.flipgg.sol\n\t0.47"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:12+00:00",
+          "timestamp_local": "2026-03-10T14:27:12+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "56QGXJNhR5x5DGyMCuFMieefF6c4wWSpx42sJbYeqyRoKKghZD8dpMk3CGHQbAxBAjghbNtUzLoHuMggpHn93cCk\n\t13:27:12 Mar 10, 2026\n\tTransfer\n\tFlip.gg \u2192 Trusted Since 2021......-32891.flipgg.sol\n\t0.46"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:12+00:00",
+          "timestamp_local": "2026-03-10T14:27:12+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "3EeSA8bRxbfguj7RJJphS7uPro9vmb3aTvgwnJ1TL6Ve7HcveTr6Kona5EK6azgCytR1iGhvkjz8XHMYvacHT8LK\n\t13:27:12 Mar 10, 2026\n\tTransfer\n\tEligible wallet? \u2192 Flip.gg\ud83c\udf40\ud83c\udfb0-32890.flipgg.sol\n\t0.44"
+        }
+      ],
+      "rows_in_range": [
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:28:38+00:00",
+          "timestamp_local": "2026-03-10T14:28:38+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "2DHcsytwxUrjeR7J5WeRn6RGsMEcBq7xGe3DnBu8pMZHgNPya5eeeFLxZuipjsUcqUnAQAdesfDt9nYU59UcLCVT\n\t13:28:38 Mar 10, 2026\n\tTransfer\n\t4xsqYeWdZs...yLFLvQnkh1\n\t192.08"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:59+00:00",
+          "timestamp_local": "2026-03-10T14:27:59+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "4Zcvuf4o1oX23ReBk3kT4Y5MSGAbopBoR6Zw33qUkqeMKAALQwgM9jpEXR1L2HBVBNWx5yDtW4rkgmrjfc2cSXBS\n\t13:27:59 Mar 10, 2026\n\tburn\n1+\n\t4xsqYeWdZs...yLFLvQnkh1\n\t0.002039"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:27+00:00",
+          "timestamp_local": "2026-03-10T14:27:27+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "2dtt61XDjErqpeEgKZnjy87UuDzm8Q6hgt1c1Gj4vDHPgjgTqtp2TbcGaLPbSkgHmer9DXS78pjonxXt1zdg76F2\n\t13:27:27 Mar 10, 2026\n\tLiquidity: Remove\n\t4xsqYeWdZs...yLFLvQnkh1\n\t113.07\n\t+2"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:12+00:00",
+          "timestamp_local": "2026-03-10T14:27:12+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "LQhz97NpKsv9Z9qDUsTNS7Zqvr6mhfmYR4thGfNCseEwQcsqfs35kVd765kSAqNfcRHA1fc4eFpKefraGr5p6yi\n\t13:27:12 Mar 10, 2026\n\tTransfer\n\tEligible wallet? \u2192 Flip.gg\ud83c\udf40\ud83c\udfb0-32890.flipgg.sol\n\t0.45"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:12+00:00",
+          "timestamp_local": "2026-03-10T14:27:12+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "4BaNhvUG1JLMYaziNjuXwzWTiGGeHNrLpdidfjhvAfxX83dB85bnNeEwMqVCrLHaJdYGKCDCK26LwZV2L8igxmJT\n\t13:27:12 Mar 10, 2026\n\tTransfer\n\tEligible wallet? \u2192 Flip.gg\ud83c\udf40\ud83c\udfb0-32890.flipgg.sol\n\t0.48"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:12+00:00",
+          "timestamp_local": "2026-03-10T14:27:12+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "uD9SBonCpX6aWVsWbpsPJrLvf3Qu3G97oXbL4m2PNrjAKEdzobZ7UFFBTazgWVsdhwLyA6mvoDZ8Gg5LujhnEqE\n\t13:27:12 Mar 10, 2026\n\tTransfer\n\tEligible wallet? \u2192 Flip.gg\ud83c\udf40\ud83c\udfb0-32890.flipgg.sol\n\t0.43"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:12+00:00",
+          "timestamp_local": "2026-03-10T14:27:12+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "dtkrSzQvHxcMNCUwoA9BtUApsu33KCgm8viJU8mkyVK4e3EUfZWfUX4Gd7LfEywASEfbMP5vHP1Rb8WaipFHvTs\n\t13:27:12 Mar 10, 2026\n\tTransfer\n\tFlip.gg \u2192 Trusted Since 2021......-32891.flipgg.sol\n\t0.44"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:12+00:00",
+          "timestamp_local": "2026-03-10T14:27:12+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "oBnsD35KmNsok5pkn2ZeySfHTm4h62fabQQ8yWW9HA6h8HgeAhLE9GQ7fHTZZA64tPH86qEUtqg96ciAvqcdD4T\n\t13:27:12 Mar 10, 2026\n\tTransfer\n\tEligible wallet? \u2192 Flip.gg\ud83c\udf40\ud83c\udfb0-32890.flipgg.sol\n\t0.47"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:12+00:00",
+          "timestamp_local": "2026-03-10T14:27:12+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "56QGXJNhR5x5DGyMCuFMieefF6c4wWSpx42sJbYeqyRoKKghZD8dpMk3CGHQbAxBAjghbNtUzLoHuMggpHn93cCk\n\t13:27:12 Mar 10, 2026\n\tTransfer\n\tFlip.gg \u2192 Trusted Since 2021......-32891.flipgg.sol\n\t0.46"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-10T13:27:12+00:00",
+          "timestamp_local": "2026-03-10T14:27:12+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "3EeSA8bRxbfguj7RJJphS7uPro9vmb3aTvgwnJ1TL6Ve7HcveTr6Kona5EK6azgCytR1iGhvkjz8XHMYvacHT8LK\n\t13:27:12 Mar 10, 2026\n\tTransfer\n\tEligible wallet? \u2192 Flip.gg\ud83c\udf40\ud83c\udfb0-32890.flipgg.sol\n\t0.44"
+        }
+      ],
+      "diagnostics": {
+        "status": "ok",
+        "rows_seen_count": 10,
+        "rows_in_range_count": 10,
+        "rows_with_parsed_timestamp_count": 10,
+        "rows_without_parsed_timestamp_count": 0,
+        "rows_with_relative_timestamp_count": 0,
+        "rows_with_absolute_timestamp_count": 10
+      }
+    }
+  },
+  "warnings": []
+}

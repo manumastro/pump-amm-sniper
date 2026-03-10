@@ -1,0 +1,23 @@
+{
+  "query": {
+    "creator": "4xsqYeWdZs1tg9M6CUFoki1n4TYUnaCgP3yLFLvQnkh1",
+    "token": "EsAABGbsR8aGjiCHf4uXmcVEyFnVmZ3EcBfpqsMNRp99",
+    "tabs": [
+      "Transactions",
+      "Transfers",
+      "Activities"
+    ],
+    "scope": "token",
+    "tz": "Europe/Berlin",
+    "from_local": "2026-03-10T14:27:05+01:00",
+    "to_local": "2026-03-10T14:28:45+01:00",
+    "from_utc": "2026-03-10T13:27:05+00:00",
+    "to_utc": "2026-03-10T13:28:45+00:00",
+    "max_pages": 3,
+    "headless": false
+  },
+  "scope": "creator",
+  "account": "4xsqYeWdZs1tg9M6CUFoki1n4TYUnaCgP3yLFLvQnkh1",
+  "results": {},
+  "warnings": []
+}
