@@ -66,11 +66,24 @@ type PrecreateBurstResult = {
     totalSol: number;
     relStdDev: number;
     amountRatio: number;
+    windowSec?: number | null;
 };
 
 type SetupBurstResult = {
     detected: boolean;
     creates: number;
+    lookupTables: number;
+    windowSec: number | null;
+};
+
+type PrecreateLargeUniformBurstResult = {
+    detected: boolean;
+    transfers: number;
+    destinations: number;
+    medianSol: number;
+    totalSol: number;
+    relStdDev: number;
+    amountRatio: number;
     windowSec: number | null;
 };
 
@@ -132,6 +145,13 @@ type CreatorRiskDeps = {
         entrySolLiquidity?: number,
         excludedDestinations?: Set<string>,
     ) => Promise<CreatorCashoutRisk>;
+    collectPrecreateCreatorRiskTxs: (
+        connection: Connection,
+        creatorAddress: string,
+        createPoolSignature?: string,
+        createPoolBlockTime?: number | null,
+        prefetchedCreatorRiskTxs?: ParsedCreatorRiskTx[],
+    ) => Promise<ParsedCreatorRiskTx[]>;
     collectPrecreateOutboundTransfers: (
         connection: Connection,
         creatorAddress: string,
@@ -176,16 +196,21 @@ function classifySetupBurst(parsedCreatorRiskTxs: ParsedCreatorRiskTx[], creator
             blockTime: blockTime ?? tx?.blockTime ?? null,
             creates: flattenParsedInstructions(tx).reduce((count, ix) => {
                 const type = getInstructionType(ix);
-                return type === "create" || type === "createlookuptable" || type === "mintto" ? count + 1 : count;
+                return type === "create" || type === "mintto" ? count + 1 : count;
+            }, 0),
+            lookupTables: flattenParsedInstructions(tx).reduce((count, ix) => {
+                const type = getInstructionType(ix);
+                return type === "createlookuptable" ? count + 1 : count;
             }, 0),
         }))
-        .filter((event) => event.creates > 0 && Number.isFinite(event.blockTime));
+        .filter((event) => (event.creates > 0 || event.lookupTables > 0) && Number.isFinite(event.blockTime));
 
     if (!setupEvents.length) {
-        return { detected: false, creates: 0, windowSec: null };
+        return { detected: false, creates: 0, lookupTables: 0, windowSec: null };
     }
 
     const creates = setupEvents.reduce((sum, event) => sum + event.creates, 0);
+    const lookupTables = setupEvents.reduce((sum, event) => sum + event.lookupTables, 0);
     const times = setupEvents.map((event) => Number(event.blockTime));
     const windowSec = Math.max(0, Math.max(...times) - Math.min(...times));
     return {
@@ -194,6 +219,110 @@ function classifySetupBurst(parsedCreatorRiskTxs: ParsedCreatorRiskTx[], creator
             creates >= CONFIG.CREATOR_RISK_SETUP_BURST_MIN_CREATES &&
             windowSec <= CONFIG.CREATOR_RISK_SETUP_BURST_MAX_WINDOW_SEC,
         creates,
+        lookupTables,
+        windowSec,
+    };
+}
+
+function mergeParsedCreatorRiskTxs(
+    baseEntries: ParsedCreatorRiskTx[],
+    extraEntries: ParsedCreatorRiskTx[],
+): ParsedCreatorRiskTx[] {
+    const bySig = new Map<string, ParsedCreatorRiskTx>();
+    for (const entry of [...baseEntries, ...extraEntries]) {
+        bySig.set(entry.signature, entry);
+    }
+    return [...bySig.values()].sort((a, b) => (a.blockTime || 0) - (b.blockTime || 0));
+}
+
+function extractOutboundTransfersFromParsedCreatorRiskTxs(
+    parsedCreatorRiskTxs: ParsedCreatorRiskTx[],
+    creatorAddress: string,
+): Array<{ destination: string; sol: number; blockTime: number }> {
+    return parsedCreatorRiskTxs
+        .filter(({ tx }) => getFeePayer(tx) === creatorAddress)
+        .flatMap(({ blockTime, tx }) => {
+            const eventTime = blockTime ?? tx?.blockTime ?? null;
+            return flattenParsedInstructions(tx)
+                .map((ix) => {
+                    const parsed = ix?.parsed;
+                    const type = getInstructionType(ix);
+                    if (ix?.program !== "system" || type !== "transfer") return null;
+                    const info = parsed?.info || {};
+                    const source = info.source || info.from || null;
+                    const destination = info.destination || info.to || null;
+                    const lamports = Number(info.lamports || 0);
+                    if (
+                        source !== creatorAddress ||
+                        !destination ||
+                        !Number.isFinite(eventTime) ||
+                        !Number.isFinite(lamports) ||
+                        lamports <= 0
+                    ) {
+                        return null;
+                    }
+                    return {
+                        destination,
+                        sol: lamports / 1e9,
+                        blockTime: Number(eventTime),
+                    };
+                })
+                .filter((entry): entry is { destination: string; sol: number; blockTime: number } => !!entry);
+        });
+}
+
+function classifyPrecreateLargeUniformBurst(
+    parsedCreatorRiskTxs: ParsedCreatorRiskTx[],
+    creatorAddress: string,
+): PrecreateLargeUniformBurstResult {
+    const positive = extractOutboundTransfersFromParsedCreatorRiskTxs(parsedCreatorRiskTxs, creatorAddress).filter(
+        (t) => Number.isFinite(t.sol) && t.sol >= CONFIG.CREATOR_RISK_PRECREATE_LARGE_UNIFORM_MIN_TRANSFER_SOL
+    );
+    if (!positive.length) {
+        return {
+            detected: false,
+            transfers: 0,
+            destinations: 0,
+            medianSol: 0,
+            totalSol: 0,
+            relStdDev: Infinity,
+            amountRatio: Infinity,
+            windowSec: null,
+        };
+    }
+
+    const values = positive.map((t) => t.sol).sort((a, b) => a - b);
+    const destinations = new Set(positive.map((t) => t.destination)).size;
+    const totalSol = values.reduce((sum, v) => sum + v, 0);
+    const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
+    const variance = values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / values.length;
+    const stdDev = Math.sqrt(Math.max(0, variance));
+    const relStdDev = mean > 0 ? stdDev / mean : Infinity;
+    const medianSol =
+        values.length % 2 === 0
+            ? (values[(values.length / 2) - 1] + values[values.length / 2]) / 2
+            : values[Math.floor(values.length / 2)];
+    const amountRatio = values[0] > 0 ? values[values.length - 1] / values[0] : Infinity;
+    const times = positive.map((t) => t.blockTime);
+    const windowSec = Math.max(0, Math.max(...times) - Math.min(...times));
+
+    const transfers = positive.length;
+
+    return {
+        detected:
+            CONFIG.CREATOR_RISK_PRECREATE_LARGE_UNIFORM_BLOCK_ENABLED &&
+            transfers >= CONFIG.CREATOR_RISK_PRECREATE_LARGE_UNIFORM_MIN_TRANSFERS &&
+            destinations >= CONFIG.CREATOR_RISK_PRECREATE_LARGE_UNIFORM_MIN_DESTINATIONS &&
+            totalSol >= CONFIG.CREATOR_RISK_PRECREATE_LARGE_UNIFORM_MIN_TOTAL_SOL &&
+            relStdDev <= CONFIG.CREATOR_RISK_PRECREATE_LARGE_UNIFORM_MAX_REL_STDDEV &&
+            amountRatio <= CONFIG.CREATOR_RISK_PRECREATE_LARGE_UNIFORM_MAX_AMOUNT_RATIO &&
+            windowSec <= CONFIG.CREATOR_RISK_PRECREATE_LARGE_UNIFORM_MAX_WINDOW_SEC,
+        transfers: positive.length,
+        destinations,
+        medianSol,
+        totalSol,
+        relStdDev,
+        amountRatio,
         windowSec,
     };
 }
@@ -290,8 +419,12 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
 
     function isProbationBypassForbidden(result?: CreatorRiskResult): boolean {
         const normalized = (result?.reason || "").toLowerCase();
+        const creatorCashoutSol = Number(result?.creatorCashoutSol || 0);
         const creatorCashoutPct = Number(result?.creatorCashoutPctOfEntryLiquidity || 0);
         const creatorCashoutScore = Number(result?.creatorCashoutScore || 0);
+        const uniqueCounterparties = Number(result?.uniqueCounterparties || 0);
+        const solInTransfers = Number(result?.solInTransfers || 0);
+        const solOutTransfers = Number(result?.solOutTransfers || 0);
         if (
             normalized.includes("creator in historical rug blacklist") ||
             normalized.includes("funder blacklisted") ||
@@ -311,6 +444,24 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
             CONFIG.PAPER_CREATOR_RISK_EXTREME_CASHOUT_BLOCK_ENABLED &&
             creatorCashoutPct >= CONFIG.PAPER_CREATOR_RISK_EXTREME_CASHOUT_MIN_PCT_OF_LIQ &&
             creatorCashoutScore >= CONFIG.PAPER_CREATOR_RISK_EXTREME_CASHOUT_MIN_SCORE
+        ) {
+            return true;
+        }
+
+        if (
+            CONFIG.PAPER_CREATOR_RISK_EXTREME_PROBATION_CASHOUT_BLOCK_ENABLED &&
+            creatorCashoutSol >= CONFIG.PAPER_CREATOR_RISK_EXTREME_PROBATION_CASHOUT_MIN_SOL &&
+            creatorCashoutPct >= CONFIG.PAPER_CREATOR_RISK_EXTREME_PROBATION_CASHOUT_MIN_PCT_OF_LIQ &&
+            creatorCashoutScore >= CONFIG.PAPER_CREATOR_RISK_EXTREME_PROBATION_CASHOUT_MIN_SCORE
+        ) {
+            return true;
+        }
+
+        if (
+            CONFIG.PAPER_CREATOR_RISK_EXTREME_HISTORY_BLOCK_ENABLED &&
+            uniqueCounterparties >= CONFIG.PAPER_CREATOR_RISK_EXTREME_HISTORY_MIN_COUNTERPARTIES &&
+            solOutTransfers >= CONFIG.PAPER_CREATOR_RISK_EXTREME_HISTORY_MIN_OUT_TRANSFERS &&
+            solInTransfers <= CONFIG.PAPER_CREATOR_RISK_EXTREME_HISTORY_MAX_IN_TRANSFERS
         ) {
             return true;
         }
@@ -558,7 +709,7 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                     : Infinity;
             const sprayOutbound = deps.classifySprayOutboundPattern(outboundTransfers);
             const sprayInbound = deps.classifyInboundSprayPattern(inboundTransfers);
-            const setupBurst = classifySetupBurst(parsedCreatorRiskTxs, creatorAddress);
+            let setupBurst = classifySetupBurst(parsedCreatorRiskTxs, creatorAddress);
             const closeAccountBurst = classifyCloseAccountBurst(parsedCreatorRiskTxs, creatorAddress);
             const rapidDispersal = classifyRapidDispersal(parsedCreatorRiskTxs, creatorAddress);
 
@@ -574,6 +725,8 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                 latestObservedSignature,
                 latestObservedBlockTime,
                 fastCheckMs: earlyChecksDoneAtMs - startedAtMs,
+                solInTransfers,
+                solOutTransfers,
                 ...result,
             });
 
@@ -599,9 +752,6 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                     `out=${sprayOutbound.transfers} dest=${sprayOutbound.destinations} median=${sprayOutbound.medianSol.toFixed(3)} ` +
                     `rel_std=${sprayOutbound.relStdDev.toFixed(2)} ratio=${sprayOutbound.amountRatio.toFixed(2)}`
                 );
-            }
-            if (setupBurst.creates > 0) {
-                stageLog(ctx, "CSETUP", `creates=${setupBurst.creates} window=${setupBurst.windowSec ?? "n/a"}s`);
             }
             if (closeAccountBurst.closes > 0) {
                 stageLog(
@@ -661,7 +811,7 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                     options.entrySolLiquidity,
                     createPoolOutboundDestinations,
                 ),
-                deps.collectPrecreateOutboundTransfers(
+                deps.collectPrecreateCreatorRiskTxs(
                     connection,
                     creatorAddress,
                     options.createPoolSignature,
@@ -686,6 +836,7 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                 }
                 : { totalSol: 0, maxSingleSol: 0, pctOfEntryLiquidity: 0, score: 0, destination: null as string | null };
             let precreateOutboundTransfers: Array<{ destination: string; sol: number }> = [];
+            let precreateCreatorRiskTxs: ParsedCreatorRiskTx[] = [];
             let relayFunding: RelayFundingResult = {
                 detected: false,
                 root: previousResult?.relayFundingRoot || null,
@@ -695,14 +846,26 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
             };
 
             if (!deepOutcome.timedOut && deepOutcome.value) {
-                [creatorCashout, precreateOutboundTransfers, relayFunding] = deepOutcome.value;
+                [creatorCashout, precreateCreatorRiskTxs, relayFunding] = deepOutcome.value;
             } else if (deepOutcome.timedOut) {
                 stageLog(ctx, "CRISK", `deep checks timed out at ${deepBudgetMs}ms`);
             }
 
             const deepChecksDoneAtMs = Date.now();
             const deepChecksComplete = !deepOutcome.timedOut;
+            const combinedPrecreateTxs = mergeParsedCreatorRiskTxs(parsedCreatorRiskTxs, precreateCreatorRiskTxs);
+            setupBurst = classifySetupBurst(combinedPrecreateTxs, creatorAddress);
+            precreateOutboundTransfers = extractOutboundTransfersFromParsedCreatorRiskTxs(combinedPrecreateTxs, creatorAddress)
+                .map(({ destination, sol }) => ({ destination, sol }));
             const precreateBurst = deps.classifyPrecreateOutboundBurst(precreateOutboundTransfers);
+            const precreateLargeUniformBurst = classifyPrecreateLargeUniformBurst(combinedPrecreateTxs, creatorAddress);
+            if (setupBurst.creates > 0 || setupBurst.lookupTables > 0) {
+                stageLog(
+                    ctx,
+                    "CSETUP",
+                    `creates=${setupBurst.creates} lookups=${setupBurst.lookupTables} window=${setupBurst.windowSec ?? "n/a"}s`
+                );
+            }
             if (relayFunding.detected || relayFunding.inboundSol > 0 || relayFunding.outboundSol > 0) {
                 stageLog(
                     ctx,
@@ -733,7 +896,15 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                     ctx,
                     "PBURST",
                     `precreate out=${precreateBurst.transfers} dest=${precreateBurst.destinations} total=${precreateBurst.totalSol.toFixed(3)} median=${precreateBurst.medianSol.toFixed(3)} ` +
-                    `rel_std=${precreateBurst.relStdDev.toFixed(2)} ratio=${precreateBurst.amountRatio.toFixed(2)}`
+                        `rel_std=${precreateBurst.relStdDev.toFixed(2)} ratio=${precreateBurst.amountRatio.toFixed(2)}`
+                );
+            }
+            if (precreateLargeUniformBurst.detected) {
+                stageLog(
+                    ctx,
+                    "PLBURST",
+                    `precreate out=${precreateLargeUniformBurst.transfers} dest=${precreateLargeUniformBurst.destinations} total=${precreateLargeUniformBurst.totalSol.toFixed(3)} median=${precreateLargeUniformBurst.medianSol.toFixed(3)} ` +
+                    `rel_std=${precreateLargeUniformBurst.relStdDev.toFixed(2)} ratio=${precreateLargeUniformBurst.amountRatio.toFixed(2)} window=${precreateLargeUniformBurst.windowSec ?? "n/a"}s`
                 );
             }
             stageLog(
@@ -896,6 +1067,48 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                 }));
             }
 
+            if (deepChecksComplete && precreateLargeUniformBurst.detected) {
+                return cacheAndReturn(enrichBaseResult({
+                    ok: false,
+                    reason:
+                        `precreate large uniform outbound burst ${precreateLargeUniformBurst.transfers} transfers ` +
+                        `to ${precreateLargeUniformBurst.destinations} destinations ` +
+                        `(total ${precreateLargeUniformBurst.totalSol.toFixed(3)} SOL, median ${precreateLargeUniformBurst.medianSol.toFixed(3)} SOL)`,
+                    funder,
+                    uniqueCounterparties,
+                    compressedWindowSec,
+                    burner,
+                    precreateLargeBurstTransfers: precreateLargeUniformBurst.transfers,
+                    deepChecksComplete: true,
+                    deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
+                }));
+            }
+
+            if (
+                deepChecksComplete &&
+                CONFIG.CREATOR_RISK_LOOKUP_TABLE_NEAR_CREATE_BLOCK_ENABLED &&
+                setupBurst.lookupTables >= CONFIG.CREATOR_RISK_LOOKUP_TABLE_NEAR_CREATE_MIN_LOOKUPS &&
+                setupBurst.creates >= CONFIG.CREATOR_RISK_LOOKUP_TABLE_NEAR_CREATE_MIN_CREATES &&
+                setupBurst.windowSec !== null &&
+                setupBurst.windowSec <= CONFIG.CREATOR_RISK_LOOKUP_TABLE_NEAR_CREATE_MAX_WINDOW_SEC
+            ) {
+                return cacheAndReturn(enrichBaseResult({
+                    ok: false,
+                    reason:
+                        `lookup-table + setup burst ${setupBurst.lookupTables} lookups ` +
+                        `and ${setupBurst.creates} create/mint ops in ${setupBurst.windowSec}s`,
+                    funder,
+                    uniqueCounterparties,
+                    compressedWindowSec,
+                    burner,
+                    setupBurstCreates: setupBurst.creates,
+                    setupBurstLookupTables: setupBurst.lookupTables,
+                    setupBurstWindowSec: setupBurst.windowSec,
+                    deepChecksComplete: true,
+                    deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
+                }));
+            }
+
             if (setupBurst.detected) {
                 return cacheAndReturn(enrichBaseResult({
                     ok: false,
@@ -905,6 +1118,7 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                     compressedWindowSec,
                     burner,
                     setupBurstCreates: setupBurst.creates,
+                    setupBurstLookupTables: setupBurst.lookupTables,
                     setupBurstWindowSec: setupBurst.windowSec,
                     deepChecksComplete: true,
                     deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,

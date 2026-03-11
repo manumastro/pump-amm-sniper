@@ -1178,44 +1178,24 @@ function classifyPrecreateOutboundBurst(outboundTransfers: Array<{ destination: 
     };
 }
 
-async function collectPrecreateOutboundTransfers(
+async function collectPrecreateCreatorRiskTxs(
     connection: Connection,
     creatorAddress: string,
     createPoolSignature?: string,
     createPoolBlockTime?: number | null,
     prefetchedCreatorRiskTxs: ParsedCreatorRiskTx[] = [],
-): Promise<Array<{ destination: string; sol: number }>> {
+): Promise<ParsedCreatorRiskTx[]> {
     if (!createPoolSignature || !createPoolBlockTime || !CONFIG.CREATOR_RISK_PRECREATE_BURST_BLOCK_ENABLED) {
         return [];
     }
 
     try {
         const windowSec = Math.max(1, CONFIG.CREATOR_RISK_PRECREATE_BURST_WINDOW_SEC);
-        const prefetchedOutboundTransfers: Array<{ destination: string; sol: number }> = [];
-        for (const parsed of prefetchedCreatorRiskTxs) {
-            const blockTime = parsed.blockTime || 0;
-            if (!blockTime || blockTime > createPoolBlockTime || createPoolBlockTime - blockTime > windowSec) continue;
-            const noopCounterparties = new Set<string>();
-            const noopLinks = new Set<string>();
-            const outer = walkParsedInstructions(
-                parsed.tx.transaction?.message?.instructions,
-                creatorAddress,
-                noopCounterparties,
-                noopLinks,
-                new Set<string>(),
-            );
-            prefetchedOutboundTransfers.push(...outer.outboundTransfers);
-            for (const inner of parsed.tx.meta?.innerInstructions || []) {
-                const part = walkParsedInstructions(
-                    inner.instructions,
-                    creatorAddress,
-                    noopCounterparties,
-                    noopLinks,
-                    new Set<string>(),
-                );
-                prefetchedOutboundTransfers.push(...part.outboundTransfers);
-            }
-        }
+        const prefetchedInWindow = prefetchedCreatorRiskTxs
+            .filter((parsed) => {
+                const blockTime = parsed.blockTime || 0;
+                return !!blockTime && blockTime <= createPoolBlockTime && createPoolBlockTime - blockTime <= windowSec;
+            });
 
         const sigs = await connection.getSignaturesForAddress(
             new PublicKey(creatorAddress),
@@ -1233,12 +1213,37 @@ async function collectPrecreateOutboundTransfers(
                 return t <= createPoolBlockTime && createPoolBlockTime - t <= windowSec;
             })
             .sort((a, b) => (a.blockTime || 0) - (b.blockTime || 0))
-            .filter((s) => !prefetchedCreatorRiskTxs.some((parsed) => parsed.signature === s.signature))
+            .filter((s) => !prefetchedInWindow.some((parsed) => parsed.signature === s.signature))
             .slice(-parseLimit);
 
-        const outboundTransfers: Array<{ destination: string; sol: number }> = [...prefetchedOutboundTransfers];
         const parsedCandidates = await fetchParsedTransactionsForSignatures(connection, candidates);
-        for (const parsed of parsedCandidates) {
+        const bySig = new Map<string, ParsedCreatorRiskTx>();
+        for (const entry of [...prefetchedInWindow, ...parsedCandidates]) {
+            bySig.set(entry.signature, entry);
+        }
+        return [...bySig.values()].sort((a, b) => (a.blockTime || 0) - (b.blockTime || 0));
+    } catch {
+        return [];
+    }
+}
+
+async function collectPrecreateOutboundTransfers(
+    connection: Connection,
+    creatorAddress: string,
+    createPoolSignature?: string,
+    createPoolBlockTime?: number | null,
+    prefetchedCreatorRiskTxs: ParsedCreatorRiskTx[] = [],
+): Promise<Array<{ destination: string; sol: number }>> {
+    try {
+        const precreateEntries = await collectPrecreateCreatorRiskTxs(
+            connection,
+            creatorAddress,
+            createPoolSignature,
+            createPoolBlockTime,
+            prefetchedCreatorRiskTxs,
+        );
+        const outboundTransfers: Array<{ destination: string; sol: number }> = [];
+        for (const parsed of precreateEntries) {
             const noopCounterparties = new Set<string>();
             const noopLinks = new Set<string>();
             const outer = walkParsedInstructions(
@@ -2123,6 +2128,7 @@ const creatorRiskService = createCreatorRiskService({
     classifySprayOutboundPattern,
     classifyInboundSprayPattern,
     classifyCreatorCashoutRisk,
+    collectPrecreateCreatorRiskTxs,
     collectPrecreateOutboundTransfers,
     classifyRecentRelayFunding,
     classifyPrecreateOutboundBurst,

@@ -27,13 +27,17 @@ export type CreatorRiskResult = {
     creatorCashoutPctOfEntryLiquidity?: number;
     creatorCashoutScore?: number;
     creatorCashoutDestination?: string | null;
+    solInTransfers?: number;
+    solOutTransfers?: number;
     relayFundingRoot?: string | null;
     directAmmReentrySig?: string | null;
     creatorSeedSol?: number;
     creatorSeedPctOfCurrentLiq?: number;
     inboundSpraySources?: number;
     precreateBurstTransfers?: number;
+    precreateLargeBurstTransfers?: number;
     setupBurstCreates?: number;
+    setupBurstLookupTables?: number;
     setupBurstWindowSec?: number | null;
     closeAccountBurstTxs?: number;
     closeAccountBurstCloses?: number;
