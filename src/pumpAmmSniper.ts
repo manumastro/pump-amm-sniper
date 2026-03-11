@@ -252,6 +252,8 @@ const CONFIG = {
     QUEUE_MAX_PENDING_SIGNATURES: Number(process.env.QUEUE_MAX_PENDING_SIGNATURES || 300),
     CREATOR_RISK_RATE_LIMIT_RETRIES: Number(process.env.CREATOR_RISK_RATE_LIMIT_RETRIES || 3),
     CREATOR_RISK_RATE_LIMIT_RETRY_BASE_MS: Number(process.env.CREATOR_RISK_RATE_LIMIT_RETRY_BASE_MS || 350),
+    CREATOR_RISK_DEEP_CHECK_BUDGET_MS: Number(process.env.CREATOR_RISK_DEEP_CHECK_BUDGET_MS || 12000),
+    CREATOR_RISK_RECHECK_DEEP_CHECK_BUDGET_MS: Number(process.env.CREATOR_RISK_RECHECK_DEEP_CHECK_BUDGET_MS || 2500),
     PAPER_TRADE_MAX_LOSS_PCT: Number(process.env.PAPER_TRADE_MAX_LOSS_PCT || 80),
 };
 
@@ -286,7 +288,7 @@ const seenSignatures = new Map<string, number>();
 const lowLiquidityPools = new Map<string, number>();
 let cachedSolPriceUsd: number | null = null;
 let cachedSolPriceAtMs = 0;
-const creatorRiskCache = new Map<string, { checkedAtMs: number; result: CreatorRiskResult }>();
+const creatorRiskCache = new Map<string, CreatorRiskCacheEntry>();
 let cachedRugHistoryAtMs = 0;
 let cachedRugHistory: RugHistory | null = null;
 const recentFunderCreators = new Map<string, Array<{ creator: string; seenAtMs: number }>>();
@@ -452,10 +454,26 @@ function formatLiquiditySol(value: number): string {
     return value.toFixed(6);
 }
 
+function formatQuoteMovePct(baseline: number, current: number): string {
+    if (!Number.isFinite(baseline) || baseline <= 0 || !Number.isFinite(current)) {
+        return "n/a";
+    }
+    const changePct = ((current - baseline) / baseline) * 100;
+    if (Math.abs(changePct) < 0.005) return "flat 0.00%";
+    if (changePct > 0) return `gain +${changePct.toFixed(2)}%`;
+    return `drop ${Math.abs(changePct).toFixed(2)}%`;
+}
+
 type CreatorRiskResult = {
     ok: boolean;
     reason?: string;
     transientError?: boolean;
+    latestObservedSignature?: string | null;
+    latestObservedBlockTime?: number | null;
+    deepChecksComplete?: boolean;
+    deepTimedOut?: boolean;
+    fastCheckMs?: number;
+    deepCheckMs?: number;
     funder?: string | null;
     uniqueCounterparties?: number;
     compressedWindowSec?: number | null;
@@ -478,6 +496,11 @@ type CreatorRiskResult = {
     repeatedCreateRemoveCashouts?: number;
     repeatedCreateRemoveWindowSec?: number | null;
     repeatedCreateRemoveMaxCashoutSol?: number;
+};
+
+type CreatorRiskCacheEntry = {
+    checkedAtMs: number;
+    result: CreatorRiskResult;
 };
 
 function isRateLimitedMessage(message?: string): boolean {
@@ -1122,6 +1145,8 @@ async function handleNewPool(connection: Connection, signature: string) {
                 createPoolSignature: signature,
                 createPoolBlockTime: tx.blockTime || null,
                 creatorSeedSol,
+                allowFastPathOnDeepTimeout: MONITOR_ONLY,
+                deepCheckBudgetMs: CONFIG.CREATOR_RISK_DEEP_CHECK_BUDGET_MS,
             });
         } else {
             stageLog(ctx, "CRISK", "skipped (creator unresolved + fail-open)");
@@ -1754,6 +1779,51 @@ function trackRecentFunderCreator(funder: string, creatorAddress: string): numbe
     return entries.length;
 }
 
+async function fetchParsedTransactionsForSignatures(
+    connection: Connection,
+    signatures: Array<{ signature: string; blockTime?: number | null }>,
+): Promise<Array<{ signature: string; blockTime: number | null; tx: any }>> {
+    const results = await Promise.all(
+        signatures.map(async (sig) => {
+            try {
+                const tx = await connection.getParsedTransaction(sig.signature, {
+                    maxSupportedTransactionVersion: 0,
+                    commitment: "confirmed",
+                });
+                if (!tx) return null;
+                return {
+                    signature: sig.signature,
+                    blockTime: sig.blockTime ?? tx.blockTime ?? null,
+                    tx,
+                };
+            } catch {
+                return null;
+            }
+        })
+    );
+
+    return results.filter((item): item is { signature: string; blockTime: number | null; tx: any } => !!item);
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<{ timedOut: boolean; value?: T }> {
+    if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+        return promise.then((value) => ({ timedOut: false, value }));
+    }
+
+    return new Promise((resolve) => {
+        const timer = setTimeout(() => resolve({ timedOut: true }), timeoutMs);
+        promise
+            .then((value) => {
+                clearTimeout(timer);
+                resolve({ timedOut: false, value });
+            })
+            .catch(() => {
+                clearTimeout(timer);
+                resolve({ timedOut: true });
+            });
+    });
+}
+
 async function classifyCreatorCashoutRisk(
     connection: Connection,
     creatorAddress: string,
@@ -2065,12 +2135,40 @@ async function collectPrecreateOutboundTransfers(
     creatorAddress: string,
     createPoolSignature?: string,
     createPoolBlockTime?: number | null,
+    prefetchedCreatorRiskTxs: ParsedCreatorRiskTx[] = [],
 ): Promise<Array<{ destination: string; sol: number }>> {
     if (!createPoolSignature || !createPoolBlockTime || !CONFIG.CREATOR_RISK_PRECREATE_BURST_BLOCK_ENABLED) {
         return [];
     }
 
     try {
+        const windowSec = Math.max(1, CONFIG.CREATOR_RISK_PRECREATE_BURST_WINDOW_SEC);
+        const prefetchedOutboundTransfers: Array<{ destination: string; sol: number }> = [];
+        for (const parsed of prefetchedCreatorRiskTxs) {
+            const blockTime = parsed.blockTime || 0;
+            if (!blockTime || blockTime > createPoolBlockTime || createPoolBlockTime - blockTime > windowSec) continue;
+            const noopCounterparties = new Set<string>();
+            const noopLinks = new Set<string>();
+            const outer = walkParsedInstructions(
+                parsed.tx.transaction?.message?.instructions,
+                creatorAddress,
+                noopCounterparties,
+                noopLinks,
+                new Set<string>(),
+            );
+            prefetchedOutboundTransfers.push(...outer.outboundTransfers);
+            for (const inner of parsed.tx.meta?.innerInstructions || []) {
+                const part = walkParsedInstructions(
+                    inner.instructions,
+                    creatorAddress,
+                    noopCounterparties,
+                    noopLinks,
+                    new Set<string>(),
+                );
+                prefetchedOutboundTransfers.push(...part.outboundTransfers);
+            }
+        }
+
         const sigs = await connection.getSignaturesForAddress(
             new PublicKey(creatorAddress),
             {
@@ -2079,7 +2177,6 @@ async function collectPrecreateOutboundTransfers(
             },
             "confirmed",
         );
-        const windowSec = Math.max(1, CONFIG.CREATOR_RISK_PRECREATE_BURST_WINDOW_SEC);
         const parseLimit = Math.max(5, CONFIG.CREATOR_RISK_PRECREATE_BURST_PARSED_TX_LIMIT);
         const candidates = sigs
             .filter((s) => !s.err && !!s.blockTime)
@@ -2088,19 +2185,16 @@ async function collectPrecreateOutboundTransfers(
                 return t <= createPoolBlockTime && createPoolBlockTime - t <= windowSec;
             })
             .sort((a, b) => (a.blockTime || 0) - (b.blockTime || 0))
+            .filter((s) => !prefetchedCreatorRiskTxs.some((parsed) => parsed.signature === s.signature))
             .slice(-parseLimit);
 
-        const outboundTransfers: Array<{ destination: string; sol: number }> = [];
-        for (const sig of candidates) {
-            const tx = await connection.getParsedTransaction(sig.signature, {
-                maxSupportedTransactionVersion: 0,
-                commitment: "confirmed",
-            });
-            if (!tx) continue;
+        const outboundTransfers: Array<{ destination: string; sol: number }> = [...prefetchedOutboundTransfers];
+        const parsedCandidates = await fetchParsedTransactionsForSignatures(connection, candidates);
+        for (const parsed of parsedCandidates) {
             const noopCounterparties = new Set<string>();
             const noopLinks = new Set<string>();
             const outer = walkParsedInstructions(
-                tx.transaction?.message?.instructions,
+                parsed.tx.transaction?.message?.instructions,
                 creatorAddress,
                 noopCounterparties,
                 noopLinks,
@@ -2108,7 +2202,7 @@ async function collectPrecreateOutboundTransfers(
             );
             outboundTransfers.push(...outer.outboundTransfers);
 
-            for (const inner of tx.meta?.innerInstructions || []) {
+            for (const inner of parsed.tx.meta?.innerInstructions || []) {
                 const part = walkParsedInstructions(
                     inner.instructions,
                     creatorAddress,
@@ -2835,12 +2929,44 @@ async function detectCreatorDirectAmmReentry(
     creatorAddress: string,
     createPoolSignature?: string,
     createPoolBlockTime?: number | null,
+    prefetchedCreatorRiskTxs: ParsedCreatorRiskTx[] = [],
 ): Promise<{ detected: boolean; signature: string | null; blockTime: number | null }> {
     if (!CONFIG.CREATOR_RISK_DIRECT_AMM_REENTRY_ENABLED) {
         return { detected: false, signature: null, blockTime: null };
     }
 
     try {
+        for (const parsed of prefetchedCreatorRiskTxs) {
+            if (createPoolSignature && parsed.signature === createPoolSignature) continue;
+            if (
+                createPoolBlockTime &&
+                parsed.blockTime &&
+                parsed.blockTime < createPoolBlockTime
+            ) {
+                continue;
+            }
+            if (
+                createPoolBlockTime &&
+                parsed.blockTime &&
+                parsed.blockTime - createPoolBlockTime > CONFIG.CREATOR_RISK_DIRECT_AMM_REENTRY_WINDOW_SEC
+            ) {
+                continue;
+            }
+
+            const hasOuterAmm = (parsed.tx.transaction?.message?.instructions || []).some((ix: any) => {
+                return instructionProgramIdMatches(ix, PUMPFUN_AMM_PROGRAM_ID);
+            });
+            const hasInnerAmm = (parsed.tx.meta?.innerInstructions || []).some((inner: any) =>
+                (inner.instructions || []).some((ix: any) => {
+                    return instructionProgramIdMatches(ix, PUMPFUN_AMM_PROGRAM_ID);
+                })
+            );
+
+            if (hasOuterAmm || hasInnerAmm) {
+                return { detected: true, signature: parsed.signature, blockTime: parsed.blockTime || null };
+            }
+        }
+
         const sigs = await connection.getSignaturesForAddress(
             new PublicKey(creatorAddress),
             { limit: Math.max(3, CONFIG.CREATOR_RISK_DIRECT_AMM_REENTRY_SIG_LIMIT) },
@@ -2863,17 +2989,15 @@ async function detectCreatorDirectAmmReentry(
             ) {
                 continue;
             }
+            if (prefetchedCreatorRiskTxs.some((parsed) => parsed.signature === sig.signature)) continue;
 
-            const tx = await connection.getParsedTransaction(sig.signature, {
-                maxSupportedTransactionVersion: 0,
-                commitment: "confirmed",
-            });
-            if (!tx) continue;
+            const parsed = (await fetchParsedTransactionsForSignatures(connection, [sig]))[0];
+            if (!parsed) continue;
 
-            const hasOuterAmm = (tx.transaction?.message?.instructions || []).some((ix: any) => {
+            const hasOuterAmm = (parsed.tx.transaction?.message?.instructions || []).some((ix: any) => {
                 return instructionProgramIdMatches(ix, PUMPFUN_AMM_PROGRAM_ID);
             });
-            const hasInnerAmm = (tx.meta?.innerInstructions || []).some((inner: any) =>
+            const hasInnerAmm = (parsed.tx.meta?.innerInstructions || []).some((inner: any) =>
                 (inner.instructions || []).some((ix: any) => {
                     return instructionProgramIdMatches(ix, PUMPFUN_AMM_PROGRAM_ID);
                 })
@@ -2941,6 +3065,10 @@ async function runCreatorRiskCheck(
         createPoolSignature?: string;
         createPoolBlockTime?: number | null;
         creatorSeedSol?: number;
+        previousResult?: CreatorRiskResult;
+        allowReuseIfNoNewActivity?: boolean;
+        allowFastPathOnDeepTimeout?: boolean;
+        deepCheckBudgetMs?: number;
     } = {},
 ): Promise<CreatorRiskResult> {
     if (!CONFIG.CREATOR_RISK_CHECK_ENABLED) {
@@ -2958,9 +3086,16 @@ async function runCreatorRiskCheck(
         const fmtMs = (value: number) => `${Math.max(0, Math.round(value))}ms`;
         const rugHistory = await buildRugHistory(connection);
         const rugHistoryDoneAtMs = Date.now();
+        const previousResult = options.previousResult || cached?.result;
 
         if (rugHistory.rugCreators.has(creatorAddress)) {
-            const result = { ok: false, reason: "creator in historical rug blacklist" };
+            const result = {
+                ok: false,
+                reason: "creator in historical rug blacklist",
+                deepChecksComplete: true,
+                latestObservedSignature: previousResult?.latestObservedSignature || null,
+                latestObservedBlockTime: previousResult?.latestObservedBlockTime || null,
+            };
             creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
             return result;
         }
@@ -2968,6 +3103,20 @@ async function runCreatorRiskCheck(
         const sigLimit = Math.max(5, CONFIG.CREATOR_RISK_SIG_LIMIT);
         const parseLimit = Math.max(3, CONFIG.CREATOR_RISK_PARSED_TX_LIMIT);
         const sigs = await connection.getSignaturesForAddress(new PublicKey(creatorAddress), { limit: sigLimit }, "confirmed");
+        const latestObservedSignature = sigs[0]?.signature || null;
+        const latestObservedBlockTime = sigs[0]?.blockTime ?? null;
+        if (
+            options.allowReuseIfNoNewActivity &&
+            previousResult?.latestObservedSignature &&
+            previousResult.latestObservedSignature === latestObservedSignature
+        ) {
+            stageLog(ctx, "CRISK", `reused cached result (no new creator tx, latest=${shortSig(latestObservedSignature || "-")})`);
+            return {
+                ...previousResult,
+                latestObservedSignature,
+                latestObservedBlockTime,
+            };
+        }
         const chronological = [...sigs].reverse();
         const sample = chronological.slice(-parseLimit);
 
@@ -3050,16 +3199,12 @@ async function runCreatorRiskCheck(
             }
         };
 
-        for (const sig of sample) {
-            const tx = await connection.getParsedTransaction(sig.signature, {
-                maxSupportedTransactionVersion: 0,
-                commitment: "confirmed",
-            });
-            if (!tx) continue;
-            ingestParsedTx(tx, {
-                recordCreatePoolDestinations: sig.signature === options.createPoolSignature,
-                signature: sig.signature,
-                blockTime: sig.blockTime ?? null,
+        const parsedSampleTxs = await fetchParsedTransactionsForSignatures(connection, sample);
+        for (const parsed of parsedSampleTxs) {
+            ingestParsedTx(parsed.tx, {
+                recordCreatePoolDestinations: parsed.signature === options.createPoolSignature,
+                signature: parsed.signature,
+                blockTime: parsed.blockTime ?? null,
             });
         }
 
@@ -3067,12 +3212,12 @@ async function runCreatorRiskCheck(
         // the create tx in `getSignaturesForAddress`. Force-include that tx to avoid blind spots.
         if (options.createPoolSignature && !sampleSignatures.has(options.createPoolSignature)) {
             try {
-                const createTx = await connection.getParsedTransaction(options.createPoolSignature, {
-                    maxSupportedTransactionVersion: 0,
-                    commitment: "confirmed",
-                });
+                const createTx = (await fetchParsedTransactionsForSignatures(connection, [{
+                    signature: options.createPoolSignature,
+                    blockTime: options.createPoolBlockTime ?? null,
+                }]))[0];
                 if (createTx) {
-                    ingestParsedTx(createTx, {
+                    ingestParsedTx(createTx.tx, {
                         recordCreatePoolDestinations: true,
                         signature: options.createPoolSignature,
                         blockTime: options.createPoolBlockTime ?? createTx.blockTime ?? null,
@@ -3117,6 +3262,7 @@ async function runCreatorRiskCheck(
             creatorAddress,
             options.createPoolSignature,
             options.createPoolBlockTime,
+            parsedCreatorRiskTxs,
         );
         const earlyChecksDoneAtMs = Date.now();
         const creatorSeedSol = Number.isFinite(options.creatorSeedSol) ? Math.max(0, options.creatorSeedSol || 0) : 0;
@@ -3138,6 +3284,14 @@ async function runCreatorRiskCheck(
             `window=${compressedWindowSec ?? "n/a"}s funder=${funder ? shortSig(funder) : "-"} refund=${funderRefundSol.toFixed(3)} ` +
             `micro=${microInboundTransfers.length}/${microInboundSources.size}`
         );
+
+        const enrichBaseResult = (result: CreatorRiskResult): CreatorRiskResult => ({
+            latestObservedSignature,
+            latestObservedBlockTime,
+            fastCheckMs: earlyChecksDoneAtMs - startedAtMs,
+            ...result,
+        });
+
         if (creatorSeedSol > 0 && options.entrySolLiquidity && options.entrySolLiquidity > 0) {
             stageLog(
                 ctx,
@@ -3182,13 +3336,14 @@ async function runCreatorRiskCheck(
                 `hist=${fmtMs(rugHistoryDoneAtMs - startedAtMs)} parse=${fmtMs(historyParsedAtMs - rugHistoryDoneAtMs)} ` +
                 `early=${fmtMs(earlyChecksDoneAtMs - historyParsedAtMs)} total=${fmtMs(earlyChecksDoneAtMs - startedAtMs)}`
             );
-            const result = {
+            const result = enrichBaseResult({
                 ok: false,
                 reason: `creator direct AMM re-entry ${directAmmReentry.signature}`,
                 funder,
                 uniqueCounterparties,
                 compressedWindowSec,
                 burner,
+                deepChecksComplete: true,
                 directAmmReentrySig: directAmmReentry.signature,
                 creatorSeedSol,
                 creatorSeedPctOfCurrentLiq,
@@ -3197,12 +3352,12 @@ async function runCreatorRiskCheck(
                 repeatedCreateRemoveCashouts: repeatCreateRemovePattern.cashouts,
                 repeatedCreateRemoveWindowSec: repeatCreateRemovePattern.windowSec,
                 repeatedCreateRemoveMaxCashoutSol: repeatCreateRemovePattern.maxCashoutSol,
-            };
+            });
             creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
             return result;
         }
 
-        const [creatorCashout, precreateOutboundTransfers, relayFunding] = await Promise.all([
+        const deepChecksPromise = Promise.all([
             classifyCreatorCashoutRisk(
                 connection,
                 creatorAddress,
@@ -3216,10 +3371,44 @@ async function runCreatorRiskCheck(
                 creatorAddress,
                 options.createPoolSignature,
                 options.createPoolBlockTime,
+                parsedCreatorRiskTxs,
             ),
             classifyRecentRelayFunding(connection, creatorAddress, funder),
         ]);
+        const deepBudgetMs = Math.max(
+            0,
+            Number(options.deepCheckBudgetMs ?? CONFIG.CREATOR_RISK_DEEP_CHECK_BUDGET_MS)
+        );
+        let deepOutcome = await withTimeout(deepChecksPromise, deepBudgetMs);
+        if (deepOutcome.timedOut && !options.allowFastPathOnDeepTimeout && !MONITOR_ONLY) {
+            deepOutcome = { timedOut: false, value: await deepChecksPromise };
+        }
+
+        let creatorCashout = previousResult?.deepChecksComplete
+            ? {
+                totalSol: Number(previousResult.creatorCashoutSol || 0),
+                maxSingleSol: Number(previousResult.creatorCashoutSol || 0),
+                pctOfEntryLiquidity: Number(previousResult.creatorCashoutPctOfEntryLiquidity || 0),
+                score: Number(previousResult.creatorCashoutScore || 0),
+                destination: previousResult.creatorCashoutDestination || null,
+            }
+            : { totalSol: 0, maxSingleSol: 0, pctOfEntryLiquidity: 0, score: 0, destination: null as string | null };
+        let precreateOutboundTransfers: Array<{ destination: string; sol: number }> = [];
+        let relayFunding = {
+            detected: false,
+            root: previousResult?.relayFundingRoot || null,
+            inboundSol: 0,
+            outboundSol: 0,
+            windowSec: null as number | null,
+        };
+
+        if (!deepOutcome.timedOut && deepOutcome.value) {
+            [creatorCashout, precreateOutboundTransfers, relayFunding] = deepOutcome.value;
+        } else if (deepOutcome.timedOut) {
+            stageLog(ctx, "CRISK", `deep checks timed out at ${deepBudgetMs}ms`);
+        }
         const deepChecksDoneAtMs = Date.now();
+        const deepChecksComplete = !deepOutcome.timedOut;
         const precreateBurst = classifyPrecreateOutboundBurst(precreateOutboundTransfers);
         if (relayFunding.detected || relayFunding.inboundSol > 0 || relayFunding.outboundSol > 0) {
             stageLog(
@@ -3256,14 +3445,17 @@ async function runCreatorRiskCheck(
         );
 
         if (funder && (rugHistory.rugCreators.has(funder) || rugHistory.rugFunders.has(funder))) {
-            const result = {
+            const result = enrichBaseResult({
                 ok: false,
                 reason: `funder blacklisted ${funder}`,
                 funder,
                 uniqueCounterparties,
                 compressedWindowSec,
                 burner,
-            };
+                deepChecksComplete,
+                deepTimedOut: !deepChecksComplete,
+                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
+            });
             creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
             return result;
         }
@@ -3272,28 +3464,34 @@ async function runCreatorRiskCheck(
             funder &&
             (rugHistory.rugMicroBurstSources.has(funder) || rugHistory.rugCashoutRelays.has(funder))
         ) {
-            const result = {
+            const result = enrichBaseResult({
                 ok: false,
                 reason: `funder linked to suspicious infra ${funder}`,
                 funder,
                 uniqueCounterparties,
                 compressedWindowSec,
                 burner,
-            };
+                deepChecksComplete,
+                deepTimedOut: !deepChecksComplete,
+                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
+            });
             creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
             return result;
         }
 
         const blacklistedMicroSource = [...microInboundSources].find((source) => rugHistory.rugMicroBurstSources.has(source));
         if (blacklistedMicroSource) {
-            const result = {
+            const result = enrichBaseResult({
                 ok: false,
                 reason: `micro-burst source blacklisted ${blacklistedMicroSource}`,
                 funder,
                 uniqueCounterparties,
                 compressedWindowSec,
                 burner,
-            };
+                deepChecksComplete,
+                deepTimedOut: !deepChecksComplete,
+                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
+            });
             creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
             return result;
         }
@@ -3306,7 +3504,7 @@ async function runCreatorRiskCheck(
             creatorSeedPctOfCurrentLiq < CONFIG.CREATOR_RISK_CREATOR_SEED_MIN_PCT_OF_CURRENT_LIQ &&
             creatorSeedGrowthMultiple >= CONFIG.CREATOR_RISK_CREATOR_SEED_MAX_GROWTH_MULTIPLIER
         ) {
-            const result = {
+            const result = enrichBaseResult({
                 ok: false,
                 reason:
                     `creator seed too small ${creatorSeedSol.toFixed(3)} SOL ` +
@@ -3317,7 +3515,9 @@ async function runCreatorRiskCheck(
                 burner,
                 creatorSeedSol,
                 creatorSeedPctOfCurrentLiq,
-            };
+                deepChecksComplete: true,
+                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
+            });
             creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
             return result;
         }
@@ -3328,7 +3528,7 @@ async function runCreatorRiskCheck(
             microInboundTransfers.length >= CONFIG.CREATOR_RISK_MICRO_INBOUND_MIN_TRANSFERS &&
             microInboundSources.size >= CONFIG.CREATOR_RISK_MICRO_INBOUND_MIN_SOURCES
         ) {
-            const result = {
+            const result = enrichBaseResult({
                 ok: false,
                 reason: `micro inbound burst ${microInboundTransfers.length} transfers from ${microInboundSources.size} sources in ${compressedWindowSec}s`,
                 funder,
@@ -3337,7 +3537,9 @@ async function runCreatorRiskCheck(
                 burner,
                 microInboundTransfers: microInboundTransfers.length,
                 microInboundSources: microInboundSources.size,
-            };
+                deepChecksComplete: true,
+                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
+            });
             creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
             return result;
         }
@@ -3348,7 +3550,7 @@ async function runCreatorRiskCheck(
             compressedWindowSec <= CONFIG.CREATOR_RISK_INBOUND_SPRAY_MAX_WINDOW_SEC &&
             sprayInbound.detected
         ) {
-            const result = {
+            const result = enrichBaseResult({
                 ok: false,
                 reason:
                     `inbound collector pattern ${sprayInbound.transfers} transfers ` +
@@ -3361,7 +3563,9 @@ async function runCreatorRiskCheck(
                 creatorSeedSol,
                 creatorSeedPctOfCurrentLiq,
                 inboundSpraySources: sprayInbound.sources,
-            };
+                deepChecksComplete: true,
+                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
+            });
             creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
             return result;
         }
@@ -3370,7 +3574,7 @@ async function runCreatorRiskCheck(
             CONFIG.CREATOR_RISK_SPRAY_OUTBOUND_BLOCK_ENABLED &&
             sprayOutbound.detected
         ) {
-            const result = {
+            const result = enrichBaseResult({
                 ok: false,
                 reason:
                     `spray outbound pattern ${sprayOutbound.transfers} transfers ` +
@@ -3382,13 +3586,15 @@ async function runCreatorRiskCheck(
                 burner,
                 creatorSeedSol,
                 creatorSeedPctOfCurrentLiq,
-            };
+                deepChecksComplete: true,
+                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
+            });
             creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
             return result;
         }
 
-        if (precreateBurst.detected) {
-            const result = {
+        if (deepChecksComplete && precreateBurst.detected) {
+            const result = enrichBaseResult({
                 ok: false,
                 reason:
                     `precreate uniform outbound burst ${precreateBurst.transfers} transfers ` +
@@ -3399,13 +3605,15 @@ async function runCreatorRiskCheck(
                 compressedWindowSec,
                 burner,
                 precreateBurstTransfers: precreateBurst.transfers,
-            };
+                deepChecksComplete: true,
+                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
+            });
             creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
             return result;
         }
 
         if (repeatCreateRemovePattern.detected) {
-            const result = {
+            const result = enrichBaseResult({
                 ok: false,
                 reason:
                     `creator repeated create-remove pattern ` +
@@ -3421,7 +3629,9 @@ async function runCreatorRiskCheck(
                 repeatedCreateRemoveCashouts: repeatCreateRemovePattern.cashouts,
                 repeatedCreateRemoveWindowSec: repeatCreateRemovePattern.windowSec,
                 repeatedCreateRemoveMaxCashoutSol: repeatCreateRemovePattern.maxCashoutSol,
-            };
+                deepChecksComplete: true,
+                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
+            });
             creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
             return result;
         }
@@ -3434,7 +3644,7 @@ async function runCreatorRiskCheck(
             microInboundTransfers.length >= CONFIG.CREATOR_RISK_STANDARD_POOL_MICRO_MIN_TRANSFERS &&
             microInboundSources.size >= CONFIG.CREATOR_RISK_STANDARD_POOL_MICRO_MIN_SOURCES
         ) {
-            const result = {
+            const result = enrichBaseResult({
                 ok: false,
                 reason:
                     `standard pool micro burst ${microInboundTransfers.length} transfers ` +
@@ -3444,12 +3654,15 @@ async function runCreatorRiskCheck(
                 uniqueCounterparties,
                 compressedWindowSec,
                 burner,
-            };
+                deepChecksComplete: true,
+                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
+            });
             creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
             return result;
         }
 
         if (
+            deepChecksComplete &&
             CONFIG.CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_BLOCK_ENABLED &&
             relayFunding.root &&
             isSuspiciousRelayRoot(relayFunding.root, rugHistory) &&
@@ -3458,7 +3671,7 @@ async function runCreatorRiskCheck(
             microInboundTransfers.length <= CONFIG.CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_MAX_MICRO_TRANSFERS &&
             microInboundSources.size <= CONFIG.CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_MAX_MICRO_SOURCES
         ) {
-            const result = {
+            const result = enrichBaseResult({
                 ok: false,
                 reason:
                     `suspicious relay-root pattern root=${relayFunding.root} ` +
@@ -3469,18 +3682,21 @@ async function runCreatorRiskCheck(
                 compressedWindowSec,
                 burner,
                 relayFundingRoot: relayFunding.root,
-            };
+                deepChecksComplete: true,
+                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
+            });
             creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
             return result;
         }
 
         if (
+            deepChecksComplete &&
             CONFIG.CREATOR_RISK_SPRAY_OUTBOUND_BLOCK_ENABLED &&
             relayFunding.root &&
             isSuspiciousRelayRoot(relayFunding.root, rugHistory) &&
             sprayOutbound.detected
         ) {
-            const result = {
+            const result = enrichBaseResult({
                 ok: false,
                 reason:
                     `spray outbound pattern root=${relayFunding.root} ` +
@@ -3491,17 +3707,20 @@ async function runCreatorRiskCheck(
                 compressedWindowSec,
                 burner,
                 relayFundingRoot: relayFunding.root,
-            };
+                deepChecksComplete: true,
+                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
+            });
             creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
             return result;
         }
 
         if (
+            deepChecksComplete &&
             options.entrySolLiquidity &&
             CONFIG.HOLD_CREATOR_CASHOUT_EXIT_ENABLED &&
             creatorCashout.score >= CONFIG.CREATOR_RISK_CASHOUT_EXIT_SCORE
         ) {
-            const result = {
+            const result = enrichBaseResult({
                 ok: false,
                 reason: `creator cashout ${creatorCashout.totalSol.toFixed(3)} SOL (${creatorCashout.pctOfEntryLiquidity.toFixed(2)}% liq, score ${creatorCashout.score.toFixed(2)})`,
                 funder,
@@ -3513,16 +3732,19 @@ async function runCreatorRiskCheck(
                 creatorCashoutPctOfEntryLiquidity: creatorCashout.pctOfEntryLiquidity,
                 creatorCashoutScore: creatorCashout.score,
                 creatorCashoutDestination: creatorCashout.destination,
-            };
+                deepChecksComplete: true,
+                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
+            });
             creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
             return result;
         }
 
         if (
+            deepChecksComplete &&
             relayFunding.detected &&
             isStandardRelayRiskPool(options.entrySolLiquidity)
         ) {
-            const result = {
+            const result = enrichBaseResult({
                 ok: false,
                 reason: `relay funding recent on standard pool ${options.entrySolLiquidity?.toFixed(2)} SOL (root ${relayFunding.root || "-"}, in ${relayFunding.inboundSol.toFixed(3)} SOL, out ${relayFunding.outboundSol.toFixed(3)} SOL)`,
                 funder,
@@ -3530,16 +3752,19 @@ async function runCreatorRiskCheck(
                 compressedWindowSec,
                 burner,
                 relayFundingRoot: relayFunding.root,
-            };
+                deepChecksComplete: true,
+                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
+            });
             creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
             return result;
         }
 
         if (
+            deepChecksComplete &&
             relayFunding.detected &&
             microInboundTransfers.length >= CONFIG.CREATOR_RISK_MICRO_INBOUND_MIN_TRANSFERS
         ) {
-            const result = {
+            const result = enrichBaseResult({
                 ok: false,
                 reason: `relay funding recent + micro burst (root ${relayFunding.root || "-"}, in ${relayFunding.inboundSol.toFixed(3)} SOL, out ${relayFunding.outboundSol.toFixed(3)} SOL)`,
                 funder,
@@ -3547,17 +3772,20 @@ async function runCreatorRiskCheck(
                 compressedWindowSec,
                 burner,
                 relayFundingRoot: relayFunding.root,
-            };
+                deepChecksComplete: true,
+                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
+            });
             creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
             return result;
         }
 
         if (
+            deepChecksComplete &&
             relayFunding.detected &&
             relayFunding.root &&
             (rugHistory.rugFunders.has(relayFunding.root) || rugHistory.rugCashoutRelays.has(relayFunding.root))
         ) {
-            const result = {
+            const result = enrichBaseResult({
                 ok: false,
                 reason: `relay funding root blacklisted ${relayFunding.root}`,
                 funder,
@@ -3565,7 +3793,9 @@ async function runCreatorRiskCheck(
                 compressedWindowSec,
                 burner,
                 relayFundingRoot: relayFunding.root,
-            };
+                deepChecksComplete: true,
+                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
+            });
             creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
             return result;
         }
@@ -3573,28 +3803,32 @@ async function runCreatorRiskCheck(
         if (funder && CONFIG.CREATOR_RISK_FUNDER_CLUSTER_ENABLED) {
             const historicalCount = rugHistory.rugFunderCounts.get(funder) || 0;
             if (historicalCount >= CONFIG.CREATOR_RISK_HISTORICAL_FUNDER_CLUSTER_MIN_RUG_CREATORS) {
-                const result = {
+                const result = enrichBaseResult({
                     ok: false,
                     reason: `funder cluster historical ${historicalCount} rug creators`,
                     funder,
                     uniqueCounterparties,
                     compressedWindowSec,
                     burner,
-                };
+                    deepChecksComplete: true,
+                    deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
+                });
                 creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
                 return result;
             }
 
             const recentCreatorCount = trackRecentFunderCreator(funder, creatorAddress);
             if (recentCreatorCount >= CONFIG.CREATOR_RISK_FUNDER_CLUSTER_MIN_CREATORS) {
-                const result = {
+                const result = enrichBaseResult({
                     ok: false,
                     reason: `funder cluster recent ${recentCreatorCount} creators in ${CONFIG.CREATOR_RISK_FUNDER_CLUSTER_WINDOW_SEC}s`,
                     funder,
                     uniqueCounterparties,
                     compressedWindowSec,
                     burner,
-                };
+                    deepChecksComplete: true,
+                    deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
+                });
                 creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
                 return result;
             }
@@ -3602,20 +3836,22 @@ async function runCreatorRiskCheck(
 
         if (linksToCreators.size > 0) {
             const linked = Array.from(linksToCreators)[0];
-            const result = {
+            const result = enrichBaseResult({
                 ok: false,
                 reason: `linked to historical rug creator ${linked}`,
                 funder,
                 uniqueCounterparties,
                 compressedWindowSec,
                 burner,
-            };
+                deepChecksComplete: true,
+                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
+            });
             creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
             return result;
         }
 
         if (funder && funderRefundSol >= CONFIG.CREATOR_RISK_FUNDER_REFUND_MIN_SOL) {
-            const result = {
+            const result = enrichBaseResult({
                 ok: false,
                 reason: `creator refunded funder ${funderRefundSol.toFixed(3)} SOL`,
                 funder,
@@ -3627,20 +3863,24 @@ async function runCreatorRiskCheck(
                 creatorCashoutPctOfEntryLiquidity: creatorCashout.pctOfEntryLiquidity,
                 creatorCashoutScore: creatorCashout.score,
                 creatorCashoutDestination: creatorCashout.destination,
-            };
+                deepChecksComplete: true,
+                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
+            });
             creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
             return result;
         }
 
         if (uniqueCounterparties >= CONFIG.CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES) {
-            const result = {
+            const result = enrichBaseResult({
                 ok: false,
                 reason: `unique counterparties ${uniqueCounterparties} >= ${CONFIG.CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES}`,
                 funder,
                 uniqueCounterparties,
                 compressedWindowSec,
                 burner,
-            };
+                deepChecksComplete: true,
+                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
+            });
             creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
             return result;
         }
@@ -3650,37 +3890,45 @@ async function runCreatorRiskCheck(
             compressedWindowSec <= CONFIG.CREATOR_RISK_COMPRESSED_WINDOW_SEC &&
             uniqueCounterparties >= CONFIG.CREATOR_RISK_COMPRESSED_MAX_COUNTERPARTIES
         ) {
-            const result = {
+            const result = enrichBaseResult({
                 ok: false,
                 reason: `compressed activity ${uniqueCounterparties} counterparties in ${compressedWindowSec}s`,
                 funder,
                 uniqueCounterparties,
                 compressedWindowSec,
                 burner,
-            };
+                deepChecksComplete: true,
+                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
+            });
             creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
             return result;
         }
 
         if (burner) {
-            const result = {
+            const result = enrichBaseResult({
                 ok: false,
                 reason: `burner profile out=${solOutSol.toFixed(2)} SOL with no inbound transfers`,
                 funder,
                 uniqueCounterparties,
                 compressedWindowSec,
                 burner,
-            };
+                deepChecksComplete,
+                deepTimedOut: !deepChecksComplete,
+                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
+            });
             creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
             return result;
         }
 
-        const result = {
+        const result = enrichBaseResult({
             ok: true,
             funder,
             uniqueCounterparties,
             compressedWindowSec,
             burner,
+            deepChecksComplete,
+            deepTimedOut: !deepChecksComplete,
+            deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
             funderRefundSol,
             creatorCashoutSol: creatorCashout.totalSol,
             creatorCashoutPctOfEntryLiquidity: creatorCashout.pctOfEntryLiquidity,
@@ -3697,7 +3945,7 @@ async function runCreatorRiskCheck(
             repeatedCreateRemoveCashouts: repeatCreateRemovePattern.cashouts,
             repeatedCreateRemoveWindowSec: repeatCreateRemovePattern.windowSec,
             repeatedCreateRemoveMaxCashoutSol: repeatCreateRemovePattern.maxCashoutSol,
-        };
+        });
         creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
         return result;
     } catch (e: any) {
@@ -3720,6 +3968,10 @@ async function runCreatorRiskCheckWithRetry(
         createPoolSignature?: string;
         createPoolBlockTime?: number | null;
         creatorSeedSol?: number;
+        previousResult?: CreatorRiskResult;
+        allowReuseIfNoNewActivity?: boolean;
+        allowFastPathOnDeepTimeout?: boolean;
+        deepCheckBudgetMs?: number;
     } = {},
 ): Promise<CreatorRiskResult> {
     const retries = Math.max(0, CONFIG.CREATOR_RISK_RATE_LIMIT_RETRIES);
@@ -3950,6 +4202,10 @@ async function validatePreBuyEntryState(
             entrySolLiquidity: baselineLiquiditySol,
             createPoolSignature,
             createPoolBlockTime,
+            previousResult: initialCreatorRisk,
+            allowReuseIfNoNewActivity: true,
+            allowFastPathOnDeepTimeout: true,
+            deepCheckBudgetMs: CONFIG.CREATOR_RISK_RECHECK_DEEP_CHECK_BUDGET_MS,
         });
         if (!creatorRisk.ok) {
             if (creatorRisk.transientError) {
@@ -4336,6 +4592,10 @@ async function waitForExitStateWithLiquidityStop(
                     entrySolLiquidity,
                     createPoolSignature,
                     createPoolBlockTime,
+                    previousResult: initialCreatorRisk,
+                    allowReuseIfNoNewActivity: true,
+                    allowFastPathOnDeepTimeout: true,
+                    deepCheckBudgetMs: CONFIG.CREATOR_RISK_RECHECK_DEEP_CHECK_BUDGET_MS,
                 });
                 if (!creatorRisk.ok) {
                     if (creatorRisk.transientError) {
@@ -4463,7 +4723,7 @@ async function waitForExitStateWithLiquidityStop(
                         console.log(
                             `⚠️ POOL CHURN WARN: ${churn.shortCount} tx in ${(CONFIG.HOLD_POOL_CHURN_WINDOW_SHORT_MS / 1000).toFixed(0)}s ` +
                             `(sell_quote ${baselineExitQuoteSol.toFixed(6)} -> ${currentExitQuoteSol.toFixed(6)} SOL, ` +
-                            `drop ${dropPct.toFixed(2)}%)`
+                            `${formatQuoteMovePct(baselineExitQuoteSol, currentExitQuoteSol)})`
                         );
                     }
 
@@ -4475,7 +4735,7 @@ async function waitForExitStateWithLiquidityStop(
                         console.log(
                             `⚠️ POOL CHURN EXIT: ${txCount} tx in ${(windowMs / 1000).toFixed(0)}s ` +
                             `(sell_quote ${baselineExitQuoteSol.toFixed(6)} -> ${currentExitQuoteSol.toFixed(6)} SOL, ` +
-                            `drop ${dropPct.toFixed(2)}%)`
+                            `${formatQuoteMovePct(baselineExitQuoteSol, currentExitQuoteSol)})`
                         );
                         return s;
                     }
