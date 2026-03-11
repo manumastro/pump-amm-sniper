@@ -3,6 +3,7 @@
 ## Docs
 - Controlli bot: `docs/controls.md`
 - Runbook systemd: `docs/systemd-runbook.md`
+- Architettura / ownership moduli: `docs/architecture.md`
 - Analisi creator/dev: `idea/creator-tx-analysis.md`
 
 ## Config
@@ -62,3 +63,27 @@ Nota:
 ## Servizi
 - Bot: `pump-sniper.service`
 - Reporter: `pump-report.service`
+
+## Architettura codice
+- Entry runtime attuale: `src/pumpAmmSniper.ts`
+- Bootstrap / supervisor / worker lifecycle: `src/app/bootstrap.ts`, `src/app/runtime.ts`, `src/app/worker.ts`
+- Config condivisa: `src/app/config.ts`
+- Tipi condivisi: `src/domain/types.ts`
+- Motore creator risk: `src/services/creator-risk/`
+- Paper trade / pre-buy / hold: `src/services/paper-trade/`
+- Liquidity controls: `src/services/liquidity/`
+- Token security: `src/services/token-security/`
+- Top10 concentration: `src/services/top10/`
+- Dev holdings: `src/services/dev-holdings/`
+- Logging operativo: `src/services/reporting/stageLog.ts`
+- Utility pure: `src/utils/`
+
+Regole:
+- nuovi controlli non vanno aggiunti direttamente in `src/pumpAmmSniper.ts`
+- controlli creator / funder / relay / pattern wallet devono convergere in `src/services/creator-risk/`
+- controlli pre-buy / hold / exit devono convergere in `src/services/paper-trade/`
+- helper RPC o parsing condivisi non vanno duplicati nei controlli: devono finire in moduli riusabili
+
+Nota transitoria:
+- il refactor e in corso, quindi alcune logiche vivono ancora in `src/pumpAmmSniper.ts`
+- quando tocchi il comportamento, segui la nuova struttura target descritta in `docs/architecture.md`

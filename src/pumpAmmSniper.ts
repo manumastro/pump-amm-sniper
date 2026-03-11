@@ -1,263 +1,33 @@
-import dotenv from "dotenv";
 import { Connection, Keypair, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
-import { ChildProcess, spawn } from "child_process";
 import fs from "fs";
 import path from "path";
 import bs58 from "bs58";
-import util from "util";
-import { OnlinePumpAmmSdk, PumpAmmSdk, buyQuoteInput, sellBaseInput } from "@pump-fun/pump-swap-sdk";
+import { OnlinePumpAmmSdk, PumpAmmSdk } from "@pump-fun/pump-swap-sdk";
 import BN from "bn.js";
 import { AccountLayout, getMint, TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
 import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction, createCloseAccountInstruction } from "@solana/spl-token";
-
-dotenv.config();
-
-const EARLY_ROOT_DIR = process.cwd();
-const IS_WORKER_PROCESS = !!process.env.WORKER_TASK_SIGNATURE;
-const WORKER_SLOT = Number(process.env.WORKER_SLOT || 0);
-const SILENCE_RPC_429_LOGS = process.env.SILENCE_RPC_429_LOGS === "true";
-
-function timestampNow(): string {
-    const d = new Date();
-    const pad = (n: number, w = 2) => n.toString().padStart(w, "0");
-    return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(), 3)}`;
-}
-
-function patchConsoleWithTimestamp() {
-    const targetLogPath = IS_WORKER_PROCESS
-        ? path.join(EARLY_ROOT_DIR, "logs", `paper-worker-${WORKER_SLOT || 1}.log`)
-        : path.join(EARLY_ROOT_DIR, "paper.log");
-
-    fs.mkdirSync(path.dirname(targetLogPath), { recursive: true });
-
-    const originalLog = console.log.bind(console);
-    const originalWarn = console.warn.bind(console);
-    const originalError = console.error.bind(console);
-
-    const shouldMirrorStdout = !process.env.INVOCATION_ID && !IS_WORKER_PROCESS;
-    const wrap = (fn: (...args: any[]) => void) => (...args: any[]) => {
-        const payload = util.format(...args);
-        if (SILENCE_RPC_429_LOGS && payload.includes("Server responded with 429 Too Many Requests.")) {
-            return;
-        }
-        const rendered = `[${timestampNow()}] ${payload}`;
-        fs.appendFileSync(targetLogPath, `${rendered}\n`);
-        if (shouldMirrorStdout) {
-            fn(rendered);
-        }
-    };
-
-    console.log = wrap(originalLog);
-    console.warn = wrap(originalWarn);
-    console.error = wrap(originalError);
-}
+import { startApp } from "./app/bootstrap";
+import { CONFIG, EARLY_ROOT_DIR, IS_WORKER_PROCESS, WORKER_SLOT } from "./app/config";
+import { createSupervisorRuntime } from "./app/runtime";
+import { runWorkerTask } from "./app/worker";
+import {
+    CreatorRiskResult,
+    PaperSimulationOptions,
+    ParsedCreatorRiskTx,
+    RugHistory,
+} from "./domain/types";
+import { createCreatorRiskService } from "./services/creator-risk";
+import { createDevHoldingsService } from "./services/dev-holdings";
+import { createLiquidityService } from "./services/liquidity";
+import { createPaperTradeService } from "./services/paper-trade";
+import { calcSpotSolPerToken, getExitQuoteSolFromState, getPoolOrientation, getSolLiquidityFromState, getSpotSolPerTokenFromState } from "./services/paper-trade/quote";
+import { patchConsoleWithTimestamp, stageLog } from "./services/reporting/stageLog";
+import { createTop10Service } from "./services/top10";
+import { checkTokenSecurity, getMintInfoRobust } from "./services/token-security";
+import { formatLiquiditySol, formatQuoteMovePct, formatSolCompact, formatSolDecimal } from "./utils/format";
+import { instructionAccountToBase58, instructionProgramIdToBase58, pubkeyToBase58, shortSig } from "./utils/pubkeys";
 
 patchConsoleWithTimestamp();
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// 🎛️ PUMP.FUN AMM SNIPER CONFIGURATION
-// ═══════════════════════════════════════════════════════════════════════════════
-
-const CONFIG = {
-    // 💰 TRADING
-    TRADE_AMOUNT_SOL: 0.01,               // Amount to buy per snipe
-    
-    // 🔒 ENTRY FILTERS
-    MIN_POOL_LIQUIDITY_USD: 10000,        // Minimum liquidity in USD
-    MIN_POOL_LIQUIDITY_SOL: 20,          // Kept as hard floor in SOL
-    
-    // ⏱️ TIMING
-    AUTO_SELL_DELAY_MS: Number(process.env.AUTO_SELL_DELAY_MS || 16000), // Sell after N seconds
-    HOLD_SUSPICIOUS_RELAY_SHORT_HOLD_ENABLED: process.env.HOLD_SUSPICIOUS_RELAY_SHORT_HOLD_ENABLED !== "false",
-    HOLD_SUSPICIOUS_RELAY_SHORT_HOLD_MS: Number(process.env.HOLD_SUSPICIOUS_RELAY_SHORT_HOLD_MS || 10000),
-    HOLD_REMOVE_LIQ_DETECT_ENABLED: process.env.HOLD_REMOVE_LIQ_DETECT_ENABLED !== "false",
-    HOLD_REMOVE_LIQ_CHECK_INTERVAL_MS: Number(process.env.HOLD_REMOVE_LIQ_CHECK_INTERVAL_MS || 1500),
-    HOLD_REMOVE_LIQ_MIN_WSOL_TO_CREATOR: Number(process.env.HOLD_REMOVE_LIQ_MIN_WSOL_TO_CREATOR || 0.5),
-    HOLD_REMOVE_LIQ_MIN_SOL_TO_CREATOR: Number(process.env.HOLD_REMOVE_LIQ_MIN_SOL_TO_CREATOR || 0.5),
-    HOLD_CREATOR_AMM_BURST_DETECT_ENABLED: process.env.HOLD_CREATOR_AMM_BURST_DETECT_ENABLED !== "false",
-    HOLD_CREATOR_AMM_BURST_WINDOW_SEC: Number(process.env.HOLD_CREATOR_AMM_BURST_WINDOW_SEC || 8),
-    HOLD_CREATOR_AMM_BURST_MIN_TXS: Number(process.env.HOLD_CREATOR_AMM_BURST_MIN_TXS || 3),
-    HOLD_CREATOR_OUTBOUND_EXIT_ENABLED: process.env.HOLD_CREATOR_OUTBOUND_EXIT_ENABLED !== "false",
-    HOLD_CREATOR_OUTBOUND_CHECK_INTERVAL_MS: Number(process.env.HOLD_CREATOR_OUTBOUND_CHECK_INTERVAL_MS || 1500),
-    HOLD_CREATOR_OUTBOUND_MIN_SOL: Number(process.env.HOLD_CREATOR_OUTBOUND_MIN_SOL || 10),
-    HOLD_CREATOR_CLOSE_ACCOUNT_BURST_EXIT_ENABLED: process.env.HOLD_CREATOR_CLOSE_ACCOUNT_BURST_EXIT_ENABLED !== "false",
-    HOLD_CREATOR_CLOSE_ACCOUNT_BURST_CHECK_INTERVAL_MS: Number(process.env.HOLD_CREATOR_CLOSE_ACCOUNT_BURST_CHECK_INTERVAL_MS || 1000),
-    HOLD_CREATOR_CLOSE_ACCOUNT_BURST_WINDOW_SEC: Number(process.env.HOLD_CREATOR_CLOSE_ACCOUNT_BURST_WINDOW_SEC || 20),
-    HOLD_CREATOR_CLOSE_ACCOUNT_BURST_MIN_TXS: Number(process.env.HOLD_CREATOR_CLOSE_ACCOUNT_BURST_MIN_TXS || 3),
-    HOLD_CREATOR_CLOSE_ACCOUNT_BURST_MIN_CLOSES: Number(process.env.HOLD_CREATOR_CLOSE_ACCOUNT_BURST_MIN_CLOSES || 12),
-    HOLD_CREATOR_OUTBOUND_SPRAY_EXIT_ENABLED: process.env.HOLD_CREATOR_OUTBOUND_SPRAY_EXIT_ENABLED !== "false",
-    HOLD_CREATOR_OUTBOUND_SPRAY_CHECK_INTERVAL_MS: Number(process.env.HOLD_CREATOR_OUTBOUND_SPRAY_CHECK_INTERVAL_MS || 1500),
-    HOLD_CREATOR_OUTBOUND_SPRAY_WINDOW_SEC: Number(process.env.HOLD_CREATOR_OUTBOUND_SPRAY_WINDOW_SEC || 30),
-    HOLD_CREATOR_OUTBOUND_SPRAY_MIN_TRANSFERS: Number(process.env.HOLD_CREATOR_OUTBOUND_SPRAY_MIN_TRANSFERS || 20),
-    HOLD_CREATOR_OUTBOUND_SPRAY_MIN_DESTINATIONS: Number(process.env.HOLD_CREATOR_OUTBOUND_SPRAY_MIN_DESTINATIONS || 20),
-    HOLD_CREATOR_OUTBOUND_SPRAY_MAX_MEDIAN_SOL: Number(process.env.HOLD_CREATOR_OUTBOUND_SPRAY_MAX_MEDIAN_SOL || 0.05),
-    HOLD_CREATOR_OUTBOUND_SPRAY_MAX_REL_STDDEV: Number(process.env.HOLD_CREATOR_OUTBOUND_SPRAY_MAX_REL_STDDEV || 0.2),
-    HOLD_CREATOR_OUTBOUND_SPRAY_MAX_AMOUNT_RATIO: Number(process.env.HOLD_CREATOR_OUTBOUND_SPRAY_MAX_AMOUNT_RATIO || 3),
-    HOLD_CREATOR_INBOUND_SPRAY_EXIT_ENABLED: process.env.HOLD_CREATOR_INBOUND_SPRAY_EXIT_ENABLED !== "false",
-    HOLD_CREATOR_INBOUND_SPRAY_CHECK_INTERVAL_MS: Number(process.env.HOLD_CREATOR_INBOUND_SPRAY_CHECK_INTERVAL_MS || 1500),
-    HOLD_CREATOR_INBOUND_SPRAY_WINDOW_SEC: Number(process.env.HOLD_CREATOR_INBOUND_SPRAY_WINDOW_SEC || 30),
-    HOLD_CREATOR_INBOUND_SPRAY_MIN_TRANSFERS: Number(process.env.HOLD_CREATOR_INBOUND_SPRAY_MIN_TRANSFERS || 8),
-    HOLD_CREATOR_INBOUND_SPRAY_MIN_SOURCES: Number(process.env.HOLD_CREATOR_INBOUND_SPRAY_MIN_SOURCES || 8),
-    HOLD_CREATOR_INBOUND_SPRAY_MAX_REL_STDDEV: Number(process.env.HOLD_CREATOR_INBOUND_SPRAY_MAX_REL_STDDEV || 0.12),
-    HOLD_CREATOR_INBOUND_SPRAY_MAX_AMOUNT_RATIO: Number(process.env.HOLD_CREATOR_INBOUND_SPRAY_MAX_AMOUNT_RATIO || 1.35),
-    HOLD_POOL_CHURN_DETECT_ENABLED: process.env.HOLD_POOL_CHURN_DETECT_ENABLED !== "false",
-    HOLD_POOL_CHURN_CHECK_INTERVAL_MS: Number(process.env.HOLD_POOL_CHURN_CHECK_INTERVAL_MS || 1500),
-    HOLD_POOL_CHURN_SIG_LIMIT: Number(process.env.HOLD_POOL_CHURN_SIG_LIMIT || 60),
-    HOLD_POOL_CHURN_WINDOW_SHORT_MS: Number(process.env.HOLD_POOL_CHURN_WINDOW_SHORT_MS || 10000),
-    HOLD_POOL_CHURN_WINDOW_LONG_MS: Number(process.env.HOLD_POOL_CHURN_WINDOW_LONG_MS || 20000),
-    HOLD_POOL_CHURN_WINDOW_CRITICAL_MS: Number(process.env.HOLD_POOL_CHURN_WINDOW_CRITICAL_MS || 40000),
-    HOLD_POOL_CHURN_TX_SHORT_MIN: Number(process.env.HOLD_POOL_CHURN_TX_SHORT_MIN || 10),
-    HOLD_POOL_CHURN_TX_LONG_MIN: Number(process.env.HOLD_POOL_CHURN_TX_LONG_MIN || 20),
-    HOLD_POOL_CHURN_TX_CRITICAL_MIN: Number(process.env.HOLD_POOL_CHURN_TX_CRITICAL_MIN || 30),
-    HOLD_POOL_CHURN_SELL_DROP_PCT: Number(process.env.HOLD_POOL_CHURN_SELL_DROP_PCT || 50),
-    HOLD_POOL_CHURN_CRITICAL_SELL_DROP_PCT: Number(process.env.HOLD_POOL_CHURN_CRITICAL_SELL_DROP_PCT || 35),
-    HOLD_SELL_QUOTE_COLLAPSE_EXIT_ENABLED: process.env.HOLD_SELL_QUOTE_COLLAPSE_EXIT_ENABLED !== "false",
-    HOLD_SELL_QUOTE_COLLAPSE_CHECK_INTERVAL_MS: Number(process.env.HOLD_SELL_QUOTE_COLLAPSE_CHECK_INTERVAL_MS || 1000),
-    HOLD_SELL_QUOTE_COLLAPSE_MIN_HOLD_MS: Number(process.env.HOLD_SELL_QUOTE_COLLAPSE_MIN_HOLD_MS || 3000),
-    HOLD_SELL_QUOTE_COLLAPSE_DROP_PCT: Number(process.env.HOLD_SELL_QUOTE_COLLAPSE_DROP_PCT || 60),
-    HOLD_SELL_QUOTE_COLLAPSE_MIN_SOL: Number(process.env.HOLD_SELL_QUOTE_COLLAPSE_MIN_SOL || 0.0025),
-    HOLD_PROBATION_CASHOUT_DELTA_MIN_SOL: Number(process.env.HOLD_PROBATION_CASHOUT_DELTA_MIN_SOL || 5),
-    HOLD_PROBATION_INTERVAL_MULTIPLIER: Number(process.env.HOLD_PROBATION_INTERVAL_MULTIPLIER || 0.4),
-    PRE_BUY_REVALIDATION_ENABLED: process.env.PRE_BUY_REVALIDATION_ENABLED !== "false",
-    PRE_BUY_FINAL_CREATOR_RISK_RECHECK_ENABLED: process.env.PRE_BUY_FINAL_CREATOR_RISK_RECHECK_ENABLED !== "false",
-    PRE_BUY_FINAL_REMOVE_LIQ_CHECK_ENABLED: process.env.PRE_BUY_FINAL_REMOVE_LIQ_CHECK_ENABLED !== "false",
-    PRE_BUY_REVALIDATION_MAX_LIQ_DROP_PCT: Number(process.env.PRE_BUY_REVALIDATION_MAX_LIQ_DROP_PCT || 35),
-    PRE_BUY_REVALIDATION_MAX_QUOTE_VS_SPOT_RATIO: Number(process.env.PRE_BUY_REVALIDATION_MAX_QUOTE_VS_SPOT_RATIO || 25),
-    PRE_BUY_WAIT_MS: Number(process.env.PRE_BUY_WAIT_MS || 1500), // Wait before entering
-    PRE_BUY_MAX_LIQ_DROP_PCT: Number(process.env.PRE_BUY_MAX_LIQ_DROP_PCT || 10), // Skip if liq drops too much during wait
-    PRE_BUY_CONFIRM_SNAPSHOTS: Number(process.env.PRE_BUY_CONFIRM_SNAPSHOTS || 3), // Extra confirmations after wait
-    PRE_BUY_CONFIRM_INTERVAL_MS: Number(process.env.PRE_BUY_CONFIRM_INTERVAL_MS || 350), // Delay between confirmations
-    PRE_BUY_TOP10_CHECK_ENABLED: process.env.PRE_BUY_TOP10_CHECK_ENABLED !== "false",
-    PRE_BUY_TOP10_MAX_PCT: Number(process.env.PRE_BUY_TOP10_MAX_PCT || 90),
-    PRE_BUY_TOP10_EXCLUDE_POOL: process.env.PRE_BUY_TOP10_EXCLUDE_POOL !== "false",
-    PRE_BUY_TOP10_FAIL_OPEN: process.env.PRE_BUY_TOP10_FAIL_OPEN === "true",
-    PRE_BUY_TOP10_MAX_ATTEMPTS: Number(process.env.PRE_BUY_TOP10_MAX_ATTEMPTS || 4),
-    PRE_BUY_TOP10_RETRY_BASE_MS: Number(process.env.PRE_BUY_TOP10_RETRY_BASE_MS || 400),
-    CREATOR_RISK_CHECK_ENABLED: process.env.CREATOR_RISK_CHECK_ENABLED !== "false",
-    CREATOR_RISK_SIG_LIMIT: Number(process.env.CREATOR_RISK_SIG_LIMIT || 40),
-    CREATOR_RISK_PARSED_TX_LIMIT: Number(process.env.CREATOR_RISK_PARSED_TX_LIMIT || 25),
-    CREATOR_RISK_CACHE_TTL_MS: Number(process.env.CREATOR_RISK_CACHE_TTL_MS || 15 * 60 * 1000),
-    CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES: Number(process.env.CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES || 25),
-    CREATOR_RISK_COMPRESSED_MAX_COUNTERPARTIES: Number(process.env.CREATOR_RISK_COMPRESSED_MAX_COUNTERPARTIES || 20),
-    CREATOR_RISK_COMPRESSED_WINDOW_SEC: Number(process.env.CREATOR_RISK_COMPRESSED_WINDOW_SEC || 120),
-    CREATOR_RISK_BURNER_MIN_OUT_SOL: Number(process.env.CREATOR_RISK_BURNER_MIN_OUT_SOL || 100),
-    CREATOR_RISK_FUNDER_CLUSTER_ENABLED: process.env.CREATOR_RISK_FUNDER_CLUSTER_ENABLED !== "false",
-    CREATOR_RISK_FUNDER_CLUSTER_MIN_CREATORS: Number(process.env.CREATOR_RISK_FUNDER_CLUSTER_MIN_CREATORS || 2),
-    CREATOR_RISK_FUNDER_CLUSTER_WINDOW_SEC: Number(process.env.CREATOR_RISK_FUNDER_CLUSTER_WINDOW_SEC || 900),
-    CREATOR_RISK_HISTORICAL_FUNDER_CLUSTER_MIN_RUG_CREATORS: Number(
-        process.env.CREATOR_RISK_HISTORICAL_FUNDER_CLUSTER_MIN_RUG_CREATORS || 2
-    ),
-    CREATOR_RISK_RELAY_FUNDING_ENABLED: process.env.CREATOR_RISK_RELAY_FUNDING_ENABLED !== "false",
-    CREATOR_RISK_RELAY_SIG_LIMIT: Number(process.env.CREATOR_RISK_RELAY_SIG_LIMIT || 8),
-    CREATOR_RISK_RELAY_PARSED_TX_LIMIT: Number(process.env.CREATOR_RISK_RELAY_PARSED_TX_LIMIT || 6),
-    CREATOR_RISK_RELAY_MIN_SOL: Number(process.env.CREATOR_RISK_RELAY_MIN_SOL || 20),
-    CREATOR_RISK_RELAY_FORWARD_MIN_RATIO: Number(process.env.CREATOR_RISK_RELAY_FORWARD_MIN_RATIO || 0.9),
-    CREATOR_RISK_RELAY_WINDOW_SEC: Number(process.env.CREATOR_RISK_RELAY_WINDOW_SEC || 300),
-    CREATOR_RISK_STANDARD_POOL_RELAY_BLOCK_ENABLED: process.env.CREATOR_RISK_STANDARD_POOL_RELAY_BLOCK_ENABLED !== "false",
-    CREATOR_RISK_STANDARD_POOL_TOLERANCE_SOL: Number(process.env.CREATOR_RISK_STANDARD_POOL_TOLERANCE_SOL || 1.5),
-    CREATOR_RISK_STANDARD_POOL_LEVELS_SOL: (process.env.CREATOR_RISK_STANDARD_POOL_LEVELS_SOL || "84.99,100,120")
-        .split(",")
-        .map((v) => Number(v.trim()))
-        .filter((v) => Number.isFinite(v) && v > 0),
-    CREATOR_RISK_STANDARD_POOL_MICRO_BLOCK_ENABLED: process.env.CREATOR_RISK_STANDARD_POOL_MICRO_BLOCK_ENABLED !== "false",
-    CREATOR_RISK_STANDARD_POOL_MICRO_MIN_TRANSFERS: Number(process.env.CREATOR_RISK_STANDARD_POOL_MICRO_MIN_TRANSFERS || 4),
-    CREATOR_RISK_STANDARD_POOL_MICRO_MIN_SOURCES: Number(process.env.CREATOR_RISK_STANDARD_POOL_MICRO_MIN_SOURCES || 2),
-    CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_BLOCK_ENABLED: process.env.CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_BLOCK_ENABLED !== "false",
-    CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_MIN_COUNTERPARTIES: Number(process.env.CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_MIN_COUNTERPARTIES || 8),
-    CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_MIN_OUT_TRANSFERS: Number(process.env.CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_MIN_OUT_TRANSFERS || 7),
-    CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_MAX_MICRO_TRANSFERS: Number(process.env.CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_MAX_MICRO_TRANSFERS || 1),
-    CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_MAX_MICRO_SOURCES: Number(process.env.CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_MAX_MICRO_SOURCES || 1),
-    CREATOR_RISK_SPRAY_OUTBOUND_BLOCK_ENABLED: process.env.CREATOR_RISK_SPRAY_OUTBOUND_BLOCK_ENABLED !== "false",
-    CREATOR_RISK_SPRAY_OUTBOUND_MIN_TRANSFERS: Number(process.env.CREATOR_RISK_SPRAY_OUTBOUND_MIN_TRANSFERS || 8),
-    CREATOR_RISK_SPRAY_OUTBOUND_MIN_DESTINATIONS: Number(process.env.CREATOR_RISK_SPRAY_OUTBOUND_MIN_DESTINATIONS || 8),
-    CREATOR_RISK_SPRAY_OUTBOUND_MAX_REL_STDDEV: Number(process.env.CREATOR_RISK_SPRAY_OUTBOUND_MAX_REL_STDDEV || 0.12),
-    CREATOR_RISK_SPRAY_OUTBOUND_MAX_AMOUNT_RATIO: Number(process.env.CREATOR_RISK_SPRAY_OUTBOUND_MAX_AMOUNT_RATIO || 1.25),
-    CREATOR_RISK_INBOUND_SPRAY_BLOCK_ENABLED: process.env.CREATOR_RISK_INBOUND_SPRAY_BLOCK_ENABLED !== "false",
-    CREATOR_RISK_INBOUND_SPRAY_MIN_TRANSFERS: Number(process.env.CREATOR_RISK_INBOUND_SPRAY_MIN_TRANSFERS || 8),
-    CREATOR_RISK_INBOUND_SPRAY_MIN_SOURCES: Number(process.env.CREATOR_RISK_INBOUND_SPRAY_MIN_SOURCES || 8),
-    CREATOR_RISK_INBOUND_SPRAY_MAX_REL_STDDEV: Number(process.env.CREATOR_RISK_INBOUND_SPRAY_MAX_REL_STDDEV || 0.12),
-    CREATOR_RISK_INBOUND_SPRAY_MAX_AMOUNT_RATIO: Number(process.env.CREATOR_RISK_INBOUND_SPRAY_MAX_AMOUNT_RATIO || 1.35),
-    CREATOR_RISK_INBOUND_SPRAY_MAX_WINDOW_SEC: Number(process.env.CREATOR_RISK_INBOUND_SPRAY_MAX_WINDOW_SEC || 30),
-    CREATOR_RISK_CREATOR_SEED_RATIO_BLOCK_ENABLED: process.env.CREATOR_RISK_CREATOR_SEED_RATIO_BLOCK_ENABLED !== "false",
-    CREATOR_RISK_CREATOR_SEED_MIN_PCT_OF_CURRENT_LIQ: Number(process.env.CREATOR_RISK_CREATOR_SEED_MIN_PCT_OF_CURRENT_LIQ || 5),
-    CREATOR_RISK_CREATOR_SEED_MAX_GROWTH_MULTIPLIER: Number(process.env.CREATOR_RISK_CREATOR_SEED_MAX_GROWTH_MULTIPLIER || 20),
-    CREATOR_RISK_MICRO_INBOUND_MAX_SOL: Number(process.env.CREATOR_RISK_MICRO_INBOUND_MAX_SOL || 0.001),
-    CREATOR_RISK_MICRO_INBOUND_MIN_TRANSFERS: Number(process.env.CREATOR_RISK_MICRO_INBOUND_MIN_TRANSFERS || 6),
-    CREATOR_RISK_MICRO_INBOUND_MIN_SOURCES: Number(process.env.CREATOR_RISK_MICRO_INBOUND_MIN_SOURCES || 2),
-    CREATOR_RISK_MICRO_INBOUND_WINDOW_SEC: Number(process.env.CREATOR_RISK_MICRO_INBOUND_WINDOW_SEC || 5),
-    CREATOR_RISK_DIRECT_AMM_REENTRY_ENABLED: process.env.CREATOR_RISK_DIRECT_AMM_REENTRY_ENABLED !== "false",
-    CREATOR_RISK_DIRECT_AMM_REENTRY_SIG_LIMIT: Number(process.env.CREATOR_RISK_DIRECT_AMM_REENTRY_SIG_LIMIT || 8),
-    CREATOR_RISK_DIRECT_AMM_REENTRY_WINDOW_SEC: Number(process.env.CREATOR_RISK_DIRECT_AMM_REENTRY_WINDOW_SEC || 180),
-    CREATOR_RISK_PRECREATE_BURST_BLOCK_ENABLED: process.env.CREATOR_RISK_PRECREATE_BURST_BLOCK_ENABLED !== "false",
-    CREATOR_RISK_PRECREATE_BURST_WINDOW_SEC: Number(process.env.CREATOR_RISK_PRECREATE_BURST_WINDOW_SEC || 240),
-    CREATOR_RISK_PRECREATE_BURST_SIG_LIMIT: Number(process.env.CREATOR_RISK_PRECREATE_BURST_SIG_LIMIT || 120),
-    CREATOR_RISK_PRECREATE_BURST_PARSED_TX_LIMIT: Number(process.env.CREATOR_RISK_PRECREATE_BURST_PARSED_TX_LIMIT || 80),
-    CREATOR_RISK_PRECREATE_BURST_MIN_TRANSFERS: Number(process.env.CREATOR_RISK_PRECREATE_BURST_MIN_TRANSFERS || 12),
-    CREATOR_RISK_PRECREATE_BURST_MIN_DESTINATIONS: Number(process.env.CREATOR_RISK_PRECREATE_BURST_MIN_DESTINATIONS || 12),
-    CREATOR_RISK_PRECREATE_BURST_MIN_MEDIAN_SOL: Number(process.env.CREATOR_RISK_PRECREATE_BURST_MIN_MEDIAN_SOL || 0.7),
-    CREATOR_RISK_PRECREATE_BURST_MAX_MEDIAN_SOL: Number(process.env.CREATOR_RISK_PRECREATE_BURST_MAX_MEDIAN_SOL || 1.3),
-    CREATOR_RISK_PRECREATE_BURST_MAX_REL_STDDEV: Number(process.env.CREATOR_RISK_PRECREATE_BURST_MAX_REL_STDDEV || 0.1),
-    CREATOR_RISK_PRECREATE_BURST_MAX_AMOUNT_RATIO: Number(process.env.CREATOR_RISK_PRECREATE_BURST_MAX_AMOUNT_RATIO || 1.35),
-    CREATOR_RISK_REPEAT_CREATE_REMOVE_BLOCK_ENABLED: process.env.CREATOR_RISK_REPEAT_CREATE_REMOVE_BLOCK_ENABLED !== "false",
-    CREATOR_RISK_REPEAT_CREATE_REMOVE_WINDOW_SEC: Number(process.env.CREATOR_RISK_REPEAT_CREATE_REMOVE_WINDOW_SEC || 600),
-    CREATOR_RISK_REPEAT_CREATE_REMOVE_MIN_CREATES: Number(process.env.CREATOR_RISK_REPEAT_CREATE_REMOVE_MIN_CREATES || 2),
-    CREATOR_RISK_REPEAT_CREATE_REMOVE_MIN_REMOVES: Number(process.env.CREATOR_RISK_REPEAT_CREATE_REMOVE_MIN_REMOVES || 1),
-    CREATOR_RISK_REPEAT_CREATE_REMOVE_MIN_CASHOUTS: Number(process.env.CREATOR_RISK_REPEAT_CREATE_REMOVE_MIN_CASHOUTS || 1),
-    CREATOR_RISK_REPEAT_CREATE_REMOVE_MIN_CREATE_SOL: Number(process.env.CREATOR_RISK_REPEAT_CREATE_REMOVE_MIN_CREATE_SOL || 20),
-    CREATOR_RISK_REPEAT_CREATE_REMOVE_MIN_REMOVE_SOL: Number(process.env.CREATOR_RISK_REPEAT_CREATE_REMOVE_MIN_REMOVE_SOL || 20),
-    CREATOR_RISK_REPEAT_CREATE_REMOVE_MIN_CASHOUT_SOL: Number(process.env.CREATOR_RISK_REPEAT_CREATE_REMOVE_MIN_CASHOUT_SOL || 2),
-    HOLD_CREATOR_RISK_RECHECK_ENABLED: process.env.HOLD_CREATOR_RISK_RECHECK_ENABLED !== "false",
-    HOLD_CREATOR_RISK_RECHECK_INTERVAL_MS: Number(process.env.HOLD_CREATOR_RISK_RECHECK_INTERVAL_MS || 5000),
-    CREATOR_RISK_FUNDER_REFUND_MIN_SOL: Number(process.env.CREATOR_RISK_FUNDER_REFUND_MIN_SOL || 0.05),
-    HOLD_CREATOR_CASHOUT_EXIT_ENABLED: process.env.HOLD_CREATOR_CASHOUT_EXIT_ENABLED !== "false",
-    CREATOR_RISK_CASHOUT_ABS_SOL: Number(process.env.CREATOR_RISK_CASHOUT_ABS_SOL || 5),
-    CREATOR_RISK_CASHOUT_REL_LIQ_PCT: Number(process.env.CREATOR_RISK_CASHOUT_REL_LIQ_PCT || 25),
-    CREATOR_RISK_CASHOUT_WARN_SCORE: Number(process.env.CREATOR_RISK_CASHOUT_WARN_SCORE || 0.5),
-    CREATOR_RISK_CASHOUT_EXIT_SCORE: Number(process.env.CREATOR_RISK_CASHOUT_EXIT_SCORE || 1),
-    
-    // 🔧 SLIPPAGE
-    SLIPPAGE_PERCENT: 20,                 // 20% slippage (più conservativo)
-
-    // 🛡️ SAFETY FILTERS
-    REQUIRE_RENOUNCED_MINT: true,        // Skip if dev can still mint
-    REQUIRE_NO_FREEZE: true,             // Skip if dev can freeze accounts
-    MAX_DEV_HOLDINGS_PCT: 20,            // Skip if dev owns more than 20%
-    ENFORCE_DEV_HOLDINGS_CHECK: process.env.ENFORCE_DEV_HOLDINGS_CHECK !== "false", // On by default
-    DEV_HOLDINGS_MAX_ATTEMPTS: Number(process.env.DEV_HOLDINGS_MAX_ATTEMPTS || 3),
-    DEV_HOLDINGS_RETRY_DELAY_MS: Number(process.env.DEV_HOLDINGS_RETRY_DELAY_MS || 250),
-    DEV_HOLDINGS_MAX_DURATION_MS: Number(process.env.DEV_HOLDINGS_MAX_DURATION_MS || 2000),
-
-    // 👀 MONITORING HARDENING
-    LOG_STALE_RESUBSCRIBE_MS: 90000,     // Resubscribe if no logs for 90s
-    HEALTHCHECK_INTERVAL_MS: 15000,      // Healthcheck every 15s
-    SIGNATURE_CACHE_TTL_MS: 10 * 60 * 1000, // Keep seen signatures for 10m
-    SIGNATURE_CACHE_MAX_SIZE: 5000,      // Bound memory usage
-    SOL_PRICE_CACHE_TTL_MS: 30000,       // Refresh SOL/USD every 30s
-    RUG_HISTORY_CACHE_TTL_MS: Number(process.env.RUG_HISTORY_CACHE_TTL_MS || 5 * 60 * 1000),
-
-    // 📈 PAPER TRADE (simulation only)
-    PAPER_TRADE_ENABLED: process.env.PAPER_TRADE_ENABLED === "true",
-    PAPER_CREATOR_RISK_PROBATION_ENABLED: process.env.PAPER_CREATOR_RISK_PROBATION_ENABLED === "true",
-    PAPER_CREATOR_RISK_PROBATION_HOLD_MS: Number(process.env.PAPER_CREATOR_RISK_PROBATION_HOLD_MS || 10000),
-    PAPER_CREATOR_CASHOUT_PROBATION_HOLD_MS: Number(process.env.PAPER_CREATOR_CASHOUT_PROBATION_HOLD_MS || 45000),
-    PAPER_CREATOR_RISK_EXTREME_CASHOUT_BLOCK_ENABLED: process.env.PAPER_CREATOR_RISK_EXTREME_CASHOUT_BLOCK_ENABLED !== "false",
-    PAPER_CREATOR_RISK_EXTREME_CASHOUT_MIN_PCT_OF_LIQ: Number(process.env.PAPER_CREATOR_RISK_EXTREME_CASHOUT_MIN_PCT_OF_LIQ || 95),
-    PAPER_CREATOR_RISK_EXTREME_CASHOUT_MIN_SCORE: Number(process.env.PAPER_CREATOR_RISK_EXTREME_CASHOUT_MIN_SCORE || 25),
-    CREATOR_RESOLUTION_FAIL_OPEN: process.env.CREATOR_RESOLUTION_FAIL_OPEN === "true",
-    LOW_LIQUIDITY_RECHECK_ENABLED: process.env.LOW_LIQUIDITY_RECHECK_ENABLED !== "false",
-    LOW_LIQUIDITY_RECHECK_WINDOW_MS: Number(process.env.LOW_LIQUIDITY_RECHECK_WINDOW_MS || 5000),
-    LOW_LIQUIDITY_RECHECK_INTERVAL_MS: Number(process.env.LOW_LIQUIDITY_RECHECK_INTERVAL_MS || 300),
-    LOW_LIQUIDITY_POOL_COOLDOWN_MS: Number(process.env.LOW_LIQUIDITY_POOL_COOLDOWN_MS || 120000),
-    MAX_CONCURRENT_OPERATIONS: Number(process.env.MAX_CONCURRENT_OPERATIONS || 2),
-    QUEUE_MAX_PENDING_SIGNATURES: Number(process.env.QUEUE_MAX_PENDING_SIGNATURES || 300),
-    CREATOR_RISK_RATE_LIMIT_RETRIES: Number(process.env.CREATOR_RISK_RATE_LIMIT_RETRIES || 3),
-    CREATOR_RISK_RATE_LIMIT_RETRY_BASE_MS: Number(process.env.CREATOR_RISK_RATE_LIMIT_RETRY_BASE_MS || 350),
-    CREATOR_RISK_DEEP_CHECK_BUDGET_MS: Number(process.env.CREATOR_RISK_DEEP_CHECK_BUDGET_MS || 12000),
-    CREATOR_RISK_RECHECK_DEEP_CHECK_BUDGET_MS: Number(process.env.CREATOR_RISK_RECHECK_DEEP_CHECK_BUDGET_MS || 2500),
-    PAPER_TRADE_MAX_LOSS_PCT: Number(process.env.PAPER_TRADE_MAX_LOSS_PCT || 80),
-};
-
-// ═══════════════════════════════════════════════════════════════════════════════
 
 // Program IDs
 const PUMPFUN_AMM_PROGRAM_ID = "pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA";
@@ -281,14 +51,9 @@ const MONITOR_ONLY = process.env.MONITOR_ONLY === "true" || !walletKeypair;
 // State
 let activePoolJobs = 0;
 let activeLivePositions = 0;
-let logSubscriptionId: number | null = null;
-let lastLogAtMs = Date.now();
-let healthcheckInterval: NodeJS.Timeout | null = null;
-const seenSignatures = new Map<string, number>();
 const lowLiquidityPools = new Map<string, number>();
 let cachedSolPriceUsd: number | null = null;
 let cachedSolPriceAtMs = 0;
-const creatorRiskCache = new Map<string, CreatorRiskCacheEntry>();
 let cachedRugHistoryAtMs = 0;
 let cachedRugHistory: RugHistory | null = null;
 const recentFunderCreators = new Map<string, Array<{ creator: string; seenAtMs: number }>>();
@@ -304,58 +69,6 @@ const BLACKLIST_MICRO_BURST_SOURCES_PATH = path.join(BLACKLISTS_DIR, "micro-burs
 const BLACKLIST_CASHOUT_RELAYS_PATH = path.join(BLACKLISTS_DIR, "cashout-relays.txt");
 const BLACKLIST_FUNDER_COUNTS_PATH = path.join(BLACKLISTS_DIR, "funder-counts.json");
 const WORKER_LOG_DIR = path.join(ROOT_DIR, "logs");
-const pendingSignatures: string[] = [];
-const pendingSignatureSet = new Set<string>();
-
-type WorkerSlotState = {
-    slot: number;
-    busy: boolean;
-    signature: string | null;
-    child: ChildProcess | null;
-};
-
-function shortSig(sig: string): string {
-    if (sig.length <= 14) return sig;
-    return `${sig.slice(0, 6)}...${sig.slice(-6)}`;
-}
-
-function stageLog(_ctx: string, stage: string, message: string) {
-    console.log(`${stage.padEnd(12)} | ${message}`);
-}
-
-function pubkeyToBase58(value: any): string | null {
-    if (!value) return null;
-    if (typeof value === "string") return value;
-    if (typeof value?.toBase58 === "function") {
-        try {
-            return value.toBase58();
-        } catch {
-            return null;
-        }
-    }
-    if (value?.pubkey) {
-        return pubkeyToBase58(value.pubkey);
-    }
-    return null;
-}
-
-function instructionProgramIdToBase58(ix: any, accountKeys: any[]): string | null {
-    if (ix?.programId) {
-        const direct = pubkeyToBase58(ix.programId);
-        if (direct) return direct;
-    }
-    if (typeof ix?.programIdIndex === "number") {
-        return pubkeyToBase58(accountKeys[ix.programIdIndex]);
-    }
-    return null;
-}
-
-function instructionAccountToBase58(accountRef: any, accountKeys: any[]): string | null {
-    if (typeof accountRef === "number") {
-        return pubkeyToBase58(accountKeys[accountRef]);
-    }
-    return pubkeyToBase58(accountRef);
-}
 
 function readLowLiquidityPoolState(): Record<string, number> {
     try {
@@ -395,17 +108,6 @@ function pruneLowLiquidityPoolState(nowMs: number, cooldownMs: number): Record<s
     return state;
 }
 
-function inFlightCount(): number {
-    if (!IS_WORKER_PROCESS && workerSlots.length > 0) {
-        return workerSlots.filter((slot) => slot.busy).length;
-    }
-    return activePoolJobs + activeLivePositions;
-}
-
-function getWorkerLogPath(slot: number): string {
-    return path.join(WORKER_LOG_DIR, `paper-worker-${slot}.log`);
-}
-
 function getWorkerEntryCommand(): { cmd: string; args: string[] } {
     const distEntry = path.join(ROOT_DIR, "dist", "pumpAmmSniper.js");
     if (fs.existsSync(distEntry)) {
@@ -413,95 +115,6 @@ function getWorkerEntryCommand(): { cmd: string; args: string[] } {
     }
     return { cmd: "npx", args: ["ts-node", "src/pumpAmmSniper.ts"] };
 }
-
-const workerSlots: WorkerSlotState[] = !IS_WORKER_PROCESS
-    ? Array.from({ length: Math.max(1, CONFIG.MAX_CONCURRENT_OPERATIONS) }, (_, index) => ({
-        slot: index + 1,
-        busy: false,
-        signature: null,
-        child: null,
-    }))
-    : [];
-
-function toSubscriptDigits(value: number): string {
-    const map = ["₀", "₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉"];
-    return String(value).split("").map((c) => (c >= "0" && c <= "9") ? map[Number(c)] : c).join("");
-}
-
-function formatSolCompact(value: number): string {
-    if (!Number.isFinite(value) || value <= 0) return "0 SOL";
-    if (value >= 0.001) return `${value.toFixed(6)} SOL`;
-
-    const s = value.toFixed(12); // enough precision for tiny SOL values in logs
-    const frac = s.split(".")[1] || "";
-    const firstNonZero = frac.search(/[1-9]/);
-    if (firstNonZero <= 0) return `${value.toFixed(12)} SOL`;
-
-    const zeros = firstNonZero;
-    const significant = frac.slice(firstNonZero, firstNonZero + 4).replace(/0+$/, "") || "0";
-    return `0.0${toSubscriptDigits(zeros)}${significant} SOL`;
-}
-
-function formatSolDecimal(value: number): string {
-    if (!Number.isFinite(value)) return "0.000000 SOL";
-    return `${value.toFixed(6)} SOL`;
-}
-
-function formatLiquiditySol(value: number): string {
-    if (!Number.isFinite(value) || value <= 0) return "0.000000";
-    if (value >= 1) return value.toFixed(2);
-    if (value >= 0.01) return value.toFixed(4);
-    return value.toFixed(6);
-}
-
-function formatQuoteMovePct(baseline: number, current: number): string {
-    if (!Number.isFinite(baseline) || baseline <= 0 || !Number.isFinite(current)) {
-        return "n/a";
-    }
-    const changePct = ((current - baseline) / baseline) * 100;
-    if (Math.abs(changePct) < 0.005) return "flat 0.00%";
-    if (changePct > 0) return `gain +${changePct.toFixed(2)}%`;
-    return `drop ${Math.abs(changePct).toFixed(2)}%`;
-}
-
-type CreatorRiskResult = {
-    ok: boolean;
-    reason?: string;
-    transientError?: boolean;
-    latestObservedSignature?: string | null;
-    latestObservedBlockTime?: number | null;
-    deepChecksComplete?: boolean;
-    deepTimedOut?: boolean;
-    fastCheckMs?: number;
-    deepCheckMs?: number;
-    funder?: string | null;
-    uniqueCounterparties?: number;
-    compressedWindowSec?: number | null;
-    burner?: boolean;
-    funderRefundSol?: number;
-    creatorCashoutSol?: number;
-    creatorCashoutPctOfEntryLiquidity?: number;
-    creatorCashoutScore?: number;
-    creatorCashoutDestination?: string | null;
-    relayFundingRoot?: string | null;
-    directAmmReentrySig?: string | null;
-    creatorSeedSol?: number;
-    creatorSeedPctOfCurrentLiq?: number;
-    inboundSpraySources?: number;
-    precreateBurstTransfers?: number;
-    microInboundTransfers?: number;
-    microInboundSources?: number;
-    repeatedCreateRemoveCreates?: number;
-    repeatedCreateRemoveRemoves?: number;
-    repeatedCreateRemoveCashouts?: number;
-    repeatedCreateRemoveWindowSec?: number | null;
-    repeatedCreateRemoveMaxCashoutSol?: number;
-};
-
-type CreatorRiskCacheEntry = {
-    checkedAtMs: number;
-    result: CreatorRiskResult;
-};
 
 function isRateLimitedMessage(message?: string): boolean {
     const normalized = (message || "").toLowerCase();
@@ -512,392 +125,18 @@ function isRateLimitedMessage(message?: string): boolean {
     );
 }
 
-function isProbationBypassForbidden(result?: CreatorRiskResult): boolean {
-    const normalized = (result?.reason || "").toLowerCase();
-    const creatorCashoutPct = Number(result?.creatorCashoutPctOfEntryLiquidity || 0);
-    const creatorCashoutScore = Number(result?.creatorCashoutScore || 0);
-    if (
-        normalized.includes("creator in historical rug blacklist") ||
-        normalized.includes("funder blacklisted") ||
-        normalized.includes("relay funding recent on standard pool") ||
-        normalized.includes("relay funding recent + micro burst") ||
-        normalized.includes("micro inbound burst") ||
-        normalized.includes("creator direct amm re-entry") ||
-        normalized.includes("creator repeated create-remove pattern") ||
-        normalized.includes("creator seed too small") ||
-        normalized.includes("429 too many requests") ||
-        normalized.includes("rate limited")
-    ) {
-        return true;
-    }
-
-    if (
-        CONFIG.PAPER_CREATOR_RISK_EXTREME_CASHOUT_BLOCK_ENABLED &&
-        creatorCashoutPct >= CONFIG.PAPER_CREATOR_RISK_EXTREME_CASHOUT_MIN_PCT_OF_LIQ &&
-        creatorCashoutScore >= CONFIG.PAPER_CREATOR_RISK_EXTREME_CASHOUT_MIN_SCORE
-    ) {
-        return true;
-    }
-
-    return false;
-}
-
-function getProbationHoldMs(reason?: string): number {
-    const normalized = (reason || "").toLowerCase();
-    if (normalized.includes("creator cashout")) {
-        return Math.max(1000, CONFIG.PAPER_CREATOR_CASHOUT_PROBATION_HOLD_MS);
-    }
-    return Math.max(1000, CONFIG.PAPER_CREATOR_RISK_PROBATION_HOLD_MS);
-}
-
-type RugHistory = {
-    rugCreators: Set<string>;
-    rugFunders: Set<string>;
-    rugMicroBurstSources: Set<string>;
-    rugCashoutRelays: Set<string>;
-    rugFunderCounts: Map<string, number>;
-};
-
-function calcSpotSolPerToken(baseReserve: BN, quoteReserve: BN, tokenDecimals: number): number {
-    const baseSol = Number(baseReserve.toString()) / 1e9;
-    const quoteTokens = Number(quoteReserve.toString()) / 10 ** tokenDecimals;
-    if (!Number.isFinite(baseSol) || !Number.isFinite(quoteTokens) || quoteTokens <= 0) return 0;
-    return baseSol / quoteTokens;
-}
-
-function getPoolOrientation(state: any, tokenMint: string): { solIsBase: boolean; tokenIsBase: boolean; hasWsol: boolean } {
-    const baseMintStr = state.baseMint?.toBase58?.() || String(state.baseMint);
-    const tokenIsBase = baseMintStr === tokenMint;
-    const solIsBase = baseMintStr === WSOL;
-    const hasWsol = solIsBase || !tokenIsBase; // in this bot we expect a SOL/token pool
-    return { solIsBase, tokenIsBase, hasWsol };
-}
-
-function getSolLiquidityFromState(state: any, tokenMint: string): number | null {
-    const { solIsBase, hasWsol } = getPoolOrientation(state, tokenMint);
-    if (!hasWsol) return null;
-    const solRaw = solIsBase ? state.poolBaseAmount : state.poolQuoteAmount;
-    return Number(solRaw.toString()) / 1e9;
-}
-
-function getSpotSolPerTokenFromState(state: any, tokenMint: string, tokenDecimals: number): number | null {
-    const { solIsBase, hasWsol } = getPoolOrientation(state, tokenMint);
-    if (!hasWsol) return null;
-    return solIsBase
-        ? calcSpotSolPerToken(state.poolBaseAmount, state.poolQuoteAmount, tokenDecimals)
-        : calcSpotSolPerToken(state.poolQuoteAmount, state.poolBaseAmount, tokenDecimals);
-}
-
-function getExitQuoteSolFromState(state: any, tokenMint: string, tokenOutAtomic: BN): number | null {
-    if (!state || !tokenOutAtomic || tokenOutAtomic.lte(new BN(0))) return null;
-    const orientation = getPoolOrientation(state, tokenMint);
-    if (!orientation.hasWsol) return null;
-
-    try {
-        if (orientation.solIsBase) {
-            const exit = buyQuoteInput({
-                quote: tokenOutAtomic,
-                slippage: CONFIG.SLIPPAGE_PERCENT,
-                baseReserve: state.poolBaseAmount,
-                quoteReserve: state.poolQuoteAmount,
-                baseMintAccount: state.baseMintAccount,
-                baseMint: state.baseMint,
-                coinCreator: state.pool.coinCreator,
-                creator: state.pool.creator,
-                feeConfig: state.feeConfig,
-                globalConfig: state.globalConfig,
-            });
-            const solOut = Number(exit.base.toString()) / 1e9;
-            return Number.isFinite(solOut) ? solOut : null;
-        }
-
-        const exit = sellBaseInput({
-            base: tokenOutAtomic,
-            slippage: CONFIG.SLIPPAGE_PERCENT,
-            baseReserve: state.poolBaseAmount,
-            quoteReserve: state.poolQuoteAmount,
-            baseMintAccount: state.baseMintAccount,
-            baseMint: state.baseMint,
-            coinCreator: state.pool.coinCreator,
-            creator: state.pool.creator,
-            feeConfig: state.feeConfig,
-            globalConfig: state.globalConfig,
-        });
-        const solOut = Number(exit.uiQuote.toString()) / 1e9;
-        return Number.isFinite(solOut) ? solOut : null;
-    } catch {
-        return null;
-    }
-}
-
 // Initialize SDKs
 let onlineSdk: OnlinePumpAmmSdk;
 let offlineSdk: PumpAmmSdk;
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// MAIN ENTRY POINT
-// ═══════════════════════════════════════════════════════════════════════════════
-
-async function main() {
-    if (IS_WORKER_PROCESS) {
-        await runWorkerTask();
-        return;
-    }
-
-    await runSupervisor();
+function createRuntimeConnection() {
+    const rpcEndpoint = process.env.SVS_UNSTAKED_RPC || "https://api.mainnet-beta.solana.com";
+    return new Connection(rpcEndpoint, { commitment: "confirmed" });
 }
 
-async function runSupervisor() {
-    const rpcEndpoint = process.env.SVS_UNSTAKED_RPC || "https://api.mainnet-beta.solana.com";
-    const connection = new Connection(rpcEndpoint, { commitment: "confirmed" });
-
-    // Initialize SDKs with connection
+function initSdks(connection: Connection) {
     onlineSdk = new OnlinePumpAmmSdk(connection);
     offlineSdk = new PumpAmmSdk();
-
-    console.log("🎯 STARTING PUMP.FUN AMM SNIPER 🎯");
-    console.log(`Program: ${PUMPFUN_AMM_PROGRAM_ID}`);
-    console.log(`Mode: ${MONITOR_ONLY ? "MONITOR_ONLY" : "TRADING"}`);
-    console.log(`Wallet: ${walletKeypair ? walletKeypair.publicKey.toBase58() : "N/A (no private key loaded)"}`);
-    console.log(`Min Liquidity: ${CONFIG.MIN_POOL_LIQUIDITY_SOL} SOL`);
-    console.log(`Max Parallel Ops: ${workerSlots.length}`);
-    if (!MONITOR_ONLY) {
-        console.log(`Amount: ${CONFIG.TRADE_AMOUNT_SOL} SOL`);
-        console.log(`Auto-Sell: ${CONFIG.AUTO_SELL_DELAY_MS / 1000} seconds`);
-    } else if (CONFIG.PAPER_TRADE_ENABLED) {
-        console.log(`Paper Trade: enabled (every valid pool, exit delay ${CONFIG.AUTO_SELL_DELAY_MS / 1000}s)`);
-    }
-    console.log("");
-
-    // Subscribe to program logs with watchdog + auto-resubscribe
-    await subscribeToPoolLogs(connection);
-    startLogHealthcheck(connection);
-    setupGracefulShutdown(connection);
-
-    // Keep process alive
-    console.log("🚀 Sniper is running. Press Ctrl+C to stop.\n");
-}
-
-async function runWorkerTask() {
-    const signature = process.env.WORKER_TASK_SIGNATURE;
-    if (!signature) {
-        throw new Error("WORKER_TASK_SIGNATURE missing");
-    }
-
-    const rpcEndpoint = process.env.SVS_UNSTAKED_RPC || "https://api.mainnet-beta.solana.com";
-    const connection = new Connection(rpcEndpoint, { commitment: "confirmed" });
-
-    onlineSdk = new OnlinePumpAmmSdk(connection);
-    offlineSdk = new PumpAmmSdk();
-
-    console.log(`WORKER       | slot ${WORKER_SLOT || 1} start ${shortSig(signature)}`);
-    stageLog("", "SIGNATURE", signature);
-    await handleNewPool(connection, signature);
-    console.log(`WORKER       | slot ${WORKER_SLOT || 1} done ${shortSig(signature)}`);
-}
-
-function findIdleWorkerSlot(): WorkerSlotState | null {
-    return workerSlots.find((slot) => !slot.busy) || null;
-}
-
-function enqueuePendingSignature(signature: string) {
-    if (pendingSignatureSet.has(signature)) return;
-
-    const maxPending = Math.max(1, CONFIG.QUEUE_MAX_PENDING_SIGNATURES);
-    if (pendingSignatures.length >= maxPending) {
-        const dropped = pendingSignatures.shift();
-        if (dropped) {
-            pendingSignatureSet.delete(dropped);
-            console.warn(`QUEUE        | drop oldest ${shortSig(dropped)} (max ${maxPending})`);
-        }
-    }
-
-    pendingSignatures.push(signature);
-    pendingSignatureSet.add(signature);
-    console.log(`QUEUE        | enqueued ${shortSig(signature)} (pending=${pendingSignatures.length})`);
-}
-
-function drainPendingQueue() {
-    if (IS_WORKER_PROCESS || pendingSignatures.length === 0) return;
-
-    while (pendingSignatures.length > 0) {
-        const signature = pendingSignatures[0];
-        if (!dispatchPoolToWorker(signature)) {
-            return;
-        }
-        pendingSignatures.shift();
-        pendingSignatureSet.delete(signature);
-    }
-}
-
-function dispatchPoolToWorker(signature: string): boolean {
-    const slot = findIdleWorkerSlot();
-    if (!slot) {
-        return false;
-    }
-
-    fs.mkdirSync(WORKER_LOG_DIR, { recursive: true });
-    const workerLogPath = getWorkerLogPath(slot.slot);
-    if (!fs.existsSync(workerLogPath)) {
-        fs.writeFileSync(workerLogPath, "");
-    }
-
-    slot.busy = true;
-    slot.signature = signature;
-    console.log(`DISPATCH     | worker-${slot.slot} ${shortSig(signature)}`);
-
-    const workerEntry = getWorkerEntryCommand();
-    const child = spawn(workerEntry.cmd, workerEntry.args, {
-        cwd: ROOT_DIR,
-        env: {
-            ...process.env,
-            WORKER_TASK_SIGNATURE: signature,
-            WORKER_SLOT: String(slot.slot),
-        },
-        stdio: "ignore",
-    });
-
-    slot.child = child;
-
-    child.on("exit", (code, signal) => {
-        console.log(
-            `WORKER       | worker-${slot.slot} done ${shortSig(signature)} ` +
-            `(code=${code ?? "null"} signal=${signal ?? "-"})`
-        );
-        slot.busy = false;
-        slot.signature = null;
-        slot.child = null;
-        drainPendingQueue();
-    });
-
-    child.on("error", (error) => {
-        console.error(`WORKER       | worker-${slot.slot} failed ${shortSig(signature)}: ${error.message}`);
-        slot.busy = false;
-        slot.signature = null;
-        slot.child = null;
-        drainPendingQueue();
-    });
-
-    return true;
-}
-
-async function subscribeToPoolLogs(connection: Connection) {
-    console.log("👀 Listening for 'create_pool' logs...");
-    logSubscriptionId = connection.onLogs(
-        new PublicKey(PUMPFUN_AMM_PROGRAM_ID),
-        async (logs) => {
-            try {
-                lastLogAtMs = Date.now();
-                pruneSignatureCache(lastLogAtMs);
-
-                if (alreadySeenSignature(logs.signature, lastLogAtMs)) {
-                    return;
-                }
-
-                // Check for pool creation
-                const hasCreatePool = logs.logs.some(log =>
-                    log.toLowerCase().includes("create_pool") ||
-                    log.toLowerCase().includes("createpool")
-                );
-
-                if (!hasCreatePool) return;
-
-                if (!dispatchPoolToWorker(logs.signature)) {
-                    enqueuePendingSignature(logs.signature);
-                }
-            } catch (e: any) {
-                console.error(`❌ Log handler error: ${e.message}`);
-            }
-        },
-        "confirmed"
-    );
-}
-
-function alreadySeenSignature(signature: string, nowMs: number): boolean {
-    const existing = seenSignatures.get(signature);
-    if (existing && nowMs - existing < CONFIG.SIGNATURE_CACHE_TTL_MS) {
-        return true;
-    }
-    seenSignatures.set(signature, nowMs);
-    return false;
-}
-
-function pruneSignatureCache(nowMs: number) {
-    for (const [sig, timestamp] of seenSignatures) {
-        if (nowMs - timestamp > CONFIG.SIGNATURE_CACHE_TTL_MS) {
-            seenSignatures.delete(sig);
-        }
-    }
-
-    // If still too large, remove oldest entries
-    if (seenSignatures.size > CONFIG.SIGNATURE_CACHE_MAX_SIZE) {
-        const entries = Array.from(seenSignatures.entries()).sort((a, b) => a[1] - b[1]);
-        const toRemove = seenSignatures.size - CONFIG.SIGNATURE_CACHE_MAX_SIZE;
-        for (let i = 0; i < toRemove; i++) {
-            seenSignatures.delete(entries[i][0]);
-        }
-    }
-}
-
-function startLogHealthcheck(connection: Connection) {
-    if (healthcheckInterval) clearInterval(healthcheckInterval);
-
-    healthcheckInterval = setInterval(async () => {
-        const now = Date.now();
-        const staleForMs = now - lastLogAtMs;
-
-        drainPendingQueue();
-
-        if (staleForMs < CONFIG.LOG_STALE_RESUBSCRIBE_MS) return;
-
-        console.warn(`⚠️ Log stream stale for ${Math.floor(staleForMs / 1000)}s. Resubscribing...`);
-        try {
-            if (logSubscriptionId !== null) {
-                await connection.removeOnLogsListener(logSubscriptionId);
-            }
-        } catch (e: any) {
-            console.warn(`⚠️ Failed removing old log subscription: ${e.message}`);
-        }
-
-        logSubscriptionId = null;
-        lastLogAtMs = now;
-        await subscribeToPoolLogs(connection);
-    }, CONFIG.HEALTHCHECK_INTERVAL_MS);
-}
-
-function setupGracefulShutdown(connection: Connection) {
-    const shutdown = async () => {
-        console.log("\n🛑 Shutting down...");
-
-        if (healthcheckInterval) {
-            clearInterval(healthcheckInterval);
-            healthcheckInterval = null;
-        }
-
-        if (logSubscriptionId !== null) {
-            try {
-                await connection.removeOnLogsListener(logSubscriptionId);
-            } catch {
-                // no-op on shutdown
-            }
-            logSubscriptionId = null;
-        }
-
-        for (const slot of workerSlots) {
-            if (slot.child && !slot.child.killed) {
-                try {
-                    slot.child.kill("SIGTERM");
-                } catch {
-                    // no-op on shutdown
-                }
-            }
-        }
-
-        process.exit(0);
-    };
-
-    process.once("SIGINT", shutdown);
-    process.once("SIGTERM", shutdown);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1096,7 +335,7 @@ async function handleNewPool(connection: Connection, signature: string) {
         }
 
         if (liquiditySOL < CONFIG.MIN_POOL_LIQUIDITY_SOL) {
-            liquiditySOL = await recheckLowLiquidity(poolAddress, tokenMint, ctx, liquiditySOL);
+            liquiditySOL = await liquidityService.recheckLowLiquidity(poolAddress, tokenMint, ctx, liquiditySOL);
         }
 
         const failedSolThreshold = liquiditySOL < CONFIG.MIN_POOL_LIQUIDITY_SOL;
@@ -1140,7 +379,7 @@ async function handleNewPool(connection: Connection, signature: string) {
         let creatorRisk: CreatorRiskResult = { ok: true, reason: "creator unresolved (fail-open)" };
         stageLog(ctx, "STEP 5/7", "creator risk");
         if (creatorAddress) {
-            creatorRisk = await runCreatorRiskCheckWithRetry(connection, creatorAddress, ctx, {
+            creatorRisk = await creatorRiskService.runCheckWithRetry(connection, creatorAddress, ctx, {
                 entrySolLiquidity: liquiditySOL,
                 createPoolSignature: signature,
                 createPoolBlockTime: tx.blockTime || null,
@@ -1151,7 +390,7 @@ async function handleNewPool(connection: Connection, signature: string) {
         } else {
             stageLog(ctx, "CRISK", "skipped (creator unresolved + fail-open)");
         }
-        const creatorRiskProbationForbidden = creatorRisk.transientError ? false : isProbationBypassForbidden(creatorRisk);
+        const creatorRiskProbationForbidden = creatorRisk.transientError ? false : creatorRiskService.isProbationBypassForbidden(creatorRisk);
         let creatorRiskProbation = false;
         let creatorRiskProbationHoldMs = Math.max(1000, CONFIG.PAPER_CREATOR_RISK_PROBATION_HOLD_MS);
         if (!creatorRisk.ok) {
@@ -1161,7 +400,7 @@ async function handleNewPool(connection: Connection, signature: string) {
                 !creatorRiskProbationForbidden
             ) {
                 creatorRiskProbation = true;
-                creatorRiskProbationHoldMs = getProbationHoldMs(creatorRisk.reason);
+                creatorRiskProbationHoldMs = creatorRiskService.getProbationHoldMs(creatorRisk.reason);
                 stageLog(
                     ctx,
                     "PROBATION",
@@ -1196,14 +435,14 @@ async function handleNewPool(connection: Connection, signature: string) {
                 }
                 liquiditySOL = preEntry.currentLiquiditySol;
             }
-            const top10 = await preBuyTop10ConcentrationCheck(connection, tokenMint, poolAddress, ctx);
+            const top10 = await top10Service.runCheck(connection, tokenMint, poolAddress, ctx);
             if (!top10.ok) {
                 console.log(`🛑 SKIP: pre-buy top10 (${top10.reason})`);
                 finalStatus = "SKIP: pre-buy top10";
                 return;
             }
             stageLog(ctx, "STEP 6/7", "paper simulation");
-            const paper = await maybeRunPaperTradeSimulation(
+            const paper = await paperTradeService.runSimulation(
                 connection,
                 poolAddress,
                 tokenMint,
@@ -1232,7 +471,7 @@ async function handleNewPool(connection: Connection, signature: string) {
             }
             stageLog(ctx, "STEP 7/7", "dev holdings");
             if (creatorAddress) {
-                const devCheckOk = await runDevHoldingsCheck(connection, creatorAddress, tokenMint, postTokenBalances, ctx, false);
+                const devCheckOk = await devHoldingsService.runCheck(connection, creatorAddress, tokenMint, postTokenBalances, ctx, false);
                 if (devCheckOk) {
                     console.log(`✅ Checks passed`);
                 }
@@ -1245,7 +484,7 @@ async function handleNewPool(connection: Connection, signature: string) {
         }
 
         if (creatorAddress) {
-            const devCheckOk = await runDevHoldingsCheck(connection, creatorAddress, tokenMint, postTokenBalances, ctx, true);
+            const devCheckOk = await devHoldingsService.runCheck(connection, creatorAddress, tokenMint, postTokenBalances, ctx, true);
             if (!devCheckOk) {
                 finalStatus = "SKIP: dev holdings";
                 return;
@@ -1262,7 +501,7 @@ async function handleNewPool(connection: Connection, signature: string) {
                 return;
             }
         }
-        const top10 = await preBuyTop10ConcentrationCheck(connection, tokenMint, poolAddress, ctx);
+        const top10 = await top10Service.runCheck(connection, tokenMint, poolAddress, ctx);
         if (!top10.ok) {
             console.log(`🛑 SKIP: pre-buy top10 (${top10.reason})`);
             finalStatus = "SKIP: pre-buy top10";
@@ -1291,7 +530,7 @@ async function handleNewPool(connection: Connection, signature: string) {
                 }
                 return null;
             };
-            const preBuy = await validatePreBuyEntryState(
+            const preBuy = await paperTradeService.validatePreBuy(
                 connection,
                 fetchStateWithRetry,
                 tokenMint,
@@ -1341,45 +580,6 @@ async function resolveCreatorFromPool(connection: Connection, poolAddress: strin
         await new Promise((r) => setTimeout(r, 250));
     }
     return null;
-}
-
-async function recheckLowLiquidity(
-    poolAddress: string,
-    tokenMint: string,
-    ctx: string,
-    initialLiquiditySol: number,
-): Promise<number> {
-    if (!CONFIG.LOW_LIQUIDITY_RECHECK_ENABLED) return initialLiquiditySol;
-    const windowMs = Math.max(0, CONFIG.LOW_LIQUIDITY_RECHECK_WINDOW_MS);
-    const intervalMs = Math.max(100, CONFIG.LOW_LIQUIDITY_RECHECK_INTERVAL_MS);
-    if (windowMs <= 0) return initialLiquiditySol;
-
-    const observerUser = walletKeypair?.publicKey ?? Keypair.generate().publicKey;
-    const poolKey = new PublicKey(poolAddress);
-    const deadline = Date.now() + windowMs;
-    let best = initialLiquiditySol;
-
-    stageLog(ctx, "LIQ", `recheck window ${windowMs}ms (initial ${formatLiquiditySol(initialLiquiditySol)} SOL)`);
-    while (Date.now() < deadline) {
-        try {
-            const state = await onlineSdk.swapSolanaState(poolKey, observerUser);
-            const liq = getSolLiquidityFromState(state, tokenMint);
-            if (liq !== null && Number.isFinite(liq)) {
-                if (liq > best) best = liq;
-                if (liq >= CONFIG.MIN_POOL_LIQUIDITY_SOL) {
-                    stageLog(ctx, "LIQ", `recheck passed at ${formatLiquiditySol(liq)} SOL`);
-                    return liq;
-                }
-            }
-        } catch {
-            // keep retrying during grace window
-        }
-        await new Promise((r) => setTimeout(r, intervalMs));
-    }
-    if (best > initialLiquiditySol) {
-        stageLog(ctx, "LIQ", `recheck improved to ${formatLiquiditySol(best)} SOL`);
-    }
-    return best;
 }
 
 async function waitForFirstPoolTrade(
@@ -1481,176 +681,6 @@ async function preEntryWaitAndCheck(
     } catch (e: any) {
         return { ok: false, reason: e?.message || "pre-entry liquidity fetch failed", currentLiquiditySol: baselineLiquiditySol };
     }
-}
-
-async function preBuyTop10ConcentrationCheck(
-    connection: Connection,
-    tokenMint: string,
-    poolAddress: string,
-    ctx: string,
-): Promise<{ ok: boolean; reason?: string; top10Pct?: number }> {
-    if (!CONFIG.PRE_BUY_TOP10_CHECK_ENABLED) {
-        stageLog(ctx, "TOP10", "check disabled");
-        return { ok: true };
-    }
-
-    const unavailableResult = (reason: string) => {
-        const policy = CONFIG.PRE_BUY_TOP10_FAIL_OPEN ? "fail-open" : "fail-closed";
-        stageLog(ctx, "TOP10", `unavailable (${reason}) -> ${policy}`);
-        if (CONFIG.PRE_BUY_TOP10_FAIL_OPEN) {
-            return { ok: true };
-        }
-        return { ok: false, reason: `top10 unavailable: ${reason}` };
-    };
-
-    const maxAttempts = Math.max(1, CONFIG.PRE_BUY_TOP10_MAX_ATTEMPTS);
-    const baseDelayMs = Math.max(0, CONFIG.PRE_BUY_TOP10_RETRY_BASE_MS);
-    let lastUnavailableReason = "top10 check failed";
-
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        try {
-            const mintKey = await resolveTop10MintKey(connection, tokenMint, poolAddress, ctx);
-            if (!mintKey) {
-                lastUnavailableReason = "no valid mint candidate";
-                throw new Error(lastUnavailableReason);
-            }
-
-            let mintInfoErr: string | null = null;
-            const mintInfo = await getMintInfoRobust(connection, mintKey).catch((e: any) => {
-                mintInfoErr = e?.message || String(e);
-                return null;
-            });
-            if (!mintInfo) {
-                lastUnavailableReason = `mint info error: ${mintInfoErr || "unknown error"}`;
-                throw new Error(lastUnavailableReason);
-            }
-
-            const totalSupplyRaw = Number(mintInfo.supply.toString());
-            if (!Number.isFinite(totalSupplyRaw) || totalSupplyRaw <= 0) {
-                lastUnavailableReason = "invalid token supply";
-                throw new Error(lastUnavailableReason);
-            }
-
-            const largest = await getTop10LargestAccountsWithRetry(connection, mintKey, 8, 350);
-            if (!largest) {
-                lastUnavailableReason = "largest accounts error";
-                throw new Error(lastUnavailableReason);
-            }
-
-            const top10Accounts = largest.value.slice(0, 10);
-            if (top10Accounts.length === 0) {
-                lastUnavailableReason = "no holder accounts found";
-                throw new Error(lastUnavailableReason);
-            }
-
-            const parsed = await Promise.all(
-                top10Accounts.map((a) => connection.getParsedAccountInfo(a.address, "confirmed").catch(() => null))
-            );
-
-            let top10Raw = 0;
-            for (let i = 0; i < top10Accounts.length; i++) {
-                const amount = Number(top10Accounts[i].amount || "0");
-                if (!Number.isFinite(amount) || amount <= 0) continue;
-
-                const owner = (parsed[i] as any)?.value?.data?.parsed?.info?.owner as string | undefined;
-                if (CONFIG.PRE_BUY_TOP10_EXCLUDE_POOL && owner && owner === poolAddress) {
-                    continue;
-                }
-
-                top10Raw += amount;
-            }
-
-            const top10Pct = (top10Raw / totalSupplyRaw) * 100;
-            stageLog(
-                ctx,
-                "TOP10",
-                `${top10Pct.toFixed(2)}% (max ${CONFIG.PRE_BUY_TOP10_MAX_PCT.toFixed(2)}%)`
-            );
-
-            if (top10Pct > CONFIG.PRE_BUY_TOP10_MAX_PCT) {
-                return {
-                    ok: false,
-                    reason: `top10 concentration ${top10Pct.toFixed(2)}% > ${CONFIG.PRE_BUY_TOP10_MAX_PCT.toFixed(2)}%`,
-                    top10Pct,
-                };
-            }
-
-            return { ok: true, top10Pct };
-        } catch (e: any) {
-            lastUnavailableReason = e?.message || lastUnavailableReason;
-            if (attempt < maxAttempts) {
-                const retryDelayMs = Math.round(baseDelayMs * Math.pow(1.6, attempt - 1));
-                stageLog(
-                    ctx,
-                    "TOP10",
-                    `retry ${attempt}/${maxAttempts} after error: ${lastUnavailableReason} (wait ${retryDelayMs}ms)`
-                );
-                if (retryDelayMs > 0) {
-                    await new Promise((r) => setTimeout(r, retryDelayMs));
-                }
-                continue;
-            }
-        }
-    }
-
-    return unavailableResult(lastUnavailableReason);
-}
-
-async function getTop10LargestAccountsWithRetry(
-    connection: Connection,
-    mintKey: PublicKey,
-    maxAttempts: number,
-    delayMs: number,
-) {
-    let lastErr: any = null;
-    for (let attempt = 1; attempt <= Math.max(1, maxAttempts); attempt++) {
-        try {
-            return await connection.getTokenLargestAccounts(mintKey, "confirmed");
-        } catch (e: any) {
-            lastErr = e;
-            if (attempt < maxAttempts) {
-                await new Promise((r) => setTimeout(r, Math.max(0, delayMs)));
-            }
-        }
-    }
-    return null;
-}
-
-async function resolveTop10MintKey(
-    connection: Connection,
-    tokenMint: string,
-    poolAddress: string,
-    ctx: string,
-): Promise<PublicKey | null> {
-    const candidates: string[] = [tokenMint];
-
-    try {
-        const observerUser = walletKeypair?.publicKey ?? Keypair.generate().publicKey;
-        const state = await onlineSdk.swapSolanaState(new PublicKey(poolAddress), observerUser);
-        const anyState = state as any;
-        const baseMint = anyState?.baseMint?.toBase58?.() || String(anyState?.baseMint || "");
-        const quoteMint = anyState?.quoteMint?.toBase58?.() || String(anyState?.quoteMint || "");
-        if (baseMint && baseMint !== WSOL) candidates.push(baseMint);
-        if (quoteMint && quoteMint !== WSOL) candidates.push(quoteMint);
-    } catch {
-        // Keep initial extracted mint only.
-    }
-
-    const uniqueCandidates = [...new Set(candidates)];
-    for (const candidate of uniqueCandidates) {
-        try {
-            const key = new PublicKey(candidate);
-            await getMintInfoRobust(connection, key);
-            if (candidate !== tokenMint) {
-                stageLog(ctx, "TOP10", `using fallback mint ${candidate}`);
-            }
-            return key;
-        } catch {
-            // Try next candidate.
-        }
-    }
-
-    return null;
 }
 
 function readBlacklistSet(filePath: string): Set<string> {
@@ -2331,12 +1361,6 @@ function isRemoveLiquidityLikeTx(tx: any, creatorAddress: string, poolAddress: s
 
     return { detected, wsolToCreator, solToCreator };
 }
-
-type ParsedCreatorRiskTx = {
-    signature: string;
-    blockTime: number | null;
-    tx: any;
-};
 
 type CreatorRepeatPatternRisk = {
     detected: boolean;
@@ -3055,1022 +2079,104 @@ async function getPoolRecentChurnStats(
     }
 }
 
-async function runCreatorRiskCheck(
-    connection: Connection,
-    creatorAddress: string,
-    ctx: string,
-    options: {
-        forceRefresh?: boolean;
-        entrySolLiquidity?: number;
-        createPoolSignature?: string;
-        createPoolBlockTime?: number | null;
-        creatorSeedSol?: number;
-        previousResult?: CreatorRiskResult;
-        allowReuseIfNoNewActivity?: boolean;
-        allowFastPathOnDeepTimeout?: boolean;
-        deepCheckBudgetMs?: number;
-    } = {},
-): Promise<CreatorRiskResult> {
-    if (!CONFIG.CREATOR_RISK_CHECK_ENABLED) {
-        stageLog(ctx, "CRISK", "check disabled");
-        return { ok: true };
-    }
+const creatorRiskService = createCreatorRiskService({
+    monitorOnly: MONITOR_ONLY,
+    pumpfunAmmProgramId: PUMPFUN_AMM_PROGRAM_ID,
+    buildRugHistory,
+    fetchParsedTransactionsForSignatures,
+    walkParsedInstructions,
+    classifyRecentCreateRemovePattern,
+    detectCreatorDirectAmmReentry,
+    classifySprayOutboundPattern,
+    classifyInboundSprayPattern,
+    classifyCreatorCashoutRisk,
+    collectPrecreateOutboundTransfers,
+    classifyRecentRelayFunding,
+    classifyPrecreateOutboundBurst,
+    isStandardRelayRiskPool,
+    isSuspiciousRelayRoot,
+    trackRecentFunderCreator,
+    withTimeout,
+    isRateLimitedMessage,
+});
 
-    const cached = creatorRiskCache.get(creatorAddress);
-    if (!options.forceRefresh && cached && Date.now() - cached.checkedAtMs < CONFIG.CREATOR_RISK_CACHE_TTL_MS) {
-        return cached.result;
-    }
-
-    try {
-        const startedAtMs = Date.now();
-        const fmtMs = (value: number) => `${Math.max(0, Math.round(value))}ms`;
-        const rugHistory = await buildRugHistory(connection);
-        const rugHistoryDoneAtMs = Date.now();
-        const previousResult = options.previousResult || cached?.result;
-
-        if (rugHistory.rugCreators.has(creatorAddress)) {
-            const result = {
-                ok: false,
-                reason: "creator in historical rug blacklist",
-                deepChecksComplete: true,
-                latestObservedSignature: previousResult?.latestObservedSignature || null,
-                latestObservedBlockTime: previousResult?.latestObservedBlockTime || null,
-            };
-            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
-            return result;
+const paperTradeService = createPaperTradeService({
+    getObserverPublicKey: () => walletKeypair?.publicKey ?? Keypair.generate().publicKey,
+    fetchSwapState: async (poolAddress: string, observerUser: PublicKey) => {
+        const poolKey = new PublicKey(poolAddress);
+        try {
+            return await onlineSdk.swapSolanaState(poolKey, observerUser);
+        } catch {
+            return null;
         }
-
-        const sigLimit = Math.max(5, CONFIG.CREATOR_RISK_SIG_LIMIT);
-        const parseLimit = Math.max(3, CONFIG.CREATOR_RISK_PARSED_TX_LIMIT);
-        const sigs = await connection.getSignaturesForAddress(new PublicKey(creatorAddress), { limit: sigLimit }, "confirmed");
-        const latestObservedSignature = sigs[0]?.signature || null;
-        const latestObservedBlockTime = sigs[0]?.blockTime ?? null;
-        if (
-            options.allowReuseIfNoNewActivity &&
-            previousResult?.latestObservedSignature &&
-            previousResult.latestObservedSignature === latestObservedSignature
-        ) {
-            stageLog(ctx, "CRISK", `reused cached result (no new creator tx, latest=${shortSig(latestObservedSignature || "-")})`);
-            return {
-                ...previousResult,
-                latestObservedSignature,
-                latestObservedBlockTime,
-            };
-        }
-        const chronological = [...sigs].reverse();
-        const sample = chronological.slice(-parseLimit);
-
-        let solInTransfers = 0;
-        let solOutTransfers = 0;
-        let solInSol = 0;
-        let solOutSol = 0;
-        let funder: string | null = null;
-        let funderRefundSol = 0;
-        const counterparties = new Set<string>();
-        const linksToCreators = new Set<string>();
-        const outboundTransfers: Array<{ destination: string; sol: number }> = [];
-        const inboundTransfers: Array<{ source: string; sol: number }> = [];
-        const createPoolOutboundDestinations = new Set<string>();
-        const parsedCreatorRiskTxs: ParsedCreatorRiskTx[] = [];
-        const parsedCreatorRiskTxSignatures = new Set<string>();
-
-        const sampleSignatures = new Set(sample.map((s) => s.signature));
-        const ingestParsedTx = (
-            tx: any,
-            options: { recordCreatePoolDestinations?: boolean; signature?: string; blockTime?: number | null } = {},
-        ) => {
-            const outer = walkParsedInstructions(
-                tx.transaction?.message?.instructions,
-                creatorAddress,
-                counterparties,
-                linksToCreators,
-                rugHistory.rugCreators,
-            );
-            const innerParts = (tx.meta?.innerInstructions || []).map((inner: any) =>
-                walkParsedInstructions(inner.instructions, creatorAddress, counterparties, linksToCreators, rugHistory.rugCreators)
-            );
-
-            solInTransfers += outer.solInTransfers;
-            solOutTransfers += outer.solOutTransfers;
-            solInSol += outer.solInSol;
-            solOutSol += outer.solOutSol;
-            inboundTransfers.push(...outer.inboundTransfers);
-
-            for (const inner of innerParts) {
-                solInTransfers += inner.solInTransfers;
-                solOutTransfers += inner.solOutTransfers;
-                solInSol += inner.solInSol;
-                solOutSol += inner.solOutSol;
-                inboundTransfers.push(...inner.inboundTransfers);
-                outboundTransfers.push(...inner.outboundTransfers);
-            }
-            outboundTransfers.push(...outer.outboundTransfers);
-
-            if (options.signature && !parsedCreatorRiskTxSignatures.has(options.signature)) {
-                parsedCreatorRiskTxSignatures.add(options.signature);
-                parsedCreatorRiskTxs.push({
-                    signature: options.signature,
-                    blockTime: options.blockTime ?? tx.blockTime ?? null,
-                    tx,
-                });
-            }
-
-            if (options.recordCreatePoolDestinations) {
-                for (const dest of outer.outboundDestinations) {
-                    if (dest && dest !== creatorAddress) createPoolOutboundDestinations.add(dest);
-                }
-                for (const inner of innerParts) {
-                    for (const dest of inner.outboundDestinations) {
-                        if (dest && dest !== creatorAddress) createPoolOutboundDestinations.add(dest);
-                    }
-                }
-            }
-
-            if (!funder) {
-                funder = outer.inboundSources[0] || innerParts.flatMap((p: any) => p.inboundSources)[0] || null;
-            }
-
-            if (funder) {
-                const outerRefunds = outer.outboundDestinations.filter((d) => d === funder).length > 0 ? outer.solOutSol : 0;
-                const innerRefunds = innerParts
-                    .filter((p: any) => p.outboundDestinations.filter((d: string) => d === funder).length > 0)
-                    .reduce((sum: number, p: any) => sum + p.solOutSol, 0);
-                funderRefundSol += outerRefunds + innerRefunds;
-            }
-        };
-
-        const parsedSampleTxs = await fetchParsedTransactionsForSignatures(connection, sample);
-        for (const parsed of parsedSampleTxs) {
-            ingestParsedTx(parsed.tx, {
-                recordCreatePoolDestinations: parsed.signature === options.createPoolSignature,
-                signature: parsed.signature,
-                blockTime: parsed.blockTime ?? null,
-            });
-        }
-
-        // When risk-check runs immediately after create_pool, address history can lag and miss
-        // the create tx in `getSignaturesForAddress`. Force-include that tx to avoid blind spots.
-        if (options.createPoolSignature && !sampleSignatures.has(options.createPoolSignature)) {
-            try {
-                const createTx = (await fetchParsedTransactionsForSignatures(connection, [{
-                    signature: options.createPoolSignature,
-                    blockTime: options.createPoolBlockTime ?? null,
-                }]))[0];
-                if (createTx) {
-                    ingestParsedTx(createTx.tx, {
-                        recordCreatePoolDestinations: true,
-                        signature: options.createPoolSignature,
-                        blockTime: options.createPoolBlockTime ?? createTx.blockTime ?? null,
-                    });
-                }
-            } catch {
-                // fail-open
-            }
-        }
-        const historyParsedAtMs = Date.now();
-
-        const uniqueCounterparties = counterparties.size;
-        const firstSigTime = sample[0]?.blockTime || null;
-        const lastSigTime = sample[sample.length - 1]?.blockTime || null;
-        const augmentedFirstSigTime =
-            options.createPoolBlockTime && firstSigTime
-                ? Math.min(firstSigTime, options.createPoolBlockTime)
-                : (firstSigTime ?? options.createPoolBlockTime ?? null);
-        const augmentedLastSigTime =
-            options.createPoolBlockTime && lastSigTime
-                ? Math.max(lastSigTime, options.createPoolBlockTime)
-                : (lastSigTime ?? options.createPoolBlockTime ?? null);
-        const compressedWindowSec =
-            augmentedFirstSigTime && augmentedLastSigTime && augmentedLastSigTime >= augmentedFirstSigTime
-                ? augmentedLastSigTime - augmentedFirstSigTime
-                : null;
-        const microInboundTransfers = inboundTransfers.filter(
-            (transfer) => transfer.sol > 0 && transfer.sol <= CONFIG.CREATOR_RISK_MICRO_INBOUND_MAX_SOL
-        );
-        const microInboundSources = new Set(microInboundTransfers.map((transfer) => transfer.source));
-        const burner =
-            solInTransfers === 0 &&
-            solOutTransfers > 0 &&
-            solOutTransfers <= 3 &&
-            solOutSol >= CONFIG.CREATOR_RISK_BURNER_MIN_OUT_SOL;
-        const repeatCreateRemovePattern = classifyRecentCreateRemovePattern(parsedCreatorRiskTxs, creatorAddress, {
-            currentCreatePoolSignature: options.createPoolSignature,
-            currentCreatePoolBlockTime: options.createPoolBlockTime,
+    },
+    getMintDecimals: async (connection: Connection, tokenMint: string) => {
+        return (await getMintInfoRobust(connection, new PublicKey(tokenMint))).decimals;
+    },
+    recheckCreatorRisk: async (
+        connection: Connection,
+        creatorAddress: string,
+        ctx: string,
+        baselineLiquiditySol: number,
+        createPoolSignature?: string,
+        createPoolBlockTime?: number | null,
+        initialCreatorRisk?: CreatorRiskResult,
+    ) => {
+        return creatorRiskService.runCheckWithRetry(connection, creatorAddress, ctx, {
+            forceRefresh: true,
+            entrySolLiquidity: baselineLiquiditySol,
+            createPoolSignature,
+            createPoolBlockTime,
+            previousResult: initialCreatorRisk,
+            allowReuseIfNoNewActivity: true,
+            allowFastPathOnDeepTimeout: true,
+            deepCheckBudgetMs: CONFIG.CREATOR_RISK_RECHECK_DEEP_CHECK_BUDGET_MS,
         });
-        const directAmmReentry = await detectCreatorDirectAmmReentry(
-            connection,
-            creatorAddress,
-            options.createPoolSignature,
-            options.createPoolBlockTime,
-            parsedCreatorRiskTxs,
-        );
-        const earlyChecksDoneAtMs = Date.now();
-        const creatorSeedSol = Number.isFinite(options.creatorSeedSol) ? Math.max(0, options.creatorSeedSol || 0) : 0;
-        const creatorSeedPctOfCurrentLiq =
-            options.entrySolLiquidity && options.entrySolLiquidity > 0 && creatorSeedSol > 0
-                ? (creatorSeedSol / options.entrySolLiquidity) * 100
-                : 0;
-        const creatorSeedGrowthMultiple =
-            creatorSeedSol > 0 && options.entrySolLiquidity && options.entrySolLiquidity > 0
-                ? options.entrySolLiquidity / creatorSeedSol
-                : Infinity;
-        const sprayOutbound = classifySprayOutboundPattern(outboundTransfers);
-        const sprayInbound = classifyInboundSprayPattern(inboundTransfers);
+    },
+    shouldEscalateProbationCreatorRisk: creatorRiskService.shouldEscalateProbationCreatorRisk,
+    detectRemoveLiquiditySince,
+    getPoolRecentChurnStats,
+    detectCreatorLargeOutboundSince,
+    collectCreatorCloseAccountEventsSince,
+    collectCreatorOutboundTransfersSince,
+    collectCreatorInboundTransfersSince,
+    classifyHoldCreatorCloseAccountBurst,
+    classifyHoldCreatorOutboundSpray,
+    classifyHoldCreatorInboundSpray,
+});
 
-        stageLog(
-            ctx,
-            "CRISK",
-            `cp=${uniqueCounterparties} in=${solInTransfers} out=${solOutTransfers} ` +
-            `window=${compressedWindowSec ?? "n/a"}s funder=${funder ? shortSig(funder) : "-"} refund=${funderRefundSol.toFixed(3)} ` +
-            `micro=${microInboundTransfers.length}/${microInboundSources.size}`
-        );
-
-        const enrichBaseResult = (result: CreatorRiskResult): CreatorRiskResult => ({
-            latestObservedSignature,
-            latestObservedBlockTime,
-            fastCheckMs: earlyChecksDoneAtMs - startedAtMs,
-            ...result,
-        });
-
-        if (creatorSeedSol > 0 && options.entrySolLiquidity && options.entrySolLiquidity > 0) {
-            stageLog(
-                ctx,
-                "SEED",
-                `creator=${creatorSeedSol.toFixed(3)} SOL pct=${creatorSeedPctOfCurrentLiq.toFixed(2)}% growth=${creatorSeedGrowthMultiple.toFixed(2)}x`
-            );
+const liquidityService = createLiquidityService({
+    getObserverPublicKey: () => walletKeypair?.publicKey ?? Keypair.generate().publicKey,
+    fetchSwapState: async (poolAddress: string, observerUser: PublicKey) => {
+        const poolKey = new PublicKey(poolAddress);
+        try {
+            return await onlineSdk.swapSolanaState(poolKey, observerUser);
+        } catch {
+            return null;
         }
-        if (sprayInbound.detected) {
-            stageLog(
-                ctx,
-                "ISPRAY",
-                `in=${sprayInbound.transfers} src=${sprayInbound.sources} median=${sprayInbound.medianSol.toFixed(3)} ` +
-                `rel_std=${sprayInbound.relStdDev.toFixed(2)} ratio=${sprayInbound.amountRatio.toFixed(2)}`
-            );
-        }
-        if (sprayOutbound.detected) {
-            stageLog(
-                ctx,
-                "SPRAY",
-                `out=${sprayOutbound.transfers} dest=${sprayOutbound.destinations} median=${sprayOutbound.medianSol.toFixed(3)} ` +
-                `rel_std=${sprayOutbound.relStdDev.toFixed(2)} ratio=${sprayOutbound.amountRatio.toFixed(2)}`
-            );
-        }
-        if (repeatCreateRemovePattern.creates > 0 || repeatCreateRemovePattern.removes > 0 || repeatCreateRemovePattern.cashouts > 0) {
-            stageLog(
-                ctx,
-                "RREPEAT",
-                `create=${repeatCreateRemovePattern.creates} remove=${repeatCreateRemovePattern.removes} ` +
-                `cashout=${repeatCreateRemovePattern.cashouts} window=${repeatCreateRemovePattern.windowSec ?? "n/a"}s ` +
-                `max_out=${repeatCreateRemovePattern.maxCashoutSol.toFixed(3)}`
-            );
-        }
-        if (directAmmReentry.detected) {
-            stageLog(
-                ctx,
-                "CAMM",
-                `creator direct ${shortSig(PUMPFUN_AMM_PROGRAM_ID)} re-entry via ${shortSig(directAmmReentry.signature || "-")}`
-            );
-            stageLog(
-                ctx,
-                "CRISKT",
-                `hist=${fmtMs(rugHistoryDoneAtMs - startedAtMs)} parse=${fmtMs(historyParsedAtMs - rugHistoryDoneAtMs)} ` +
-                `early=${fmtMs(earlyChecksDoneAtMs - historyParsedAtMs)} total=${fmtMs(earlyChecksDoneAtMs - startedAtMs)}`
-            );
-            const result = enrichBaseResult({
-                ok: false,
-                reason: `creator direct AMM re-entry ${directAmmReentry.signature}`,
-                funder,
-                uniqueCounterparties,
-                compressedWindowSec,
-                burner,
-                deepChecksComplete: true,
-                directAmmReentrySig: directAmmReentry.signature,
-                creatorSeedSol,
-                creatorSeedPctOfCurrentLiq,
-                repeatedCreateRemoveCreates: repeatCreateRemovePattern.creates,
-                repeatedCreateRemoveRemoves: repeatCreateRemovePattern.removes,
-                repeatedCreateRemoveCashouts: repeatCreateRemovePattern.cashouts,
-                repeatedCreateRemoveWindowSec: repeatCreateRemovePattern.windowSec,
-                repeatedCreateRemoveMaxCashoutSol: repeatCreateRemovePattern.maxCashoutSol,
-            });
-            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
-            return result;
-        }
+    },
+    getSolLiquidityFromState,
+});
 
-        const deepChecksPromise = Promise.all([
-            classifyCreatorCashoutRisk(
-                connection,
-                creatorAddress,
-                funder,
-                outboundTransfers,
-                options.entrySolLiquidity,
-                createPoolOutboundDestinations,
-            ),
-            collectPrecreateOutboundTransfers(
-                connection,
-                creatorAddress,
-                options.createPoolSignature,
-                options.createPoolBlockTime,
-                parsedCreatorRiskTxs,
-            ),
-            classifyRecentRelayFunding(connection, creatorAddress, funder),
-        ]);
-        const deepBudgetMs = Math.max(
-            0,
-            Number(options.deepCheckBudgetMs ?? CONFIG.CREATOR_RISK_DEEP_CHECK_BUDGET_MS)
-        );
-        let deepOutcome = await withTimeout(deepChecksPromise, deepBudgetMs);
-        if (deepOutcome.timedOut && !options.allowFastPathOnDeepTimeout && !MONITOR_ONLY) {
-            deepOutcome = { timedOut: false, value: await deepChecksPromise };
+const top10Service = createTop10Service({
+    getObserverPublicKey: () => walletKeypair?.publicKey ?? Keypair.generate().publicKey,
+    fetchSwapState: async (poolAddress: string, observerUser: PublicKey) => {
+        const poolKey = new PublicKey(poolAddress);
+        try {
+            return await onlineSdk.swapSolanaState(poolKey, observerUser);
+        } catch {
+            return null;
         }
+    },
+    ensureMintInfo: getMintInfoRobust,
+});
 
-        let creatorCashout = previousResult?.deepChecksComplete
-            ? {
-                totalSol: Number(previousResult.creatorCashoutSol || 0),
-                maxSingleSol: Number(previousResult.creatorCashoutSol || 0),
-                pctOfEntryLiquidity: Number(previousResult.creatorCashoutPctOfEntryLiquidity || 0),
-                score: Number(previousResult.creatorCashoutScore || 0),
-                destination: previousResult.creatorCashoutDestination || null,
-            }
-            : { totalSol: 0, maxSingleSol: 0, pctOfEntryLiquidity: 0, score: 0, destination: null as string | null };
-        let precreateOutboundTransfers: Array<{ destination: string; sol: number }> = [];
-        let relayFunding = {
-            detected: false,
-            root: previousResult?.relayFundingRoot || null,
-            inboundSol: 0,
-            outboundSol: 0,
-            windowSec: null as number | null,
-        };
-
-        if (!deepOutcome.timedOut && deepOutcome.value) {
-            [creatorCashout, precreateOutboundTransfers, relayFunding] = deepOutcome.value;
-        } else if (deepOutcome.timedOut) {
-            stageLog(ctx, "CRISK", `deep checks timed out at ${deepBudgetMs}ms`);
-        }
-        const deepChecksDoneAtMs = Date.now();
-        const deepChecksComplete = !deepOutcome.timedOut;
-        const precreateBurst = classifyPrecreateOutboundBurst(precreateOutboundTransfers);
-        if (relayFunding.detected || relayFunding.inboundSol > 0 || relayFunding.outboundSol > 0) {
-            stageLog(
-                ctx,
-                "RRELAY",
-                `root=${relayFunding.root ? shortSig(relayFunding.root) : "-"} funder=${funder ? shortSig(funder) : "-"} ` +
-                `in=${relayFunding.inboundSol.toFixed(3)} out=${relayFunding.outboundSol.toFixed(3)} ` +
-                `window=${relayFunding.windowSec ?? "n/a"}s`
-            );
-        }
-        if (creatorCashout.totalSol > 0 || creatorCashout.score >= CONFIG.CREATOR_RISK_CASHOUT_WARN_SCORE) {
-            stageLog(
-                ctx,
-                "CCASH",
-                `total=${creatorCashout.totalSol.toFixed(3)} max=${creatorCashout.maxSingleSol.toFixed(3)} ` +
-                `rel=${creatorCashout.pctOfEntryLiquidity.toFixed(2)}% score=${creatorCashout.score.toFixed(2)} ` +
-                `dest=${creatorCashout.destination ? shortSig(creatorCashout.destination) : "-"}`
-            );
-        }
-        if (precreateBurst.detected) {
-            stageLog(
-                ctx,
-                "PBURST",
-                `precreate out=${precreateBurst.transfers} dest=${precreateBurst.destinations} median=${precreateBurst.medianSol.toFixed(3)} ` +
-                `rel_std=${precreateBurst.relStdDev.toFixed(2)} ratio=${precreateBurst.amountRatio.toFixed(2)}`
-            );
-        }
-        stageLog(
-            ctx,
-            "CRISKT",
-            `hist=${fmtMs(rugHistoryDoneAtMs - startedAtMs)} parse=${fmtMs(historyParsedAtMs - rugHistoryDoneAtMs)} ` +
-            `early=${fmtMs(earlyChecksDoneAtMs - historyParsedAtMs)} deep=${fmtMs(deepChecksDoneAtMs - earlyChecksDoneAtMs)} ` +
-            `total=${fmtMs(deepChecksDoneAtMs - startedAtMs)}`
-        );
-
-        if (funder && (rugHistory.rugCreators.has(funder) || rugHistory.rugFunders.has(funder))) {
-            const result = enrichBaseResult({
-                ok: false,
-                reason: `funder blacklisted ${funder}`,
-                funder,
-                uniqueCounterparties,
-                compressedWindowSec,
-                burner,
-                deepChecksComplete,
-                deepTimedOut: !deepChecksComplete,
-                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-            });
-            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
-            return result;
-        }
-
-        if (
-            funder &&
-            (rugHistory.rugMicroBurstSources.has(funder) || rugHistory.rugCashoutRelays.has(funder))
-        ) {
-            const result = enrichBaseResult({
-                ok: false,
-                reason: `funder linked to suspicious infra ${funder}`,
-                funder,
-                uniqueCounterparties,
-                compressedWindowSec,
-                burner,
-                deepChecksComplete,
-                deepTimedOut: !deepChecksComplete,
-                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-            });
-            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
-            return result;
-        }
-
-        const blacklistedMicroSource = [...microInboundSources].find((source) => rugHistory.rugMicroBurstSources.has(source));
-        if (blacklistedMicroSource) {
-            const result = enrichBaseResult({
-                ok: false,
-                reason: `micro-burst source blacklisted ${blacklistedMicroSource}`,
-                funder,
-                uniqueCounterparties,
-                compressedWindowSec,
-                burner,
-                deepChecksComplete,
-                deepTimedOut: !deepChecksComplete,
-                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-            });
-            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
-            return result;
-        }
-
-        if (
-            CONFIG.CREATOR_RISK_CREATOR_SEED_RATIO_BLOCK_ENABLED &&
-            creatorSeedSol > 0 &&
-            options.entrySolLiquidity &&
-            options.entrySolLiquidity > 0 &&
-            creatorSeedPctOfCurrentLiq < CONFIG.CREATOR_RISK_CREATOR_SEED_MIN_PCT_OF_CURRENT_LIQ &&
-            creatorSeedGrowthMultiple >= CONFIG.CREATOR_RISK_CREATOR_SEED_MAX_GROWTH_MULTIPLIER
-        ) {
-            const result = enrichBaseResult({
-                ok: false,
-                reason:
-                    `creator seed too small ${creatorSeedSol.toFixed(3)} SOL ` +
-                    `(${creatorSeedPctOfCurrentLiq.toFixed(2)}% of liq, growth ${creatorSeedGrowthMultiple.toFixed(2)}x)`,
-                funder,
-                uniqueCounterparties,
-                compressedWindowSec,
-                burner,
-                creatorSeedSol,
-                creatorSeedPctOfCurrentLiq,
-                deepChecksComplete: true,
-                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-            });
-            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
-            return result;
-        }
-
-        if (
-            compressedWindowSec !== null &&
-            compressedWindowSec <= CONFIG.CREATOR_RISK_MICRO_INBOUND_WINDOW_SEC &&
-            microInboundTransfers.length >= CONFIG.CREATOR_RISK_MICRO_INBOUND_MIN_TRANSFERS &&
-            microInboundSources.size >= CONFIG.CREATOR_RISK_MICRO_INBOUND_MIN_SOURCES
-        ) {
-            const result = enrichBaseResult({
-                ok: false,
-                reason: `micro inbound burst ${microInboundTransfers.length} transfers from ${microInboundSources.size} sources in ${compressedWindowSec}s`,
-                funder,
-                uniqueCounterparties,
-                compressedWindowSec,
-                burner,
-                microInboundTransfers: microInboundTransfers.length,
-                microInboundSources: microInboundSources.size,
-                deepChecksComplete: true,
-                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-            });
-            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
-            return result;
-        }
-
-        if (
-            CONFIG.CREATOR_RISK_INBOUND_SPRAY_BLOCK_ENABLED &&
-            compressedWindowSec !== null &&
-            compressedWindowSec <= CONFIG.CREATOR_RISK_INBOUND_SPRAY_MAX_WINDOW_SEC &&
-            sprayInbound.detected
-        ) {
-            const result = enrichBaseResult({
-                ok: false,
-                reason:
-                    `inbound collector pattern ${sprayInbound.transfers} transfers ` +
-                    `from ${sprayInbound.sources} sources in ${compressedWindowSec}s ` +
-                    `(median ${sprayInbound.medianSol.toFixed(3)} SOL, rel_std ${sprayInbound.relStdDev.toFixed(2)})`,
-                funder,
-                uniqueCounterparties,
-                compressedWindowSec,
-                burner,
-                creatorSeedSol,
-                creatorSeedPctOfCurrentLiq,
-                inboundSpraySources: sprayInbound.sources,
-                deepChecksComplete: true,
-                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-            });
-            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
-            return result;
-        }
-
-        if (
-            CONFIG.CREATOR_RISK_SPRAY_OUTBOUND_BLOCK_ENABLED &&
-            sprayOutbound.detected
-        ) {
-            const result = enrichBaseResult({
-                ok: false,
-                reason:
-                    `spray outbound pattern ${sprayOutbound.transfers} transfers ` +
-                    `to ${sprayOutbound.destinations} destinations ` +
-                    `(median ${sprayOutbound.medianSol.toFixed(3)} SOL, rel_std ${sprayOutbound.relStdDev.toFixed(2)})`,
-                funder,
-                uniqueCounterparties,
-                compressedWindowSec,
-                burner,
-                creatorSeedSol,
-                creatorSeedPctOfCurrentLiq,
-                deepChecksComplete: true,
-                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-            });
-            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
-            return result;
-        }
-
-        if (deepChecksComplete && precreateBurst.detected) {
-            const result = enrichBaseResult({
-                ok: false,
-                reason:
-                    `precreate uniform outbound burst ${precreateBurst.transfers} transfers ` +
-                    `to ${precreateBurst.destinations} destinations ` +
-                    `(median ${precreateBurst.medianSol.toFixed(3)} SOL, rel_std ${precreateBurst.relStdDev.toFixed(2)})`,
-                funder,
-                uniqueCounterparties,
-                compressedWindowSec,
-                burner,
-                precreateBurstTransfers: precreateBurst.transfers,
-                deepChecksComplete: true,
-                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-            });
-            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
-            return result;
-        }
-
-        if (repeatCreateRemovePattern.detected) {
-            const result = enrichBaseResult({
-                ok: false,
-                reason:
-                    `creator repeated create-remove pattern ` +
-                    `create=${repeatCreateRemovePattern.creates} remove=${repeatCreateRemovePattern.removes} ` +
-                    `cashout=${repeatCreateRemovePattern.cashouts} in ${repeatCreateRemovePattern.windowSec ?? "n/a"}s ` +
-                    `(max_out ${repeatCreateRemovePattern.maxCashoutSol.toFixed(3)} SOL)`,
-                funder,
-                uniqueCounterparties,
-                compressedWindowSec,
-                burner,
-                repeatedCreateRemoveCreates: repeatCreateRemovePattern.creates,
-                repeatedCreateRemoveRemoves: repeatCreateRemovePattern.removes,
-                repeatedCreateRemoveCashouts: repeatCreateRemovePattern.cashouts,
-                repeatedCreateRemoveWindowSec: repeatCreateRemovePattern.windowSec,
-                repeatedCreateRemoveMaxCashoutSol: repeatCreateRemovePattern.maxCashoutSol,
-                deepChecksComplete: true,
-                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-            });
-            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
-            return result;
-        }
-
-        if (
-            isStandardRelayRiskPool(options.entrySolLiquidity) &&
-            CONFIG.CREATOR_RISK_STANDARD_POOL_MICRO_BLOCK_ENABLED &&
-            compressedWindowSec !== null &&
-            compressedWindowSec <= CONFIG.CREATOR_RISK_MICRO_INBOUND_WINDOW_SEC &&
-            microInboundTransfers.length >= CONFIG.CREATOR_RISK_STANDARD_POOL_MICRO_MIN_TRANSFERS &&
-            microInboundSources.size >= CONFIG.CREATOR_RISK_STANDARD_POOL_MICRO_MIN_SOURCES
-        ) {
-            const result = enrichBaseResult({
-                ok: false,
-                reason:
-                    `standard pool micro burst ${microInboundTransfers.length} transfers ` +
-                    `from ${microInboundSources.size} sources in ${compressedWindowSec}s ` +
-                    `(${options.entrySolLiquidity?.toFixed(2)} SOL pool)`,
-                funder,
-                uniqueCounterparties,
-                compressedWindowSec,
-                burner,
-                deepChecksComplete: true,
-                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-            });
-            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
-            return result;
-        }
-
-        if (
-            deepChecksComplete &&
-            CONFIG.CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_BLOCK_ENABLED &&
-            relayFunding.root &&
-            isSuspiciousRelayRoot(relayFunding.root, rugHistory) &&
-            uniqueCounterparties >= CONFIG.CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_MIN_COUNTERPARTIES &&
-            solOutTransfers >= CONFIG.CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_MIN_OUT_TRANSFERS &&
-            microInboundTransfers.length <= CONFIG.CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_MAX_MICRO_TRANSFERS &&
-            microInboundSources.size <= CONFIG.CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_MAX_MICRO_SOURCES
-        ) {
-            const result = enrichBaseResult({
-                ok: false,
-                reason:
-                    `suspicious relay-root pattern root=${relayFunding.root} ` +
-                    `cp=${uniqueCounterparties} out=${solOutTransfers} ` +
-                    `micro=${microInboundTransfers.length}/${microInboundSources.size}`,
-                funder,
-                uniqueCounterparties,
-                compressedWindowSec,
-                burner,
-                relayFundingRoot: relayFunding.root,
-                deepChecksComplete: true,
-                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-            });
-            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
-            return result;
-        }
-
-        if (
-            deepChecksComplete &&
-            CONFIG.CREATOR_RISK_SPRAY_OUTBOUND_BLOCK_ENABLED &&
-            relayFunding.root &&
-            isSuspiciousRelayRoot(relayFunding.root, rugHistory) &&
-            sprayOutbound.detected
-        ) {
-            const result = enrichBaseResult({
-                ok: false,
-                reason:
-                    `spray outbound pattern root=${relayFunding.root} ` +
-                    `out=${sprayOutbound.transfers} dest=${sprayOutbound.destinations} ` +
-                    `median=${sprayOutbound.medianSol.toFixed(3)} rel_std=${sprayOutbound.relStdDev.toFixed(2)}`,
-                funder,
-                uniqueCounterparties,
-                compressedWindowSec,
-                burner,
-                relayFundingRoot: relayFunding.root,
-                deepChecksComplete: true,
-                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-            });
-            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
-            return result;
-        }
-
-        if (
-            deepChecksComplete &&
-            options.entrySolLiquidity &&
-            CONFIG.HOLD_CREATOR_CASHOUT_EXIT_ENABLED &&
-            creatorCashout.score >= CONFIG.CREATOR_RISK_CASHOUT_EXIT_SCORE
-        ) {
-            const result = enrichBaseResult({
-                ok: false,
-                reason: `creator cashout ${creatorCashout.totalSol.toFixed(3)} SOL (${creatorCashout.pctOfEntryLiquidity.toFixed(2)}% liq, score ${creatorCashout.score.toFixed(2)})`,
-                funder,
-                uniqueCounterparties,
-                compressedWindowSec,
-                burner,
-                funderRefundSol,
-                creatorCashoutSol: creatorCashout.totalSol,
-                creatorCashoutPctOfEntryLiquidity: creatorCashout.pctOfEntryLiquidity,
-                creatorCashoutScore: creatorCashout.score,
-                creatorCashoutDestination: creatorCashout.destination,
-                deepChecksComplete: true,
-                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-            });
-            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
-            return result;
-        }
-
-        if (
-            deepChecksComplete &&
-            relayFunding.detected &&
-            isStandardRelayRiskPool(options.entrySolLiquidity)
-        ) {
-            const result = enrichBaseResult({
-                ok: false,
-                reason: `relay funding recent on standard pool ${options.entrySolLiquidity?.toFixed(2)} SOL (root ${relayFunding.root || "-"}, in ${relayFunding.inboundSol.toFixed(3)} SOL, out ${relayFunding.outboundSol.toFixed(3)} SOL)`,
-                funder,
-                uniqueCounterparties,
-                compressedWindowSec,
-                burner,
-                relayFundingRoot: relayFunding.root,
-                deepChecksComplete: true,
-                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-            });
-            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
-            return result;
-        }
-
-        if (
-            deepChecksComplete &&
-            relayFunding.detected &&
-            microInboundTransfers.length >= CONFIG.CREATOR_RISK_MICRO_INBOUND_MIN_TRANSFERS
-        ) {
-            const result = enrichBaseResult({
-                ok: false,
-                reason: `relay funding recent + micro burst (root ${relayFunding.root || "-"}, in ${relayFunding.inboundSol.toFixed(3)} SOL, out ${relayFunding.outboundSol.toFixed(3)} SOL)`,
-                funder,
-                uniqueCounterparties,
-                compressedWindowSec,
-                burner,
-                relayFundingRoot: relayFunding.root,
-                deepChecksComplete: true,
-                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-            });
-            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
-            return result;
-        }
-
-        if (
-            deepChecksComplete &&
-            relayFunding.detected &&
-            relayFunding.root &&
-            (rugHistory.rugFunders.has(relayFunding.root) || rugHistory.rugCashoutRelays.has(relayFunding.root))
-        ) {
-            const result = enrichBaseResult({
-                ok: false,
-                reason: `relay funding root blacklisted ${relayFunding.root}`,
-                funder,
-                uniqueCounterparties,
-                compressedWindowSec,
-                burner,
-                relayFundingRoot: relayFunding.root,
-                deepChecksComplete: true,
-                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-            });
-            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
-            return result;
-        }
-
-        if (funder && CONFIG.CREATOR_RISK_FUNDER_CLUSTER_ENABLED) {
-            const historicalCount = rugHistory.rugFunderCounts.get(funder) || 0;
-            if (historicalCount >= CONFIG.CREATOR_RISK_HISTORICAL_FUNDER_CLUSTER_MIN_RUG_CREATORS) {
-                const result = enrichBaseResult({
-                    ok: false,
-                    reason: `funder cluster historical ${historicalCount} rug creators`,
-                    funder,
-                    uniqueCounterparties,
-                    compressedWindowSec,
-                    burner,
-                    deepChecksComplete: true,
-                    deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-                });
-                creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
-                return result;
-            }
-
-            const recentCreatorCount = trackRecentFunderCreator(funder, creatorAddress);
-            if (recentCreatorCount >= CONFIG.CREATOR_RISK_FUNDER_CLUSTER_MIN_CREATORS) {
-                const result = enrichBaseResult({
-                    ok: false,
-                    reason: `funder cluster recent ${recentCreatorCount} creators in ${CONFIG.CREATOR_RISK_FUNDER_CLUSTER_WINDOW_SEC}s`,
-                    funder,
-                    uniqueCounterparties,
-                    compressedWindowSec,
-                    burner,
-                    deepChecksComplete: true,
-                    deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-                });
-                creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
-                return result;
-            }
-        }
-
-        if (linksToCreators.size > 0) {
-            const linked = Array.from(linksToCreators)[0];
-            const result = enrichBaseResult({
-                ok: false,
-                reason: `linked to historical rug creator ${linked}`,
-                funder,
-                uniqueCounterparties,
-                compressedWindowSec,
-                burner,
-                deepChecksComplete: true,
-                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-            });
-            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
-            return result;
-        }
-
-        if (funder && funderRefundSol >= CONFIG.CREATOR_RISK_FUNDER_REFUND_MIN_SOL) {
-            const result = enrichBaseResult({
-                ok: false,
-                reason: `creator refunded funder ${funderRefundSol.toFixed(3)} SOL`,
-                funder,
-                uniqueCounterparties,
-                compressedWindowSec,
-                burner,
-                funderRefundSol,
-                creatorCashoutSol: creatorCashout.totalSol,
-                creatorCashoutPctOfEntryLiquidity: creatorCashout.pctOfEntryLiquidity,
-                creatorCashoutScore: creatorCashout.score,
-                creatorCashoutDestination: creatorCashout.destination,
-                deepChecksComplete: true,
-                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-            });
-            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
-            return result;
-        }
-
-        if (uniqueCounterparties >= CONFIG.CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES) {
-            const result = enrichBaseResult({
-                ok: false,
-                reason: `unique counterparties ${uniqueCounterparties} >= ${CONFIG.CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES}`,
-                funder,
-                uniqueCounterparties,
-                compressedWindowSec,
-                burner,
-                deepChecksComplete: true,
-                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-            });
-            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
-            return result;
-        }
-
-        if (
-            compressedWindowSec !== null &&
-            compressedWindowSec <= CONFIG.CREATOR_RISK_COMPRESSED_WINDOW_SEC &&
-            uniqueCounterparties >= CONFIG.CREATOR_RISK_COMPRESSED_MAX_COUNTERPARTIES
-        ) {
-            const result = enrichBaseResult({
-                ok: false,
-                reason: `compressed activity ${uniqueCounterparties} counterparties in ${compressedWindowSec}s`,
-                funder,
-                uniqueCounterparties,
-                compressedWindowSec,
-                burner,
-                deepChecksComplete: true,
-                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-            });
-            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
-            return result;
-        }
-
-        if (burner) {
-            const result = enrichBaseResult({
-                ok: false,
-                reason: `burner profile out=${solOutSol.toFixed(2)} SOL with no inbound transfers`,
-                funder,
-                uniqueCounterparties,
-                compressedWindowSec,
-                burner,
-                deepChecksComplete,
-                deepTimedOut: !deepChecksComplete,
-                deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-            });
-            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
-            return result;
-        }
-
-        const result = enrichBaseResult({
-            ok: true,
-            funder,
-            uniqueCounterparties,
-            compressedWindowSec,
-            burner,
-            deepChecksComplete,
-            deepTimedOut: !deepChecksComplete,
-            deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-            funderRefundSol,
-            creatorCashoutSol: creatorCashout.totalSol,
-            creatorCashoutPctOfEntryLiquidity: creatorCashout.pctOfEntryLiquidity,
-            creatorCashoutScore: creatorCashout.score,
-            creatorCashoutDestination: creatorCashout.destination,
-            relayFundingRoot: relayFunding.root,
-            directAmmReentrySig: directAmmReentry.signature,
-            creatorSeedSol,
-            creatorSeedPctOfCurrentLiq,
-            inboundSpraySources: sprayInbound.sources,
-            precreateBurstTransfers: precreateBurst.transfers,
-            repeatedCreateRemoveCreates: repeatCreateRemovePattern.creates,
-            repeatedCreateRemoveRemoves: repeatCreateRemovePattern.removes,
-            repeatedCreateRemoveCashouts: repeatCreateRemovePattern.cashouts,
-            repeatedCreateRemoveWindowSec: repeatCreateRemovePattern.windowSec,
-            repeatedCreateRemoveMaxCashoutSol: repeatCreateRemovePattern.maxCashoutSol,
-        });
-        creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
-        return result;
-    } catch (e: any) {
-        const reason = e?.message || "creator risk check failed";
-        const result = { ok: false, reason, transientError: isRateLimitedMessage(reason) };
-        if (!result.transientError) {
-            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
-        }
-        return result;
-    }
-}
-
-async function runCreatorRiskCheckWithRetry(
-    connection: Connection,
-    creatorAddress: string,
-    ctx: string,
-    options: {
-        forceRefresh?: boolean;
-        entrySolLiquidity?: number;
-        createPoolSignature?: string;
-        createPoolBlockTime?: number | null;
-        creatorSeedSol?: number;
-        previousResult?: CreatorRiskResult;
-        allowReuseIfNoNewActivity?: boolean;
-        allowFastPathOnDeepTimeout?: boolean;
-        deepCheckBudgetMs?: number;
-    } = {},
-): Promise<CreatorRiskResult> {
-    const retries = Math.max(0, CONFIG.CREATOR_RISK_RATE_LIMIT_RETRIES);
-    const maxAttempts = retries + 1;
-    const baseDelayMs = Math.max(0, CONFIG.CREATOR_RISK_RATE_LIMIT_RETRY_BASE_MS);
-
-    let lastResult: CreatorRiskResult = { ok: false, reason: "creator risk unavailable", transientError: true };
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        const result = await runCreatorRiskCheck(connection, creatorAddress, ctx, options);
-        if (!result.transientError) {
-            return result;
-        }
-
-        lastResult = result;
-        if (attempt < maxAttempts) {
-            const delayMs = Math.round(baseDelayMs * Math.pow(1.8, attempt - 1));
-            stageLog(ctx, "CRISK", `rate-limited retry ${attempt}/${maxAttempts - 1} (wait ${delayMs}ms)`);
-            if (delayMs > 0) {
-                await new Promise((r) => setTimeout(r, delayMs));
-            }
-        }
-    }
-
-    return lastResult;
-}
-
-async function getCreatorTokenBalanceRawWithRetry(
-    connection: Connection,
-    creatorAddress: string,
-    tokenMint: string,
-    postTokenBalances: any[],
-): Promise<bigint> {
-    const maxAttempts = Math.max(1, CONFIG.DEV_HOLDINGS_MAX_ATTEMPTS);
-    const retryDelayMs = Math.max(0, CONFIG.DEV_HOLDINGS_RETRY_DELAY_MS);
-    const maxDurationMs = Math.max(250, CONFIG.DEV_HOLDINGS_MAX_DURATION_MS);
-    const startedAt = Date.now();
-    let lastBalance = 0n;
-
-    for (let i = 0; i < maxAttempts; i++) {
-        if (Date.now() - startedAt > maxDurationMs) {
-            throw new Error(`dev holdings check timed out after ${Date.now() - startedAt}ms`);
-        }
-        const bal = await getCreatorTokenBalanceRaw(connection, creatorAddress, tokenMint, postTokenBalances);
-        lastBalance = bal;
-        if (bal > 0n) return bal;
-        if (i < maxAttempts - 1) {
-            await new Promise(r => setTimeout(r, retryDelayMs));
-        }
-    }
-
-    return lastBalance;
-}
-
-async function runDevHoldingsCheck(
-    connection: Connection,
-    creatorAddress: string,
-    tokenMint: string,
-    postTokenBalances: any[],
-    ctx: string,
-    enforceGate: boolean,
-): Promise<boolean> {
-    if (!CONFIG.ENFORCE_DEV_HOLDINGS_CHECK) {
-        stageLog(ctx, "DEV", "holdings check disabled");
-        return true;
-    }
-
-    const devCheckStart = Date.now();
-    try {
-        const creatorBalanceRaw = await getCreatorTokenBalanceRawWithRetry(connection, creatorAddress, tokenMint, postTokenBalances);
-        const mintInfo = await getMintInfoRobust(connection, new PublicKey(tokenMint));
-        const totalSupplyRaw = 1_000_000_000n * (10n ** BigInt(mintInfo.decimals)); // Pump tokens are 1B supply
-
-        const devPct = Number((creatorBalanceRaw * 10000n) / totalSupplyRaw) / 100;
-        stageLog(ctx, "DEV", `holding ${creatorBalanceRaw.toString()} (${devPct.toFixed(2)}%)`);
-        if (creatorBalanceRaw < 1n) {
-            stageLog(ctx, "DEV", "creator wallet token balance is 0 after create_pool (can be normal)");
-        }
-        stageLog(ctx, "DEV", `check duration ${Date.now() - devCheckStart}ms`);
-
-        if (devPct > CONFIG.MAX_DEV_HOLDINGS_PCT) {
-            if (enforceGate) {
-                console.log(`🛑 SKIP: Dev holds too much (${devPct.toFixed(1)}% > ${CONFIG.MAX_DEV_HOLDINGS_PCT}%)`);
-                return false;
-            }
-        console.log(`⚠️ Dev holds too much (${devPct.toFixed(1)}% > ${CONFIG.MAX_DEV_HOLDINGS_PCT}%)`);
-        }
-        return true;
-    } catch (e: any) {
-        const reason = e?.message || String(e);
-        const durationMs = Date.now() - devCheckStart;
-        if (MONITOR_ONLY && !enforceGate) {
-            console.log(`⚠️ Dev check failed after ${durationMs}ms: ${reason}`);
-            stageLog(ctx, "DEV", "check fail-open in MONITOR_ONLY");
-            return true;
-        }
-        console.log(`🛑 SKIP: Dev check failed after ${durationMs}ms: ${reason}`);
-        return false;
-    }
-}
+const devHoldingsService = createDevHoldingsService({
+    monitorOnly: MONITOR_ONLY,
+    getMintDecimals: async (connection: Connection, mintKey: PublicKey) => {
+        return (await getMintInfoRobust(connection, mintKey)).decimals;
+    },
+});
 
 async function getSolPriceUsd(): Promise<number | null> {
     const now = Date.now();
@@ -4095,855 +2201,6 @@ async function getSolPriceUsd(): Promise<number | null> {
     }
 
     return null;
-}
-
-async function getCreatorTokenBalanceRaw(
-    connection: Connection,
-    creatorAddress: string,
-    tokenMint: string,
-    postTokenBalances: any[],
-): Promise<bigint> {
-    // Fast path: use the current tx metadata if present.
-    const creatorBalanceEntry = postTokenBalances.find((b: any) =>
-        b.mint === tokenMint && b.owner === creatorAddress
-    );
-    if (creatorBalanceEntry?.uiTokenAmount?.amount) {
-        return BigInt(creatorBalanceEntry.uiTokenAmount.amount);
-    }
-
-    // Fallback: query creator token accounts by program (Token + Token-2022),
-    // then filter by mint locally. This is more robust right after create_pool.
-    const owner = new PublicKey(creatorAddress);
-    const [tokenAccs, token2022Accs] = await Promise.all([
-        connection.getParsedTokenAccountsByOwner(owner, { programId: TOKEN_PROGRAM_ID }, "confirmed")
-            .catch(() => ({ value: [] as any[] })),
-        connection.getParsedTokenAccountsByOwner(owner, { programId: TOKEN_2022_PROGRAM_ID }, "confirmed")
-            .catch(() => ({ value: [] as any[] })),
-    ]);
-
-    let total = 0n;
-    const all = [
-        ...tokenAccs.value.filter((acc: any) => {
-            const accMint = acc.account.data.parsed?.info?.mint;
-            return accMint === tokenMint;
-        }),
-        ...token2022Accs.value.filter((acc: any) => {
-            const accMint = acc.account.data.parsed?.info?.mint;
-            return accMint === tokenMint;
-        }),
-    ];
-    for (const acc of all) {
-        const amount = acc.account.data.parsed?.info?.tokenAmount?.amount;
-        if (amount) total += BigInt(amount);
-    }
-    return total;
-}
-
-type PaperTradeResult = {
-    ok: boolean;
-    reason?: string;
-    finalStatus?: string;
-};
-
-type PaperSimulationOptions = {
-    forceHoldMs?: number;
-    suppressCreatorRiskRecheck?: boolean;
-};
-
-type PreBuyEntryValidationResult = {
-    ok: boolean;
-    reason?: string;
-    entryState?: any;
-    tokenOutAtomic?: BN;
-    tokenOutUi?: number;
-    entrySpotSolPerToken?: number;
-};
-
-function shouldEscalateProbationCreatorRisk(
-    creatorRisk: CreatorRiskResult,
-    baselineCreatorCashoutSol = 0,
-): { escalate: boolean; cashoutDeltaSol: number } {
-    const reason = (creatorRisk.reason || "").toLowerCase();
-    const cashoutDeltaSol = Math.max(
-        0,
-        Number(creatorRisk.creatorCashoutSol || 0) - Math.max(0, baselineCreatorCashoutSol)
-    );
-    const hardReason =
-        isProbationBypassForbidden(creatorRisk) ||
-        reason.includes("creator direct amm re-entry") ||
-        reason.includes("spray outbound") ||
-        reason.includes("micro inbound burst") ||
-        reason.includes("relay funding recent + micro burst");
-
-    return {
-        escalate: hardReason || cashoutDeltaSol >= CONFIG.HOLD_PROBATION_CASHOUT_DELTA_MIN_SOL,
-        cashoutDeltaSol,
-    };
-}
-
-async function validatePreBuyEntryState(
-    connection: Connection,
-    fetchStateWithRetry: () => Promise<any | null>,
-    tokenMint: string,
-    tokenDecimals: number,
-    buyAmountLamports: BN,
-    baselineLiquiditySol: number,
-    ctx: string,
-    creatorAddress?: string,
-    poolAddress?: string,
-    createPoolSignature?: string,
-    createPoolBlockTime?: number | null,
-    initialCreatorRisk?: CreatorRiskResult,
-    options?: PaperSimulationOptions,
-): Promise<PreBuyEntryValidationResult> {
-    if (creatorAddress && CONFIG.PRE_BUY_FINAL_CREATOR_RISK_RECHECK_ENABLED) {
-        const creatorRisk = await runCreatorRiskCheckWithRetry(connection, creatorAddress, ctx, {
-            forceRefresh: true,
-            entrySolLiquidity: baselineLiquiditySol,
-            createPoolSignature,
-            createPoolBlockTime,
-            previousResult: initialCreatorRisk,
-            allowReuseIfNoNewActivity: true,
-            allowFastPathOnDeepTimeout: true,
-            deepCheckBudgetMs: CONFIG.CREATOR_RISK_RECHECK_DEEP_CHECK_BUDGET_MS,
-        });
-        if (!creatorRisk.ok) {
-            if (creatorRisk.transientError) {
-                return { ok: false, reason: `creator risk recheck (${creatorRisk.reason})` };
-            }
-
-            if (options?.suppressCreatorRiskRecheck) {
-                const baselineCreatorCashoutSol = Number(initialCreatorRisk?.creatorCashoutSol || 0);
-                const probationEscalation = shouldEscalateProbationCreatorRisk(
-                    creatorRisk,
-                    baselineCreatorCashoutSol,
-                );
-                if (probationEscalation.escalate) {
-                    return {
-                        ok: false,
-                        reason:
-                            `creator risk recheck (${creatorRisk.reason}) ` +
-                            `[probation hard, cashout_delta=${probationEscalation.cashoutDeltaSol.toFixed(3)} SOL]`,
-                    };
-                }
-            } else {
-                return { ok: false, reason: `creator risk recheck (${creatorRisk.reason})` };
-            }
-        }
-    }
-
-    if (creatorAddress && poolAddress && CONFIG.PRE_BUY_FINAL_REMOVE_LIQ_CHECK_ENABLED) {
-        const removeLiq = await detectRemoveLiquiditySince(
-            connection,
-            poolAddress,
-            creatorAddress,
-            new Set<string>(),
-            createPoolSignature,
-            createPoolBlockTime,
-        );
-        if (removeLiq.detected) {
-            return {
-                ok: false,
-                reason:
-                    `remove liquidity detected before entry ` +
-                    `(${shortSig(removeLiq.signature || "-")}, ` +
-                    `wsol=${Number(removeLiq.wsolToCreator || 0).toFixed(3)} ` +
-                    `sol=${Number(removeLiq.solToCreator || 0).toFixed(3)})`,
-            };
-        }
-    }
-
-    const entryState = await fetchStateWithRetry();
-    if (!entryState) {
-        return { ok: false, reason: "entry state unavailable" };
-    }
-
-    const orientation = getPoolOrientation(entryState, tokenMint);
-    if (!orientation.hasWsol) {
-        return { ok: false, reason: "pool has no WSOL side" };
-    }
-
-    const entrySolLiquidity = getSolLiquidityFromState(entryState, tokenMint) || 0;
-    const minAllowedLiq = baselineLiquiditySol > 0
-        ? baselineLiquiditySol * (1 - Math.abs(CONFIG.PRE_BUY_REVALIDATION_MAX_LIQ_DROP_PCT) / 100)
-        : CONFIG.MIN_POOL_LIQUIDITY_SOL;
-    if (
-        CONFIG.PRE_BUY_REVALIDATION_ENABLED &&
-        (
-            entrySolLiquidity < CONFIG.MIN_POOL_LIQUIDITY_SOL ||
-            (baselineLiquiditySol > 0 && entrySolLiquidity < minAllowedLiq)
-        )
-    ) {
-        stageLog(ctx, "PREBUY", `liq ${entrySolLiquidity.toFixed(6)} SOL (baseline ${baselineLiquiditySol.toFixed(2)} SOL)`);
-        return { ok: false, reason: `liquidity ${entrySolLiquidity.toFixed(6)} SOL below revalidation threshold` };
-    }
-
-    let tokenOutAtomic: BN;
-    if (orientation.solIsBase) {
-        const entry = sellBaseInput({
-            base: buyAmountLamports,
-            slippage: CONFIG.SLIPPAGE_PERCENT,
-            baseReserve: entryState.poolBaseAmount,
-            quoteReserve: entryState.poolQuoteAmount,
-            baseMintAccount: entryState.baseMintAccount,
-            baseMint: entryState.baseMint,
-            coinCreator: entryState.pool.coinCreator,
-            creator: entryState.pool.creator,
-            feeConfig: entryState.feeConfig,
-            globalConfig: entryState.globalConfig,
-        });
-        tokenOutAtomic = entry.uiQuote;
-    } else {
-        const entry = buyQuoteInput({
-            quote: buyAmountLamports,
-            slippage: CONFIG.SLIPPAGE_PERCENT,
-            baseReserve: entryState.poolBaseAmount,
-            quoteReserve: entryState.poolQuoteAmount,
-            baseMintAccount: entryState.baseMintAccount,
-            baseMint: entryState.baseMint,
-            coinCreator: entryState.pool.coinCreator,
-            creator: entryState.pool.creator,
-            feeConfig: entryState.feeConfig,
-            globalConfig: entryState.globalConfig,
-        });
-        tokenOutAtomic = entry.base;
-    }
-
-    const tokenOutUi = Number(tokenOutAtomic.toString()) / 10 ** tokenDecimals;
-    if (tokenOutAtomic.lte(new BN(0)) || !Number.isFinite(tokenOutUi) || tokenOutUi <= 0) {
-        return { ok: false, reason: "entry produced 0 tokens" };
-    }
-
-    const entrySpotSolPerToken = getSpotSolPerTokenFromState(entryState, tokenMint, tokenDecimals) || 0;
-    if (CONFIG.PRE_BUY_REVALIDATION_ENABLED && entrySpotSolPerToken > 0) {
-        const quoteSolPerToken = CONFIG.TRADE_AMOUNT_SOL / tokenOutUi;
-        const quoteVsSpotRatio = quoteSolPerToken / entrySpotSolPerToken;
-        if (
-            Number.isFinite(quoteVsSpotRatio) &&
-            quoteVsSpotRatio > Math.max(1, CONFIG.PRE_BUY_REVALIDATION_MAX_QUOTE_VS_SPOT_RATIO)
-        ) {
-            stageLog(
-                ctx,
-                "PREBUY",
-                `quote_vs_spot=${quoteVsSpotRatio.toFixed(2)}x spot=${formatSolCompact(entrySpotSolPerToken)}/token`,
-            );
-            return { ok: false, reason: `quote sanity ${quoteVsSpotRatio.toFixed(2)}x spot` };
-        }
-    }
-
-    return {
-        ok: true,
-        entryState,
-        tokenOutAtomic,
-        tokenOutUi,
-        entrySpotSolPerToken,
-    };
-}
-
-async function maybeRunPaperTradeSimulation(
-    connection: Connection,
-    poolAddress: string,
-    tokenMint: string,
-    baselineLiquiditySol: number,
-    ctx = "",
-    creatorAddress?: string,
-    createPoolSignature?: string,
-    createPoolBlockTime?: number | null,
-    initialCreatorRisk?: CreatorRiskResult,
-    options?: PaperSimulationOptions,
-): Promise<PaperTradeResult> {
-    if (!CONFIG.PAPER_TRADE_ENABLED) return { ok: true };
-
-    const observerUser = walletKeypair?.publicKey ?? Keypair.generate().publicKey;
-    const poolKey = new PublicKey(poolAddress);
-    const buyAmountLamports = new BN(Math.floor(CONFIG.TRADE_AMOUNT_SOL * 1e9));
-
-    const fetchStateWithRetry = async () => {
-        for (let i = 0; i < 12; i++) {
-            try {
-                const state = await onlineSdk.swapSolanaState(poolKey, observerUser);
-                if (state.poolBaseAmount.gt(new BN(0)) && state.poolQuoteAmount.gt(new BN(0))) return state;
-            } catch {
-                // wait and retry
-            }
-            await new Promise(r => setTimeout(r, 250));
-        }
-        return null;
-    };
-
-    try {
-        stageLog(ctx, "PAPER", "simulate buy->sell");
-        let tokenDecimals = 6;
-        try {
-            tokenDecimals = (await getMintInfoRobust(connection, new PublicKey(tokenMint))).decimals;
-        } catch {
-            // fallback to common pump token decimals
-        }
-
-        const preBuy = await validatePreBuyEntryState(
-            connection,
-            fetchStateWithRetry,
-            tokenMint,
-            tokenDecimals,
-            buyAmountLamports,
-            baselineLiquiditySol,
-            ctx,
-            creatorAddress,
-            poolAddress,
-            createPoolSignature,
-            createPoolBlockTime,
-            initialCreatorRisk,
-            options,
-        );
-        if (!preBuy.ok || !preBuy.entryState || !preBuy.tokenOutAtomic || !preBuy.tokenOutUi) {
-            return { ok: false, reason: preBuy.reason || "pre-buy validation failed" };
-        }
-        const entryState = preBuy.entryState;
-        const tokenOutAtomic = preBuy.tokenOutAtomic;
-        const tokenOutUi = preBuy.tokenOutUi;
-        const entrySpotSolPerToken = preBuy.entrySpotSolPerToken || 0;
-        const orientation = getPoolOrientation(entryState, tokenMint);
-        stageLog(ctx, "BUY_SPOT", `~${formatSolCompact(entrySpotSolPerToken)}/token`);
-        stageLog(ctx, "BUY_QUOTE", `${tokenOutUi.toFixed(6)} token for ${formatSolDecimal(CONFIG.TRADE_AMOUNT_SOL)}`);
-
-        const suspiciousRelay =
-            CONFIG.HOLD_SUSPICIOUS_RELAY_SHORT_HOLD_ENABLED &&
-            !!initialCreatorRisk?.relayFundingRoot;
-        const forcedProbationHoldMs =
-            options?.forceHoldMs && Number.isFinite(options.forceHoldMs)
-                ? Math.max(1000, options.forceHoldMs)
-                : 0;
-        const effectiveHoldMs = forcedProbationHoldMs > 0
-            ? forcedProbationHoldMs
-            : suspiciousRelay
-            ? Math.max(1000, CONFIG.HOLD_SUSPICIOUS_RELAY_SHORT_HOLD_MS)
-            : Math.max(1000, CONFIG.AUTO_SELL_DELAY_MS);
-        if (forcedProbationHoldMs > 0) {
-            stageLog(ctx, "HOLD", `probation hold ${effectiveHoldMs}ms (paper creator-risk bypass)`);
-        } else if (suspiciousRelay) {
-            stageLog(
-                ctx,
-                "HOLD",
-                `suspicious relay root ${shortSig(initialCreatorRisk?.relayFundingRoot || "-")} -> short hold ${effectiveHoldMs}ms`
-            );
-        }
-
-        const exitState = await waitForExitStateWithLiquidityStop(
-            connection,
-            poolAddress,
-            fetchStateWithRetry,
-            entryState,
-            tokenMint,
-            tokenDecimals,
-            tokenOutAtomic,
-            ctx,
-            effectiveHoldMs,
-            !!options?.suppressCreatorRiskRecheck,
-            creatorAddress,
-            createPoolSignature,
-            createPoolBlockTime,
-            initialCreatorRisk,
-        );
-        if (!exitState) {
-            console.log(`⚠️ PAPER_TRADE: no exit pool state`);
-            return { ok: false, reason: "exit state unavailable" };
-        }
-
-        let solOut: number;
-        if (orientation.solIsBase) {
-            const exit = buyQuoteInput({
-                quote: tokenOutAtomic,
-                slippage: CONFIG.SLIPPAGE_PERCENT,
-                baseReserve: exitState.poolBaseAmount,
-                quoteReserve: exitState.poolQuoteAmount,
-                baseMintAccount: exitState.baseMintAccount,
-                baseMint: exitState.baseMint,
-                coinCreator: exitState.pool.coinCreator,
-                creator: exitState.pool.creator,
-                feeConfig: exitState.feeConfig,
-                globalConfig: exitState.globalConfig,
-            });
-            solOut = Number(exit.base.toString()) / 1e9;
-        } else {
-            const exit = sellBaseInput({
-                base: tokenOutAtomic,
-                slippage: CONFIG.SLIPPAGE_PERCENT,
-                baseReserve: exitState.poolBaseAmount,
-                quoteReserve: exitState.poolQuoteAmount,
-                baseMintAccount: exitState.baseMintAccount,
-                baseMint: exitState.baseMint,
-                coinCreator: exitState.pool.coinCreator,
-                creator: exitState.pool.creator,
-                feeConfig: exitState.feeConfig,
-                globalConfig: exitState.globalConfig,
-            });
-            solOut = Number(exit.uiQuote.toString()) / 1e9;
-        }
-        const exitSpotSolPerToken = getSpotSolPerTokenFromState(exitState, tokenMint, tokenDecimals) || 0;
-        const exitSolLiquidity = getSolLiquidityFromState(exitState, tokenMint) || 0;
-
-        if (!Number.isFinite(solOut) || solOut <= 0) {
-            const pnlSol = -CONFIG.TRADE_AMOUNT_SOL;
-            const pnlPct = -100;
-            stageLog(ctx, "SELL_SPOT", `~${formatSolCompact(0)}/token`);
-            stageLog(ctx, "SELL_QUOTE", `${formatSolDecimal(0)} for ${tokenOutUi.toFixed(6)} token`);
-            stageLog(ctx, "PNL", `-${formatSolDecimal(Math.abs(pnlSol))} (${pnlPct.toFixed(2)}%)`);
-            return { ok: false, reason: "exit returned 0 SOL", finalStatus: "PAPER LOSS" };
-        }
-        if (
-            Number.isFinite(exitSolLiquidity) &&
-            exitSolLiquidity > 0 &&
-            solOut > exitSolLiquidity * 1.001
-        ) {
-            console.log(
-                `⚠️ PAPER_TRADE invalid exit quote: ` +
-                `${solOut.toFixed(6)} SOL exceeds exit liquidity ${exitSolLiquidity.toFixed(6)} SOL`
-            );
-            return { ok: false, reason: "exit quote exceeded pool liquidity" };
-        }
-
-        const pnlSol = solOut - CONFIG.TRADE_AMOUNT_SOL;
-        const pnlPct = (pnlSol / CONFIG.TRADE_AMOUNT_SOL) * 100;
-
-        stageLog(ctx, "SELL_SPOT", `~${formatSolCompact(exitSpotSolPerToken)}/token`);
-        stageLog(ctx, "SELL_QUOTE", `${formatSolDecimal(solOut)} for ${tokenOutUi.toFixed(6)} token`);
-        stageLog(ctx, "PNL", `${pnlSol >= 0 ? "+" : "-"}${formatSolDecimal(Math.abs(pnlSol))} (${pnlPct.toFixed(2)}%)`);
-        if (pnlPct <= -Math.abs(CONFIG.PAPER_TRADE_MAX_LOSS_PCT)) {
-            return {
-                ok: false,
-                reason: `pnl ${pnlPct.toFixed(2)}% <= -${Math.abs(CONFIG.PAPER_TRADE_MAX_LOSS_PCT)}%`,
-                finalStatus: "PAPER LOSS",
-            };
-        }
-        return { ok: true };
-    } catch (e: any) {
-        console.log(`⚠️ PAPER_TRADE failed: ${e.message}`);
-        return { ok: false, reason: e?.message || "paper simulation failed" };
-    }
-}
-
-async function waitForExitStateWithLiquidityStop(
-    connection: Connection,
-    poolAddress: string,
-    fetchStateWithRetry: () => Promise<any | null>,
-    entryState: any,
-    _tokenMint: string,
-    _tokenDecimals: number,
-    tokenOutAtomic: BN,
-    logPrefix: string,
-    holdMs: number,
-    suppressCreatorRiskRecheck: boolean,
-    creatorAddress?: string,
-    createPoolSignature?: string,
-    createPoolBlockTime?: number | null,
-    initialCreatorRisk?: CreatorRiskResult,
-): Promise<any | null> {
-    const startedAtMs = Date.now();
-    const deadlineMs = startedAtMs + Math.max(1000, holdMs);
-    const pollIntervalMs = Math.max(250, Math.min(CONFIG.HOLD_REMOVE_LIQ_CHECK_INTERVAL_MS, 1500));
-    const removeLiqCheckIntervalMs = Math.max(500, CONFIG.HOLD_REMOVE_LIQ_CHECK_INTERVAL_MS);
-    const entrySolLiquidity = getSolLiquidityFromState(entryState, _tokenMint) || 0;
-    let latestState: any | null = entryState;
-    let lastCreatorRiskCheckAtMs = 0;
-    let lastRemoveLiqCheckAtMs = 0;
-    let lastCreatorOutboundCheckAtMs = 0;
-    let lastCreatorCloseAccountCheckAtMs = 0;
-    let lastCreatorOutboundSprayCheckAtMs = 0;
-    let lastCreatorInboundSprayCheckAtMs = 0;
-    let lastPoolChurnCheckAtMs = 0;
-    let lastPoolChurnWarnAtMs = 0;
-    let lastSellQuoteCollapseCheckAtMs = 0;
-    const seenPoolSignatures = new Set<string>();
-    const seenCreatorSignatures = new Set<string>();
-    const seenCreatorSpraySignatures = new Set<string>();
-    const seenCreatorInboundSpraySignatures = new Set<string>();
-    const seenCreatorCloseAccountSignatures = new Set<string>();
-    const creatorAmmTouchTimesSec: number[] = [];
-    const creatorOutboundSprayEvents: Array<{ destination: string; sol: number; eventTimeSec: number; signature: string }> = [];
-    const creatorInboundSprayEvents: Array<{ source: string; sol: number; eventTimeSec: number; signature: string }> = [];
-    const creatorCloseAccountEvents: Array<{ closeCount: number; eventTimeSec: number; signature: string }> = [];
-    const baselineCreatorCashoutSol = Number(initialCreatorRisk?.creatorCashoutSol || 0);
-    const baselineExitQuoteSol = getExitQuoteSolFromState(entryState, _tokenMint, tokenOutAtomic);
-    if (createPoolSignature) seenPoolSignatures.add(createPoolSignature);
-    if (createPoolSignature) seenCreatorSignatures.add(createPoolSignature);
-    if (createPoolSignature) seenCreatorSpraySignatures.add(createPoolSignature);
-    if (createPoolSignature) seenCreatorInboundSpraySignatures.add(createPoolSignature);
-    if (createPoolSignature) seenCreatorCloseAccountSignatures.add(createPoolSignature);
-
-    const holdIntervalScale =
-        suppressCreatorRiskRecheck
-            ? Math.min(1, Math.max(0.1, CONFIG.HOLD_PROBATION_INTERVAL_MULTIPLIER))
-            : 1;
-    const scaledInterval = (baseMs: number) => Math.max(500, Math.round(baseMs * holdIntervalScale));
-
-    while (Date.now() < deadlineMs) {
-        const s = await fetchStateWithRetry();
-        if (s) {
-            latestState = s;
-
-            if (
-                creatorAddress &&
-                CONFIG.HOLD_CREATOR_RISK_RECHECK_ENABLED &&
-                Date.now() - lastCreatorRiskCheckAtMs >= scaledInterval(CONFIG.HOLD_CREATOR_RISK_RECHECK_INTERVAL_MS)
-            ) {
-                lastCreatorRiskCheckAtMs = Date.now();
-                const creatorRisk = await runCreatorRiskCheckWithRetry(connection, creatorAddress, logPrefix, {
-                    forceRefresh: true,
-                    entrySolLiquidity,
-                    createPoolSignature,
-                    createPoolBlockTime,
-                    previousResult: initialCreatorRisk,
-                    allowReuseIfNoNewActivity: true,
-                    allowFastPathOnDeepTimeout: true,
-                    deepCheckBudgetMs: CONFIG.CREATOR_RISK_RECHECK_DEEP_CHECK_BUDGET_MS,
-                });
-                if (!creatorRisk.ok) {
-                    if (creatorRisk.transientError) {
-                        stageLog(logPrefix, "CRISK", `transient error during hold recheck (${creatorRisk.reason || "rate limited"})`);
-                        continue;
-                    }
-                    if (suppressCreatorRiskRecheck) {
-                        const probationEscalation = shouldEscalateProbationCreatorRisk(
-                            creatorRisk,
-                            baselineCreatorCashoutSol,
-                        );
-                        if (probationEscalation.escalate) {
-                            console.log(
-                                `⚠️ CREATOR RISK EXIT (probation hard): ${creatorRisk.reason}` +
-                                ` (cashout_delta=${probationEscalation.cashoutDeltaSol.toFixed(3)} SOL)`
-                            );
-                            return s;
-                        }
-                    } else {
-                        console.log(`⚠️ CREATOR RISK EXIT: ${creatorRisk.reason}`);
-                        return s;
-                    }
-                }
-            }
-
-            if (
-                creatorAddress &&
-                CONFIG.HOLD_REMOVE_LIQ_DETECT_ENABLED &&
-                Date.now() - lastRemoveLiqCheckAtMs >= scaledInterval(removeLiqCheckIntervalMs)
-            ) {
-                lastRemoveLiqCheckAtMs = Date.now();
-                const removeLiq = await detectRemoveLiquiditySince(
-                    connection,
-                    poolAddress,
-                    creatorAddress,
-                    seenPoolSignatures,
-                    createPoolSignature,
-                    createPoolBlockTime,
-                );
-                if (removeLiq.detected) {
-                    console.log(
-                        `⚠️ REMOVE LIQUIDITY EXIT: ` +
-                        `${shortSig(removeLiq.signature || "-")} ` +
-                        `(wsol_to_creator=${(removeLiq.wsolToCreator || 0).toFixed(3)} ` +
-                        `sol_to_creator=${(removeLiq.solToCreator || 0).toFixed(3)} ` +
-                        `entry_liq=${entrySolLiquidity.toFixed(2)} SOL)`
-                    );
-                    return s;
-                }
-                if (CONFIG.HOLD_CREATOR_AMM_BURST_DETECT_ENABLED && removeLiq.creatorAmmTouch) {
-                    const eventTimeSec = removeLiq.eventTimeSec || Math.floor(Date.now() / 1000);
-                    creatorAmmTouchTimesSec.push(eventTimeSec);
-                    const windowSec = Math.max(1, CONFIG.HOLD_CREATOR_AMM_BURST_WINDOW_SEC);
-                    const minTxs = Math.max(2, CONFIG.HOLD_CREATOR_AMM_BURST_MIN_TXS);
-                    const cutoff = eventTimeSec - windowSec;
-                    while (creatorAmmTouchTimesSec.length && creatorAmmTouchTimesSec[0] < cutoff) {
-                        creatorAmmTouchTimesSec.shift();
-                    }
-                    if (creatorAmmTouchTimesSec.length >= minTxs) {
-                        console.log(
-                            `⚠️ CREATOR AMM BURST EXIT: ` +
-                            `${creatorAmmTouchTimesSec.length} tx in ${windowSec}s ` +
-                            `(${shortSig(removeLiq.signature || "-")})`
-                        );
-                        return s;
-                    }
-                }
-            }
-
-            if (
-                CONFIG.HOLD_SELL_QUOTE_COLLAPSE_EXIT_ENABLED &&
-                baselineExitQuoteSol &&
-                baselineExitQuoteSol > 0 &&
-                Date.now() - startedAtMs >= Math.max(0, CONFIG.HOLD_SELL_QUOTE_COLLAPSE_MIN_HOLD_MS) &&
-                Date.now() - lastSellQuoteCollapseCheckAtMs >= scaledInterval(CONFIG.HOLD_SELL_QUOTE_COLLAPSE_CHECK_INTERVAL_MS)
-            ) {
-                lastSellQuoteCollapseCheckAtMs = Date.now();
-                const currentExitQuoteSol = getExitQuoteSolFromState(s, _tokenMint, tokenOutAtomic);
-                if (currentExitQuoteSol !== null) {
-                    const dropPct = ((baselineExitQuoteSol - currentExitQuoteSol) / baselineExitQuoteSol) * 100;
-                    const minExitSol = Math.max(0, CONFIG.HOLD_SELL_QUOTE_COLLAPSE_MIN_SOL);
-                    const dropTriggered = dropPct >= Math.abs(CONFIG.HOLD_SELL_QUOTE_COLLAPSE_DROP_PCT);
-                    const floorTriggered = currentExitQuoteSol <= minExitSol;
-                    if (dropTriggered || floorTriggered) {
-                        console.log(
-                            `⚠️ SELL QUOTE COLLAPSE EXIT: ` +
-                            `${baselineExitQuoteSol.toFixed(6)} -> ${currentExitQuoteSol.toFixed(6)} SOL ` +
-                            `(drop ${dropPct.toFixed(2)}%, floor ${minExitSol.toFixed(6)} SOL)`
-                        );
-                        return s;
-                    }
-                }
-            }
-
-            if (
-                CONFIG.HOLD_POOL_CHURN_DETECT_ENABLED &&
-                baselineExitQuoteSol &&
-                baselineExitQuoteSol > 0 &&
-                Date.now() - lastPoolChurnCheckAtMs >= scaledInterval(CONFIG.HOLD_POOL_CHURN_CHECK_INTERVAL_MS)
-            ) {
-                lastPoolChurnCheckAtMs = Date.now();
-                const churn = await getPoolRecentChurnStats(
-                    connection,
-                    poolAddress,
-                    createPoolSignature,
-                    Math.max(createPoolBlockTime || 0, Math.floor(startedAtMs / 1000)),
-                );
-                const currentExitQuoteSol = getExitQuoteSolFromState(s, _tokenMint, tokenOutAtomic);
-                if (currentExitQuoteSol && currentExitQuoteSol > 0) {
-                    const dropPct = ((baselineExitQuoteSol - currentExitQuoteSol) / baselineExitQuoteSol) * 100;
-                    const shortTriggered =
-                        churn.shortCount >= Math.max(1, CONFIG.HOLD_POOL_CHURN_TX_SHORT_MIN);
-                    const criticalTriggered =
-                        churn.criticalCount >= Math.max(1, CONFIG.HOLD_POOL_CHURN_TX_CRITICAL_MIN) &&
-                        dropPct >= Math.abs(CONFIG.HOLD_POOL_CHURN_CRITICAL_SELL_DROP_PCT);
-                    const longTriggered =
-                        churn.longCount >= Math.max(1, CONFIG.HOLD_POOL_CHURN_TX_LONG_MIN) &&
-                        dropPct >= Math.abs(CONFIG.HOLD_POOL_CHURN_SELL_DROP_PCT);
-
-                    if (
-                        shortTriggered &&
-                        Date.now() - lastPoolChurnWarnAtMs >= Math.max(5000, CONFIG.HOLD_POOL_CHURN_WINDOW_SHORT_MS)
-                    ) {
-                        lastPoolChurnWarnAtMs = Date.now();
-                        console.log(
-                            `⚠️ POOL CHURN WARN: ${churn.shortCount} tx in ${(CONFIG.HOLD_POOL_CHURN_WINDOW_SHORT_MS / 1000).toFixed(0)}s ` +
-                            `(sell_quote ${baselineExitQuoteSol.toFixed(6)} -> ${currentExitQuoteSol.toFixed(6)} SOL, ` +
-                            `${formatQuoteMovePct(baselineExitQuoteSol, currentExitQuoteSol)})`
-                        );
-                    }
-
-                    if (criticalTriggered || longTriggered) {
-                        const windowMs = criticalTriggered
-                            ? CONFIG.HOLD_POOL_CHURN_WINDOW_CRITICAL_MS
-                            : CONFIG.HOLD_POOL_CHURN_WINDOW_LONG_MS;
-                        const txCount = criticalTriggered ? churn.criticalCount : churn.longCount;
-                        console.log(
-                            `⚠️ POOL CHURN EXIT: ${txCount} tx in ${(windowMs / 1000).toFixed(0)}s ` +
-                            `(sell_quote ${baselineExitQuoteSol.toFixed(6)} -> ${currentExitQuoteSol.toFixed(6)} SOL, ` +
-                            `${formatQuoteMovePct(baselineExitQuoteSol, currentExitQuoteSol)})`
-                        );
-                        return s;
-                    }
-                }
-            }
-
-            if (
-                creatorAddress &&
-                CONFIG.HOLD_CREATOR_OUTBOUND_EXIT_ENABLED &&
-                Date.now() - lastCreatorOutboundCheckAtMs >= scaledInterval(CONFIG.HOLD_CREATOR_OUTBOUND_CHECK_INTERVAL_MS)
-            ) {
-                lastCreatorOutboundCheckAtMs = Date.now();
-                const creatorOutbound = await detectCreatorLargeOutboundSince(
-                    connection,
-                    creatorAddress,
-                    poolAddress,
-                    seenCreatorSignatures,
-                    createPoolSignature,
-                    createPoolBlockTime,
-                );
-                if (creatorOutbound.detected) {
-                    console.log(
-                        `⚠️ CREATOR OUTBOUND EXIT: ` +
-                        `${shortSig(creatorOutbound.signature || "-")} ` +
-                        `(${(creatorOutbound.outboundSol || 0).toFixed(3)} SOL -> ${shortSig(creatorOutbound.destination || "-")})`
-                    );
-                    return s;
-                }
-            }
-
-            if (
-                creatorAddress &&
-                CONFIG.HOLD_CREATOR_CLOSE_ACCOUNT_BURST_EXIT_ENABLED &&
-                Date.now() - lastCreatorCloseAccountCheckAtMs >= scaledInterval(CONFIG.HOLD_CREATOR_CLOSE_ACCOUNT_BURST_CHECK_INTERVAL_MS)
-            ) {
-                lastCreatorCloseAccountCheckAtMs = Date.now();
-                const minBlockTimeSec = Math.max(
-                    createPoolBlockTime || 0,
-                    Math.floor(startedAtMs / 1000)
-                );
-                const newEvents = await collectCreatorCloseAccountEventsSince(
-                    connection,
-                    creatorAddress,
-                    seenCreatorCloseAccountSignatures,
-                    createPoolSignature,
-                    minBlockTimeSec,
-                );
-                if (newEvents.length) {
-                    creatorCloseAccountEvents.push(...newEvents);
-                }
-                const windowSec = Math.max(5, CONFIG.HOLD_CREATOR_CLOSE_ACCOUNT_BURST_WINDOW_SEC);
-                const nowSec = Math.floor(Date.now() / 1000);
-                const cutoff = nowSec - windowSec;
-                while (creatorCloseAccountEvents.length && creatorCloseAccountEvents[0].eventTimeSec < cutoff) {
-                    creatorCloseAccountEvents.shift();
-                }
-                const burst = classifyHoldCreatorCloseAccountBurst(creatorCloseAccountEvents);
-                if (burst.detected) {
-                    console.log(
-                        `⚠️ CREATOR CLOSE ACCOUNT BURST EXIT: ` +
-                        `${burst.txCount} tx / ${burst.totalCloseCount} closes in ${windowSec}s ` +
-                        `(sig=${shortSig(burst.latestSignature)})`
-                    );
-                    return s;
-                }
-            }
-
-            if (
-                creatorAddress &&
-                CONFIG.HOLD_CREATOR_OUTBOUND_SPRAY_EXIT_ENABLED &&
-                Date.now() - lastCreatorOutboundSprayCheckAtMs >= scaledInterval(CONFIG.HOLD_CREATOR_OUTBOUND_SPRAY_CHECK_INTERVAL_MS)
-            ) {
-                lastCreatorOutboundSprayCheckAtMs = Date.now();
-                const minBlockTimeSec = Math.max(
-                    createPoolBlockTime || 0,
-                    Math.floor(startedAtMs / 1000)
-                );
-                const newEvents = await collectCreatorOutboundTransfersSince(
-                    connection,
-                    creatorAddress,
-                    poolAddress,
-                    seenCreatorSpraySignatures,
-                    createPoolSignature,
-                    minBlockTimeSec,
-                );
-                if (newEvents.length) {
-                    creatorOutboundSprayEvents.push(...newEvents);
-                }
-                const windowSec = Math.max(5, CONFIG.HOLD_CREATOR_OUTBOUND_SPRAY_WINDOW_SEC);
-                const nowSec = Math.floor(Date.now() / 1000);
-                const cutoff = nowSec - windowSec;
-                while (creatorOutboundSprayEvents.length && creatorOutboundSprayEvents[0].eventTimeSec < cutoff) {
-                    creatorOutboundSprayEvents.shift();
-                }
-                const spray = classifyHoldCreatorOutboundSpray(creatorOutboundSprayEvents);
-                if (spray.detected) {
-                    const latestSig = creatorOutboundSprayEvents[creatorOutboundSprayEvents.length - 1]?.signature || "-";
-                    console.log(
-                        `⚠️ CREATOR OUTBOUND SPRAY EXIT: ` +
-                        `${spray.transfers} transfers to ${spray.destinations} destinations in ${windowSec}s ` +
-                        `(median ${spray.medianSol.toFixed(3)} SOL, rel_std ${spray.relStdDev.toFixed(2)}, ` +
-                        `ratio ${spray.amountRatio.toFixed(2)}, sig=${shortSig(latestSig)})`
-                    );
-                    return s;
-                }
-            }
-
-            if (
-                creatorAddress &&
-                CONFIG.HOLD_CREATOR_INBOUND_SPRAY_EXIT_ENABLED &&
-                Date.now() - lastCreatorInboundSprayCheckAtMs >= scaledInterval(CONFIG.HOLD_CREATOR_INBOUND_SPRAY_CHECK_INTERVAL_MS)
-            ) {
-                lastCreatorInboundSprayCheckAtMs = Date.now();
-                const minBlockTimeSec = Math.max(
-                    createPoolBlockTime || 0,
-                    Math.floor(startedAtMs / 1000)
-                );
-                const newEvents = await collectCreatorInboundTransfersSince(
-                    connection,
-                    creatorAddress,
-                    poolAddress,
-                    seenCreatorInboundSpraySignatures,
-                    createPoolSignature,
-                    minBlockTimeSec,
-                );
-                if (newEvents.length) {
-                    creatorInboundSprayEvents.push(...newEvents);
-                }
-                const windowSec = Math.max(5, CONFIG.HOLD_CREATOR_INBOUND_SPRAY_WINDOW_SEC);
-                const nowSec = Math.floor(Date.now() / 1000);
-                const cutoff = nowSec - windowSec;
-                while (creatorInboundSprayEvents.length && creatorInboundSprayEvents[0].eventTimeSec < cutoff) {
-                    creatorInboundSprayEvents.shift();
-                }
-                const spray = classifyHoldCreatorInboundSpray(creatorInboundSprayEvents);
-                if (spray.detected) {
-                    const latestSig = creatorInboundSprayEvents[creatorInboundSprayEvents.length - 1]?.signature || "-";
-                    console.log(
-                        `⚠️ CREATOR INBOUND SPRAY EXIT: ` +
-                        `${spray.transfers} transfers from ${spray.sources} sources in ${windowSec}s ` +
-                        `(median ${spray.medianSol.toFixed(3)} SOL, rel_std ${spray.relStdDev.toFixed(2)}, ` +
-                        `ratio ${spray.amountRatio.toFixed(2)}, sig=${shortSig(latestSig)})`
-                    );
-                    return s;
-                }
-            }
-        }
-
-        await new Promise(r => setTimeout(r, pollIntervalMs));
-    }
-
-    return latestState || fetchStateWithRetry();
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// SAFETY CHECK HELPERS
-// ═══════════════════════════════════════════════════════════════════════════════
-
-async function checkTokenSecurity(connection: Connection, mintAddress: string): Promise<boolean> {
-    try {
-        const mintKey = new PublicKey(mintAddress);
-        const mintInfo = await getMintInfoRobust(connection, mintKey);
-
-        if (CONFIG.REQUIRE_RENOUNCED_MINT && mintInfo.mintAuthority !== null) {
-            console.log(`   ⚠️ Mint Authority NOT renounced! Owner: ${mintInfo.mintAuthority.toBase58()}`);
-            return false;
-        }
-
-        if (CONFIG.REQUIRE_NO_FREEZE && mintInfo.freezeAuthority !== null) {
-            console.log(`   ⚠️ Freeze Authority ENABLED! Owner: ${mintInfo.freezeAuthority.toBase58()}`);
-            return false;
-        }
-
-        console.log(`   🛡️ Mint/Freeze Security: PASSED`);
-        return true;
-    } catch (e: any) {
-        const reason = e?.message || String(e);
-        console.log(`   ⚠️ Could not verify token security: ${reason}`);
-        return false; // Skip if uncertain
-    }
-}
-
-async function getMintInfoRobust(connection: Connection, mintKey: PublicKey) {
-    const maxAttempts = 5;
-    let lastErr: unknown = null;
-
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        try {
-            const mintAccount = await connection.getAccountInfo(mintKey, "confirmed");
-            if (!mintAccount) {
-                throw new Error("mint account not found");
-            }
-
-            const owner = mintAccount.owner;
-            if (!owner.equals(TOKEN_PROGRAM_ID) && !owner.equals(TOKEN_2022_PROGRAM_ID)) {
-                throw new Error(`unexpected mint owner program: ${owner.toBase58()}`);
-            }
-
-            return await getMint(connection, mintKey, "confirmed", owner);
-        } catch (e) {
-            lastErr = e;
-            if (attempt < maxAttempts) {
-                await new Promise(r => setTimeout(r, 300));
-            }
-        }
-    }
-
-    throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -5114,6 +2371,57 @@ async function executeSell(connection: Connection, poolAddress: string, tokenMin
     }
 }
 
-main().catch(err => {
+const supervisorRuntime = createSupervisorRuntime({
+    rootDir: ROOT_DIR,
+    workerLogDir: WORKER_LOG_DIR,
+    maxConcurrentOperations: CONFIG.MAX_CONCURRENT_OPERATIONS,
+    queueMaxPendingSignatures: CONFIG.QUEUE_MAX_PENDING_SIGNATURES,
+    signatureCacheTtlMs: CONFIG.SIGNATURE_CACHE_TTL_MS,
+    signatureCacheMaxSize: CONFIG.SIGNATURE_CACHE_MAX_SIZE,
+    logStaleResubscribeMs: CONFIG.LOG_STALE_RESUBSCRIBE_MS,
+    healthcheckIntervalMs: CONFIG.HEALTHCHECK_INTERVAL_MS,
+    programId: PUMPFUN_AMM_PROGRAM_ID,
+    createConnection: createRuntimeConnection,
+    initSdks,
+    handleNewPool,
+    shortSig,
+    getWorkerEntryCommand,
+    stageLog,
+    onStartupLog: (workerCount) => {
+        console.log("🎯 STARTING PUMP.FUN AMM SNIPER 🎯");
+        console.log(`Program: ${PUMPFUN_AMM_PROGRAM_ID}`);
+        console.log(`Mode: ${MONITOR_ONLY ? "MONITOR_ONLY" : "TRADING"}`);
+        console.log(`Wallet: ${walletKeypair ? walletKeypair.publicKey.toBase58() : "N/A (no private key loaded)"}`);
+        console.log(`Min Liquidity: ${CONFIG.MIN_POOL_LIQUIDITY_SOL} SOL`);
+        console.log(`Max Parallel Ops: ${workerCount}`);
+        if (!MONITOR_ONLY) {
+            console.log(`Amount: ${CONFIG.TRADE_AMOUNT_SOL} SOL`);
+            console.log(`Auto-Sell: ${CONFIG.AUTO_SELL_DELAY_MS / 1000} seconds`);
+        } else if (CONFIG.PAPER_TRADE_ENABLED) {
+            console.log(`Paper Trade: enabled (every valid pool, exit delay ${CONFIG.AUTO_SELL_DELAY_MS / 1000}s)`);
+        }
+        console.log("");
+    },
+});
+
+startApp({
+    isWorkerProcess: IS_WORKER_PROCESS,
+    runWorkerTask: async () => {
+        const signature = process.env.WORKER_TASK_SIGNATURE;
+        if (!signature) {
+            throw new Error("WORKER_TASK_SIGNATURE missing");
+        }
+        await runWorkerTask({
+            signature,
+            workerSlot: WORKER_SLOT || 1,
+            createConnection: createRuntimeConnection,
+            initSdks,
+            handleNewPool,
+            shortSig,
+            stageLog,
+        });
+    },
+    runSupervisor: () => supervisorRuntime.runSupervisor(),
+}).catch((err) => {
     console.error("❌ Terminal Error:", err);
 });

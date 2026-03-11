@@ -2,6 +2,26 @@
 
 Guida breve ai controlli del bot, divisi per fase.
 
+## Implementazione
+
+Direzione architetturale attuale:
+- orchestrazione runtime: `src/pumpAmmSniper.ts`
+- bootstrap / supervisor / worker lifecycle: `src/app/bootstrap.ts`, `src/app/runtime.ts`, `src/app/worker.ts`
+- config condivisa: `src/app/config.ts`
+- tipi condivisi: `src/domain/types.ts`
+- motore creator risk: `src/services/creator-risk/index.ts`
+- pre-buy / hold / paper simulation: `src/services/paper-trade/`
+- liquidity recheck: `src/services/liquidity/`
+- token security: `src/services/token-security/`
+- top10 concentration: `src/services/top10/`
+- dev holdings: `src/services/dev-holdings/`
+- logging operativo: `src/services/reporting/stageLog.ts`
+- struttura target del refactor: `docs/architecture.md`
+
+Regola:
+- i nuovi controlli non vanno aggiunti direttamente in `src/pumpAmmSniper.ts`
+- i controlli vanno estratti progressivamente in servizi dedicati mantenendo invariati comportamento e log operativi
+
 ## Obiettivo
 
 Il bot prova a evitare 3 classi di problemi:
