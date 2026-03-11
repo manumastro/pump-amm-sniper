@@ -977,7 +977,7 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                 deps.isStandardRelayRiskPool(options.entrySolLiquidity) &&
                 CONFIG.CREATOR_RISK_STANDARD_POOL_MICRO_BLOCK_ENABLED &&
                 compressedWindowSec !== null &&
-                compressedWindowSec <= CONFIG.CREATOR_RISK_MICRO_INBOUND_WINDOW_SEC &&
+                compressedWindowSec <= CONFIG.CREATOR_RISK_STANDARD_POOL_MICRO_MAX_WINDOW_SEC &&
                 microInboundTransfers.length >= CONFIG.CREATOR_RISK_STANDARD_POOL_MICRO_MIN_TRANSFERS &&
                 microInboundSources.size >= CONFIG.CREATOR_RISK_STANDARD_POOL_MICRO_MIN_SOURCES
             ) {
