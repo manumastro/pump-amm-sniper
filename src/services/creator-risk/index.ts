@@ -997,6 +997,57 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
             }
 
             if (
+                deps.isStandardRelayRiskPool(options.entrySolLiquidity) &&
+                CONFIG.CREATOR_RISK_STANDARD_POOL_RELAY_OUTBOUND_BLOCK_ENABLED &&
+                !!funder &&
+                uniqueCounterparties >= CONFIG.CREATOR_RISK_STANDARD_POOL_RELAY_OUTBOUND_MIN_COUNTERPARTIES &&
+                solOutTransfers >= CONFIG.CREATOR_RISK_STANDARD_POOL_RELAY_OUTBOUND_MIN_OUT_TRANSFERS &&
+                microInboundTransfers.length <= CONFIG.CREATOR_RISK_STANDARD_POOL_RELAY_OUTBOUND_MAX_MICRO_TRANSFERS &&
+                relayFunding.outboundSol >= CONFIG.CREATOR_RISK_STANDARD_POOL_RELAY_OUTBOUND_MIN_SOL
+            ) {
+                return cacheAndReturn(enrichBaseResult({
+                    ok: false,
+                    reason:
+                        `standard pool relay-outbound pattern funder=${funder} ` +
+                        `cp=${uniqueCounterparties} out=${solOutTransfers} ` +
+                        `micro=${microInboundTransfers.length}/${microInboundSources.size} ` +
+                        `relay_out=${relayFunding.outboundSol.toFixed(3)} SOL`,
+                    funder,
+                    uniqueCounterparties,
+                    compressedWindowSec,
+                    burner,
+                    relayFundingRoot: relayFunding.root,
+                    deepChecksComplete,
+                    deepTimedOut: !deepChecksComplete,
+                    deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
+                }));
+            }
+
+            if (
+                deps.isStandardRelayRiskPool(options.entrySolLiquidity) &&
+                CONFIG.CREATOR_RISK_STANDARD_POOL_OUTBOUND_HEAVY_BLOCK_ENABLED &&
+                compressedWindowSec !== null &&
+                compressedWindowSec <= CONFIG.CREATOR_RISK_STANDARD_POOL_OUTBOUND_HEAVY_MAX_WINDOW_SEC &&
+                uniqueCounterparties >= CONFIG.CREATOR_RISK_STANDARD_POOL_OUTBOUND_HEAVY_MIN_COUNTERPARTIES &&
+                solOutTransfers >= CONFIG.CREATOR_RISK_STANDARD_POOL_OUTBOUND_HEAVY_MIN_OUT_TRANSFERS &&
+                solInTransfers <= CONFIG.CREATOR_RISK_STANDARD_POOL_OUTBOUND_HEAVY_MAX_IN_TRANSFERS
+            ) {
+                return cacheAndReturn(enrichBaseResult({
+                    ok: false,
+                    reason:
+                        `standard pool outbound-heavy creator history ` +
+                        `cp=${uniqueCounterparties} in=${solInTransfers} out=${solOutTransfers} ` +
+                        `window=${compressedWindowSec}s`,
+                    funder,
+                    uniqueCounterparties,
+                    compressedWindowSec,
+                    burner,
+                    deepChecksComplete: true,
+                    deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
+                }));
+            }
+
+            if (
                 deepChecksComplete &&
                 CONFIG.CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_BLOCK_ENABLED &&
                 relayFunding.root &&

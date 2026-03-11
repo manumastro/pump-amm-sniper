@@ -7,6 +7,8 @@ const SUPERVISOR_LOG_PATH = path.join(ROOT, 'paper.log');
 const LOG_DIR = path.join(ROOT, 'logs');
 const OUT_JSON = path.join(ROOT, 'logs', 'paper-report.json');
 const OUT_TXT = path.join(ROOT, 'logs', 'paper-report.txt');
+const OUT_OUTCOMES_JSON = path.join(ROOT, 'logs', 'paper-report-outcomes.json');
+const OUT_OUTCOMES_TXT = path.join(ROOT, 'logs', 'paper-report-outcomes.txt');
 
 const SUB_TO_DIGIT = { '₀': '0', '₁': '1', '₂': '2', '₃': '3', '₄': '4', '₅': '5', '₆': '6', '₇': '7', '₈': '8', '₉': '9' };
 const DEFAULT_TRADE_AMOUNT_SOL = Number(process.env.TRADE_AMOUNT_SOL || '0.01');
@@ -455,6 +457,33 @@ function summarize() {
     classifyOperation(e) === 'hostile' &&
     (e.skipReason || (e.endStatus && e.endStatus.startsWith('SKIP')))
   );
+  const outcomeOperations = enriched
+    .filter(e => typeof e.effectivePnlSol === 'number' && typeof e.effectivePnlPct === 'number')
+    .map(e => ({
+      id: e.id,
+      startedAt: e.startedAt,
+      buyAt: e.buyAt,
+      sellAt: e.sellAt,
+      pnlAt: e.pnlAt,
+      endedAt: e.endedAt,
+      signature: e.signature,
+      tokenMint: e.tokenMint,
+      pool: e.pool,
+      gmgn: e.gmgn || (e.tokenMint ? `https://gmgn.ai/sol/token/${e.tokenMint}` : null),
+      buySpotSolPerToken: fmtNum(e.buySpotSolPerToken),
+      sellSpotSolPerToken: fmtNum(e.sellSpotSolPerToken),
+      pnlSol: e.effectivePnlSol,
+      pnlPct: e.effectivePnlPct,
+      inferredPnl: !!e.inferredPnl,
+      checksPassed: e.checksPassed,
+      skipReason: e.skipReason,
+      endStatus: e.endStatus,
+      durationMs: e.durationMs,
+      rugPull: isRugLikeSignal(e),
+      rugLoss: isRugLossEvent(e),
+      classification: classifyOperation(e),
+      pnlValidityIssue: getPnlValidityIssue(e),
+    }));
 
   return {
     generatedAt: nowIso(),
@@ -472,6 +501,7 @@ function summarize() {
     wins,
     losses,
     winRatePct: validPnl.length ? Number(((wins / validPnl.length) * 100).toFixed(2)) : 0,
+    outcomeOperationCount: outcomeOperations.length,
     operations: enriched.map(e => ({
       id: e.id,
       startedAt: e.startedAt,
@@ -511,6 +541,7 @@ function summarize() {
       creatorCashoutDest: e.creatorCashoutDest,
       pnlValidityIssue: getPnlValidityIssue(e),
     })),
+    outcomeOperations,
     rugPullEvents: rugLosses.slice(-20).map(e => ({
       id: e.id,
       startedAt: e.startedAt,
@@ -588,6 +619,44 @@ function writeReports(force = false) {
       : ['(none)']),
   ].join('\n');
   fs.writeFileSync(OUT_TXT, txt + '\n');
+
+  const outcomesOnly = {
+    generatedAt: report.generatedAt,
+    outcomeOperationCount: report.outcomeOperationCount,
+    invalidPnlCount: report.invalidPnlCount,
+    totalPnlSol: report.totalPnlSol,
+    avgPnlPct: report.avgPnlPct,
+    wins: report.wins,
+    losses: report.losses,
+    winRatePct: report.winRatePct,
+    outcomeOperations: report.outcomeOperations,
+  };
+  fs.writeFileSync(OUT_OUTCOMES_JSON, JSON.stringify(outcomesOnly, null, 2));
+
+  const outcomesTxt = [
+    `Paper Trade Outcomes @ ${report.generatedAt}`,
+    `operations with pnl: ${report.outcomeOperationCount}`,
+    `invalid pnl excluded: ${report.invalidPnlCount}`,
+    `total pnl (SOL): ${report.totalPnlSol}`,
+    `avg pnl (%): ${report.avgPnlPct}`,
+    `wins/losses: ${report.wins}/${report.losses}`,
+    `win rate: ${report.winRatePct}%`,
+    '',
+    'Operations with pnl:',
+    ...(report.outcomeOperations.length
+      ? report.outcomeOperations.map((e, i) =>
+        `${String(i + 1).padStart(4, '0')}. ${e.id} ${e.tokenMint || ''} ` +
+        `start=${e.startedAt || '-'} buy_ts=${e.buyAt || '-'} sell_ts=${e.sellAt || '-'} end=${e.endedAt || '-'} ` +
+        `buy_spot=${e.buySpotSolPerToken ?? 'n/a'} sell_spot=${e.sellSpotSolPerToken ?? 'n/a'} ` +
+        `pnl=${e.pnlSol ?? 'n/a'} (${e.pnlPct ?? 'n/a'}%) ` +
+        `pnl_valid=${e.pnlValidityIssue ? 'NO' : 'YES'} ` +
+        `class=${e.classification} status=${e.endStatus || 'n/a'} skip=${e.skipReason || '-'} ` +
+        `rug_like=${e.rugPull ? 'YES' : 'NO'} rug_loss=${e.rugLoss ? 'YES' : 'NO'} ` +
+        `gmgn=${e.gmgn || '-'} pnl_issue=${e.pnlValidityIssue || '-'}`
+      )
+      : ['(none)']),
+  ].join('\n');
+  fs.writeFileSync(OUT_OUTCOMES_TXT, outcomesTxt + '\n');
 }
 
 function processChunk(logPath, chunk) {
@@ -650,4 +719,4 @@ function pollLoop() {
 initialLoad();
 pollLoop();
 console.log(`[paper-report-daemon] watching supervisor/workers logs under ${ROOT}`);
-console.log(`[paper-report-daemon] writing ${OUT_JSON} and ${OUT_TXT}`);
+console.log(`[paper-report-daemon] writing ${OUT_JSON}, ${OUT_TXT}, ${OUT_OUTCOMES_JSON}, ${OUT_OUTCOMES_TXT}`);
