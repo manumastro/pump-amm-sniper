@@ -243,7 +243,15 @@ const CONFIG = {
     PAPER_CREATOR_RISK_EXTREME_CASHOUT_BLOCK_ENABLED: process.env.PAPER_CREATOR_RISK_EXTREME_CASHOUT_BLOCK_ENABLED !== "false",
     PAPER_CREATOR_RISK_EXTREME_CASHOUT_MIN_PCT_OF_LIQ: Number(process.env.PAPER_CREATOR_RISK_EXTREME_CASHOUT_MIN_PCT_OF_LIQ || 95),
     PAPER_CREATOR_RISK_EXTREME_CASHOUT_MIN_SCORE: Number(process.env.PAPER_CREATOR_RISK_EXTREME_CASHOUT_MIN_SCORE || 25),
+    CREATOR_RESOLUTION_FAIL_OPEN: process.env.CREATOR_RESOLUTION_FAIL_OPEN === "true",
+    LOW_LIQUIDITY_RECHECK_ENABLED: process.env.LOW_LIQUIDITY_RECHECK_ENABLED !== "false",
+    LOW_LIQUIDITY_RECHECK_WINDOW_MS: Number(process.env.LOW_LIQUIDITY_RECHECK_WINDOW_MS || 5000),
+    LOW_LIQUIDITY_RECHECK_INTERVAL_MS: Number(process.env.LOW_LIQUIDITY_RECHECK_INTERVAL_MS || 300),
+    LOW_LIQUIDITY_POOL_COOLDOWN_MS: Number(process.env.LOW_LIQUIDITY_POOL_COOLDOWN_MS || 120000),
     MAX_CONCURRENT_OPERATIONS: Number(process.env.MAX_CONCURRENT_OPERATIONS || 2),
+    QUEUE_MAX_PENDING_SIGNATURES: Number(process.env.QUEUE_MAX_PENDING_SIGNATURES || 300),
+    CREATOR_RISK_RATE_LIMIT_RETRIES: Number(process.env.CREATOR_RISK_RATE_LIMIT_RETRIES || 3),
+    CREATOR_RISK_RATE_LIMIT_RETRY_BASE_MS: Number(process.env.CREATOR_RISK_RATE_LIMIT_RETRY_BASE_MS || 350),
     PAPER_TRADE_MAX_LOSS_PCT: Number(process.env.PAPER_TRADE_MAX_LOSS_PCT || 80),
 };
 
@@ -275,6 +283,7 @@ let logSubscriptionId: number | null = null;
 let lastLogAtMs = Date.now();
 let healthcheckInterval: NodeJS.Timeout | null = null;
 const seenSignatures = new Map<string, number>();
+const lowLiquidityPools = new Map<string, number>();
 let cachedSolPriceUsd: number | null = null;
 let cachedSolPriceAtMs = 0;
 const creatorRiskCache = new Map<string, { checkedAtMs: number; result: CreatorRiskResult }>();
@@ -285,6 +294,7 @@ const recentFunderCreators = new Map<string, Array<{ creator: string; seenAtMs: 
 const ROOT_DIR = process.cwd();
 const PAPER_LOG_PATH = path.join(ROOT_DIR, "paper.log");
 const PAPER_REPORT_JSON_PATH = path.join(ROOT_DIR, "logs", "paper-report.json");
+const LOW_LIQUIDITY_STATE_PATH = path.join(ROOT_DIR, "logs", "low-liquidity-pools.json");
 const BLACKLISTS_DIR = path.join(ROOT_DIR, "blacklists");
 const BLACKLIST_CREATORS_PATH = path.join(BLACKLISTS_DIR, "creators.txt");
 const BLACKLIST_FUNDERS_PATH = path.join(BLACKLISTS_DIR, "funders.txt");
@@ -292,6 +302,8 @@ const BLACKLIST_MICRO_BURST_SOURCES_PATH = path.join(BLACKLISTS_DIR, "micro-burs
 const BLACKLIST_CASHOUT_RELAYS_PATH = path.join(BLACKLISTS_DIR, "cashout-relays.txt");
 const BLACKLIST_FUNDER_COUNTS_PATH = path.join(BLACKLISTS_DIR, "funder-counts.json");
 const WORKER_LOG_DIR = path.join(ROOT_DIR, "logs");
+const pendingSignatures: string[] = [];
+const pendingSignatureSet = new Set<string>();
 
 type WorkerSlotState = {
     slot: number;
@@ -307,6 +319,78 @@ function shortSig(sig: string): string {
 
 function stageLog(_ctx: string, stage: string, message: string) {
     console.log(`${stage.padEnd(12)} | ${message}`);
+}
+
+function pubkeyToBase58(value: any): string | null {
+    if (!value) return null;
+    if (typeof value === "string") return value;
+    if (typeof value?.toBase58 === "function") {
+        try {
+            return value.toBase58();
+        } catch {
+            return null;
+        }
+    }
+    if (value?.pubkey) {
+        return pubkeyToBase58(value.pubkey);
+    }
+    return null;
+}
+
+function instructionProgramIdToBase58(ix: any, accountKeys: any[]): string | null {
+    if (ix?.programId) {
+        const direct = pubkeyToBase58(ix.programId);
+        if (direct) return direct;
+    }
+    if (typeof ix?.programIdIndex === "number") {
+        return pubkeyToBase58(accountKeys[ix.programIdIndex]);
+    }
+    return null;
+}
+
+function instructionAccountToBase58(accountRef: any, accountKeys: any[]): string | null {
+    if (typeof accountRef === "number") {
+        return pubkeyToBase58(accountKeys[accountRef]);
+    }
+    return pubkeyToBase58(accountRef);
+}
+
+function readLowLiquidityPoolState(): Record<string, number> {
+    try {
+        const raw = fs.readFileSync(LOW_LIQUIDITY_STATE_PATH, "utf8");
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== "object") return {};
+        const out: Record<string, number> = {};
+        for (const [pool, ts] of Object.entries(parsed)) {
+            if (typeof ts === "number" && Number.isFinite(ts)) {
+                out[pool] = ts;
+            }
+        }
+        return out;
+    } catch {
+        return {};
+    }
+}
+
+function writeLowLiquidityPoolState(state: Record<string, number>) {
+    fs.mkdirSync(path.dirname(LOW_LIQUIDITY_STATE_PATH), { recursive: true });
+    fs.writeFileSync(LOW_LIQUIDITY_STATE_PATH, JSON.stringify(state));
+}
+
+function pruneLowLiquidityPoolState(nowMs: number, cooldownMs: number): Record<string, number> {
+    const state = readLowLiquidityPoolState();
+    if (cooldownMs <= 0) return state;
+    let changed = false;
+    for (const [pool, ts] of Object.entries(state)) {
+        if (nowMs - ts > cooldownMs) {
+            delete state[pool];
+            changed = true;
+        }
+    }
+    if (changed) {
+        writeLowLiquidityPoolState(state);
+    }
+    return state;
 }
 
 function inFlightCount(): number {
@@ -361,9 +445,17 @@ function formatSolDecimal(value: number): string {
     return `${value.toFixed(6)} SOL`;
 }
 
+function formatLiquiditySol(value: number): string {
+    if (!Number.isFinite(value) || value <= 0) return "0.000000";
+    if (value >= 1) return value.toFixed(2);
+    if (value >= 0.01) return value.toFixed(4);
+    return value.toFixed(6);
+}
+
 type CreatorRiskResult = {
     ok: boolean;
     reason?: string;
+    transientError?: boolean;
     funder?: string | null;
     uniqueCounterparties?: number;
     compressedWindowSec?: number | null;
@@ -387,6 +479,15 @@ type CreatorRiskResult = {
     repeatedCreateRemoveWindowSec?: number | null;
     repeatedCreateRemoveMaxCashoutSol?: number;
 };
+
+function isRateLimitedMessage(message?: string): boolean {
+    const normalized = (message || "").toLowerCase();
+    return (
+        normalized.includes("429 too many requests") ||
+        normalized.includes("rate limited") ||
+        normalized.includes("server responded with 429")
+    );
+}
 
 function isProbationBypassForbidden(result?: CreatorRiskResult): boolean {
     const normalized = (result?.reason || "").toLowerCase();
@@ -576,11 +677,40 @@ function findIdleWorkerSlot(): WorkerSlotState | null {
     return workerSlots.find((slot) => !slot.busy) || null;
 }
 
-function dispatchPoolToWorker(signature: string) {
+function enqueuePendingSignature(signature: string) {
+    if (pendingSignatureSet.has(signature)) return;
+
+    const maxPending = Math.max(1, CONFIG.QUEUE_MAX_PENDING_SIGNATURES);
+    if (pendingSignatures.length >= maxPending) {
+        const dropped = pendingSignatures.shift();
+        if (dropped) {
+            pendingSignatureSet.delete(dropped);
+            console.warn(`QUEUE        | drop oldest ${shortSig(dropped)} (max ${maxPending})`);
+        }
+    }
+
+    pendingSignatures.push(signature);
+    pendingSignatureSet.add(signature);
+    console.log(`QUEUE        | enqueued ${shortSig(signature)} (pending=${pendingSignatures.length})`);
+}
+
+function drainPendingQueue() {
+    if (IS_WORKER_PROCESS || pendingSignatures.length === 0) return;
+
+    while (pendingSignatures.length > 0) {
+        const signature = pendingSignatures[0];
+        if (!dispatchPoolToWorker(signature)) {
+            return;
+        }
+        pendingSignatures.shift();
+        pendingSignatureSet.delete(signature);
+    }
+}
+
+function dispatchPoolToWorker(signature: string): boolean {
     const slot = findIdleWorkerSlot();
     if (!slot) {
-        console.log(`QUEUE        | busy skip ${shortSig(signature)}`);
-        return;
+        return false;
     }
 
     fs.mkdirSync(WORKER_LOG_DIR, { recursive: true });
@@ -614,6 +744,7 @@ function dispatchPoolToWorker(signature: string) {
         slot.busy = false;
         slot.signature = null;
         slot.child = null;
+        drainPendingQueue();
     });
 
     child.on("error", (error) => {
@@ -621,7 +752,10 @@ function dispatchPoolToWorker(signature: string) {
         slot.busy = false;
         slot.signature = null;
         slot.child = null;
+        drainPendingQueue();
     });
+
+    return true;
 }
 
 async function subscribeToPoolLogs(connection: Connection) {
@@ -645,11 +779,9 @@ async function subscribeToPoolLogs(connection: Connection) {
 
                 if (!hasCreatePool) return;
 
-                if (inFlightCount() >= Math.max(1, CONFIG.MAX_CONCURRENT_OPERATIONS)) {
-                    console.log(`QUEUE        | busy skip ${shortSig(logs.signature)}`);
-                    return;
+                if (!dispatchPoolToWorker(logs.signature)) {
+                    enqueuePendingSignature(logs.signature);
                 }
-                dispatchPoolToWorker(logs.signature);
             } catch (e: any) {
                 console.error(`❌ Log handler error: ${e.message}`);
             }
@@ -690,6 +822,8 @@ function startLogHealthcheck(connection: Connection) {
     healthcheckInterval = setInterval(async () => {
         const now = Date.now();
         const staleForMs = now - lastLogAtMs;
+
+        drainPendingQueue();
 
         if (staleForMs < CONFIG.LOG_STALE_RESUBSCRIBE_MS) return;
 
@@ -786,23 +920,42 @@ async function handleNewPool(connection: Connection, signature: string) {
         // Find the create_pool instruction within the transaction
         let creatorAddress: string | null = null;
         const instructions = tx.transaction.message.instructions;
+        let fallbackPoolAddress: string | null = null;
+        let fallbackTokenMint: string | null = null;
+        let fallbackCreatorAddress: string | null = null;
         for (const ix of instructions) {
             // Check if this instruction is to the Pump AMM program
-            const programId = accountKeys[ix.programIdIndex]?.pubkey?.toBase58();
+            const programId = instructionProgramIdToBase58(ix, accountKeys);
             
             if (programId === PUMPFUN_AMM_PROGRAM_ID) {
-                stageLog(ctx, "TX", `pump-amm instruction accounts=${ix.accounts?.length || 0}`);
-                // Extract accounts based on IDL order
-                if (ix.accounts && ix.accounts.length >= 5) {
-                    poolAddress = accountKeys[ix.accounts[0]]?.pubkey?.toBase58() || null;
-                    tokenMint = accountKeys[ix.accounts[3]]?.pubkey?.toBase58() || null;
-                    creatorAddress = accountKeys[ix.accounts[2]]?.pubkey?.toBase58() || null;
-                    if (creatorAddress) {
-                        stageLog(ctx, "CREATOR", creatorAddress);
+                const ixAccounts = Array.isArray(ix.accounts) ? ix.accounts : [];
+                stageLog(ctx, "TX", `pump-amm instruction accounts=${ixAccounts.length}`);
+                // Extract accounts based on IDL order: pool=0, creator=2, base_mint=3, quote_mint=4
+                if (ixAccounts.length >= 5) {
+                    const candidatePool = instructionAccountToBase58(ixAccounts[0], accountKeys);
+                    const candidateCreator = instructionAccountToBase58(ixAccounts[2], accountKeys);
+                    const candidateBaseMint = instructionAccountToBase58(ixAccounts[3], accountKeys);
+                    const candidateQuoteMint = instructionAccountToBase58(ixAccounts[4], accountKeys);
+
+                    if (!fallbackPoolAddress && candidatePool) fallbackPoolAddress = candidatePool;
+                    if (!fallbackCreatorAddress && candidateCreator) fallbackCreatorAddress = candidateCreator;
+                    if (!fallbackTokenMint && candidateBaseMint && candidateBaseMint !== WSOL) fallbackTokenMint = candidateBaseMint;
+
+                    if (candidatePool && candidateBaseMint && candidateQuoteMint === WSOL) {
+                        poolAddress = candidatePool;
+                        tokenMint = candidateBaseMint;
+                        creatorAddress = candidateCreator;
+                        break;
                     }
                 }
-                break;
             }
+        }
+
+        if (!poolAddress && fallbackPoolAddress) poolAddress = fallbackPoolAddress;
+        if (!tokenMint && fallbackTokenMint) tokenMint = fallbackTokenMint;
+        if (!creatorAddress && fallbackCreatorAddress) creatorAddress = fallbackCreatorAddress;
+        if (creatorAddress) {
+            stageLog(ctx, "CREATOR", creatorAddress);
         }
 
         // Fallback for tokenMint/pool if instructions didn't match (sometimes it's inner instructions)
@@ -814,7 +967,8 @@ async function handleNewPool(connection: Connection, signature: string) {
             if (tokenBalance) {
                 tokenMint = tokenBalance.mint;
                 // Pool address is often the owner of the WSOL account in the transaction
-                const poolBalance = balances.find((b: any) => b.mint === WSOL && b.owner !== tx.transaction.message.accountKeys[0].pubkey.toBase58());
+                const txSigner = pubkeyToBase58(tx.transaction.message.accountKeys[0]);
+                const poolBalance = balances.find((b: any) => b.mint === WSOL && b.owner !== txSigner);
                 if (poolBalance) poolAddress = poolBalance.owner;
             }
         }
@@ -830,6 +984,26 @@ async function handleNewPool(connection: Connection, signature: string) {
         stageLog(ctx, "POOL", poolAddress);
         stageLog(ctx, "GMGN", `https://gmgn.ai/sol/token/${tokenMint}`);
 
+        const nowMs = Date.now();
+        const lowLiqCooldownMs = Math.max(0, CONFIG.LOW_LIQUIDITY_POOL_COOLDOWN_MS);
+        if (lowLiqCooldownMs > 0) {
+            for (const [pool, atMs] of lowLiquidityPools.entries()) {
+                if (nowMs - atMs > lowLiqCooldownMs) {
+                    lowLiquidityPools.delete(pool);
+                }
+            }
+            const persistedState = pruneLowLiquidityPoolState(nowMs, lowLiqCooldownMs);
+            const recentLowAt = Math.max(
+                lowLiquidityPools.get(poolAddress) || 0,
+                persistedState[poolAddress] || 0,
+            );
+            if (recentLowAt && nowMs - recentLowAt <= lowLiqCooldownMs) {
+                stageLog(ctx, "LIQ", `pool recently low-liq (${Math.round((nowMs - recentLowAt) / 1000)}s ago), cooldown`);
+                finalStatus = "IGNORED: repeated low-liquidity pool";
+                return;
+            }
+        }
+
         // Always require a creator address (fail-closed).
         // If not present in tx accounts, resolve it from on-chain pool state.
         if (!creatorAddress) {
@@ -840,21 +1014,31 @@ async function handleNewPool(connection: Connection, signature: string) {
         }
 
         if (!creatorAddress) {
-            console.log(`🛑 SKIP: creator not resolvable`);
-            finalStatus = "SKIP: creator unresolved";
-            return;
+            if (!CONFIG.CREATOR_RESOLUTION_FAIL_OPEN) {
+                console.log(`🛑 SKIP: creator not resolvable`);
+                finalStatus = "SKIP: creator unresolved";
+                return;
+            }
+            stageLog(ctx, "CREATOR", "unresolved (fail-open)");
         }
 
         stageLog(ctx, "STEP 3/7", "liquidity check");
-        // Check liquidity from on-chain pool state (preferred) with tx fallback.
+        // Check liquidity from on-chain pool state (preferred) with retries, then tx fallback.
         let liquiditySOL = 0;
         const observerUser = walletKeypair?.publicKey ?? Keypair.generate().publicKey;
-        try {
-            const poolState = await onlineSdk.swapSolanaState(new PublicKey(poolAddress), observerUser);
-            const liq = getSolLiquidityFromState(poolState, tokenMint);
-            if (liq !== null) liquiditySOL = liq;
-        } catch {
-            // fallback below
+        const poolKey = new PublicKey(poolAddress);
+        for (let i = 0; i < 6; i++) {
+            try {
+                const poolState = await onlineSdk.swapSolanaState(poolKey, observerUser);
+                const liq = getSolLiquidityFromState(poolState, tokenMint);
+                if (liq !== null && liq > 0) {
+                    liquiditySOL = liq;
+                    break;
+                }
+            } catch {
+                // pool may not be indexable yet, retry shortly
+            }
+            await new Promise((r) => setTimeout(r, 250));
         }
 
         // Fallback to transaction balances if pool state is not yet indexable
@@ -867,9 +1051,11 @@ async function handleNewPool(connection: Connection, signature: string) {
             liquiditySOL = poolSOL;
 
             if (liquiditySOL === 0) {
-                const poolAccountIndex = instructions[0]?.accounts?.[0];
-                if (poolAccountIndex !== undefined) {
-                    const poolLamports = tx.meta.postBalances[poolAccountIndex] || 0;
+                // Last-resort fallback: derive pool index from accountKeys, not from instruction[0]
+                // (instruction[0] is often ComputeBudget and has no pool account).
+                const poolAccountIndex = accountKeys.findIndex((k: any) => pubkeyToBase58(k) === poolAddress);
+                if (poolAccountIndex >= 0) {
+                    const poolLamports = tx.meta.postBalances?.[poolAccountIndex] || 0;
                     liquiditySOL = poolLamports / 1e9;
                 }
             }
@@ -878,23 +1064,45 @@ async function handleNewPool(connection: Connection, signature: string) {
         const solPriceUsd = await getSolPriceUsd();
         let liquidityUSD: number | null = null;
         const creatorSeedSol = creatorAddress ? extractCreatorSeedSolFromCreateTx(tx, creatorAddress) : 0;
+        const liqSolFmt = formatLiquiditySol(liquiditySOL);
         if (solPriceUsd !== null) {
             liquidityUSD = liquiditySOL * solPriceUsd;
-            stageLog(ctx, "LIQ", `${liquiditySOL.toFixed(2)} SOL (~$${liquidityUSD.toFixed(0)})`);
+            stageLog(ctx, "LIQ", `${liqSolFmt} SOL (~$${liquidityUSD.toFixed(0)})`);
         } else {
-            stageLog(ctx, "LIQ", `${liquiditySOL.toFixed(2)} SOL (USD unavailable)`);
+            stageLog(ctx, "LIQ", `${liqSolFmt} SOL (USD unavailable)`);
+        }
+
+        if (liquiditySOL < CONFIG.MIN_POOL_LIQUIDITY_SOL) {
+            liquiditySOL = await recheckLowLiquidity(poolAddress, tokenMint, ctx, liquiditySOL);
         }
 
         const failedSolThreshold = liquiditySOL < CONFIG.MIN_POOL_LIQUIDITY_SOL;
         if (failedSolThreshold) {
+            const markedAtMs = Date.now();
+            lowLiquidityPools.set(poolAddress, markedAtMs);
+            const persistedState = pruneLowLiquidityPoolState(markedAtMs, lowLiqCooldownMs);
+            persistedState[poolAddress] = markedAtMs;
+            writeLowLiquidityPoolState(persistedState);
+            const liqSolFinalFmt = formatLiquiditySol(liquiditySOL);
+            if (solPriceUsd !== null) {
+                liquidityUSD = liquiditySOL * solPriceUsd;
+            }
             const usdPart = liquidityUSD !== null ? `$${liquidityUSD.toFixed(0)}` : "USD N/A";
             console.log(
                 `🛑 SKIP: Liquidity too low ` +
-                `(${liquiditySOL.toFixed(2)} SOL / ${usdPart}; ` +
+                `(${liqSolFinalFmt} SOL / ${usdPart}; ` +
                 `min ${CONFIG.MIN_POOL_LIQUIDITY_SOL} SOL)`
             );
             finalStatus = "SKIP: low liquidity";
             return;
+        }
+        lowLiquidityPools.delete(poolAddress);
+        if (lowLiqCooldownMs > 0) {
+            const persistedState = pruneLowLiquidityPoolState(Date.now(), lowLiqCooldownMs);
+            if (persistedState[poolAddress]) {
+                delete persistedState[poolAddress];
+                writeLowLiquidityPoolState(persistedState);
+            }
         }
 
         stageLog(ctx, "STEP 4/7", "mint/freeze security");
@@ -906,14 +1114,19 @@ async function handleNewPool(connection: Connection, signature: string) {
             return;
         }
 
+        let creatorRisk: CreatorRiskResult = { ok: true, reason: "creator unresolved (fail-open)" };
         stageLog(ctx, "STEP 5/7", "creator risk");
-        const creatorRisk = await runCreatorRiskCheck(connection, creatorAddress, ctx, {
-            entrySolLiquidity: liquiditySOL,
-            createPoolSignature: signature,
-            createPoolBlockTime: tx.blockTime || null,
-            creatorSeedSol,
-        });
-        const creatorRiskProbationForbidden = isProbationBypassForbidden(creatorRisk);
+        if (creatorAddress) {
+            creatorRisk = await runCreatorRiskCheckWithRetry(connection, creatorAddress, ctx, {
+                entrySolLiquidity: liquiditySOL,
+                createPoolSignature: signature,
+                createPoolBlockTime: tx.blockTime || null,
+                creatorSeedSol,
+            });
+        } else {
+            stageLog(ctx, "CRISK", "skipped (creator unresolved + fail-open)");
+        }
+        const creatorRiskProbationForbidden = creatorRisk.transientError ? false : isProbationBypassForbidden(creatorRisk);
         let creatorRiskProbation = false;
         let creatorRiskProbationHoldMs = Math.max(1000, CONFIG.PAPER_CREATOR_RISK_PROBATION_HOLD_MS);
         if (!creatorRisk.ok) {
@@ -971,7 +1184,7 @@ async function handleNewPool(connection: Connection, signature: string) {
                 tokenMint,
                 liquiditySOL,
                 ctx,
-                creatorAddress,
+                creatorAddress || undefined,
                 signature,
                 tx.blockTime || null,
                 creatorRisk,
@@ -993,18 +1206,27 @@ async function handleNewPool(connection: Connection, signature: string) {
                 return;
             }
             stageLog(ctx, "STEP 7/7", "dev holdings");
-            const devCheckOk = await runDevHoldingsCheck(connection, creatorAddress, tokenMint, postTokenBalances, ctx, false);
-            if (devCheckOk) {
+            if (creatorAddress) {
+                const devCheckOk = await runDevHoldingsCheck(connection, creatorAddress, tokenMint, postTokenBalances, ctx, false);
+                if (devCheckOk) {
+                    console.log(`✅ Checks passed`);
+                }
+            } else {
+                stageLog(ctx, "DEV", "skipped (creator unresolved + fail-open)");
                 console.log(`✅ Checks passed`);
             }
             stageLog(ctx, "MODE", "MONITOR_ONLY no live trade");
             return;
         }
 
-        const devCheckOk = await runDevHoldingsCheck(connection, creatorAddress, tokenMint, postTokenBalances, ctx, true);
-        if (!devCheckOk) {
-            finalStatus = "SKIP: dev holdings";
-            return;
+        if (creatorAddress) {
+            const devCheckOk = await runDevHoldingsCheck(connection, creatorAddress, tokenMint, postTokenBalances, ctx, true);
+            if (!devCheckOk) {
+                finalStatus = "SKIP: dev holdings";
+                return;
+            }
+        } else {
+            stageLog(ctx, "DEV", "skipped (creator unresolved + fail-open)");
         }
 
         if (CONFIG.PRE_BUY_WAIT_MS > 0) {
@@ -1052,7 +1274,7 @@ async function handleNewPool(connection: Connection, signature: string) {
                 buyAmountLamports,
                 liquiditySOL,
                 ctx,
-                creatorAddress,
+                creatorAddress || undefined,
                 poolAddress,
                 signature,
                 tx.blockTime || null,
@@ -1081,13 +1303,58 @@ async function handleNewPool(connection: Connection, signature: string) {
 }
 
 async function resolveCreatorFromPool(connection: Connection, poolAddress: string): Promise<string | null> {
-    try {
-        const observerUser = walletKeypair?.publicKey ?? Keypair.generate().publicKey;
-        const state = await onlineSdk.swapSolanaState(new PublicKey(poolAddress), observerUser);
-        return state.pool.creator.toBase58();
-    } catch {
-        return null;
+    const observerUser = walletKeypair?.publicKey ?? Keypair.generate().publicKey;
+    const poolKey = new PublicKey(poolAddress);
+    for (let i = 0; i < 8; i++) {
+        try {
+            const state = await onlineSdk.swapSolanaState(poolKey, observerUser);
+            const creator = pubkeyToBase58(state?.pool?.creator);
+            if (creator) return creator;
+        } catch {
+            // pool may not be immediately indexable after creation
+        }
+        await new Promise((r) => setTimeout(r, 250));
     }
+    return null;
+}
+
+async function recheckLowLiquidity(
+    poolAddress: string,
+    tokenMint: string,
+    ctx: string,
+    initialLiquiditySol: number,
+): Promise<number> {
+    if (!CONFIG.LOW_LIQUIDITY_RECHECK_ENABLED) return initialLiquiditySol;
+    const windowMs = Math.max(0, CONFIG.LOW_LIQUIDITY_RECHECK_WINDOW_MS);
+    const intervalMs = Math.max(100, CONFIG.LOW_LIQUIDITY_RECHECK_INTERVAL_MS);
+    if (windowMs <= 0) return initialLiquiditySol;
+
+    const observerUser = walletKeypair?.publicKey ?? Keypair.generate().publicKey;
+    const poolKey = new PublicKey(poolAddress);
+    const deadline = Date.now() + windowMs;
+    let best = initialLiquiditySol;
+
+    stageLog(ctx, "LIQ", `recheck window ${windowMs}ms (initial ${formatLiquiditySol(initialLiquiditySol)} SOL)`);
+    while (Date.now() < deadline) {
+        try {
+            const state = await onlineSdk.swapSolanaState(poolKey, observerUser);
+            const liq = getSolLiquidityFromState(state, tokenMint);
+            if (liq !== null && Number.isFinite(liq)) {
+                if (liq > best) best = liq;
+                if (liq >= CONFIG.MIN_POOL_LIQUIDITY_SOL) {
+                    stageLog(ctx, "LIQ", `recheck passed at ${formatLiquiditySol(liq)} SOL`);
+                    return liq;
+                }
+            }
+        } catch {
+            // keep retrying during grace window
+        }
+        await new Promise((r) => setTimeout(r, intervalMs));
+    }
+    if (best > initialLiquiditySol) {
+        stageLog(ctx, "LIQ", `recheck improved to ${formatLiquiditySol(best)} SOL`);
+    }
+    return best;
 }
 
 async function waitForFirstPoolTrade(
@@ -3410,10 +3677,49 @@ async function runCreatorRiskCheck(
         creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
         return result;
     } catch (e: any) {
-        const result = { ok: false, reason: e?.message || "creator risk check failed" };
-        creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
+        const reason = e?.message || "creator risk check failed";
+        const result = { ok: false, reason, transientError: isRateLimitedMessage(reason) };
+        if (!result.transientError) {
+            creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
+        }
         return result;
     }
+}
+
+async function runCreatorRiskCheckWithRetry(
+    connection: Connection,
+    creatorAddress: string,
+    ctx: string,
+    options: {
+        forceRefresh?: boolean;
+        entrySolLiquidity?: number;
+        createPoolSignature?: string;
+        createPoolBlockTime?: number | null;
+        creatorSeedSol?: number;
+    } = {},
+): Promise<CreatorRiskResult> {
+    const retries = Math.max(0, CONFIG.CREATOR_RISK_RATE_LIMIT_RETRIES);
+    const maxAttempts = retries + 1;
+    const baseDelayMs = Math.max(0, CONFIG.CREATOR_RISK_RATE_LIMIT_RETRY_BASE_MS);
+
+    let lastResult: CreatorRiskResult = { ok: false, reason: "creator risk unavailable", transientError: true };
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        const result = await runCreatorRiskCheck(connection, creatorAddress, ctx, options);
+        if (!result.transientError) {
+            return result;
+        }
+
+        lastResult = result;
+        if (attempt < maxAttempts) {
+            const delayMs = Math.round(baseDelayMs * Math.pow(1.8, attempt - 1));
+            stageLog(ctx, "CRISK", `rate-limited retry ${attempt}/${maxAttempts - 1} (wait ${delayMs}ms)`);
+            if (delayMs > 0) {
+                await new Promise((r) => setTimeout(r, delayMs));
+            }
+        }
+    }
+
+    return lastResult;
 }
 
 async function getCreatorTokenBalanceRawWithRetry(
@@ -3577,6 +3883,28 @@ type PreBuyEntryValidationResult = {
     entrySpotSolPerToken?: number;
 };
 
+function shouldEscalateProbationCreatorRisk(
+    creatorRisk: CreatorRiskResult,
+    baselineCreatorCashoutSol = 0,
+): { escalate: boolean; cashoutDeltaSol: number } {
+    const reason = (creatorRisk.reason || "").toLowerCase();
+    const cashoutDeltaSol = Math.max(
+        0,
+        Number(creatorRisk.creatorCashoutSol || 0) - Math.max(0, baselineCreatorCashoutSol)
+    );
+    const hardReason =
+        isProbationBypassForbidden(creatorRisk) ||
+        reason.includes("creator direct amm re-entry") ||
+        reason.includes("spray outbound") ||
+        reason.includes("micro inbound burst") ||
+        reason.includes("relay funding recent + micro burst");
+
+    return {
+        escalate: hardReason || cashoutDeltaSol >= CONFIG.HOLD_PROBATION_CASHOUT_DELTA_MIN_SOL,
+        cashoutDeltaSol,
+    };
+}
+
 async function validatePreBuyEntryState(
     connection: Connection,
     fetchStateWithRetry: () => Promise<any | null>,
@@ -3589,16 +3917,38 @@ async function validatePreBuyEntryState(
     poolAddress?: string,
     createPoolSignature?: string,
     createPoolBlockTime?: number | null,
+    initialCreatorRisk?: CreatorRiskResult,
+    options?: PaperSimulationOptions,
 ): Promise<PreBuyEntryValidationResult> {
     if (creatorAddress && CONFIG.PRE_BUY_FINAL_CREATOR_RISK_RECHECK_ENABLED) {
-        const creatorRisk = await runCreatorRiskCheck(connection, creatorAddress, ctx, {
+        const creatorRisk = await runCreatorRiskCheckWithRetry(connection, creatorAddress, ctx, {
             forceRefresh: true,
             entrySolLiquidity: baselineLiquiditySol,
             createPoolSignature,
             createPoolBlockTime,
         });
         if (!creatorRisk.ok) {
-            return { ok: false, reason: `creator risk recheck (${creatorRisk.reason})` };
+            if (creatorRisk.transientError) {
+                return { ok: false, reason: `creator risk recheck (${creatorRisk.reason})` };
+            }
+
+            if (options?.suppressCreatorRiskRecheck) {
+                const baselineCreatorCashoutSol = Number(initialCreatorRisk?.creatorCashoutSol || 0);
+                const probationEscalation = shouldEscalateProbationCreatorRisk(
+                    creatorRisk,
+                    baselineCreatorCashoutSol,
+                );
+                if (probationEscalation.escalate) {
+                    return {
+                        ok: false,
+                        reason:
+                            `creator risk recheck (${creatorRisk.reason}) ` +
+                            `[probation hard, cashout_delta=${probationEscalation.cashoutDeltaSol.toFixed(3)} SOL]`,
+                    };
+                }
+            } else {
+                return { ok: false, reason: `creator risk recheck (${creatorRisk.reason})` };
+            }
         }
     }
 
@@ -3762,6 +4112,8 @@ async function maybeRunPaperTradeSimulation(
             poolAddress,
             createPoolSignature,
             createPoolBlockTime,
+            initialCreatorRisk,
+            options,
         );
         if (!preBuy.ok || !preBuy.entryState || !preBuy.tokenOutAtomic || !preBuy.tokenOutUi) {
             return { ok: false, reason: preBuy.reason || "pre-buy validation failed" };
@@ -3951,34 +4303,30 @@ async function waitForExitStateWithLiquidityStop(
 
             if (
                 creatorAddress &&
-                !suppressCreatorRiskRecheck &&
                 CONFIG.HOLD_CREATOR_RISK_RECHECK_ENABLED &&
                 Date.now() - lastCreatorRiskCheckAtMs >= scaledInterval(CONFIG.HOLD_CREATOR_RISK_RECHECK_INTERVAL_MS)
             ) {
                 lastCreatorRiskCheckAtMs = Date.now();
-                const creatorRisk = await runCreatorRiskCheck(connection, creatorAddress, logPrefix, {
+                const creatorRisk = await runCreatorRiskCheckWithRetry(connection, creatorAddress, logPrefix, {
                     forceRefresh: true,
                     entrySolLiquidity,
                     createPoolSignature,
                     createPoolBlockTime,
                 });
                 if (!creatorRisk.ok) {
+                    if (creatorRisk.transientError) {
+                        stageLog(logPrefix, "CRISK", `transient error during hold recheck (${creatorRisk.reason || "rate limited"})`);
+                        continue;
+                    }
                     if (suppressCreatorRiskRecheck) {
-                        const reason = (creatorRisk.reason || "").toLowerCase();
-                        const cashoutDeltaSol = Math.max(
-                            0,
-                            Number(creatorRisk.creatorCashoutSol || 0) - baselineCreatorCashoutSol
+                        const probationEscalation = shouldEscalateProbationCreatorRisk(
+                            creatorRisk,
+                            baselineCreatorCashoutSol,
                         );
-                        const hardReason =
-                            reason.includes("creator cashout") ||
-                            reason.includes("creator direct amm re-entry") ||
-                            reason.includes("spray outbound") ||
-                            reason.includes("micro inbound burst") ||
-                            reason.includes("relay funding recent + micro burst");
-                        if (cashoutDeltaSol >= CONFIG.HOLD_PROBATION_CASHOUT_DELTA_MIN_SOL || hardReason) {
+                        if (probationEscalation.escalate) {
                             console.log(
                                 `⚠️ CREATOR RISK EXIT (probation hard): ${creatorRisk.reason}` +
-                                ` (cashout_delta=${cashoutDeltaSol.toFixed(3)} SOL)`
+                                ` (cashout_delta=${probationEscalation.cashoutDeltaSol.toFixed(3)} SOL)`
                             );
                             return s;
                         }
