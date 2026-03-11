@@ -729,6 +729,23 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                 solOutTransfers,
                 ...result,
             });
+            const cacheAndReturn = (result: CreatorRiskResult) => {
+                creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
+                return result;
+            };
+            const returnEarlyDecision = (result: CreatorRiskResult) => {
+                stageLog(
+                    ctx,
+                    "CRISKT",
+                    `hist=${fmtMs(rugHistoryDoneAtMs - startedAtMs)} parse=${fmtMs(historyParsedAtMs - rugHistoryDoneAtMs)} ` +
+                    `early=${fmtMs(earlyChecksDoneAtMs - historyParsedAtMs)} deep=0ms total=${fmtMs(earlyChecksDoneAtMs - startedAtMs)}`
+                );
+                return cacheAndReturn(enrichBaseResult({
+                    deepChecksComplete: true,
+                    deepCheckMs: 0,
+                    ...result,
+                }));
+            };
 
             if (creatorSeedSol > 0 && options.entrySolLiquidity && options.entrySolLiquidity > 0) {
                 stageLog(
@@ -775,13 +792,7 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                     "CAMM",
                     `creator direct ${shortSig(deps.pumpfunAmmProgramId)} re-entry via ${shortSig(directAmmReentry.signature || "-")}`
                 );
-                stageLog(
-                    ctx,
-                    "CRISKT",
-                    `hist=${fmtMs(rugHistoryDoneAtMs - startedAtMs)} parse=${fmtMs(historyParsedAtMs - rugHistoryDoneAtMs)} ` +
-                    `early=${fmtMs(earlyChecksDoneAtMs - historyParsedAtMs)} total=${fmtMs(earlyChecksDoneAtMs - startedAtMs)}`
-                );
-                const result = enrichBaseResult({
+                return returnEarlyDecision({
                     ok: false,
                     reason: `creator direct AMM re-entry ${directAmmReentry.signature}`,
                     funder,
@@ -798,8 +809,268 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                     repeatedCreateRemoveWindowSec: repeatCreateRemovePattern.windowSec,
                     repeatedCreateRemoveMaxCashoutSol: repeatCreateRemovePattern.maxCashoutSol,
                 });
-                creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
-                return result;
+            }
+
+            if (funder && (rugHistory.rugCreators.has(funder) || rugHistory.rugFunders.has(funder))) {
+                return returnEarlyDecision({
+                    ok: false,
+                    reason: `funder blacklisted ${funder}`,
+                    funder,
+                    uniqueCounterparties,
+                    compressedWindowSec,
+                    burner,
+                });
+            }
+
+            if (funder && (rugHistory.rugMicroBurstSources.has(funder) || rugHistory.rugCashoutRelays.has(funder))) {
+                return returnEarlyDecision({
+                    ok: false,
+                    reason: `funder linked to suspicious infra ${funder}`,
+                    funder,
+                    uniqueCounterparties,
+                    compressedWindowSec,
+                    burner,
+                });
+            }
+
+            const blacklistedMicroSource = [...microInboundSources].find((source) => rugHistory.rugMicroBurstSources.has(source));
+            if (blacklistedMicroSource) {
+                return returnEarlyDecision({
+                    ok: false,
+                    reason: `micro-burst source blacklisted ${blacklistedMicroSource}`,
+                    funder,
+                    uniqueCounterparties,
+                    compressedWindowSec,
+                    burner,
+                });
+            }
+
+            if (
+                CONFIG.CREATOR_RISK_CREATOR_SEED_RATIO_BLOCK_ENABLED &&
+                creatorSeedSol > 0 &&
+                options.entrySolLiquidity &&
+                options.entrySolLiquidity > 0 &&
+                creatorSeedPctOfCurrentLiq < CONFIG.CREATOR_RISK_CREATOR_SEED_MIN_PCT_OF_CURRENT_LIQ &&
+                creatorSeedGrowthMultiple >= CONFIG.CREATOR_RISK_CREATOR_SEED_MAX_GROWTH_MULTIPLIER
+            ) {
+                return returnEarlyDecision({
+                    ok: false,
+                    reason:
+                        `creator seed too small ${creatorSeedSol.toFixed(3)} SOL ` +
+                        `(${creatorSeedPctOfCurrentLiq.toFixed(2)}% of liq, growth ${creatorSeedGrowthMultiple.toFixed(2)}x)`,
+                    funder,
+                    uniqueCounterparties,
+                    compressedWindowSec,
+                    burner,
+                    creatorSeedSol,
+                    creatorSeedPctOfCurrentLiq,
+                });
+            }
+
+            if (
+                compressedWindowSec !== null &&
+                compressedWindowSec <= CONFIG.CREATOR_RISK_MICRO_INBOUND_WINDOW_SEC &&
+                microInboundTransfers.length >= CONFIG.CREATOR_RISK_MICRO_INBOUND_MIN_TRANSFERS &&
+                microInboundSources.size >= CONFIG.CREATOR_RISK_MICRO_INBOUND_MIN_SOURCES
+            ) {
+                return returnEarlyDecision({
+                    ok: false,
+                    reason: `micro inbound burst ${microInboundTransfers.length} transfers from ${microInboundSources.size} sources in ${compressedWindowSec}s`,
+                    funder,
+                    uniqueCounterparties,
+                    compressedWindowSec,
+                    burner,
+                    microInboundTransfers: microInboundTransfers.length,
+                    microInboundSources: microInboundSources.size,
+                });
+            }
+
+            if (
+                CONFIG.CREATOR_RISK_INBOUND_SPRAY_BLOCK_ENABLED &&
+                compressedWindowSec !== null &&
+                compressedWindowSec <= CONFIG.CREATOR_RISK_INBOUND_SPRAY_MAX_WINDOW_SEC &&
+                sprayInbound.detected
+            ) {
+                return returnEarlyDecision({
+                    ok: false,
+                    reason:
+                        `inbound collector pattern ${sprayInbound.transfers} transfers ` +
+                        `from ${sprayInbound.sources} sources in ${compressedWindowSec}s ` +
+                        `(median ${sprayInbound.medianSol.toFixed(3)} SOL, rel_std ${sprayInbound.relStdDev.toFixed(2)})`,
+                    funder,
+                    uniqueCounterparties,
+                    compressedWindowSec,
+                    burner,
+                    creatorSeedSol,
+                    creatorSeedPctOfCurrentLiq,
+                    inboundSpraySources: sprayInbound.sources,
+                });
+            }
+
+            if (CONFIG.CREATOR_RISK_SPRAY_OUTBOUND_BLOCK_ENABLED && sprayOutbound.detected) {
+                return returnEarlyDecision({
+                    ok: false,
+                    reason:
+                        `spray outbound pattern ${sprayOutbound.transfers} transfers ` +
+                        `to ${sprayOutbound.destinations} destinations ` +
+                        `(median ${sprayOutbound.medianSol.toFixed(3)} SOL, rel_std ${sprayOutbound.relStdDev.toFixed(2)})`,
+                    funder,
+                    uniqueCounterparties,
+                    compressedWindowSec,
+                    burner,
+                    creatorSeedSol,
+                    creatorSeedPctOfCurrentLiq,
+                });
+            }
+
+            if (repeatCreateRemovePattern.detected) {
+                return returnEarlyDecision({
+                    ok: false,
+                    reason:
+                        `creator repeated create-remove pattern ` +
+                        `create=${repeatCreateRemovePattern.creates} remove=${repeatCreateRemovePattern.removes} ` +
+                        `cashout=${repeatCreateRemovePattern.cashouts} in ${repeatCreateRemovePattern.windowSec ?? "n/a"}s ` +
+                        `(max_out ${repeatCreateRemovePattern.maxCashoutSol.toFixed(3)} SOL)`,
+                    funder,
+                    uniqueCounterparties,
+                    compressedWindowSec,
+                    burner,
+                    repeatedCreateRemoveCreates: repeatCreateRemovePattern.creates,
+                    repeatedCreateRemoveRemoves: repeatCreateRemovePattern.removes,
+                    repeatedCreateRemoveCashouts: repeatCreateRemovePattern.cashouts,
+                    repeatedCreateRemoveWindowSec: repeatCreateRemovePattern.windowSec,
+                    repeatedCreateRemoveMaxCashoutSol: repeatCreateRemovePattern.maxCashoutSol,
+                });
+            }
+
+            if (
+                deps.isStandardRelayRiskPool(options.entrySolLiquidity) &&
+                CONFIG.CREATOR_RISK_STANDARD_POOL_MICRO_BLOCK_ENABLED &&
+                compressedWindowSec !== null &&
+                compressedWindowSec <= CONFIG.CREATOR_RISK_STANDARD_POOL_MICRO_MAX_WINDOW_SEC &&
+                microInboundTransfers.length >= CONFIG.CREATOR_RISK_STANDARD_POOL_MICRO_MIN_TRANSFERS &&
+                microInboundSources.size >= CONFIG.CREATOR_RISK_STANDARD_POOL_MICRO_MIN_SOURCES
+            ) {
+                return returnEarlyDecision({
+                    ok: false,
+                    reason:
+                        `standard pool micro burst ${microInboundTransfers.length} transfers ` +
+                        `from ${microInboundSources.size} sources in ${compressedWindowSec}s ` +
+                        `(${options.entrySolLiquidity?.toFixed(2)} SOL pool)`,
+                    funder,
+                    uniqueCounterparties,
+                    compressedWindowSec,
+                    burner,
+                });
+            }
+
+            if (
+                deps.isStandardRelayRiskPool(options.entrySolLiquidity) &&
+                CONFIG.CREATOR_RISK_STANDARD_POOL_OUTBOUND_HEAVY_BLOCK_ENABLED &&
+                compressedWindowSec !== null &&
+                compressedWindowSec <= CONFIG.CREATOR_RISK_STANDARD_POOL_OUTBOUND_HEAVY_MAX_WINDOW_SEC &&
+                uniqueCounterparties >= CONFIG.CREATOR_RISK_STANDARD_POOL_OUTBOUND_HEAVY_MIN_COUNTERPARTIES &&
+                solOutTransfers >= CONFIG.CREATOR_RISK_STANDARD_POOL_OUTBOUND_HEAVY_MIN_OUT_TRANSFERS &&
+                solInTransfers <= CONFIG.CREATOR_RISK_STANDARD_POOL_OUTBOUND_HEAVY_MAX_IN_TRANSFERS
+            ) {
+                return returnEarlyDecision({
+                    ok: false,
+                    reason:
+                        `standard pool outbound-heavy creator history ` +
+                        `cp=${uniqueCounterparties} in=${solInTransfers} out=${solOutTransfers} ` +
+                        `window=${compressedWindowSec}s`,
+                    funder,
+                    uniqueCounterparties,
+                    compressedWindowSec,
+                    burner,
+                });
+            }
+
+            if (funder && CONFIG.CREATOR_RISK_FUNDER_CLUSTER_ENABLED) {
+                const historicalCount = rugHistory.rugFunderCounts.get(funder) || 0;
+                if (historicalCount >= CONFIG.CREATOR_RISK_HISTORICAL_FUNDER_CLUSTER_MIN_RUG_CREATORS) {
+                    return returnEarlyDecision({
+                        ok: false,
+                        reason: `funder cluster historical ${historicalCount} rug creators`,
+                        funder,
+                        uniqueCounterparties,
+                        compressedWindowSec,
+                        burner,
+                    });
+                }
+
+                const recentCreatorCount = deps.trackRecentFunderCreator(funder, creatorAddress);
+                if (recentCreatorCount >= CONFIG.CREATOR_RISK_FUNDER_CLUSTER_MIN_CREATORS) {
+                    return returnEarlyDecision({
+                        ok: false,
+                        reason: `funder cluster recent ${recentCreatorCount} creators in ${CONFIG.CREATOR_RISK_FUNDER_CLUSTER_WINDOW_SEC}s`,
+                        funder,
+                        uniqueCounterparties,
+                        compressedWindowSec,
+                        burner,
+                    });
+                }
+            }
+
+            if (linksToCreators.size > 0) {
+                const linked = Array.from(linksToCreators)[0];
+                return returnEarlyDecision({
+                    ok: false,
+                    reason: `linked to historical rug creator ${linked}`,
+                    funder,
+                    uniqueCounterparties,
+                    compressedWindowSec,
+                    burner,
+                });
+            }
+
+            if (funder && funderRefundSol >= CONFIG.CREATOR_RISK_FUNDER_REFUND_MIN_SOL) {
+                return returnEarlyDecision({
+                    ok: false,
+                    reason: `creator refunded funder ${funderRefundSol.toFixed(3)} SOL`,
+                    funder,
+                    uniqueCounterparties,
+                    compressedWindowSec,
+                    burner,
+                    funderRefundSol,
+                });
+            }
+
+            if (uniqueCounterparties >= CONFIG.CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES) {
+                return returnEarlyDecision({
+                    ok: false,
+                    reason: `unique counterparties ${uniqueCounterparties} >= ${CONFIG.CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES}`,
+                    funder,
+                    uniqueCounterparties,
+                    compressedWindowSec,
+                    burner,
+                });
+            }
+
+            if (
+                compressedWindowSec !== null &&
+                compressedWindowSec <= CONFIG.CREATOR_RISK_COMPRESSED_WINDOW_SEC &&
+                uniqueCounterparties >= CONFIG.CREATOR_RISK_COMPRESSED_MAX_COUNTERPARTIES
+            ) {
+                return returnEarlyDecision({
+                    ok: false,
+                    reason: `compressed activity ${uniqueCounterparties} counterparties in ${compressedWindowSec}s`,
+                    funder,
+                    uniqueCounterparties,
+                    compressedWindowSec,
+                    burner,
+                });
+            }
+
+            if (burner) {
+                return returnEarlyDecision({
+                    ok: false,
+                    reason: `burner profile out=${solOutSol.toFixed(2)} SOL with no inbound transfers`,
+                    funder,
+                    uniqueCounterparties,
+                    compressedWindowSec,
+                    burner,
+                });
             }
 
             const deepChecksPromise = Promise.all([
@@ -915,140 +1186,6 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                 `total=${fmtMs(deepChecksDoneAtMs - startedAtMs)}`
             );
 
-            const cacheAndReturn = (result: CreatorRiskResult) => {
-                creatorRiskCache.set(creatorAddress, { checkedAtMs: Date.now(), result });
-                return result;
-            };
-
-            if (funder && (rugHistory.rugCreators.has(funder) || rugHistory.rugFunders.has(funder))) {
-                return cacheAndReturn(enrichBaseResult({
-                    ok: false,
-                    reason: `funder blacklisted ${funder}`,
-                    funder,
-                    uniqueCounterparties,
-                    compressedWindowSec,
-                    burner,
-                    deepChecksComplete,
-                    deepTimedOut: !deepChecksComplete,
-                    deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-                }));
-            }
-
-            if (funder && (rugHistory.rugMicroBurstSources.has(funder) || rugHistory.rugCashoutRelays.has(funder))) {
-                return cacheAndReturn(enrichBaseResult({
-                    ok: false,
-                    reason: `funder linked to suspicious infra ${funder}`,
-                    funder,
-                    uniqueCounterparties,
-                    compressedWindowSec,
-                    burner,
-                    deepChecksComplete,
-                    deepTimedOut: !deepChecksComplete,
-                    deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-                }));
-            }
-
-            const blacklistedMicroSource = [...microInboundSources].find((source) => rugHistory.rugMicroBurstSources.has(source));
-            if (blacklistedMicroSource) {
-                return cacheAndReturn(enrichBaseResult({
-                    ok: false,
-                    reason: `micro-burst source blacklisted ${blacklistedMicroSource}`,
-                    funder,
-                    uniqueCounterparties,
-                    compressedWindowSec,
-                    burner,
-                    deepChecksComplete,
-                    deepTimedOut: !deepChecksComplete,
-                    deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-                }));
-            }
-
-            if (
-                CONFIG.CREATOR_RISK_CREATOR_SEED_RATIO_BLOCK_ENABLED &&
-                creatorSeedSol > 0 &&
-                options.entrySolLiquidity &&
-                options.entrySolLiquidity > 0 &&
-                creatorSeedPctOfCurrentLiq < CONFIG.CREATOR_RISK_CREATOR_SEED_MIN_PCT_OF_CURRENT_LIQ &&
-                creatorSeedGrowthMultiple >= CONFIG.CREATOR_RISK_CREATOR_SEED_MAX_GROWTH_MULTIPLIER
-            ) {
-                return cacheAndReturn(enrichBaseResult({
-                    ok: false,
-                    reason:
-                        `creator seed too small ${creatorSeedSol.toFixed(3)} SOL ` +
-                        `(${creatorSeedPctOfCurrentLiq.toFixed(2)}% of liq, growth ${creatorSeedGrowthMultiple.toFixed(2)}x)`,
-                    funder,
-                    uniqueCounterparties,
-                    compressedWindowSec,
-                    burner,
-                    creatorSeedSol,
-                    creatorSeedPctOfCurrentLiq,
-                    deepChecksComplete: true,
-                    deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-                }));
-            }
-
-            if (
-                compressedWindowSec !== null &&
-                compressedWindowSec <= CONFIG.CREATOR_RISK_MICRO_INBOUND_WINDOW_SEC &&
-                microInboundTransfers.length >= CONFIG.CREATOR_RISK_MICRO_INBOUND_MIN_TRANSFERS &&
-                microInboundSources.size >= CONFIG.CREATOR_RISK_MICRO_INBOUND_MIN_SOURCES
-            ) {
-                return cacheAndReturn(enrichBaseResult({
-                    ok: false,
-                    reason: `micro inbound burst ${microInboundTransfers.length} transfers from ${microInboundSources.size} sources in ${compressedWindowSec}s`,
-                    funder,
-                    uniqueCounterparties,
-                    compressedWindowSec,
-                    burner,
-                    microInboundTransfers: microInboundTransfers.length,
-                    microInboundSources: microInboundSources.size,
-                    deepChecksComplete: true,
-                    deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-                }));
-            }
-
-            if (
-                CONFIG.CREATOR_RISK_INBOUND_SPRAY_BLOCK_ENABLED &&
-                compressedWindowSec !== null &&
-                compressedWindowSec <= CONFIG.CREATOR_RISK_INBOUND_SPRAY_MAX_WINDOW_SEC &&
-                sprayInbound.detected
-            ) {
-                return cacheAndReturn(enrichBaseResult({
-                    ok: false,
-                    reason:
-                        `inbound collector pattern ${sprayInbound.transfers} transfers ` +
-                        `from ${sprayInbound.sources} sources in ${compressedWindowSec}s ` +
-                        `(median ${sprayInbound.medianSol.toFixed(3)} SOL, rel_std ${sprayInbound.relStdDev.toFixed(2)})`,
-                    funder,
-                    uniqueCounterparties,
-                    compressedWindowSec,
-                    burner,
-                    creatorSeedSol,
-                    creatorSeedPctOfCurrentLiq,
-                    inboundSpraySources: sprayInbound.sources,
-                    deepChecksComplete: true,
-                    deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-                }));
-            }
-
-            if (CONFIG.CREATOR_RISK_SPRAY_OUTBOUND_BLOCK_ENABLED && sprayOutbound.detected) {
-                return cacheAndReturn(enrichBaseResult({
-                    ok: false,
-                    reason:
-                        `spray outbound pattern ${sprayOutbound.transfers} transfers ` +
-                        `to ${sprayOutbound.destinations} destinations ` +
-                        `(median ${sprayOutbound.medianSol.toFixed(3)} SOL, rel_std ${sprayOutbound.relStdDev.toFixed(2)})`,
-                    funder,
-                    uniqueCounterparties,
-                    compressedWindowSec,
-                    burner,
-                    creatorSeedSol,
-                    creatorSeedPctOfCurrentLiq,
-                    deepChecksComplete: true,
-                    deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-                }));
-            }
-
             if (deepChecksComplete && precreateBurst.detected) {
                 return cacheAndReturn(enrichBaseResult({
                     ok: false,
@@ -1141,28 +1278,6 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                 }));
             }
 
-            if (repeatCreateRemovePattern.detected) {
-                return cacheAndReturn(enrichBaseResult({
-                    ok: false,
-                    reason:
-                        `creator repeated create-remove pattern ` +
-                        `create=${repeatCreateRemovePattern.creates} remove=${repeatCreateRemovePattern.removes} ` +
-                        `cashout=${repeatCreateRemovePattern.cashouts} in ${repeatCreateRemovePattern.windowSec ?? "n/a"}s ` +
-                        `(max_out ${repeatCreateRemovePattern.maxCashoutSol.toFixed(3)} SOL)`,
-                    funder,
-                    uniqueCounterparties,
-                    compressedWindowSec,
-                    burner,
-                    repeatedCreateRemoveCreates: repeatCreateRemovePattern.creates,
-                    repeatedCreateRemoveRemoves: repeatCreateRemovePattern.removes,
-                    repeatedCreateRemoveCashouts: repeatCreateRemovePattern.cashouts,
-                    repeatedCreateRemoveWindowSec: repeatCreateRemovePattern.windowSec,
-                    repeatedCreateRemoveMaxCashoutSol: repeatCreateRemovePattern.maxCashoutSol,
-                    deepChecksComplete: true,
-                    deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-                }));
-            }
-
             if (deepChecksComplete && creatorCashout.totalSol > 0 && rapidDispersal.detected) {
                 return cacheAndReturn(enrichBaseResult({
                     ok: false,
@@ -1182,29 +1297,6 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                     rapidDispersalDestinations: rapidDispersal.destinations,
                     rapidDispersalTotalSol: rapidDispersal.totalSol,
                     rapidDispersalWindowSec: rapidDispersal.windowSec,
-                    deepChecksComplete: true,
-                    deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-                }));
-            }
-
-            if (
-                deps.isStandardRelayRiskPool(options.entrySolLiquidity) &&
-                CONFIG.CREATOR_RISK_STANDARD_POOL_MICRO_BLOCK_ENABLED &&
-                compressedWindowSec !== null &&
-                compressedWindowSec <= CONFIG.CREATOR_RISK_STANDARD_POOL_MICRO_MAX_WINDOW_SEC &&
-                microInboundTransfers.length >= CONFIG.CREATOR_RISK_STANDARD_POOL_MICRO_MIN_TRANSFERS &&
-                microInboundSources.size >= CONFIG.CREATOR_RISK_STANDARD_POOL_MICRO_MIN_SOURCES
-            ) {
-                return cacheAndReturn(enrichBaseResult({
-                    ok: false,
-                    reason:
-                        `standard pool micro burst ${microInboundTransfers.length} transfers ` +
-                        `from ${microInboundSources.size} sources in ${compressedWindowSec}s ` +
-                        `(${options.entrySolLiquidity?.toFixed(2)} SOL pool)`,
-                    funder,
-                    uniqueCounterparties,
-                    compressedWindowSec,
-                    burner,
                     deepChecksComplete: true,
                     deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
                 }));
@@ -1233,30 +1325,6 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                     relayFundingRoot: relayFunding.root,
                     deepChecksComplete,
                     deepTimedOut: !deepChecksComplete,
-                    deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-                }));
-            }
-
-            if (
-                deps.isStandardRelayRiskPool(options.entrySolLiquidity) &&
-                CONFIG.CREATOR_RISK_STANDARD_POOL_OUTBOUND_HEAVY_BLOCK_ENABLED &&
-                compressedWindowSec !== null &&
-                compressedWindowSec <= CONFIG.CREATOR_RISK_STANDARD_POOL_OUTBOUND_HEAVY_MAX_WINDOW_SEC &&
-                uniqueCounterparties >= CONFIG.CREATOR_RISK_STANDARD_POOL_OUTBOUND_HEAVY_MIN_COUNTERPARTIES &&
-                solOutTransfers >= CONFIG.CREATOR_RISK_STANDARD_POOL_OUTBOUND_HEAVY_MIN_OUT_TRANSFERS &&
-                solInTransfers <= CONFIG.CREATOR_RISK_STANDARD_POOL_OUTBOUND_HEAVY_MAX_IN_TRANSFERS
-            ) {
-                return cacheAndReturn(enrichBaseResult({
-                    ok: false,
-                    reason:
-                        `standard pool outbound-heavy creator history ` +
-                        `cp=${uniqueCounterparties} in=${solInTransfers} out=${solOutTransfers} ` +
-                        `window=${compressedWindowSec}s`,
-                    funder,
-                    uniqueCounterparties,
-                    compressedWindowSec,
-                    burner,
-                    deepChecksComplete: true,
                     deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
                 }));
             }
@@ -1380,112 +1448,6 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                     burner,
                     relayFundingRoot: relayFunding.root,
                     deepChecksComplete: true,
-                    deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-                }));
-            }
-
-            if (funder && CONFIG.CREATOR_RISK_FUNDER_CLUSTER_ENABLED) {
-                const historicalCount = rugHistory.rugFunderCounts.get(funder) || 0;
-                if (historicalCount >= CONFIG.CREATOR_RISK_HISTORICAL_FUNDER_CLUSTER_MIN_RUG_CREATORS) {
-                    return cacheAndReturn(enrichBaseResult({
-                        ok: false,
-                        reason: `funder cluster historical ${historicalCount} rug creators`,
-                        funder,
-                        uniqueCounterparties,
-                        compressedWindowSec,
-                        burner,
-                        deepChecksComplete: true,
-                        deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-                    }));
-                }
-
-                const recentCreatorCount = deps.trackRecentFunderCreator(funder, creatorAddress);
-                if (recentCreatorCount >= CONFIG.CREATOR_RISK_FUNDER_CLUSTER_MIN_CREATORS) {
-                    return cacheAndReturn(enrichBaseResult({
-                        ok: false,
-                        reason: `funder cluster recent ${recentCreatorCount} creators in ${CONFIG.CREATOR_RISK_FUNDER_CLUSTER_WINDOW_SEC}s`,
-                        funder,
-                        uniqueCounterparties,
-                        compressedWindowSec,
-                        burner,
-                        deepChecksComplete: true,
-                        deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-                    }));
-                }
-            }
-
-            if (linksToCreators.size > 0) {
-                const linked = Array.from(linksToCreators)[0];
-                return cacheAndReturn(enrichBaseResult({
-                    ok: false,
-                    reason: `linked to historical rug creator ${linked}`,
-                    funder,
-                    uniqueCounterparties,
-                    compressedWindowSec,
-                    burner,
-                    deepChecksComplete: true,
-                    deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-                }));
-            }
-
-            if (funder && funderRefundSol >= CONFIG.CREATOR_RISK_FUNDER_REFUND_MIN_SOL) {
-                return cacheAndReturn(enrichBaseResult({
-                    ok: false,
-                    reason: `creator refunded funder ${funderRefundSol.toFixed(3)} SOL`,
-                    funder,
-                    uniqueCounterparties,
-                    compressedWindowSec,
-                    burner,
-                    funderRefundSol,
-                    creatorCashoutSol: creatorCashout.totalSol,
-                    creatorCashoutPctOfEntryLiquidity: creatorCashout.pctOfEntryLiquidity,
-                    creatorCashoutScore: creatorCashout.score,
-                    creatorCashoutDestination: creatorCashout.destination,
-                    deepChecksComplete: true,
-                    deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-                }));
-            }
-
-            if (uniqueCounterparties >= CONFIG.CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES) {
-                return cacheAndReturn(enrichBaseResult({
-                    ok: false,
-                    reason: `unique counterparties ${uniqueCounterparties} >= ${CONFIG.CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES}`,
-                    funder,
-                    uniqueCounterparties,
-                    compressedWindowSec,
-                    burner,
-                    deepChecksComplete: true,
-                    deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-                }));
-            }
-
-            if (
-                compressedWindowSec !== null &&
-                compressedWindowSec <= CONFIG.CREATOR_RISK_COMPRESSED_WINDOW_SEC &&
-                uniqueCounterparties >= CONFIG.CREATOR_RISK_COMPRESSED_MAX_COUNTERPARTIES
-            ) {
-                return cacheAndReturn(enrichBaseResult({
-                    ok: false,
-                    reason: `compressed activity ${uniqueCounterparties} counterparties in ${compressedWindowSec}s`,
-                    funder,
-                    uniqueCounterparties,
-                    compressedWindowSec,
-                    burner,
-                    deepChecksComplete: true,
-                    deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-                }));
-            }
-
-            if (burner) {
-                return cacheAndReturn(enrichBaseResult({
-                    ok: false,
-                    reason: `burner profile out=${solOutSol.toFixed(2)} SOL with no inbound transfers`,
-                    funder,
-                    uniqueCounterparties,
-                    compressedWindowSec,
-                    burner,
-                    deepChecksComplete,
-                    deepTimedOut: !deepChecksComplete,
                     deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
                 }));
             }

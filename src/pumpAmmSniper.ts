@@ -386,6 +386,7 @@ async function handleNewPool(connection: Connection, signature: string) {
             return;
         }
 
+        const top10Promise = top10Service.runCheck(connection, tokenMint, poolAddress, ctx);
         let creatorRisk: CreatorRiskResult = { ok: true, reason: "creator unresolved (fail-open)" };
         stageLog(ctx, "STEP 5/7", "creator risk");
         if (creatorAddress) {
@@ -445,7 +446,7 @@ async function handleNewPool(connection: Connection, signature: string) {
                 }
                 liquiditySOL = preEntry.currentLiquiditySol;
             }
-            const top10 = await top10Service.runCheck(connection, tokenMint, poolAddress, ctx);
+            const top10 = await top10Promise;
             if (!top10.ok) {
                 console.log(`🛑 SKIP: pre-buy top10 (${top10.reason})`);
                 finalStatus = "SKIP: pre-buy top10";
@@ -511,7 +512,7 @@ async function handleNewPool(connection: Connection, signature: string) {
                 return;
             }
         }
-        const top10 = await top10Service.runCheck(connection, tokenMint, poolAddress, ctx);
+        const top10 = await top10Promise;
         if (!top10.ok) {
             console.log(`🛑 SKIP: pre-buy top10 (${top10.reason})`);
             finalStatus = "SKIP: pre-buy top10";
