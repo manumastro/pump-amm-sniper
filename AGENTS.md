@@ -68,6 +68,11 @@ Nota:
 - Bot: `pump-sniper.service`
 - Reporter: `pump-report.service`
 
+Regola deploy:
+- i servizi systemd eseguono il build compilato in `dist/`, non i file `src/`
+- dopo modifiche a `src/**`, `systemctl --user restart ...` da solo non basta: prima va eseguito `npm run build`
+- sequenza corretta dopo modifiche runtime: build -> stop servizi -> reset log/report -> start/restart servizi
+
 ## Architettura codice
 - Entry runtime attuale: `src/pumpAmmSniper.ts`
 - Bootstrap / supervisor / worker lifecycle: `src/app/bootstrap.ts`, `src/app/runtime.ts`, `src/app/worker.ts`
