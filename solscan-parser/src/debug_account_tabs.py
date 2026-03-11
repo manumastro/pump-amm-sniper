@@ -19,6 +19,17 @@ RELATIVE_RE = re.compile(
     r"(sec|secs|second|seconds|min|mins|minute|minutes|hour|hours|day|days|week|weeks|month|months)\s+ago",
     re.IGNORECASE,
 )
+ITEM_RANGE_RE = re.compile(r"Item\s+(\d+)\s+to\s+(\d+)", re.IGNORECASE)
+SHORT_ADDRESS_RE = re.compile(r"\b[1-9A-HJ-NP-Za-km-z]{8,12}\.\.\.[1-9A-HJ-NP-Za-km-z]{8,12}\b")
+
+
+def short_account_variants(address: str) -> set[str]:
+    variants = {address}
+    if len(address) >= 14:
+        variants.add(f"{address[:10]}...{address[-10:]}")
+    if len(address) >= 12:
+        variants.add(f"{address[:8]}...{address[-8:]}")
+    return variants
 
 
 @dataclass
@@ -241,25 +252,145 @@ class SolscanDebugParser:
             )
         return parsed
 
-    def _go_next_page(self) -> bool:
+    def _rows_conflict_with_account(self, rows: list[ScrapeRow], account: str) -> bool:
+        variants = short_account_variants(account)
+        found_short_addresses = {
+            match.group(0)
+            for row in rows
+            for match in SHORT_ADDRESS_RE.finditer(row.text)
+        }
+        if not found_short_addresses:
+            return False
+        if found_short_addresses & variants:
+            return False
+        return True
+
+    def _current_item_range(self) -> str | None:
+        body = self._body_text()
+        match = ITEM_RANGE_RE.search(body)
+        if not match:
+            return None
+        return f"{match.group(1)}-{match.group(2)}"
+
+    def _pagination_footer(self):
+        if not self.page:
+            return None
+        selectors = [
+            "xpath://div[contains(@class, 'bg-neutral0') and contains(@class, 'border-t') and contains(., 'per page') and contains(., 'Item ')]",
+            "xpath://div[contains(., 'per page') and contains(., 'Item ') and .//button]",
+        ]
+        for selector in selectors:
+            try:
+                footer = self.page.ele(selector, timeout=1)
+                if footer:
+                    return footer
+            except Exception:
+                continue
+        return None
+
+    def _footer_pager_buttons(self):
+        footer = self._pagination_footer()
+        if not footer:
+            return []
+        try:
+            buttons = footer.eles("tag:button") or []
+        except Exception:
+            return []
+        pager_buttons = []
+        for button in buttons:
+            text = (button.text or "").strip()
+            classes = (button.attr("class") or "").lower()
+            if text.isdigit() or "combobox" in classes:
+                continue
+            pager_buttons.append(button)
+        return pager_buttons
+
+    def _click_visible_next_pager(self) -> bool:
         if not self.page:
             return False
-        candidates = self.page.eles(
+        try:
+            return bool(
+                self.page.run_js(
+                    """
+                    function isVisible(el) {
+                      return !!(el && el.offsetParent !== null && el.getClientRects().length);
+                    }
+                    const footers = [...document.querySelectorAll('div')]
+                      .filter(el => {
+                        const text = (el.innerText || '').trim();
+                        return text.includes('per page') && text.includes('Item ') && isVisible(el);
+                      })
+                      .sort((a, b) => a.innerText.length - b.innerText.length);
+                    const footer = footers[0];
+                    if (!footer) return false;
+                    const buttons = [...footer.querySelectorAll('button')];
+                    const pager = buttons.filter(button => !/^\\d+$/.test((button.innerText || '').trim()));
+                    const next = [...pager]
+                      .reverse()
+                      .find(button => !button.disabled && button.getAttribute('aria-disabled') !== 'true');
+                    if (!next) return false;
+                    ['pointerdown', 'mousedown', 'mouseup', 'click'].forEach(type =>
+                      next.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window }))
+                    );
+                    return true;
+                    """
+                )
+            )
+        except Exception:
+            return False
+
+    def _go_next_page(
+        self,
+        previous_first_row: str | None,
+        previous_item_range: str | None,
+    ) -> tuple[bool, str | None]:
+        if not self.page:
+            return False, "page_not_initialized"
+        if self._click_visible_next_pager():
+            time.sleep(self.settle_sec)
+            first_row = self.page.ele("xpath://table//tbody//tr[1]", timeout=self.timeout_sec)
+            first_row_text = (first_row.text or "").strip() if first_row else ""
+            item_range = self._current_item_range()
+            if first_row_text:
+                row_unchanged = previous_first_row and first_row_text == previous_first_row
+                range_unchanged = previous_item_range and item_range == previous_item_range
+                if not (row_unchanged and (previous_item_range is None or range_unchanged)):
+                    return True, None
+
+        candidates = []
+        pager_buttons = self._footer_pager_buttons()
+        if pager_buttons:
+            candidates.extend(reversed(pager_buttons))
+        text_candidates = self.page.eles(
             "xpath://button[contains(., 'Next')] | //a[contains(., 'Next')]"
         ) or []
+        candidates.extend(text_candidates)
         for candidate in candidates:
             classes = (candidate.attr("class") or "").lower()
             aria_disabled = (candidate.attr("aria-disabled") or "").lower()
-            if "disabled" in classes or aria_disabled == "true":
+            disabled = candidate.attr("disabled")
+            if (
+                "disabled" in classes
+                or aria_disabled == "true"
+                or disabled is not None
+            ):
                 continue
             try:
                 candidate.click(by_js=True)
                 time.sleep(self.settle_sec)
-                if self.page.ele("xpath://table//tbody//tr", timeout=self.timeout_sec):
-                    return True
+                first_row = self.page.ele("xpath://table//tbody//tr[1]", timeout=self.timeout_sec)
+                first_row_text = (first_row.text or "").strip() if first_row else ""
+                item_range = self._current_item_range()
+                if not first_row_text:
+                    continue
+                row_unchanged = previous_first_row and first_row_text == previous_first_row
+                range_unchanged = previous_item_range and item_range == previous_item_range
+                if row_unchanged and (previous_item_range is None or range_unchanged):
+                    continue
+                return True, None
             except Exception:
                 continue
-        return False
+        return False, "pagination_stalled"
 
     def collect_account_tabs(
         self,
@@ -293,6 +424,7 @@ class SolscanDebugParser:
                 continue
 
             all_rows: list[ScrapeRow] = []
+            pagination_warning: str | None = None
             for page_num in range(1, max_pages + 1):
                 page_rows = self._extract_page_rows(
                     tab_name=tab,
@@ -301,6 +433,10 @@ class SolscanDebugParser:
                     end_utc=end_utc,
                     local_tz=local_tz,
                 )
+                if page_rows and self._rows_conflict_with_account(page_rows, account):
+                    all_rows = page_rows
+                    pagination_warning = "account_mismatch"
+                    break
                 all_rows.extend(page_rows)
 
                 oldest = None
@@ -312,7 +448,11 @@ class SolscanDebugParser:
                     break
                 if page_num == max_pages:
                     break
-                if not self._go_next_page():
+                previous_first_row = page_rows[0].text if page_rows else None
+                previous_item_range = self._current_item_range()
+                moved, move_warning = self._go_next_page(previous_first_row, previous_item_range)
+                if not moved:
+                    pagination_warning = move_warning
                     break
 
             rows_seen = [asdict(row) for row in all_rows]
@@ -329,18 +469,23 @@ class SolscanDebugParser:
             status = "ok"
             if not all_rows:
                 status = "no_rows_seen"
+            elif pagination_warning == "account_mismatch":
+                status = "rows_seen_account_mismatch"
             elif not rows_in_range and rows_without_parsed_timestamp == len(all_rows):
                 status = "rows_seen_but_timestamps_unparsed"
             elif not rows_in_range and rows_with_relative_timestamp > 0:
                 status = "rows_seen_but_none_in_range_relative_time_only"
             elif not rows_in_range:
                 status = "rows_seen_but_none_in_range"
+            elif pagination_warning == "pagination_stalled":
+                status = "ok_pagination_stalled"
 
             result[tab] = {
                 "rows_seen": rows_seen,
                 "rows_in_range": rows_in_range,
                 "diagnostics": {
                     "status": status,
+                    "pagination_warning": pagination_warning,
                     "rows_seen_count": len(rows_seen),
                     "rows_in_range_count": len(rows_in_range),
                     "rows_with_parsed_timestamp_count": rows_with_parsed_timestamp,

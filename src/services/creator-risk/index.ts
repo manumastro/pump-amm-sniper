@@ -68,6 +68,27 @@ type PrecreateBurstResult = {
     amountRatio: number;
 };
 
+type SetupBurstResult = {
+    detected: boolean;
+    creates: number;
+    windowSec: number | null;
+};
+
+type CloseAccountBurstResult = {
+    detected: boolean;
+    txs: number;
+    closes: number;
+    windowSec: number | null;
+};
+
+type RapidDispersalResult = {
+    detected: boolean;
+    transfers: number;
+    destinations: number;
+    totalSol: number;
+    windowSec: number | null;
+};
+
 type DirectAmmReentryResult = {
     detected: boolean;
     signature: string | null;
@@ -132,6 +153,137 @@ type CreatorRiskDeps = {
     withTimeout: <T>(promise: Promise<T>, timeoutMs: number) => Promise<{ timedOut: boolean; value?: T }>;
     isRateLimitedMessage: (message?: string) => boolean;
 };
+
+function flattenParsedInstructions(tx: any): any[] {
+    const outer = tx?.transaction?.message?.instructions || [];
+    const inner = (tx?.meta?.innerInstructions || []).flatMap((entry: any) => entry?.instructions || []);
+    return [...outer, ...inner];
+}
+
+function getInstructionType(ix: any): string {
+    return String(ix?.parsed?.type || "").toLowerCase();
+}
+
+function getFeePayer(tx: any): string | null {
+    const first = tx?.transaction?.message?.accountKeys?.[0];
+    return first?.pubkey?.toBase58?.() || first?.pubkey || first?.toBase58?.() || first || null;
+}
+
+function classifySetupBurst(parsedCreatorRiskTxs: ParsedCreatorRiskTx[], creatorAddress: string): SetupBurstResult {
+    const setupEvents = parsedCreatorRiskTxs
+        .filter(({ tx }) => getFeePayer(tx) === creatorAddress)
+        .map(({ blockTime, tx }) => ({
+            blockTime: blockTime ?? tx?.blockTime ?? null,
+            creates: flattenParsedInstructions(tx).reduce((count, ix) => {
+                const type = getInstructionType(ix);
+                return type === "create" || type === "createlookuptable" || type === "mintto" ? count + 1 : count;
+            }, 0),
+        }))
+        .filter((event) => event.creates > 0 && Number.isFinite(event.blockTime));
+
+    if (!setupEvents.length) {
+        return { detected: false, creates: 0, windowSec: null };
+    }
+
+    const creates = setupEvents.reduce((sum, event) => sum + event.creates, 0);
+    const times = setupEvents.map((event) => Number(event.blockTime));
+    const windowSec = Math.max(0, Math.max(...times) - Math.min(...times));
+    return {
+        detected:
+            CONFIG.CREATOR_RISK_SETUP_BURST_BLOCK_ENABLED &&
+            creates >= CONFIG.CREATOR_RISK_SETUP_BURST_MIN_CREATES &&
+            windowSec <= CONFIG.CREATOR_RISK_SETUP_BURST_MAX_WINDOW_SEC,
+        creates,
+        windowSec,
+    };
+}
+
+function classifyCloseAccountBurst(parsedCreatorRiskTxs: ParsedCreatorRiskTx[], creatorAddress: string): CloseAccountBurstResult {
+    const closeEvents = parsedCreatorRiskTxs
+        .filter(({ tx }) => getFeePayer(tx) === creatorAddress)
+        .map(({ blockTime, tx }) => ({
+            blockTime: blockTime ?? tx?.blockTime ?? null,
+            closes: flattenParsedInstructions(tx).reduce((count, ix) => {
+                const type = getInstructionType(ix);
+                return type === "closeaccount" || type === "close_account" ? count + 1 : count;
+            }, 0),
+        }))
+        .filter((event) => event.closes > 0 && Number.isFinite(event.blockTime));
+
+    if (!closeEvents.length) {
+        return { detected: false, txs: 0, closes: 0, windowSec: null };
+    }
+
+    const txs = closeEvents.length;
+    const closes = closeEvents.reduce((sum, event) => sum + event.closes, 0);
+    const times = closeEvents.map((event) => Number(event.blockTime));
+    const windowSec = Math.max(0, Math.max(...times) - Math.min(...times));
+    return {
+        detected:
+            CONFIG.CREATOR_RISK_CLOSE_ACCOUNT_BURST_BLOCK_ENABLED &&
+            txs >= CONFIG.CREATOR_RISK_CLOSE_ACCOUNT_BURST_MIN_TXS &&
+            closes >= CONFIG.CREATOR_RISK_CLOSE_ACCOUNT_BURST_MIN_CLOSES &&
+            windowSec <= CONFIG.CREATOR_RISK_CLOSE_ACCOUNT_BURST_MAX_WINDOW_SEC,
+        txs,
+        closes,
+        windowSec,
+    };
+}
+
+function classifyRapidDispersal(parsedCreatorRiskTxs: ParsedCreatorRiskTx[], creatorAddress: string): RapidDispersalResult {
+    const events = parsedCreatorRiskTxs
+        .filter(({ tx }) => getFeePayer(tx) === creatorAddress)
+        .flatMap(({ blockTime, tx }) => {
+            const eventTime = blockTime ?? tx?.blockTime ?? null;
+            return flattenParsedInstructions(tx)
+                .map((ix) => {
+                    const parsed = ix?.parsed;
+                    const type = getInstructionType(ix);
+                    if (ix?.program !== "system" || type !== "transfer") return null;
+                    const info = parsed?.info || {};
+                    const source = info.source || info.from || null;
+                    const destination = info.destination || info.to || null;
+                    const lamports = Number(info.lamports || 0);
+                    if (
+                        source !== creatorAddress ||
+                        !destination ||
+                        !Number.isFinite(eventTime) ||
+                        !Number.isFinite(lamports) ||
+                        lamports <= 0
+                    ) {
+                        return null;
+                    }
+                    return {
+                        destination,
+                        sol: lamports / 1e9,
+                        blockTime: Number(eventTime),
+                    };
+                })
+                .filter((entry): entry is { destination: string; sol: number; blockTime: number } => !!entry);
+        });
+
+    if (!events.length) {
+        return { detected: false, transfers: 0, destinations: 0, totalSol: 0, windowSec: null };
+    }
+
+    const transfers = events.length;
+    const destinations = new Set(events.map((entry) => entry.destination)).size;
+    const totalSol = events.reduce((sum, entry) => sum + entry.sol, 0);
+    const times = events.map((entry) => entry.blockTime);
+    const windowSec = Math.max(0, Math.max(...times) - Math.min(...times));
+    return {
+        detected:
+            CONFIG.CREATOR_RISK_RAPID_DISPERSAL_BLOCK_ENABLED &&
+            transfers >= CONFIG.CREATOR_RISK_RAPID_DISPERSAL_MIN_TRANSFERS &&
+            destinations >= CONFIG.CREATOR_RISK_RAPID_DISPERSAL_MIN_DESTINATIONS &&
+            totalSol >= CONFIG.CREATOR_RISK_RAPID_DISPERSAL_MIN_TOTAL_SOL &&
+            windowSec <= CONFIG.CREATOR_RISK_RAPID_DISPERSAL_MAX_WINDOW_SEC,
+        transfers,
+        destinations,
+        totalSol,
+        windowSec,
+    };
+}
 
 export function createCreatorRiskService(deps: CreatorRiskDeps) {
     const creatorRiskCache = new Map<string, CreatorRiskCacheEntry>();
@@ -406,6 +558,9 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                     : Infinity;
             const sprayOutbound = deps.classifySprayOutboundPattern(outboundTransfers);
             const sprayInbound = deps.classifyInboundSprayPattern(inboundTransfers);
+            const setupBurst = classifySetupBurst(parsedCreatorRiskTxs, creatorAddress);
+            const closeAccountBurst = classifyCloseAccountBurst(parsedCreatorRiskTxs, creatorAddress);
+            const rapidDispersal = classifyRapidDispersal(parsedCreatorRiskTxs, creatorAddress);
 
             stageLog(
                 ctx,
@@ -443,6 +598,16 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                     "SPRAY",
                     `out=${sprayOutbound.transfers} dest=${sprayOutbound.destinations} median=${sprayOutbound.medianSol.toFixed(3)} ` +
                     `rel_std=${sprayOutbound.relStdDev.toFixed(2)} ratio=${sprayOutbound.amountRatio.toFixed(2)}`
+                );
+            }
+            if (setupBurst.creates > 0) {
+                stageLog(ctx, "CSETUP", `creates=${setupBurst.creates} window=${setupBurst.windowSec ?? "n/a"}s`);
+            }
+            if (closeAccountBurst.closes > 0) {
+                stageLog(
+                    ctx,
+                    "CCLOSE",
+                    `txs=${closeAccountBurst.txs} closes=${closeAccountBurst.closes} window=${closeAccountBurst.windowSec ?? "n/a"}s`
                 );
             }
             if (repeatCreateRemovePattern.creates > 0 || repeatCreateRemovePattern.removes > 0 || repeatCreateRemovePattern.cashouts > 0) {
@@ -554,6 +719,13 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                     `total=${creatorCashout.totalSol.toFixed(3)} max=${creatorCashout.maxSingleSol.toFixed(3)} ` +
                     `rel=${creatorCashout.pctOfEntryLiquidity.toFixed(2)}% score=${creatorCashout.score.toFixed(2)} ` +
                     `dest=${creatorCashout.destination ? shortSig(creatorCashout.destination) : "-"}`
+                );
+            }
+            if (rapidDispersal.detected) {
+                stageLog(
+                    ctx,
+                    "CDISP",
+                    `out=${rapidDispersal.transfers} dest=${rapidDispersal.destinations} total=${rapidDispersal.totalSol.toFixed(3)}`
                 );
             }
             if (precreateBurst.detected) {
@@ -724,6 +896,37 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                 }));
             }
 
+            if (setupBurst.detected) {
+                return cacheAndReturn(enrichBaseResult({
+                    ok: false,
+                    reason: `setup burst ${setupBurst.creates} create/mint ops in ${setupBurst.windowSec ?? "n/a"}s`,
+                    funder,
+                    uniqueCounterparties,
+                    compressedWindowSec,
+                    burner,
+                    setupBurstCreates: setupBurst.creates,
+                    setupBurstWindowSec: setupBurst.windowSec,
+                    deepChecksComplete: true,
+                    deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
+                }));
+            }
+
+            if (closeAccountBurst.detected) {
+                return cacheAndReturn(enrichBaseResult({
+                    ok: false,
+                    reason: `close-account burst ${closeAccountBurst.closes} closes across ${closeAccountBurst.txs} tx in ${closeAccountBurst.windowSec ?? "n/a"}s`,
+                    funder,
+                    uniqueCounterparties,
+                    compressedWindowSec,
+                    burner,
+                    closeAccountBurstTxs: closeAccountBurst.txs,
+                    closeAccountBurstCloses: closeAccountBurst.closes,
+                    closeAccountBurstWindowSec: closeAccountBurst.windowSec,
+                    deepChecksComplete: true,
+                    deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
+                }));
+            }
+
             if (repeatCreateRemovePattern.detected) {
                 return cacheAndReturn(enrichBaseResult({
                     ok: false,
@@ -741,6 +944,30 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                     repeatedCreateRemoveCashouts: repeatCreateRemovePattern.cashouts,
                     repeatedCreateRemoveWindowSec: repeatCreateRemovePattern.windowSec,
                     repeatedCreateRemoveMaxCashoutSol: repeatCreateRemovePattern.maxCashoutSol,
+                    deepChecksComplete: true,
+                    deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
+                }));
+            }
+
+            if (deepChecksComplete && creatorCashout.totalSol > 0 && rapidDispersal.detected) {
+                return cacheAndReturn(enrichBaseResult({
+                    ok: false,
+                    reason:
+                        `rapid creator dispersal ${rapidDispersal.transfers} transfers ` +
+                        `to ${rapidDispersal.destinations} destinations ` +
+                        `(${rapidDispersal.totalSol.toFixed(3)} SOL)`,
+                    funder,
+                    uniqueCounterparties,
+                    compressedWindowSec,
+                    burner,
+                    creatorCashoutSol: creatorCashout.totalSol,
+                    creatorCashoutPctOfEntryLiquidity: creatorCashout.pctOfEntryLiquidity,
+                    creatorCashoutScore: creatorCashout.score,
+                    creatorCashoutDestination: creatorCashout.destination,
+                    rapidDispersalTransfers: rapidDispersal.transfers,
+                    rapidDispersalDestinations: rapidDispersal.destinations,
+                    rapidDispersalTotalSol: rapidDispersal.totalSol,
+                    rapidDispersalWindowSec: rapidDispersal.windowSec,
                     deepChecksComplete: true,
                     deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
                 }));
@@ -1018,6 +1245,15 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                 creatorSeedPctOfCurrentLiq,
                 inboundSpraySources: sprayInbound.sources,
                 precreateBurstTransfers: precreateBurst.transfers,
+                setupBurstCreates: setupBurst.creates,
+                setupBurstWindowSec: setupBurst.windowSec,
+                closeAccountBurstTxs: closeAccountBurst.txs,
+                closeAccountBurstCloses: closeAccountBurst.closes,
+                closeAccountBurstWindowSec: closeAccountBurst.windowSec,
+                rapidDispersalTransfers: rapidDispersal.transfers,
+                rapidDispersalDestinations: rapidDispersal.destinations,
+                rapidDispersalTotalSol: rapidDispersal.totalSol,
+                rapidDispersalWindowSec: rapidDispersal.windowSec,
                 repeatedCreateRemoveCreates: repeatCreateRemovePattern.creates,
                 repeatedCreateRemoveRemoves: repeatCreateRemovePattern.removes,
                 repeatedCreateRemoveCashouts: repeatCreateRemovePattern.cashouts,

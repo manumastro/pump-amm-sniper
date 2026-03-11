@@ -33,6 +33,15 @@ export type CreatorRiskResult = {
     creatorSeedPctOfCurrentLiq?: number;
     inboundSpraySources?: number;
     precreateBurstTransfers?: number;
+    setupBurstCreates?: number;
+    setupBurstWindowSec?: number | null;
+    closeAccountBurstTxs?: number;
+    closeAccountBurstCloses?: number;
+    closeAccountBurstWindowSec?: number | null;
+    rapidDispersalTransfers?: number;
+    rapidDispersalDestinations?: number;
+    rapidDispersalTotalSol?: number;
+    rapidDispersalWindowSec?: number | null;
     microInboundTransfers?: number;
     microInboundSources?: number;
     repeatedCreateRemoveCreates?: number;
