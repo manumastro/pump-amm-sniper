@@ -134,6 +134,16 @@ function createRuntimeConnection() {
     return new Connection(rpcEndpoint, { commitment: "confirmed" });
 }
 
+function describeRpcEndpoint(): string {
+    const rpcEndpoint = process.env.SVS_UNSTAKED_RPC || "https://api.mainnet-beta.solana.com";
+    try {
+        const parsed = new URL(rpcEndpoint);
+        return `${parsed.protocol}//${parsed.host}${parsed.pathname}`;
+    } catch {
+        return rpcEndpoint;
+    }
+}
+
 function initSdks(connection: Connection) {
     onlineSdk = new OnlinePumpAmmSdk(connection);
     offlineSdk = new PumpAmmSdk();
@@ -1341,25 +1351,37 @@ function txTouchesAddress(tx: any, address: string): boolean {
     });
 }
 
-function isRemoveLiquidityLikeTx(tx: any, creatorAddress: string, poolAddress: string): {
+function isRemoveLiquidityLikeTx(
+    tx: any,
+    creatorAddress: string,
+    poolAddress: string,
+    tokenMint?: string,
+): {
     detected: boolean;
     wsolToCreator: number;
     solToCreator: number;
+    tokenToCreator: number;
+    creatorAmmTouch: boolean;
 } {
     const touchesPumpAmm = flattenParsedInstructions(tx).some((ix) =>
         instructionProgramIdMatches(ix, PUMPFUN_AMM_PROGRAM_ID)
     );
-    if (!touchesPumpAmm || !txTouchesAddress(tx, poolAddress)) {
-        return { detected: false, wsolToCreator: 0, solToCreator: 0 };
+    const touchesPool = txTouchesAddress(tx, poolAddress);
+    const touchesCreator = txTouchesAddress(tx, creatorAddress);
+    const creatorAmmTouch = touchesPumpAmm && touchesPool && touchesCreator;
+    if (!creatorAmmTouch) {
+        return { detected: false, wsolToCreator: 0, solToCreator: 0, tokenToCreator: 0, creatorAmmTouch: false };
     }
 
     const wsolToCreator = getOwnerMintDelta(tx, creatorAddress, WSOL);
     const solToCreator = getSystemInboundSolToCreator(tx, creatorAddress);
+    const tokenToCreator = tokenMint ? getOwnerMintDelta(tx, creatorAddress, tokenMint) : 0;
     const detected =
         wsolToCreator >= CONFIG.HOLD_REMOVE_LIQ_MIN_WSOL_TO_CREATOR ||
-        solToCreator >= CONFIG.HOLD_REMOVE_LIQ_MIN_SOL_TO_CREATOR;
+        solToCreator >= CONFIG.HOLD_REMOVE_LIQ_MIN_SOL_TO_CREATOR ||
+        tokenToCreator > 0;
 
-    return { detected, wsolToCreator, solToCreator };
+    return { detected, wsolToCreator, solToCreator, tokenToCreator, creatorAmmTouch };
 }
 
 type CreatorRepeatPatternRisk = {
@@ -1504,6 +1526,7 @@ async function detectRemoveLiquiditySince(
     connection: Connection,
     poolAddress: string,
     creatorAddress: string,
+    tokenMint: string,
     seenSignatures: Set<string>,
     createPoolSignature?: string,
     createPoolBlockTime?: number | null,
@@ -1512,6 +1535,7 @@ async function detectRemoveLiquiditySince(
     signature?: string;
     wsolToCreator?: number;
     solToCreator?: number;
+    tokenToCreator?: number;
     creatorAmmTouch?: boolean;
     eventTimeSec?: number;
 }> {
@@ -1548,19 +1572,20 @@ async function detectRemoveLiquiditySince(
             const creatorAmmTouch = touchesPumpAmm && touchesCreator && touchesPool;
             const eventTimeSec = s.blockTime || Math.floor(Date.now() / 1000);
 
-            const m = isRemoveLiquidityLikeTx(tx, creatorAddress, poolAddress);
+            const m = isRemoveLiquidityLikeTx(tx, creatorAddress, poolAddress, tokenMint);
             if (m.detected) {
                 return {
                     detected: true,
                     signature: s.signature,
                     wsolToCreator: m.wsolToCreator,
                     solToCreator: m.solToCreator,
-                    creatorAmmTouch,
+                    tokenToCreator: m.tokenToCreator,
+                    creatorAmmTouch: m.creatorAmmTouch,
                     eventTimeSec,
                 };
             }
 
-            if (creatorAmmTouch) {
+            if (m.creatorAmmTouch) {
                 return {
                     detected: false,
                     creatorAmmTouch: true,
@@ -2392,6 +2417,7 @@ const supervisorRuntime = createSupervisorRuntime({
         console.log(`Program: ${PUMPFUN_AMM_PROGRAM_ID}`);
         console.log(`Mode: ${MONITOR_ONLY ? "MONITOR_ONLY" : "TRADING"}`);
         console.log(`Wallet: ${walletKeypair ? walletKeypair.publicKey.toBase58() : "N/A (no private key loaded)"}`);
+        console.log(`RPC: ${describeRpcEndpoint()}`);
         console.log(`Min Liquidity: ${CONFIG.MIN_POOL_LIQUIDITY_SOL} SOL`);
         console.log(`Max Parallel Ops: ${workerCount}`);
         if (!MONITOR_ONLY) {

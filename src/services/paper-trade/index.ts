@@ -31,6 +31,7 @@ type PaperTradeDeps = {
         connection: Connection,
         poolAddress: string,
         creatorAddress: string,
+        tokenMint: string,
         seenPoolSignatures: Set<string>,
         createPoolSignature?: string,
         createPoolBlockTime?: number | null,

@@ -26,6 +26,7 @@ type ValidatePreBuyDeps = {
         connection: Connection,
         poolAddress: string,
         creatorAddress: string,
+        tokenMint: string,
         seenPoolSignatures: Set<string>,
         createPoolSignature?: string,
         createPoolBlockTime?: number | null,
@@ -34,6 +35,7 @@ type ValidatePreBuyDeps = {
         signature?: string | null;
         wsolToCreator?: number;
         solToCreator?: number;
+        tokenToCreator?: number;
     }>;
 };
 
@@ -93,6 +95,7 @@ export async function validatePreBuyEntryState(
             connection,
             poolAddress,
             creatorAddress,
+            tokenMint,
             new Set<string>(),
             createPoolSignature,
             createPoolBlockTime,
@@ -104,7 +107,8 @@ export async function validatePreBuyEntryState(
                     `remove liquidity detected before entry ` +
                     `(${shortSig(removeLiq.signature || "-")}, ` +
                     `wsol=${Number(removeLiq.wsolToCreator || 0).toFixed(3)} ` +
-                    `sol=${Number(removeLiq.solToCreator || 0).toFixed(3)})`,
+                    `sol=${Number(removeLiq.solToCreator || 0).toFixed(3)} ` +
+                    `token=${Number(removeLiq.tokenToCreator || 0).toFixed(3)})`,
             };
         }
     }

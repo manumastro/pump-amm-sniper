@@ -25,6 +25,7 @@ type HoldMonitorDeps = {
         connection: Connection,
         poolAddress: string,
         creatorAddress: string,
+        tokenMint: string,
         seenPoolSignatures: Set<string>,
         createPoolSignature?: string,
         createPoolBlockTime?: number | null,
@@ -33,6 +34,7 @@ type HoldMonitorDeps = {
         signature?: string | null;
         wsolToCreator?: number;
         solToCreator?: number;
+        tokenToCreator?: number;
         creatorAmmTouch?: boolean;
         eventTimeSec?: number | null;
     }>;
@@ -145,6 +147,52 @@ export async function waitForExitStateWithLiquidityStop(
 
             if (
                 creatorAddress &&
+                CONFIG.HOLD_REMOVE_LIQ_DETECT_ENABLED &&
+                Date.now() - lastRemoveLiqCheckAtMs >= scaledInterval(removeLiqCheckIntervalMs)
+            ) {
+                lastRemoveLiqCheckAtMs = Date.now();
+                const removeLiq = await deps.detectRemoveLiquiditySince(
+                    connection,
+                    poolAddress,
+                    creatorAddress,
+                    tokenMint,
+                    seenPoolSignatures,
+                    createPoolSignature,
+                    createPoolBlockTime,
+                );
+                if (removeLiq.detected) {
+                    console.log(
+                        `⚠️ REMOVE LIQUIDITY EXIT: ` +
+                        `${shortSig(removeLiq.signature || "-")} ` +
+                        `(wsol_to_creator=${(removeLiq.wsolToCreator || 0).toFixed(3)} ` +
+                        `sol_to_creator=${(removeLiq.solToCreator || 0).toFixed(3)} ` +
+                        `token_to_creator=${(removeLiq.tokenToCreator || 0).toFixed(3)} ` +
+                        `entry_liq=${entrySolLiquidity.toFixed(2)} SOL)`
+                    );
+                    return s;
+                }
+                if (CONFIG.HOLD_CREATOR_AMM_BURST_DETECT_ENABLED && removeLiq.creatorAmmTouch) {
+                    const eventTimeSec = removeLiq.eventTimeSec || Math.floor(Date.now() / 1000);
+                    creatorAmmTouchTimesSec.push(eventTimeSec);
+                    const windowSec = Math.max(1, CONFIG.HOLD_CREATOR_AMM_BURST_WINDOW_SEC);
+                    const minTxs = Math.max(2, CONFIG.HOLD_CREATOR_AMM_BURST_MIN_TXS);
+                    const cutoff = eventTimeSec - windowSec;
+                    while (creatorAmmTouchTimesSec.length && creatorAmmTouchTimesSec[0] < cutoff) {
+                        creatorAmmTouchTimesSec.shift();
+                    }
+                    if (creatorAmmTouchTimesSec.length >= minTxs) {
+                        console.log(
+                            `⚠️ CREATOR AMM BURST EXIT: ` +
+                            `${creatorAmmTouchTimesSec.length} tx in ${windowSec}s ` +
+                            `(${shortSig(removeLiq.signature || "-")})`
+                        );
+                        return s;
+                    }
+                }
+            }
+
+            if (
+                creatorAddress &&
                 CONFIG.HOLD_CREATOR_RISK_RECHECK_ENABLED &&
                 Date.now() - lastCreatorRiskCheckAtMs >= scaledInterval(CONFIG.HOLD_CREATOR_RISK_RECHECK_INTERVAL_MS)
             ) {
@@ -177,50 +225,6 @@ export async function waitForExitStateWithLiquidityStop(
                         }
                     } else {
                         console.log(`⚠️ CREATOR RISK EXIT: ${creatorRisk.reason}`);
-                        return s;
-                    }
-                }
-            }
-
-            if (
-                creatorAddress &&
-                CONFIG.HOLD_REMOVE_LIQ_DETECT_ENABLED &&
-                Date.now() - lastRemoveLiqCheckAtMs >= scaledInterval(removeLiqCheckIntervalMs)
-            ) {
-                lastRemoveLiqCheckAtMs = Date.now();
-                const removeLiq = await deps.detectRemoveLiquiditySince(
-                    connection,
-                    poolAddress,
-                    creatorAddress,
-                    seenPoolSignatures,
-                    createPoolSignature,
-                    createPoolBlockTime,
-                );
-                if (removeLiq.detected) {
-                    console.log(
-                        `⚠️ REMOVE LIQUIDITY EXIT: ` +
-                        `${shortSig(removeLiq.signature || "-")} ` +
-                        `(wsol_to_creator=${(removeLiq.wsolToCreator || 0).toFixed(3)} ` +
-                        `sol_to_creator=${(removeLiq.solToCreator || 0).toFixed(3)} ` +
-                        `entry_liq=${entrySolLiquidity.toFixed(2)} SOL)`
-                    );
-                    return s;
-                }
-                if (CONFIG.HOLD_CREATOR_AMM_BURST_DETECT_ENABLED && removeLiq.creatorAmmTouch) {
-                    const eventTimeSec = removeLiq.eventTimeSec || Math.floor(Date.now() / 1000);
-                    creatorAmmTouchTimesSec.push(eventTimeSec);
-                    const windowSec = Math.max(1, CONFIG.HOLD_CREATOR_AMM_BURST_WINDOW_SEC);
-                    const minTxs = Math.max(2, CONFIG.HOLD_CREATOR_AMM_BURST_MIN_TXS);
-                    const cutoff = eventTimeSec - windowSec;
-                    while (creatorAmmTouchTimesSec.length && creatorAmmTouchTimesSec[0] < cutoff) {
-                        creatorAmmTouchTimesSec.shift();
-                    }
-                    if (creatorAmmTouchTimesSec.length >= minTxs) {
-                        console.log(
-                            `⚠️ CREATOR AMM BURST EXIT: ` +
-                            `${creatorAmmTouchTimesSec.length} tx in ${windowSec}s ` +
-                            `(${shortSig(removeLiq.signature || "-")})`
-                        );
                         return s;
                     }
                 }
