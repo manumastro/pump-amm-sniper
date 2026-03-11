@@ -30,6 +30,9 @@ Obiettivo: analizzare solo le transazioni recenti dei creator associati agli eve
 
 - Campione: fino a 25 signature recenti per creator
 - Parsing: fino a 15 parsed transaction per creator
+- Nelle investigazioni post-mortem non limitarsi alla finestra `buy -> remove_liquidity`
+- Quando il creator sembra "quiet then yank", estendere sempre l'osservazione anche a una finestra ampia prima della `create_pool`
+- In pratica: guardare sia il tratto immediatamente prima del buy sia il tratto `pre-create`, per intercettare funding spray, dispersione SOL, mint preparatori e setup wallet
 - Metriche osservate:
   - numero trasferimenti SOL in ingresso
   - numero trasferimenti SOL in uscita
@@ -117,6 +120,22 @@ Lettura:
 - molto sospetto come wallet usa-e-getta
 
 ## Segnali strani comuni
+
+### 0. Finestra giusta prima del pattern
+
+Non tutti i rug mostrano segnali utili tra il nostro `buy` e il `remove_liquidity`.
+
+In diversi casi il creator:
+
+- prepara i wallet minuti o decine di secondi prima della `create_pool`
+- crea la pool
+- resta apparentemente fermo durante il pump iniziale
+- rimuove liquidita all'improvviso
+
+Interpretazione:
+- se analizzi solo `buy -> remove`, rischi di perdere il segnale operativo vero
+- per questo l'analisi manuale deve includere anche una finestra ampia pre-create del creator
+- il tratto pre-create e spesso piu utile del tratto post-buy per riconoscere spray, funding chain e wallet orchestration
 
 ### A. Troppe controparti in poco tempo
 

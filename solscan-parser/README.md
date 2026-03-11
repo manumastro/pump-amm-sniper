@@ -64,3 +64,6 @@ Lo script prova prima l'Enhanced Transactions API di Helius; se non disponibile,
 - This parser is for investigation only.
 - Do not use this parser in real-time bot decision flow.
 - Se un tab non contiene righe nella finestra, controlla sempre `rows_seen` e `warnings` prima di concludere che i dati mancano davvero.
+- Nelle analisi rug non fermarti per default alla finestra `buy -> remove_liquidity`.
+- Se tra buy e remove il creator sembra inattivo, rilancia il parser su una finestra piu ampia che copra anche il periodo prima della `create_pool`.
+- In molti casi il comportamento anomalo utile emerge prima del create: spray outbound, funding chain, mint/setup account, dispersione SOL verso molti wallet.

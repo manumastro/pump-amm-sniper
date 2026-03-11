@@ -34,6 +34,10 @@ Preferire:
   - quando si fa studio/debug manuale di un creator o di una pool su Solscan
   - dato `token` + `creator` + finestra temporale, raccogliere tab `Transactions`, `Transfers`, `Activities`
   - output JSON locale per analisi (`last_rugpulls/` o percorso custom)
+- Regola di analisi:
+  - non limitarsi automaticamente alla finestra `buy -> remove_liquidity`
+  - se tra buy e remove il creator sembra inattivo o il rug appare "all'improvviso", estendere l'analisi anche a una finestra ampia prima della `create_pool`
+  - il tratto pre-create e spesso quello piu utile per trovare spray outbound, funding chain, dispersione SOL, mint/setup account e pattern wallet operativi
 - Nota runtime:
   - su VPS Linux usare `xvfb-run -a` e preferire browser non-headless (non passare `--headless`), perché Cloudflare su Solscan è più restrittivo in headless puro
 - Comando tipo:
