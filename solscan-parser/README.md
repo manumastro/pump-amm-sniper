@@ -1,25 +1,16 @@
-# Solscan Debug Parser (Creator/Token + Time Window)
+# Solscan Debug Parser (Creator + Time Window)
 
 Minimal DrissionPage parser used only for manual debug/investigation.
 
-It reads Solscan account tabs:
+It reads Solscan creator account tabs:
 
 - `Transactions`
 - `Transfers`
 - `Activities`
 
-for both:
-
-- a `creator` account
-- a `token` mint account
-
 within a specific timestamp window.
 
-Output is saved as local JSON.
-Oltre al file principale, il parser salva anche due dump separati:
-
-- `<output>_raw_creator_tabs.json`
-- `<output>_raw_token_tabs.json`
+Output is saved as a single local JSON file.
 
 Per ogni tab il JSON salva:
 
@@ -42,7 +33,6 @@ python3 -m venv .venv
 ```bash
 xvfb-run -a .venv/bin/python src/debug_account_tabs.py \
   --creator <CREATOR_ACCOUNT> \
-  --token <TOKEN_MINT> \
   --from-local "YYYY-MM-DD HH:MM:SS" \
   --to-local "YYYY-MM-DD HH:MM:SS" \
   --tz Europe/Berlin \
@@ -62,12 +52,10 @@ Per ottenere timestamp reali e dati parsed on-chain dalle signature viste su Sol
 
 ```bash
 .venv/bin/python src/hydrate_solscan_dump.py \
-  --input ../last_rugpulls/solscan_debug_raw_creator_tabs.json
+  --input ../last_rugpulls/solscan_debug.json
 ```
 
-Il file risultante sarà:
-
-- `<input>_hydrated.json`
+Il file risultante sarà `<input>_hydrated.json`.
 
 Lo script prova prima l'Enhanced Transactions API di Helius; se non disponibile, fa fallback automatico a `getTransaction` RPC.
 

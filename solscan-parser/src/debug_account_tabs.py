@@ -375,60 +375,31 @@ def normalize_tabs(raw: str) -> list[str]:
 
 def build_warnings(results: dict) -> list[str]:
     warnings: list[str] = []
-    for scope, scope_data in results.items():
-        for tab, tab_data in scope_data.items():
-            diagnostics = tab_data["diagnostics"]
-            status = diagnostics["status"]
-            if status != "ok":
-                warnings.append(
-                    f"{scope}.{tab}: {status} "
-                    f"(seen={diagnostics['rows_seen_count']}, in_range={diagnostics['rows_in_range_count']}, "
-                    f"unparsed_ts={diagnostics['rows_without_parsed_timestamp_count']})"
-                )
+    for tab, tab_data in results.items():
+        diagnostics = tab_data["diagnostics"]
+        status = diagnostics["status"]
+        if status != "ok":
+            warnings.append(
+                f"{tab}: {status} "
+                f"(seen={diagnostics['rows_seen_count']}, in_range={diagnostics['rows_in_range_count']}, "
+                f"unparsed_ts={diagnostics['rows_without_parsed_timestamp_count']})"
+            )
     return warnings
 
 
-def write_payload_files(
-    output_path: Path,
-    payload: dict,
-    creator_data: dict,
-    token_data: dict,
-):
+def write_payload_file(output_path: Path, payload: dict):
     payload_json = json.dumps(payload, indent=2)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(payload_json, encoding="utf-8")
-
-    raw_creator_path = output_path.with_name(f"{output_path.stem}_raw_creator_tabs.json")
-    raw_token_path = output_path.with_name(f"{output_path.stem}_raw_token_tabs.json")
-    raw_creator_payload = {
-        "query": payload["query"],
-        "scope": "creator",
-        "account": payload["query"]["creator"],
-        "results": creator_data,
-        "warnings": [w for w in payload["warnings"] if w.startswith("creator.")],
-    }
-    raw_token_payload = {
-        "query": payload["query"],
-        "scope": "token",
-        "account": payload["query"]["token"],
-        "results": token_data,
-        "warnings": [w for w in payload["warnings"] if w.startswith("token.")],
-    }
-    raw_creator_path.write_text(
-        json.dumps(raw_creator_payload, indent=2), encoding="utf-8"
-    )
-    raw_token_path.write_text(json.dumps(raw_token_payload, indent=2), encoding="utf-8")
-    return raw_creator_path, raw_token_path
 
 
 def main():
     parser = argparse.ArgumentParser(
         description=(
-            "Debug parser Solscan tabs by timestamp range for creator/token accounts."
+            "Debug parser Solscan creator account tabs by timestamp range."
         )
     )
     parser.add_argument("--creator", required=True, help="Creator account")
-    parser.add_argument("--token", required=True, help="Token mint account")
     parser.add_argument(
         "--from-local",
         required=True,
@@ -451,9 +422,9 @@ def main():
     )
     parser.add_argument(
         "--scope",
-        choices=["both", "creator", "token"],
-        default="both",
-        help="Which account scopes to scrape",
+        choices=["creator"],
+        default="creator",
+        help="Creator-only scrape scope",
     )
     parser.add_argument(
         "--max-pages",
@@ -508,9 +479,8 @@ def main():
     payload = {
         "query": {
             "creator": args.creator,
-            "token": args.token,
             "tabs": tabs,
-            "scope": args.scope,
+            "scope": "creator",
             "tz": args.tz,
             "from_local": start_local.isoformat(),
             "to_local": end_local.isoformat(),
@@ -519,10 +489,9 @@ def main():
             "max_pages": args.max_pages,
             "headless": args.headless,
         },
-        "results": {
-            "creator": {},
-            "token": {},
-        },
+        "account": args.creator,
+        "results": {},
+        "warnings": [],
         "partial": False,
     }
     if args.stdout_only:
@@ -532,24 +501,14 @@ def main():
             settle_sec=args.settle_sec,
             cloudflare_wait_sec=args.cloudflare_wait_sec,
         ) as scraper:
-            if args.scope in ("both", "creator"):
-                payload["results"]["creator"] = scraper.collect_account_tabs(
-                    account=args.creator,
-                    tabs=tabs,
-                    start_utc=start_utc,
-                    end_utc=end_utc,
-                    local_tz=local_tz,
-                    max_pages=args.max_pages,
-                )
-            if args.scope in ("both", "token"):
-                payload["results"]["token"] = scraper.collect_account_tabs(
-                    account=args.token,
-                    tabs=tabs,
-                    start_utc=start_utc,
-                    end_utc=end_utc,
-                    local_tz=local_tz,
-                    max_pages=args.max_pages,
-                )
+            payload["results"] = scraper.collect_account_tabs(
+                account=args.creator,
+                tabs=tabs,
+                start_utc=start_utc,
+                end_utc=end_utc,
+                local_tz=local_tz,
+                max_pages=args.max_pages,
+            )
         payload["warnings"] = build_warnings(payload["results"])
         for warning in payload["warnings"]:
             print(f"[warn] {warning}")
@@ -558,19 +517,10 @@ def main():
 
     output_path = Path(args.output)
     creator_data: dict = {}
-    token_data: dict = {}
-    payload["warnings"] = []
     payload["partial"] = True
     payload["warnings"] = ["bootstrap: scrape started, results may be incomplete if Solscan stalls"]
-    raw_creator_path, raw_token_path = write_payload_files(
-        output_path=output_path,
-        payload=payload,
-        creator_data=creator_data,
-        token_data=token_data,
-    )
+    write_payload_file(output_path=output_path, payload=payload)
     print(f"[ok] wrote bootstrap {output_path}")
-    print(f"[ok] wrote bootstrap {raw_creator_path}")
-    print(f"[ok] wrote bootstrap {raw_token_path}")
 
     with SolscanDebugParser(
         headless=args.headless,
@@ -578,51 +528,20 @@ def main():
         settle_sec=args.settle_sec,
         cloudflare_wait_sec=args.cloudflare_wait_sec,
     ) as scraper:
-        if args.scope in ("both", "creator"):
-            creator_data = scraper.collect_account_tabs(
-                account=args.creator,
-                tabs=tabs,
-                start_utc=start_utc,
-                end_utc=end_utc,
-                local_tz=local_tz,
-                max_pages=args.max_pages,
-            )
-            payload["results"]["creator"] = creator_data
-            payload["partial"] = args.scope == "both"
-            payload["warnings"] = build_warnings(payload["results"])
-            raw_creator_path, raw_token_path = write_payload_files(
-                output_path=output_path,
-                payload=payload,
-                creator_data=creator_data,
-                token_data=token_data,
-            )
-            label = "partial " if args.scope == "both" else ""
-            print(f"[ok] wrote {label}{output_path}")
-            print(f"[ok] wrote {label}{raw_creator_path}")
-            print(f"[ok] wrote {label}{raw_token_path}")
+        creator_data = scraper.collect_account_tabs(
+            account=args.creator,
+            tabs=tabs,
+            start_utc=start_utc,
+            end_utc=end_utc,
+            local_tz=local_tz,
+            max_pages=args.max_pages,
+        )
 
-        if args.scope in ("both", "token"):
-            token_data = scraper.collect_account_tabs(
-                account=args.token,
-                tabs=tabs,
-                start_utc=start_utc,
-                end_utc=end_utc,
-                local_tz=local_tz,
-                max_pages=args.max_pages,
-            )
-
-    payload["results"]["token"] = token_data
-    payload["partial"] = False if args.scope == "both" else False
+    payload["results"] = creator_data
+    payload["partial"] = False
     payload["warnings"] = build_warnings(payload["results"])
-    raw_creator_path, raw_token_path = write_payload_files(
-        output_path=output_path,
-        payload=payload,
-        creator_data=creator_data,
-        token_data=token_data,
-    )
+    write_payload_file(output_path=output_path, payload=payload)
     print(f"[ok] wrote {output_path}")
-    print(f"[ok] wrote {raw_creator_path}")
-    print(f"[ok] wrote {raw_token_path}")
     for warning in payload["warnings"]:
         print(f"[warn] {warning}")
 
