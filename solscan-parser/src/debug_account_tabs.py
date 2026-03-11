@@ -265,6 +265,15 @@ class SolscanDebugParser:
             return False
         return True
 
+    def _current_page_matches_account(self, account: str) -> bool:
+        if not self.page:
+            return False
+        try:
+            current_url = (self.page.url or "").strip()
+        except Exception:
+            return False
+        return f"/account/{account}" in current_url
+
     def _current_item_range(self) -> str | None:
         body = self._body_text()
         match = ITEM_RANGE_RE.search(body)
@@ -433,7 +442,11 @@ class SolscanDebugParser:
                     end_utc=end_utc,
                     local_tz=local_tz,
                 )
-                if page_rows and self._rows_conflict_with_account(page_rows, account):
+                if (
+                    page_rows
+                    and self._rows_conflict_with_account(page_rows, account)
+                    and not self._current_page_matches_account(account)
+                ):
                     all_rows = page_rows
                     pagination_warning = "account_mismatch"
                     break
