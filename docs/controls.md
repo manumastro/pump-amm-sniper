@@ -109,7 +109,7 @@ Segnali usati:
 - relay-root sospetto + `spray outbound`: tante uscite molto simili verso molte destinazioni
 - `inbound collector pattern`: tanti inbound simili da molte source verso il creator in finestra breve
 - creator che richiama direttamente `pAMMBay...` dopo `create_pool`
-- burst outbound pre-create (tipicamente tanti trasferimenti ~1 SOL in pochi secondi verso molte destinazioni)
+- burst outbound pre-create (anche sub-SOL se molto uniformi e numerosi, non solo ~1 SOL)
 - pattern ripetuto `create_pool -> remove_liquidity -> cashout`, seguito da un nuovo `create_pool` nella stessa finestra breve
 
 Blacklist lette solo da:
@@ -153,7 +153,7 @@ Log principali:
 - `CCASH | total=... max=... rel=... score=... dest=...`
 - `SEED | creator=... SOL pct=...% growth=...x`
 - `ISPRAY | in=... src=... median=... rel_std=... ratio=...`
-- `PBURST | precreate out=... dest=... median=... rel_std=... ratio=...`
+- `PBURST | precreate out=... dest=... total=... median=... rel_std=... ratio=...`
 - `RREPEAT | create=... remove=... cashout=... window=... max_out=...`
 - `PROBATION | paper-only bypass creator risk (...) hold=...ms`
 
@@ -165,7 +165,7 @@ Lettura pratica:
 5. `spray outbound` = il creator distribuisce importi quasi uguali a molti wallet: pattern infrastrutturale, non utente normale.
 6. `seed troppo piccolo` = il creator ha quasi zero skin in the game rispetto alla liquidity che vedevamo prima del buy.
 7. `inbound collector` = molti wallet alimentano il creator con importi simili in poco tempo: pattern di coordinamento, non domanda organica.
-8. `precreate burst` = raffica di outbound quasi uguali subito prima del create_pool: pattern operativo ad alto rischio.
+8. `precreate burst` = raffica di outbound quasi uguali subito prima del create_pool, anche sub-SOL se numerosi: pattern operativo ad alto rischio.
 9. `RREPEAT` = il creator ha gia fatto almeno un ciclo `create/remove/cashout` recente e sta riprovando: da trattare come skip pre-buy, non come segnale da hold.
 
 Gerarchia pratica dei segnali:

@@ -63,6 +63,7 @@ type PrecreateBurstResult = {
     transfers: number;
     destinations: number;
     medianSol: number;
+    totalSol: number;
     relStdDev: number;
     amountRatio: number;
 };
@@ -559,7 +560,7 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                 stageLog(
                     ctx,
                     "PBURST",
-                    `precreate out=${precreateBurst.transfers} dest=${precreateBurst.destinations} median=${precreateBurst.medianSol.toFixed(3)} ` +
+                    `precreate out=${precreateBurst.transfers} dest=${precreateBurst.destinations} total=${precreateBurst.totalSol.toFixed(3)} median=${precreateBurst.medianSol.toFixed(3)} ` +
                     `rel_std=${precreateBurst.relStdDev.toFixed(2)} ratio=${precreateBurst.amountRatio.toFixed(2)}`
                 );
             }
@@ -711,7 +712,8 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                     reason:
                         `precreate uniform outbound burst ${precreateBurst.transfers} transfers ` +
                         `to ${precreateBurst.destinations} destinations ` +
-                        `(median ${precreateBurst.medianSol.toFixed(3)} SOL, rel_std ${precreateBurst.relStdDev.toFixed(2)})`,
+                        `(total ${precreateBurst.totalSol.toFixed(3)} SOL, ` +
+                        `median ${precreateBurst.medianSol.toFixed(3)} SOL, rel_std ${precreateBurst.relStdDev.toFixed(2)})`,
                     funder,
                     uniqueCounterparties,
                     compressedWindowSec,

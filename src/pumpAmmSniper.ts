@@ -1128,13 +1128,18 @@ function classifyInboundSprayPattern(inboundTransfers: Array<{ source: string; s
 }
 
 function classifyPrecreateOutboundBurst(outboundTransfers: Array<{ destination: string; sol: number }>) {
-    const positive = outboundTransfers.filter((t) => Number.isFinite(t.sol) && t.sol > 0);
+    const positive = outboundTransfers.filter(
+        (t) =>
+            Number.isFinite(t.sol) &&
+            t.sol >= CONFIG.CREATOR_RISK_PRECREATE_BURST_MIN_TRANSFER_SOL
+    );
     if (!positive.length) {
         return {
             detected: false,
             transfers: 0,
             destinations: 0,
             medianSol: 0,
+            totalSol: 0,
             relStdDev: Infinity,
             amountRatio: Infinity,
         };
@@ -1142,6 +1147,7 @@ function classifyPrecreateOutboundBurst(outboundTransfers: Array<{ destination: 
 
     const values = positive.map((t) => t.sol).sort((a, b) => a - b);
     const destinations = new Set(positive.map((t) => t.destination)).size;
+    const totalSol = values.reduce((sum, v) => sum + v, 0);
     const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
     const variance = values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / values.length;
     const stdDev = Math.sqrt(Math.max(0, variance));
@@ -1155,6 +1161,7 @@ function classifyPrecreateOutboundBurst(outboundTransfers: Array<{ destination: 
     const detected =
         positive.length >= CONFIG.CREATOR_RISK_PRECREATE_BURST_MIN_TRANSFERS &&
         destinations >= CONFIG.CREATOR_RISK_PRECREATE_BURST_MIN_DESTINATIONS &&
+        totalSol >= CONFIG.CREATOR_RISK_PRECREATE_BURST_MIN_TOTAL_SOL &&
         medianSol >= CONFIG.CREATOR_RISK_PRECREATE_BURST_MIN_MEDIAN_SOL &&
         medianSol <= CONFIG.CREATOR_RISK_PRECREATE_BURST_MAX_MEDIAN_SOL &&
         relStdDev <= CONFIG.CREATOR_RISK_PRECREATE_BURST_MAX_REL_STDDEV &&
@@ -1165,6 +1172,7 @@ function classifyPrecreateOutboundBurst(outboundTransfers: Array<{ destination: 
         transfers: positive.length,
         destinations,
         medianSol,
+        totalSol,
         relStdDev,
         amountRatio,
     };
