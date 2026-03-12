@@ -12,6 +12,7 @@ export type CreatorRiskResult = {
     ok: boolean;
     reason?: string;
     transientError?: boolean;
+    strictPreEntryFlowRequired?: boolean;
     latestObservedSignature?: string | null;
     latestObservedBlockTime?: number | null;
     deepChecksComplete?: boolean;
@@ -33,6 +34,9 @@ export type CreatorRiskResult = {
     directAmmReentrySig?: string | null;
     creatorSeedSol?: number;
     creatorSeedPctOfCurrentLiq?: number;
+    freshFundedHighSeed?: boolean;
+    freshFundingSol?: number;
+    freshFundingAgeSec?: number | null;
     inboundSpraySources?: number;
     precreateBurstTransfers?: number;
     precreateLargeBurstTransfers?: number;

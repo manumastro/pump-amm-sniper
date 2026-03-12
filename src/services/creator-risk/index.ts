@@ -109,6 +109,13 @@ type PrecreateDispersalSetupResult = {
     windowSec: number | null;
 };
 
+type FreshFundedHighSeedResult = {
+    strictFlowRequired: boolean;
+    blockDetected: boolean;
+    fundingSol: number;
+    fundingAgeSec: number | null;
+};
+
 type CloseAccountBurstResult = {
     detected: boolean;
     txs: number;
@@ -504,6 +511,51 @@ function classifyPrecreateDispersalSetupPattern(
     };
 }
 
+function classifyFreshFundedHighSeed(
+    parsedCreatorRiskTxs: ParsedCreatorRiskTx[],
+    creatorAddress: string,
+    createPoolBlockTime: number | null | undefined,
+    creatorSeedSol: number,
+    creatorSeedPctOfCurrentLiq: number,
+    uniqueCounterparties: number,
+): FreshFundedHighSeedResult {
+    const createTime = Number.isFinite(createPoolBlockTime) ? Number(createPoolBlockTime) : null;
+    if (!createTime) {
+        return { strictFlowRequired: false, blockDetected: false, fundingSol: 0, fundingAgeSec: null };
+    }
+
+    const inbound = extractInboundTransfersFromParsedCreatorRiskTxs(parsedCreatorRiskTxs, creatorAddress)
+        .filter((transfer) => transfer.blockTime <= createTime)
+        .sort((a, b) => b.blockTime - a.blockTime || b.sol - a.sol);
+
+    const latestFunding = inbound.find(
+        (transfer) =>
+            transfer.sol >= CONFIG.CREATOR_RISK_FRESH_FUNDED_HIGH_SEED_MIN_FUNDING_SOL
+    );
+    if (!latestFunding) {
+        return { strictFlowRequired: false, blockDetected: false, fundingSol: 0, fundingAgeSec: null };
+    }
+
+    const fundingAgeSec = Math.max(0, createTime - latestFunding.blockTime);
+    const strictFlowRequired =
+        CONFIG.CREATOR_RISK_FRESH_FUNDED_HIGH_SEED_STRICT_FLOW_ENABLED &&
+        latestFunding.sol >= CONFIG.CREATOR_RISK_FRESH_FUNDED_HIGH_SEED_MIN_FUNDING_SOL &&
+        fundingAgeSec <= CONFIG.CREATOR_RISK_FRESH_FUNDED_HIGH_SEED_MAX_FUNDING_AGE_SEC &&
+        creatorSeedSol >= CONFIG.CREATOR_RISK_FRESH_FUNDED_HIGH_SEED_MIN_SEED_SOL;
+    const blockDetected =
+        CONFIG.CREATOR_RISK_FRESH_FUNDED_HIGH_SEED_BLOCK_ENABLED &&
+        strictFlowRequired &&
+        creatorSeedPctOfCurrentLiq >= CONFIG.CREATOR_RISK_FRESH_FUNDED_HIGH_SEED_MIN_SEED_PCT_OF_LIQ &&
+        uniqueCounterparties <= CONFIG.CREATOR_RISK_FRESH_FUNDED_HIGH_SEED_MAX_COUNTERPARTIES;
+
+    return {
+        strictFlowRequired,
+        blockDetected,
+        fundingSol: latestFunding.sol,
+        fundingAgeSec,
+    };
+}
+
 function classifyCloseAccountBurst(parsedCreatorRiskTxs: ParsedCreatorRiskTx[], creatorAddress: string): CloseAccountBurstResult {
     const closeEvents = parsedCreatorRiskTxs
         .filter(({ tx }) => getFeePayer(tx) === creatorAddress)
@@ -605,6 +657,7 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
         if (
             normalized.includes("creator in historical rug blacklist") ||
             normalized.includes("funder blacklisted") ||
+            normalized.includes("fresh-funded high-seed creator") ||
             normalized.includes("relay funding recent on standard pool") ||
             normalized.includes("relay funding recent + micro burst") ||
             normalized.includes("concentrated inbound funding") ||
@@ -892,6 +945,14 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                 creatorSeedSol > 0 && options.entrySolLiquidity && options.entrySolLiquidity > 0
                     ? options.entrySolLiquidity / creatorSeedSol
                     : Infinity;
+            const freshFundedHighSeed = classifyFreshFundedHighSeed(
+                parsedCreatorRiskTxs,
+                creatorAddress,
+                options.createPoolBlockTime,
+                creatorSeedSol,
+                creatorSeedPctOfCurrentLiq,
+                uniqueCounterparties,
+            );
             const sprayOutbound = deps.classifySprayOutboundPattern(outboundTransfers);
             const sprayInbound = deps.classifyInboundSprayPattern(inboundTransfers);
             let setupBurst = classifySetupBurst(parsedCreatorRiskTxs, creatorAddress);
@@ -937,6 +998,15 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                     ctx,
                     "SEED",
                     `creator=${creatorSeedSol.toFixed(3)} SOL pct=${creatorSeedPctOfCurrentLiq.toFixed(2)}% growth=${creatorSeedGrowthMultiple.toFixed(2)}x`
+                );
+            }
+            if (freshFundedHighSeed.strictFlowRequired) {
+                stageLog(
+                    ctx,
+                    "FFSEED",
+                    `fund=${freshFundedHighSeed.fundingSol.toFixed(3)} age=${freshFundedHighSeed.fundingAgeSec ?? "n/a"}s ` +
+                    `seed=${creatorSeedSol.toFixed(3)} pct=${creatorSeedPctOfCurrentLiq.toFixed(2)}% cp=${uniqueCounterparties} ` +
+                    `block=${freshFundedHighSeed.blockDetected ? "yes" : "no"}`
                 );
             }
             if (sprayInbound.detected) {
@@ -1027,6 +1097,28 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                     uniqueCounterparties,
                     compressedWindowSec,
                     burner,
+                });
+            }
+
+            if (
+                freshFundedHighSeed.blockDetected
+            ) {
+                return returnEarlyDecision({
+                    ok: false,
+                    reason:
+                        `fresh-funded high-seed creator ${freshFundedHighSeed.fundingSol.toFixed(3)} SOL ` +
+                        `${freshFundedHighSeed.fundingAgeSec ?? "n/a"}s before create ` +
+                        `(seed ${creatorSeedSol.toFixed(3)} SOL, ${creatorSeedPctOfCurrentLiq.toFixed(2)}% liq, cp ${uniqueCounterparties})`,
+                    funder,
+                    uniqueCounterparties,
+                    compressedWindowSec,
+                    burner,
+                    strictPreEntryFlowRequired: true,
+                    creatorSeedSol,
+                    creatorSeedPctOfCurrentLiq,
+                    freshFundedHighSeed: true,
+                    freshFundingSol: freshFundedHighSeed.fundingSol,
+                    freshFundingAgeSec: freshFundedHighSeed.fundingAgeSec,
                 });
             }
 
@@ -1733,8 +1825,12 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                 creatorCashoutDestination: creatorCashout.destination,
                 relayFundingRoot: relayFunding.root,
                 directAmmReentrySig: directAmmReentry.signature,
+                strictPreEntryFlowRequired: freshFundedHighSeed.strictFlowRequired,
                 creatorSeedSol,
                 creatorSeedPctOfCurrentLiq,
+                freshFundedHighSeed: freshFundedHighSeed.strictFlowRequired,
+                freshFundingSol: freshFundedHighSeed.fundingSol,
+                freshFundingAgeSec: freshFundedHighSeed.fundingAgeSec,
                 inboundSpraySources: sprayInbound.sources,
                 precreateBurstTransfers: precreateBurst.transfers,
                 setupBurstCreates: setupBurst.creates,

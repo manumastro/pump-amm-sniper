@@ -444,7 +444,15 @@ async function handleNewPool(connection: Connection, signature: string) {
 
         if (MONITOR_ONLY) {
             if (CONFIG.PRE_BUY_WAIT_MS > 0) {
-                const preEntry = await preEntryWaitAndCheck(connection, signature, poolAddress, tokenMint, liquiditySOL, ctx);
+                const preEntry = await preEntryWaitAndCheck(
+                    connection,
+                    signature,
+                    poolAddress,
+                    tokenMint,
+                    liquiditySOL,
+                    ctx,
+                    creatorRisk,
+                );
                 if (!preEntry.ok) {
                     console.log(`🛑 SKIP: pre-entry guard (${preEntry.reason})`);
                     finalStatus = "SKIP: pre-entry guard";
@@ -511,7 +519,15 @@ async function handleNewPool(connection: Connection, signature: string) {
         }
 
         if (CONFIG.PRE_BUY_WAIT_MS > 0) {
-            const preEntry = await preEntryWaitAndCheck(connection, signature, poolAddress, tokenMint, liquiditySOL, ctx);
+            const preEntry = await preEntryWaitAndCheck(
+                connection,
+                signature,
+                poolAddress,
+                tokenMint,
+                liquiditySOL,
+                ctx,
+                creatorRisk,
+            );
             if (!preEntry.ok) {
                 console.log(`🛑 SKIP: pre-entry guard (${preEntry.reason})`);
                 finalStatus = "SKIP: pre-entry guard";
@@ -640,6 +656,7 @@ async function waitForPreEntryFlowSignal(
     poolAddress: string,
     tokenMint: string,
     ctx: string,
+    options: { strictQuoteImprovementRequired?: boolean } = {},
 ): Promise<{ ok: boolean; reason?: string }> {
     const windowMs = Math.max(0, CONFIG.PRE_BUY_WAIT_MS);
     if (windowMs <= 0) return { ok: true };
@@ -650,7 +667,13 @@ async function waitForPreEntryFlowSignal(
     const deadlineMs = Date.now() + windowMs;
     const pollMs = Math.max(100, CONFIG.PRE_BUY_CONFIRM_INTERVAL_MS);
     const minTrades = Math.max(1, CONFIG.PRE_BUY_SIGNAL_MIN_TRADES);
-    const minQuoteImprovementPct = CONFIG.PRE_BUY_SIGNAL_MIN_QUOTE_IMPROVEMENT_PCT;
+    const strictQuoteImprovementRequired = options.strictQuoteImprovementRequired === true;
+    const minQuoteImprovementPct = strictQuoteImprovementRequired
+        ? Math.max(
+            CONFIG.PRE_BUY_SIGNAL_MIN_QUOTE_IMPROVEMENT_PCT,
+            CONFIG.PRE_BUY_STRICT_SIGNAL_MIN_QUOTE_IMPROVEMENT_PCT,
+        )
+        : CONFIG.PRE_BUY_SIGNAL_MIN_QUOTE_IMPROVEMENT_PCT;
 
     let baselineExitQuoteSol: number | null = null;
     let baselineTokenOutAtomic: BN | null = null;
@@ -717,7 +740,7 @@ async function waitForPreEntryFlowSignal(
             }
         }
 
-        if (tradeCount >= minTrades) {
+        if (!strictQuoteImprovementRequired && tradeCount >= minTrades) {
             stageLog(ctx, "WAIT", `pre-entry flow ok: ${tradeCount} pool trades seen (min ${minTrades})`);
             return { ok: true };
         }
@@ -727,7 +750,9 @@ async function waitForPreEntryFlowSignal(
 
     return {
         ok: false,
-        reason: `no quote improvement and only < ${minTrades} pool trades within ${windowMs}ms`,
+        reason: strictQuoteImprovementRequired
+            ? `no strict quote improvement >= ${minQuoteImprovementPct.toFixed(2)}% within ${windowMs}ms`
+            : `no quote improvement and only < ${minTrades} pool trades within ${windowMs}ms`,
     };
 }
 
@@ -738,10 +763,13 @@ async function preEntryWaitAndCheck(
     tokenMint: string,
     baselineLiquiditySol: number,
     ctx: string,
+    creatorRisk?: CreatorRiskResult,
 ): Promise<{ ok: boolean; reason?: string; currentLiquiditySol: number }> {
     await waitForFirstPoolTrade(connection, createSignature, poolAddress, ctx);
 
-    const flowSignal = await waitForPreEntryFlowSignal(connection, createSignature, poolAddress, tokenMint, ctx);
+    const flowSignal = await waitForPreEntryFlowSignal(connection, createSignature, poolAddress, tokenMint, ctx, {
+        strictQuoteImprovementRequired: creatorRisk?.strictPreEntryFlowRequired === true,
+    });
     if (!flowSignal.ok) {
         return { ok: false, reason: flowSignal.reason || "pre-entry flow gate failed", currentLiquiditySol: baselineLiquiditySol };
     }
