@@ -99,11 +99,14 @@ export type PaperTradeResult = {
     ok: boolean;
     reason?: string;
     finalStatus?: string;
+    pnlSol?: number;
+    pnlPct?: number;
 };
 
 export type PaperSimulationOptions = {
     forceHoldMs?: number;
     suppressCreatorRiskRecheck?: boolean;
+    auditMode?: boolean;
 };
 
 export type PreBuyEntryValidationResult = {

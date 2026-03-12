@@ -257,6 +257,46 @@ Log:
 - `TOP10 | unavailable (...) -> fail-open`
 - `TOP10 | unavailable (...) -> fail-closed`
 
+### 1.8 Shadow Audit Dei Filtri
+Scopo:
+- misurare l'upside perso su alcuni filtri senza cambiare il path decisionale live
+- capire se un filtro sta scartando troppe operazioni non-rug
+
+Regola:
+- lo shadow audit non apre trade live
+- lo shadow audit non cambia `skip`, `probation`, `buy` o `sell` del bot
+- gira solo come simulazione silenziosa aggiuntiva su casi mirati
+
+Target attuali:
+- `creator risk` con motivo `unique counterparties ...`
+- `pre-buy top10` borderline in finestra configurabile
+
+Config:
+- `SHADOW_AUDIT_ENABLED`
+- `SHADOW_AUDIT_CREATOR_UNIQUE_COUNTERPARTIES_ENABLED`
+- `SHADOW_AUDIT_TOP10_ENABLED`
+- `SHADOW_AUDIT_TOP10_MIN_PCT`
+- `SHADOW_AUDIT_TOP10_MAX_PCT`
+
+Comportamento:
+- se un evento matcha il filtro auditabile, il bot esegue una `paper simulation` silenziosa
+- la simulazione audit lascia attivi gli altri guard rail del motore paper
+- l'esito viene salvato come telemetria aggiuntiva, non come operazione reale
+
+Output:
+- evento log `AUDIT | {...}`
+- riepilogo in `logs/paper-report.json` sotto `shadowAuditSummary`
+- riepilogo testo in `logs/paper-report.txt` sotto `Shadow audit summary`
+
+Uso pratico:
+- serve per stimare `quanti casi bloccati sarebbero stati profittevoli`
+- serve per stimare `quanto pnl teorico abbiamo lasciato sul tavolo` per filtro
+- non sostituisce il parser Solscan: Solscan resta strumento di drill-down manuale sui casi piu interessanti
+
+Nota:
+- se un filtro oggi manda il caso in `probation` invece che in `skip`, lo shadow audit sul ramo `skip` non parte
+- per questo motivo i bucket auditati vanno scelti in modo coerente con la policy reale del filtro
+
 ## 2. Durante hold
 
 Questi controlli possono far uscire prima del `AUTO_SELL_DELAY_MS`.

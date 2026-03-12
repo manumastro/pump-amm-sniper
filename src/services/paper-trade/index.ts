@@ -118,7 +118,9 @@ export function createPaperTradeService(deps: PaperTradeDeps) {
         };
 
         try {
-            stageLog(ctx, "PAPER", "simulate buy->sell");
+            if (!options?.auditMode) {
+                stageLog(ctx, "PAPER", "simulate buy->sell");
+            }
             let tokenDecimals = 6;
             try {
                 tokenDecimals = await deps.getMintDecimals(connection, tokenMint);
@@ -150,8 +152,10 @@ export function createPaperTradeService(deps: PaperTradeDeps) {
             const tokenOutUi = preBuy.tokenOutUi;
             const entrySpotSolPerToken = preBuy.entrySpotSolPerToken || 0;
             const orientation = getPoolOrientation(entryState, tokenMint);
-            stageLog(ctx, "BUY_SPOT", `~${formatSolCompact(entrySpotSolPerToken)}/token`);
-            stageLog(ctx, "BUY_QUOTE", `${tokenOutUi.toFixed(6)} token for ${formatSolDecimal(CONFIG.TRADE_AMOUNT_SOL)}`);
+            if (!options?.auditMode) {
+                stageLog(ctx, "BUY_SPOT", `~${formatSolCompact(entrySpotSolPerToken)}/token`);
+                stageLog(ctx, "BUY_QUOTE", `${tokenOutUi.toFixed(6)} token for ${formatSolDecimal(CONFIG.TRADE_AMOUNT_SOL)}`);
+            }
 
             const suspiciousRelay =
                 CONFIG.HOLD_SUSPICIOUS_RELAY_SHORT_HOLD_ENABLED &&
@@ -166,9 +170,9 @@ export function createPaperTradeService(deps: PaperTradeDeps) {
                     ? Math.max(1000, CONFIG.HOLD_SUSPICIOUS_RELAY_SHORT_HOLD_MS)
                     : Math.max(1000, CONFIG.AUTO_SELL_DELAY_MS);
 
-            if (forcedProbationHoldMs > 0) {
+            if (!options?.auditMode && forcedProbationHoldMs > 0) {
                 stageLog(ctx, "HOLD", `probation hold ${effectiveHoldMs}ms (paper creator-risk bypass)`);
-            } else if (suspiciousRelay) {
+            } else if (!options?.auditMode && suspiciousRelay) {
                 stageLog(
                     ctx,
                     "HOLD",
@@ -246,10 +250,12 @@ export function createPaperTradeService(deps: PaperTradeDeps) {
             if (!Number.isFinite(solOut) || solOut <= 0) {
                 const pnlSol = -CONFIG.TRADE_AMOUNT_SOL;
                 const pnlPct = -100;
-                stageLog(ctx, "SELL_SPOT", `~${formatSolCompact(0)}/token`);
-                stageLog(ctx, "SELL_QUOTE", `${formatSolDecimal(0)} for ${tokenOutUi.toFixed(6)} token`);
-                stageLog(ctx, "PNL", `-${formatSolDecimal(Math.abs(pnlSol))} (${pnlPct.toFixed(2)}%)`);
-                return { ok: false, reason: "exit returned 0 SOL", finalStatus: "PAPER LOSS" };
+                if (!options?.auditMode) {
+                    stageLog(ctx, "SELL_SPOT", `~${formatSolCompact(0)}/token`);
+                    stageLog(ctx, "SELL_QUOTE", `${formatSolDecimal(0)} for ${tokenOutUi.toFixed(6)} token`);
+                    stageLog(ctx, "PNL", `-${formatSolDecimal(Math.abs(pnlSol))} (${pnlPct.toFixed(2)}%)`);
+                }
+                return { ok: false, reason: "exit returned 0 SOL", finalStatus: "PAPER LOSS", pnlSol, pnlPct };
             }
             if (
                 Number.isFinite(exitSolLiquidity) &&
@@ -266,18 +272,22 @@ export function createPaperTradeService(deps: PaperTradeDeps) {
             const pnlSol = solOut - CONFIG.TRADE_AMOUNT_SOL;
             const pnlPct = (pnlSol / CONFIG.TRADE_AMOUNT_SOL) * 100;
 
-            stageLog(ctx, "SELL_SPOT", `~${formatSolCompact(exitSpotSolPerToken)}/token`);
-            stageLog(ctx, "SELL_QUOTE", `${formatSolDecimal(solOut)} for ${tokenOutUi.toFixed(6)} token`);
-            stageLog(ctx, "PNL", `${pnlSol >= 0 ? "+" : "-"}${formatSolDecimal(Math.abs(pnlSol))} (${pnlPct.toFixed(2)}%)`);
+            if (!options?.auditMode) {
+                stageLog(ctx, "SELL_SPOT", `~${formatSolCompact(exitSpotSolPerToken)}/token`);
+                stageLog(ctx, "SELL_QUOTE", `${formatSolDecimal(solOut)} for ${tokenOutUi.toFixed(6)} token`);
+                stageLog(ctx, "PNL", `${pnlSol >= 0 ? "+" : "-"}${formatSolDecimal(Math.abs(pnlSol))} (${pnlPct.toFixed(2)}%)`);
+            }
             if (pnlPct <= -Math.abs(CONFIG.PAPER_TRADE_MAX_LOSS_PCT)) {
                 return {
                     ok: false,
                     reason: `pnl ${pnlPct.toFixed(2)}% <= -${Math.abs(CONFIG.PAPER_TRADE_MAX_LOSS_PCT)}%`,
                     finalStatus: "PAPER LOSS",
+                    pnlSol,
+                    pnlPct,
                 };
             }
 
-            return { ok: true };
+            return { ok: true, finalStatus: "COMPLETED", pnlSol, pnlPct };
         } catch (e: any) {
             console.log(`⚠️ PAPER_TRADE failed: ${e.message}`);
             return { ok: false, reason: e?.message || "paper simulation failed" };

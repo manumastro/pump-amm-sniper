@@ -125,6 +125,49 @@ function isRateLimitedMessage(message?: string): boolean {
     );
 }
 
+async function runShadowAudit(
+    connection: Connection,
+    ctx: string,
+    filter: string,
+    reason: string,
+    paperTradeService: ReturnType<typeof createPaperTradeService>,
+    poolAddress: string,
+    tokenMint: string,
+    liquiditySOL: number,
+    creatorAddress?: string,
+    createPoolSignature?: string,
+    createPoolBlockTime?: number | null,
+    creatorRisk?: CreatorRiskResult,
+    options?: PaperSimulationOptions,
+    extra?: Record<string, unknown>,
+) {
+    if (!CONFIG.SHADOW_AUDIT_ENABLED || !MONITOR_ONLY || !CONFIG.PAPER_TRADE_ENABLED) return;
+    const startedAt = Date.now();
+    const result = await paperTradeService.runSimulation(
+        connection,
+        poolAddress,
+        tokenMint,
+        liquiditySOL,
+        ctx,
+        creatorAddress,
+        createPoolSignature,
+        createPoolBlockTime,
+        creatorRisk,
+        { ...options, auditMode: true },
+    );
+    stageLog(ctx, "AUDIT", JSON.stringify({
+        filter,
+        reason,
+        ok: result.ok,
+        finalStatus: result.finalStatus || null,
+        resultReason: result.reason || null,
+        pnlSol: typeof result.pnlSol === "number" ? Number(result.pnlSol.toFixed(9)) : null,
+        pnlPct: typeof result.pnlPct === "number" ? Number(result.pnlPct.toFixed(4)) : null,
+        durationMs: Date.now() - startedAt,
+        ...extra,
+    }));
+}
+
 // Initialize SDKs
 let onlineSdk: OnlinePumpAmmSdk;
 let offlineSdk: PumpAmmSdk;
@@ -437,6 +480,29 @@ async function handleNewPool(connection: Connection, signature: string) {
                     );
                 }
                 console.log(`🛑 SKIP: creator risk (${creatorRisk.reason})`);
+                if (
+                    CONFIG.SHADOW_AUDIT_CREATOR_UNIQUE_COUNTERPARTIES_ENABLED &&
+                    (creatorRisk.reason || "").toLowerCase().includes("unique counterparties")
+                ) {
+                    await runShadowAudit(
+                        connection,
+                        ctx,
+                        "creator-risk-unique-counterparties",
+                        creatorRisk.reason || "unique counterparties",
+                        paperTradeService,
+                        poolAddress,
+                        tokenMint,
+                        liquiditySOL,
+                        creatorAddress || undefined,
+                        signature,
+                        tx.blockTime || null,
+                        creatorRisk,
+                        {
+                            forceHoldMs: creatorRiskService.getProbationHoldMs(creatorRisk.reason),
+                            suppressCreatorRiskRecheck: true,
+                        },
+                    );
+                }
                 finalStatus = "SKIP: creator risk";
                 return;
             }
@@ -463,6 +529,34 @@ async function handleNewPool(connection: Connection, signature: string) {
             const top10 = await top10Service.runCheck(connection, tokenMint, poolAddress, ctx);
             if (!top10.ok) {
                 console.log(`🛑 SKIP: pre-buy top10 (${top10.reason})`);
+                if (
+                    CONFIG.SHADOW_AUDIT_TOP10_ENABLED &&
+                    typeof top10.top10Pct === "number" &&
+                    top10.top10Pct >= CONFIG.SHADOW_AUDIT_TOP10_MIN_PCT &&
+                    top10.top10Pct <= CONFIG.SHADOW_AUDIT_TOP10_MAX_PCT
+                ) {
+                    await runShadowAudit(
+                        connection,
+                        ctx,
+                        "pre-buy-top10-borderline",
+                        top10.reason || "pre-buy top10",
+                        paperTradeService,
+                        poolAddress,
+                        tokenMint,
+                        liquiditySOL,
+                        creatorAddress || undefined,
+                        signature,
+                        tx.blockTime || null,
+                        creatorRisk,
+                        creatorRiskProbation
+                            ? {
+                                forceHoldMs: creatorRiskProbationHoldMs,
+                                suppressCreatorRiskRecheck: true,
+                              }
+                            : undefined,
+                        { top10Pct: Number(top10.top10Pct.toFixed(2)) },
+                    );
+                }
                 finalStatus = "SKIP: pre-buy top10";
                 return;
             }

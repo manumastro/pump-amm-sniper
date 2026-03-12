@@ -117,6 +117,7 @@ export async function waitForExitStateWithLiquidityStop(
     let lastPoolChurnCheckAtMs = 0;
     let lastPoolChurnWarnAtMs = 0;
     let lastSellQuoteCollapseCheckAtMs = 0;
+    let lastWinnerCheckAtMs = 0;
     const seenPoolSignatures = new Set<string>();
     const seenCreatorSignatures = new Set<string>();
     const seenCreatorSpraySignatures = new Set<string>();
@@ -128,6 +129,7 @@ export async function waitForExitStateWithLiquidityStop(
     const creatorCloseAccountEvents: Array<{ closeCount: number; eventTimeSec: number; signature: string }> = [];
     const baselineCreatorCashoutSol = Number(initialCreatorRisk?.creatorCashoutSol || 0);
     const baselineExitQuoteSol = getExitQuoteSolFromState(entryState, tokenMint, tokenOutAtomic);
+    let peakExitQuoteSol = baselineExitQuoteSol || 0;
     if (createPoolSignature) seenPoolSignatures.add(createPoolSignature);
     if (createPoolSignature) seenCreatorSignatures.add(createPoolSignature);
     if (createPoolSignature) seenCreatorSpraySignatures.add(createPoolSignature);
@@ -225,6 +227,48 @@ export async function waitForExitStateWithLiquidityStop(
                         }
                     } else {
                         console.log(`⚠️ CREATOR RISK EXIT: ${creatorRisk.reason}`);
+                        return s;
+                    }
+                }
+            }
+
+            if (
+                CONFIG.HOLD_WINNER_MANAGEMENT_ENABLED &&
+                Date.now() - startedAtMs >= Math.max(0, CONFIG.HOLD_WINNER_MIN_HOLD_MS) &&
+                Date.now() - lastWinnerCheckAtMs >= scaledInterval(CONFIG.HOLD_WINNER_CHECK_INTERVAL_MS)
+            ) {
+                lastWinnerCheckAtMs = Date.now();
+                const currentExitQuoteSol = getExitQuoteSolFromState(s, tokenMint, tokenOutAtomic);
+                if (currentExitQuoteSol !== null && currentExitQuoteSol > 0) {
+                    peakExitQuoteSol = Math.max(peakExitQuoteSol, currentExitQuoteSol);
+                    const currentPnlPct = ((currentExitQuoteSol - CONFIG.TRADE_AMOUNT_SOL) / CONFIG.TRADE_AMOUNT_SOL) * 100;
+                    const peakPnlPct = ((peakExitQuoteSol - CONFIG.TRADE_AMOUNT_SOL) / CONFIG.TRADE_AMOUNT_SOL) * 100;
+                    const drawdownFromPeakPct =
+                        peakExitQuoteSol > 0
+                            ? ((peakExitQuoteSol - currentExitQuoteSol) / peakExitQuoteSol) * 100
+                            : 0;
+                    const minPeakSol = Math.max(0, CONFIG.HOLD_WINNER_MIN_PEAK_SOL);
+                    if (
+                        CONFIG.HOLD_WINNER_HARD_TAKE_PROFIT_PCT > 0 &&
+                        currentPnlPct >= CONFIG.HOLD_WINNER_HARD_TAKE_PROFIT_PCT
+                    ) {
+                        console.log(
+                            `⚠️ WINNER TAKE PROFIT EXIT: ` +
+                            `${currentExitQuoteSol.toFixed(6)} SOL (${currentPnlPct.toFixed(2)}%)`
+                        );
+                        return s;
+                    }
+                    if (
+                        peakExitQuoteSol >= minPeakSol &&
+                        peakPnlPct >= CONFIG.HOLD_WINNER_ARM_PNL_PCT &&
+                        drawdownFromPeakPct >= Math.abs(CONFIG.HOLD_WINNER_TRAILING_DROP_PCT)
+                    ) {
+                        console.log(
+                            `⚠️ WINNER TRAILING EXIT: ` +
+                            `peak ${peakExitQuoteSol.toFixed(6)} SOL (${peakPnlPct.toFixed(2)}%) -> ` +
+                            `${currentExitQuoteSol.toFixed(6)} SOL (${currentPnlPct.toFixed(2)}%), ` +
+                            `drawdown ${drawdownFromPeakPct.toFixed(2)}%`
+                        );
                         return s;
                     }
                 }

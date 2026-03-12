@@ -700,6 +700,15 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
             return true;
         }
 
+        if (
+            CONFIG.PAPER_CREATOR_RISK_EXTREME_UNIQUE_COUNTERPARTIES_BLOCK_ENABLED &&
+            uniqueCounterparties >= CONFIG.PAPER_CREATOR_RISK_EXTREME_UNIQUE_COUNTERPARTIES_MIN &&
+            solOutTransfers >= CONFIG.PAPER_CREATOR_RISK_EXTREME_UNIQUE_COUNTERPARTIES_MIN_OUT_TRANSFERS &&
+            solInTransfers <= CONFIG.PAPER_CREATOR_RISK_EXTREME_UNIQUE_COUNTERPARTIES_MAX_IN_TRANSFERS
+        ) {
+            return true;
+        }
+
         return false;
     }
 

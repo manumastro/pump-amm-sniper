@@ -94,6 +94,7 @@ function getEvent(id) {
       creatorCashoutRelPct: null,
       creatorCashoutScore: null,
       creatorCashoutDest: null,
+      shadowAudits: [],
     });
   }
   return events.get(id);
@@ -322,6 +323,18 @@ function parseLine(logPath, line) {
       return;
     }
 
+    if (stage === 'AUDIT') {
+      ev = ev || ensureCurrentEvent(logPath, ts);
+      try {
+        const payload = JSON.parse(message);
+        if (!Array.isArray(ev.shadowAudits)) ev.shadowAudits = [];
+        ev.shadowAudits.push({ ...payload, ts });
+      } catch {
+        // ignore malformed audit payloads
+      }
+      return;
+    }
+
     if (stage === 'END') {
       if (!ev) return;
       const m = message.match(/^(.*?)\s+\((\d+)ms(?:,\s*active=\d+)?\)$/);
@@ -485,6 +498,55 @@ function summarize() {
       pnlValidityIssue: getPnlValidityIssue(e),
     }));
 
+  const shadowAuditSummary = enriched
+    .flatMap(e => (Array.isArray(e.shadowAudits) ? e.shadowAudits : []).map(a => ({ eventId: e.id, ...a })))
+    .reduce((acc, audit) => {
+      const key = audit.filter || 'unknown';
+      if (!acc[key]) {
+        acc[key] = {
+          filter: key,
+          count: 0,
+          profitableCount: 0,
+          nonProfitableCount: 0,
+          unknownCount: 0,
+          totalPnlSol: 0,
+          avgPnlPct: 0,
+          samples: [],
+        };
+      }
+      const bucket = acc[key];
+      bucket.count += 1;
+      if (typeof audit.pnlSol === 'number' && typeof audit.pnlPct === 'number') {
+        bucket.totalPnlSol += audit.pnlSol;
+        bucket.avgPnlPct += audit.pnlPct;
+        if (audit.pnlSol > 0) bucket.profitableCount += 1;
+        else bucket.nonProfitableCount += 1;
+      } else {
+        bucket.unknownCount += 1;
+      }
+      if (bucket.samples.length < 10) {
+        bucket.samples.push({
+          eventId: audit.eventId,
+          reason: audit.reason || null,
+          finalStatus: audit.finalStatus || null,
+          pnlSol: audit.pnlSol ?? null,
+          pnlPct: audit.pnlPct ?? null,
+          resultReason: audit.resultReason || null,
+          top10Pct: audit.top10Pct ?? null,
+        });
+      }
+      return acc;
+    }, {});
+
+  for (const bucket of Object.values(shadowAuditSummary)) {
+    if (bucket.count - bucket.unknownCount > 0) {
+      bucket.avgPnlPct = Number((bucket.avgPnlPct / (bucket.count - bucket.unknownCount)).toFixed(4));
+    } else {
+      bucket.avgPnlPct = null;
+    }
+    bucket.totalPnlSol = Number(bucket.totalPnlSol.toFixed(9));
+  }
+
   return {
     generatedAt: nowIso(),
     eventsSeen: events.size,
@@ -502,6 +564,7 @@ function summarize() {
     losses,
     winRatePct: validPnl.length ? Number(((wins / validPnl.length) * 100).toFixed(2)) : 0,
     outcomeOperationCount: outcomeOperations.length,
+    shadowAuditSummary: Object.values(shadowAuditSummary).sort((a, b) => b.count - a.count),
     operations: enriched.map(e => ({
       id: e.id,
       startedAt: e.startedAt,
@@ -539,6 +602,7 @@ function summarize() {
       creatorCashoutRelPct: e.creatorCashoutRelPct,
       creatorCashoutScore: e.creatorCashoutScore,
       creatorCashoutDest: e.creatorCashoutDest,
+      shadowAudits: Array.isArray(e.shadowAudits) ? e.shadowAudits : [],
       pnlValidityIssue: getPnlValidityIssue(e),
     })),
     outcomeOperations,
@@ -587,6 +651,14 @@ function writeReports(force = false) {
     `avg pnl (%): ${report.avgPnlPct}`,
     `wins/losses: ${report.wins}/${report.losses}`,
     `win rate: ${report.winRatePct}%`,
+    '',
+    'Shadow audit summary:',
+    ...(report.shadowAuditSummary.length
+      ? report.shadowAuditSummary.map((a) =>
+        `${a.filter}: count=${a.count} profitable=${a.profitableCount} non_profitable=${a.nonProfitableCount} ` +
+        `unknown=${a.unknownCount} total_pnl=${a.totalPnlSol} avg_pnl_pct=${a.avgPnlPct ?? 'n/a'}`
+      )
+      : ['(none)']),
     '',
     'All operations:',
     ...report.operations.map((e, i) =>
