@@ -4,6 +4,11 @@ import { CONFIG } from "../../app/config";
 
 export const WSOL = "So11111111111111111111111111111111111111112";
 
+function toMintString(value: any): string {
+    if (!value) return "";
+    return value?.toBase58?.() || String(value);
+}
+
 export function calcSpotSolPerToken(baseReserve: BN, quoteReserve: BN, tokenDecimals: number): number {
     const baseSol = Number(baseReserve.toString()) / 1e9;
     const quoteTokens = Number(quoteReserve.toString()) / 10 ** tokenDecimals;
@@ -12,10 +17,10 @@ export function calcSpotSolPerToken(baseReserve: BN, quoteReserve: BN, tokenDeci
 }
 
 export function getPoolOrientation(state: any, tokenMint: string): { solIsBase: boolean; tokenIsBase: boolean; hasWsol: boolean } {
-    const baseMintStr = state.baseMint?.toBase58?.() || String(state.baseMint);
+    const baseMintStr = toMintString(state?.baseMint);
     const tokenIsBase = baseMintStr === tokenMint;
     const solIsBase = baseMintStr === WSOL;
-    const hasWsol = solIsBase || !tokenIsBase;
+    const hasWsol = solIsBase;
     return { solIsBase, tokenIsBase, hasWsol };
 }
 

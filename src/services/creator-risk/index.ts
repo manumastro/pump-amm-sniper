@@ -100,6 +100,15 @@ type PrecreateLargeUniformBurstResult = {
     windowSec: number | null;
 };
 
+type PrecreateDispersalSetupResult = {
+    detected: boolean;
+    transfers: number;
+    destinations: number;
+    medianSol: number;
+    totalSol: number;
+    windowSec: number | null;
+};
+
 type CloseAccountBurstResult = {
     detected: boolean;
     txs: number;
@@ -442,6 +451,55 @@ function classifyPrecreateLargeUniformBurst(
         totalSol,
         relStdDev,
         amountRatio,
+        windowSec,
+    };
+}
+
+function classifyPrecreateDispersalSetupPattern(
+    parsedCreatorRiskTxs: ParsedCreatorRiskTx[],
+    creatorAddress: string,
+    setupBurst: SetupBurstResult,
+): PrecreateDispersalSetupResult {
+    const positive = extractOutboundTransfersFromParsedCreatorRiskTxs(parsedCreatorRiskTxs, creatorAddress).filter(
+        (t) => Number.isFinite(t.sol) && t.sol >= CONFIG.CREATOR_RISK_PRECREATE_DISPERSAL_SETUP_MIN_TRANSFER_SOL
+    );
+    if (!positive.length) {
+        return {
+            detected: false,
+            transfers: 0,
+            destinations: 0,
+            medianSol: 0,
+            totalSol: 0,
+            windowSec: null,
+        };
+    }
+
+    const values = positive.map((t) => t.sol).sort((a, b) => a - b);
+    const transfers = positive.length;
+    const destinations = new Set(positive.map((t) => t.destination)).size;
+    const totalSol = values.reduce((sum, v) => sum + v, 0);
+    const medianSol =
+        values.length % 2 === 0
+            ? (values[(values.length / 2) - 1] + values[values.length / 2]) / 2
+            : values[Math.floor(values.length / 2)];
+    const times = positive.map((t) => t.blockTime);
+    const windowSec = Math.max(0, Math.max(...times) - Math.min(...times));
+
+    return {
+        detected:
+            CONFIG.CREATOR_RISK_PRECREATE_DISPERSAL_SETUP_BLOCK_ENABLED &&
+            transfers >= CONFIG.CREATOR_RISK_PRECREATE_DISPERSAL_SETUP_MIN_TRANSFERS &&
+            destinations >= CONFIG.CREATOR_RISK_PRECREATE_DISPERSAL_SETUP_MIN_DESTINATIONS &&
+            totalSol >= CONFIG.CREATOR_RISK_PRECREATE_DISPERSAL_SETUP_MIN_TOTAL_SOL &&
+            medianSol >= CONFIG.CREATOR_RISK_PRECREATE_DISPERSAL_SETUP_MIN_MEDIAN_SOL &&
+            windowSec <= CONFIG.CREATOR_RISK_PRECREATE_DISPERSAL_SETUP_MAX_WINDOW_SEC &&
+            setupBurst.creates >= CONFIG.CREATOR_RISK_PRECREATE_DISPERSAL_SETUP_MIN_SETUP_CREATES &&
+            setupBurst.windowSec !== null &&
+            setupBurst.windowSec <= CONFIG.CREATOR_RISK_PRECREATE_DISPERSAL_SETUP_MAX_SETUP_WINDOW_SEC,
+        transfers,
+        destinations,
+        medianSol,
+        totalSol,
         windowSec,
     };
 }
@@ -1258,6 +1316,11 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
             const concentratedInboundFunding = classifyConcentratedInboundFunding(combinedPrecreateTxs, creatorAddress);
             const precreateBurst = deps.classifyPrecreateOutboundBurst(precreateOutboundTransfers);
             const precreateLargeUniformBurst = classifyPrecreateLargeUniformBurst(combinedPrecreateTxs, creatorAddress);
+            const precreateDispersalSetup = classifyPrecreateDispersalSetupPattern(
+                combinedPrecreateTxs,
+                creatorAddress,
+                setupBurst,
+            );
             if (setupBurst.creates > 0 || setupBurst.lookupTables > 0) {
                 stageLog(
                     ctx,
@@ -1315,6 +1378,15 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                     `rel_std=${precreateLargeUniformBurst.relStdDev.toFixed(2)} ratio=${precreateLargeUniformBurst.amountRatio.toFixed(2)} window=${precreateLargeUniformBurst.windowSec ?? "n/a"}s`
                 );
             }
+            if (precreateDispersalSetup.detected) {
+                stageLog(
+                    ctx,
+                    "PDSUP",
+                    `out=${precreateDispersalSetup.transfers} dest=${precreateDispersalSetup.destinations} total=${precreateDispersalSetup.totalSol.toFixed(3)} ` +
+                    `median=${precreateDispersalSetup.medianSol.toFixed(3)} window=${precreateDispersalSetup.windowSec ?? "n/a"}s ` +
+                    `setup=${setupBurst.creates}/${setupBurst.windowSec ?? "n/a"}s`
+                );
+            }
             stageLog(
                 ctx,
                 "CRISKT",
@@ -1353,6 +1425,32 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                     compressedWindowSec,
                     burner,
                     precreateLargeBurstTransfers: precreateLargeUniformBurst.transfers,
+                    deepChecksComplete: true,
+                    deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
+                }));
+            }
+
+            if (deepChecksComplete && precreateDispersalSetup.detected) {
+                return cacheAndReturn(enrichBaseResult({
+                    ok: false,
+                    reason:
+                        `precreate dispersal + setup burst ${precreateDispersalSetup.transfers} transfers ` +
+                        `to ${precreateDispersalSetup.destinations} destinations ` +
+                        `(total ${precreateDispersalSetup.totalSol.toFixed(3)} SOL, ` +
+                        `median ${precreateDispersalSetup.medianSol.toFixed(3)} SOL, ` +
+                        `setup ${setupBurst.creates} in ${setupBurst.windowSec ?? "n/a"}s)`,
+                    funder,
+                    uniqueCounterparties,
+                    compressedWindowSec,
+                    burner,
+                    precreateDispersalSetupTransfers: precreateDispersalSetup.transfers,
+                    precreateDispersalSetupDestinations: precreateDispersalSetup.destinations,
+                    precreateDispersalSetupTotalSol: precreateDispersalSetup.totalSol,
+                    precreateDispersalSetupMedianSol: precreateDispersalSetup.medianSol,
+                    precreateDispersalSetupWindowSec: precreateDispersalSetup.windowSec,
+                    setupBurstCreates: setupBurst.creates,
+                    setupBurstLookupTables: setupBurst.lookupTables,
+                    setupBurstWindowSec: setupBurst.windowSec,
                     deepChecksComplete: true,
                     deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
                 }));

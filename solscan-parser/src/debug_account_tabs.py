@@ -1,9 +1,12 @@
 import argparse
 import json
 import re
+import signal
 import shutil
 import time
+import traceback
 from dataclasses import asdict, dataclass
+from contextlib import contextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -34,6 +37,29 @@ TOKEN_SUMMARY_FIELDS = [
 ]
 
 
+class StepTimeoutError(TimeoutError):
+    pass
+
+
+@contextmanager
+def time_limit(seconds: int | float | None, label: str):
+    if not seconds or seconds <= 0 or not hasattr(signal, "SIGALRM"):
+        yield
+        return
+
+    def _handle_timeout(_signum, _frame):
+        raise StepTimeoutError(f"{label} exceeded {seconds}s")
+
+    previous_handler = signal.getsignal(signal.SIGALRM)
+    signal.signal(signal.SIGALRM, _handle_timeout)
+    signal.setitimer(signal.ITIMER_REAL, seconds)
+    try:
+        yield
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous_handler)
+
+
 def short_account_variants(address: str) -> set[str]:
     variants = {address}
     if len(address) >= 14:
@@ -61,11 +87,13 @@ class SolscanDebugParser:
         timeout_sec: int,
         settle_sec: float,
         cloudflare_wait_sec: int,
+        step_timeout_sec: int,
     ):
         self.headless = headless
         self.timeout_sec = timeout_sec
         self.settle_sec = settle_sec
         self.cloudflare_wait_sec = cloudflare_wait_sec
+        self.step_timeout_sec = step_timeout_sec
         self.page: ChromiumPage | None = None
 
     def _resolve_chromium_binary(self) -> str:
@@ -114,6 +142,25 @@ class SolscanDebugParser:
         except Exception:
             return ""
 
+    def _page_debug_state(self) -> dict:
+        if not self.page:
+            return {"status": "page_not_initialized"}
+        try:
+            title = (self.page.title or "").strip()
+        except Exception:
+            title = ""
+        try:
+            url = (self.page.url or "").strip()
+        except Exception:
+            url = ""
+        body = self._body_text()
+        return {
+            "status": "ok",
+            "title": title[:200],
+            "url": url[:500],
+            "body_excerpt": body[:1000],
+        }
+
     def _wait_cf_pass(self):
         if not self.page:
             raise RuntimeError("Page not initialized")
@@ -135,9 +182,10 @@ class SolscanDebugParser:
         if not self.page:
             raise RuntimeError("Page not initialized")
         route = "account" if entity_type == "account" else "token"
-        self.page.get(f"https://solscan.io/{route}/{address}")
-        self._wait_cf_pass()
-        time.sleep(self.settle_sec)
+        with time_limit(self.step_timeout_sec, f"open {entity_type} {address}"):
+            self.page.get(f"https://solscan.io/{route}/{address}")
+            self._wait_cf_pass()
+            time.sleep(self.settle_sec)
 
     def _dismiss_cookie_banner(self):
         if not self.page:
@@ -155,14 +203,15 @@ class SolscanDebugParser:
     def _open_tab(self, tab_name: str):
         if not self.page:
             raise RuntimeError("Page not initialized")
-        tab = self.page.ele(f"text:{tab_name}", timeout=2)
-        if not tab:
-            raise RuntimeError(f"Tab not found: {tab_name}")
-        tab.click(by_js=True)
-        time.sleep(self.settle_sec)
-        self._try_enable_absolute_timestamps()
-        if not self.page.ele("xpath://table//tbody//tr", timeout=self.timeout_sec):
-            raise RuntimeError(f"No table rows found on tab {tab_name}")
+        with time_limit(self.step_timeout_sec, f"open tab {tab_name}"):
+            tab = self.page.ele(f"text:{tab_name}", timeout=2)
+            if not tab:
+                raise RuntimeError(f"Tab not found: {tab_name}")
+            tab.click(by_js=True)
+            time.sleep(self.settle_sec)
+            self._try_enable_absolute_timestamps()
+            if not self.page.ele("xpath://table//tbody//tr", timeout=self.timeout_sec):
+                raise RuntimeError(f"No table rows found on tab {tab_name}")
 
     def _try_enable_absolute_timestamps(self):
         if not self.page:
@@ -288,24 +337,37 @@ class SolscanDebugParser:
         return f"/{route}/{address}" in current_url
 
     def _extract_token_summary(self, token: str) -> dict:
-        self._open_entity("token", token)
-        self._dismiss_cookie_banner()
-        body = self._body_text()
-        lines = [line.strip() for line in body.splitlines() if line.strip()]
-        summary: dict[str, str] = {}
-        for index, line in enumerate(lines):
-            if line in TOKEN_SUMMARY_FIELDS:
-                if index + 1 < len(lines):
-                    summary[line] = lines[index + 1]
-        status = "ok" if summary else "summary_not_found"
-        return {
-            "address": token,
-            "summary": summary,
-            "diagnostics": {
-                "status": status,
-                "lines_seen": len(lines),
-            },
-        }
+        try:
+            with time_limit(self.step_timeout_sec, f"token summary {token}"):
+                self._open_entity("token", token)
+                self._dismiss_cookie_banner()
+                body = self._body_text()
+                lines = [line.strip() for line in body.splitlines() if line.strip()]
+                summary: dict[str, str] = {}
+                for index, line in enumerate(lines):
+                    if line in TOKEN_SUMMARY_FIELDS:
+                        if index + 1 < len(lines):
+                            summary[line] = lines[index + 1]
+                status = "ok" if summary else "summary_not_found"
+                return {
+                    "address": token,
+                    "summary": summary,
+                    "diagnostics": {
+                        "status": status,
+                        "lines_seen": len(lines),
+                        "page": self._page_debug_state(),
+                    },
+                }
+        except Exception as exc:
+            return {
+                "address": token,
+                "summary": {},
+                "diagnostics": {
+                    "status": "summary_failed",
+                    "error": str(exc),
+                    "page": self._page_debug_state(),
+                },
+            }
 
     def _current_item_range(self) -> str | None:
         body = self._body_text()
@@ -443,12 +505,22 @@ class SolscanDebugParser:
         end_utc: datetime,
         local_tz: ZoneInfo,
         max_pages: int,
+        progress_cb=None,
     ) -> dict:
         self._open_entity(entity_type, address)
         self._dismiss_cookie_banner()
 
         result: dict[str, dict] = {}
         for tab in tabs:
+            if progress_cb:
+                progress_cb(
+                    {
+                        "entity_type": entity_type,
+                        "address": address,
+                        "tab": tab,
+                        "stage": "opening_tab",
+                    }
+                )
             try:
                 self._open_tab(tab)
             except Exception as exc:
@@ -462,20 +534,39 @@ class SolscanDebugParser:
                         "rows_in_range_count": 0,
                         "rows_with_parsed_timestamp_count": 0,
                         "rows_without_parsed_timestamp_count": 0,
+                        "page": self._page_debug_state(),
                     },
                 }
+                if progress_cb:
+                    progress_cb(
+                        {
+                            "entity_type": entity_type,
+                            "address": address,
+                            "tab": tab,
+                            "stage": "tab_open_failed",
+                            "error": str(exc),
+                        },
+                        result[tab],
+                    )
                 continue
 
             all_rows: list[ScrapeRow] = []
             pagination_warning: str | None = None
             for page_num in range(1, max_pages + 1):
-                page_rows = self._extract_page_rows(
-                    tab_name=tab,
-                    page_num=page_num,
-                    start_utc=start_utc,
-                    end_utc=end_utc,
-                    local_tz=local_tz,
-                )
+                try:
+                    with time_limit(
+                        self.step_timeout_sec, f"extract rows {entity_type}:{address}:{tab}:page{page_num}"
+                    ):
+                        page_rows = self._extract_page_rows(
+                            tab_name=tab,
+                            page_num=page_num,
+                            start_utc=start_utc,
+                            end_utc=end_utc,
+                            local_tz=local_tz,
+                        )
+                except Exception as exc:
+                    pagination_warning = f"page_extract_failed:{exc}"
+                    break
                 if (
                     page_rows
                     and entity_type == "account"
@@ -498,7 +589,13 @@ class SolscanDebugParser:
                     break
                 previous_first_row = page_rows[0].text if page_rows else None
                 previous_item_range = self._current_item_range()
-                moved, move_warning = self._go_next_page(previous_first_row, previous_item_range)
+                try:
+                    with time_limit(
+                        self.step_timeout_sec, f"paginate {entity_type}:{address}:{tab}:page{page_num}"
+                    ):
+                        moved, move_warning = self._go_next_page(previous_first_row, previous_item_range)
+                except Exception as exc:
+                    moved, move_warning = False, f"page_advance_failed:{exc}"
                 if not moved:
                     pagination_warning = move_warning
                     break
@@ -540,8 +637,22 @@ class SolscanDebugParser:
                     "rows_without_parsed_timestamp_count": rows_without_parsed_timestamp,
                     "rows_with_relative_timestamp_count": rows_with_relative_timestamp,
                     "rows_with_absolute_timestamp_count": rows_with_absolute_timestamp,
+                    "page": self._page_debug_state(),
                 },
             }
+            if progress_cb:
+                progress_cb(
+                    {
+                        "entity_type": entity_type,
+                        "address": address,
+                        "tab": tab,
+                        "stage": "tab_complete",
+                        "status": status,
+                        "rows_seen_count": len(rows_seen),
+                        "rows_in_range_count": len(rows_in_range),
+                    },
+                    result[tab],
+                )
         return result
 
 
@@ -590,6 +701,35 @@ def write_payload_file(output_path: Path, payload: dict):
     payload_json = json.dumps(payload, indent=2)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(payload_json, encoding="utf-8")
+
+
+def update_progress_payload(
+    payload: dict,
+    *,
+    output_path: Path | None,
+    stdout_only: bool,
+    warning: str | None = None,
+    progress: dict | None = None,
+    partial_result: dict | None = None,
+):
+    payload["updated_at_utc"] = datetime.now(UTC).isoformat()
+    if progress is not None:
+        payload["progress"] = progress
+    if partial_result is not None:
+        entity_type = partial_result["entity_type"]
+        address = partial_result["address"]
+        tab = partial_result["tab"]
+        tab_data = partial_result["tab_data"]
+        scope = payload.setdefault("results", {}).setdefault(entity_type, {})
+        if scope.get("_address") != address:
+            scope["_address"] = address
+        scope[tab] = tab_data
+    if warning:
+        warnings = payload.setdefault("warnings", [])
+        if warning not in warnings:
+            warnings.append(warning)
+    if output_path and not stdout_only:
+        write_payload_file(output_path=output_path, payload=payload)
 
 
 def main():
@@ -665,6 +805,12 @@ def main():
         default=60,
         help="Max seconds to wait Cloudflare verification",
     )
+    parser.add_argument(
+        "--step-timeout-sec",
+        type=int,
+        default=45,
+        help="Hard timeout per browser step/tab/page",
+    )
     args = parser.parse_args()
 
     local_tz = ZoneInfo(args.tz)
@@ -695,6 +841,7 @@ def main():
         "results": {},
         "warnings": [],
         "partial": False,
+        "progress": {"stage": "initialized"},
     }
     if args.stdout_only:
         with SolscanDebugParser(
@@ -702,6 +849,7 @@ def main():
             timeout_sec=args.timeout_sec,
             settle_sec=args.settle_sec,
             cloudflare_wait_sec=args.cloudflare_wait_sec,
+            step_timeout_sec=args.step_timeout_sec,
         ) as scraper:
             payload["results"]["creator"] = scraper.collect_entity_tabs(
                 entity_type="account",
@@ -733,42 +881,120 @@ def main():
     creator_data: dict = {}
     payload["partial"] = True
     payload["warnings"] = ["bootstrap: scrape started, results may be incomplete if Solscan stalls"]
-    write_payload_file(output_path=output_path, payload=payload)
+    update_progress_payload(
+        payload,
+        output_path=output_path,
+        stdout_only=args.stdout_only,
+        progress={"stage": "bootstrap_written"},
+    )
     print(f"[ok] wrote bootstrap {output_path}")
-
-    with SolscanDebugParser(
-        headless=args.headless,
-        timeout_sec=args.timeout_sec,
-        settle_sec=args.settle_sec,
-        cloudflare_wait_sec=args.cloudflare_wait_sec,
-    ) as scraper:
-        creator_data = scraper.collect_entity_tabs(
-            entity_type="account",
-            address=args.creator,
-            tabs=tabs,
-            start_utc=start_utc,
-            end_utc=end_utc,
-            local_tz=local_tz,
-            max_pages=args.max_pages,
-        )
-        payload["results"] = {"creator": creator_data}
-        if args.token:
-            payload["results"]["token"] = scraper.collect_entity_tabs(
-                entity_type="token",
-                address=args.token,
+    try:
+        with SolscanDebugParser(
+            headless=args.headless,
+            timeout_sec=args.timeout_sec,
+            settle_sec=args.settle_sec,
+            cloudflare_wait_sec=args.cloudflare_wait_sec,
+            step_timeout_sec=args.step_timeout_sec,
+        ) as scraper:
+            creator_data = scraper.collect_entity_tabs(
+                entity_type="account",
+                address=args.creator,
                 tabs=tabs,
                 start_utc=start_utc,
                 end_utc=end_utc,
                 local_tz=local_tz,
                 max_pages=args.max_pages,
+                progress_cb=lambda progress, tab_data=None: update_progress_payload(
+                    payload,
+                    output_path=output_path,
+                    stdout_only=args.stdout_only,
+                    progress=progress,
+                    partial_result=(
+                        None
+                        if tab_data is None
+                        else {
+                            "entity_type": progress["entity_type"],
+                            "address": progress["address"],
+                            "tab": progress["tab"],
+                            "tab_data": tab_data,
+                        }
+                    ),
+                ),
             )
-            payload["token_summary"] = scraper._extract_token_summary(args.token)
+            payload["results"] = {"creator": creator_data}
+            update_progress_payload(
+                payload,
+                output_path=output_path,
+                stdout_only=args.stdout_only,
+                progress={"stage": "creator_complete"},
+            )
+            if args.token:
+                payload["results"]["token"] = scraper.collect_entity_tabs(
+                    entity_type="token",
+                    address=args.token,
+                    tabs=tabs,
+                    start_utc=start_utc,
+                    end_utc=end_utc,
+                    local_tz=local_tz,
+                    max_pages=args.max_pages,
+                    progress_cb=lambda progress, tab_data=None: update_progress_payload(
+                        payload,
+                        output_path=output_path,
+                        stdout_only=args.stdout_only,
+                        progress=progress,
+                        partial_result=(
+                            None
+                            if tab_data is None
+                            else {
+                                "entity_type": progress["entity_type"],
+                                "address": progress["address"],
+                                "tab": progress["tab"],
+                                "tab_data": tab_data,
+                            }
+                        ),
+                    ),
+                )
+                update_progress_payload(
+                    payload,
+                    output_path=output_path,
+                    stdout_only=args.stdout_only,
+                    progress={"stage": "token_tabs_complete"},
+                )
+                payload["token_summary"] = scraper._extract_token_summary(args.token)
+                update_progress_payload(
+                    payload,
+                    output_path=output_path,
+                    stdout_only=args.stdout_only,
+                    progress={"stage": "token_summary_complete"},
+                )
+    except Exception as exc:
+        if not payload["results"]:
+            payload["results"] = {"creator": creator_data}
+        payload["partial"] = True
+        update_progress_payload(
+            payload,
+            output_path=output_path,
+            stdout_only=args.stdout_only,
+            warning=f"scrape_failed: {exc}",
+            progress={
+                "stage": "failed",
+                "error": str(exc),
+                "traceback": traceback.format_exc(limit=5),
+            },
+        )
+        print(f"[warn] scrape failed: {exc}")
+        return
 
     if not payload["results"]:
         payload["results"] = {"creator": creator_data}
     payload["partial"] = False
     payload["warnings"] = build_warnings(payload["results"])
-    write_payload_file(output_path=output_path, payload=payload)
+    update_progress_payload(
+        payload,
+        output_path=output_path,
+        stdout_only=args.stdout_only,
+        progress={"stage": "completed"},
+    )
     print(f"[ok] wrote {output_path}")
     for warning in payload["warnings"]:
         print(f"[warn] {warning}")

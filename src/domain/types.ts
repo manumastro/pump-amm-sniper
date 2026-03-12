@@ -36,6 +36,11 @@ export type CreatorRiskResult = {
     inboundSpraySources?: number;
     precreateBurstTransfers?: number;
     precreateLargeBurstTransfers?: number;
+    precreateDispersalSetupTransfers?: number;
+    precreateDispersalSetupDestinations?: number;
+    precreateDispersalSetupTotalSol?: number;
+    precreateDispersalSetupMedianSol?: number;
+    precreateDispersalSetupWindowSec?: number | null;
     setupBurstCreates?: number;
     setupBurstLookupTables?: number;
     setupBurstWindowSec?: number | null;

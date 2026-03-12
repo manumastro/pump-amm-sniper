@@ -2,7 +2,7 @@ import { Connection, Keypair, PublicKey, Transaction, TransactionInstruction } f
 import fs from "fs";
 import path from "path";
 import bs58 from "bs58";
-import { OnlinePumpAmmSdk, PumpAmmSdk } from "@pump-fun/pump-swap-sdk";
+import { OnlinePumpAmmSdk, PumpAmmSdk, buyQuoteInput, sellBaseInput } from "@pump-fun/pump-swap-sdk";
 import BN from "bn.js";
 import { AccountLayout, getMint, TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
 import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction, createCloseAccountInstruction } from "@solana/spl-token";
@@ -302,6 +302,13 @@ async function handleNewPool(connection: Connection, signature: string) {
         for (let i = 0; i < 6; i++) {
             try {
                 const poolState = await onlineSdk.swapSolanaState(poolKey, observerUser);
+                const orientation = getPoolOrientation(poolState, tokenMint);
+                if (!orientation.hasWsol) {
+                    stageLog(ctx, "LIQ", "pool has no WSOL side");
+                    console.log(`🛑 SKIP: pool has no WSOL side`);
+                    finalStatus = "SKIP: no WSOL side";
+                    return;
+                }
                 const liq = getSolLiquidityFromState(poolState, tokenMint);
                 if (liq !== null && liq > 0) {
                     liquiditySOL = liq;
@@ -386,7 +393,6 @@ async function handleNewPool(connection: Connection, signature: string) {
             return;
         }
 
-        const top10Promise = top10Service.runCheck(connection, tokenMint, poolAddress, ctx);
         let creatorRisk: CreatorRiskResult = { ok: true, reason: "creator unresolved (fail-open)" };
         stageLog(ctx, "STEP 5/7", "creator risk");
         if (creatorAddress) {
@@ -446,7 +452,7 @@ async function handleNewPool(connection: Connection, signature: string) {
                 }
                 liquiditySOL = preEntry.currentLiquiditySol;
             }
-            const top10 = await top10Promise;
+            const top10 = await top10Service.runCheck(connection, tokenMint, poolAddress, ctx);
             if (!top10.ok) {
                 console.log(`🛑 SKIP: pre-buy top10 (${top10.reason})`);
                 finalStatus = "SKIP: pre-buy top10";
@@ -512,7 +518,7 @@ async function handleNewPool(connection: Connection, signature: string) {
                 return;
             }
         }
-        const top10 = await top10Promise;
+        const top10 = await top10Service.runCheck(connection, tokenMint, poolAddress, ctx);
         if (!top10.ok) {
             console.log(`🛑 SKIP: pre-buy top10 (${top10.reason})`);
             finalStatus = "SKIP: pre-buy top10";
@@ -598,8 +604,8 @@ async function waitForFirstPoolTrade(
     createSignature: string,
     poolAddress: string,
     ctx: string,
-): Promise<void> {
-    if (CONFIG.PRE_BUY_WAIT_MS <= 0) return;
+): Promise<{ firstTradeAtMs: number } | null> {
+    if (CONFIG.PRE_BUY_WAIT_MS <= 0) return null;
 
     stageLog(ctx, "WAIT", "waiting for first pool trade");
     const poolKey = new PublicKey(poolAddress);
@@ -613,16 +619,12 @@ async function waitForFirstPoolTrade(
 
             if (firstTrade) {
                 const firstTradeAtMs = firstTrade.blockTime ? firstTrade.blockTime * 1000 : Date.now();
-                const remainingMs = Math.max(0, CONFIG.PRE_BUY_WAIT_MS - (Date.now() - firstTradeAtMs));
                 stageLog(
                     ctx,
                     "WAIT",
-                    `first trade ${shortSig(firstTrade.signature)} seen, remaining ${remainingMs}ms from first trade`
+                    `first trade ${shortSig(firstTrade.signature)} seen, starting flow gate`
                 );
-                if (remainingMs > 0) {
-                    await new Promise(r => setTimeout(r, remainingMs));
-                }
-                return;
+                return { firstTradeAtMs };
             }
         } catch (e: any) {
             stageLog(ctx, "WAIT", `first trade lookup retry (${e?.message || "unknown error"})`);
@@ -630,6 +632,103 @@ async function waitForFirstPoolTrade(
 
         await new Promise(r => setTimeout(r, 500));
     }
+}
+
+async function waitForPreEntryFlowSignal(
+    connection: Connection,
+    createSignature: string,
+    poolAddress: string,
+    tokenMint: string,
+    ctx: string,
+): Promise<{ ok: boolean; reason?: string }> {
+    const windowMs = Math.max(0, CONFIG.PRE_BUY_WAIT_MS);
+    if (windowMs <= 0) return { ok: true };
+
+    const observerUser = walletKeypair?.publicKey ?? Keypair.generate().publicKey;
+    const poolKey = new PublicKey(poolAddress);
+    const buyAmountLamports = new BN(Math.floor(CONFIG.TRADE_AMOUNT_SOL * 1e9));
+    const deadlineMs = Date.now() + windowMs;
+    const pollMs = Math.max(100, CONFIG.PRE_BUY_CONFIRM_INTERVAL_MS);
+    const minTrades = Math.max(1, CONFIG.PRE_BUY_SIGNAL_MIN_TRADES);
+    const minQuoteImprovementPct = CONFIG.PRE_BUY_SIGNAL_MIN_QUOTE_IMPROVEMENT_PCT;
+
+    let baselineExitQuoteSol: number | null = null;
+    let baselineTokenOutAtomic: BN | null = null;
+
+    while (Date.now() <= deadlineMs) {
+        const signatures = await connection.getSignaturesForAddress(poolKey, { limit: Math.max(20, minTrades + 5) }, "confirmed");
+        const tradeCount = signatures.filter((s: any) => s.signature !== createSignature).length;
+
+        const state = await onlineSdk.swapSolanaState(poolKey, observerUser);
+        const orientation = getPoolOrientation(state, tokenMint);
+        if (!orientation.hasWsol) {
+            return { ok: false, reason: "pool has no WSOL side on pre-entry flow gate" };
+        }
+
+        if (!baselineTokenOutAtomic) {
+            baselineTokenOutAtomic = orientation.solIsBase
+                ? sellBaseInput({
+                    base: buyAmountLamports,
+                    slippage: CONFIG.SLIPPAGE_PERCENT,
+                    baseReserve: state.poolBaseAmount,
+                    quoteReserve: state.poolQuoteAmount,
+                    baseMintAccount: state.baseMintAccount,
+                    baseMint: state.baseMint,
+                    coinCreator: state.pool.coinCreator,
+                    creator: state.pool.creator,
+                    feeConfig: state.feeConfig,
+                    globalConfig: state.globalConfig,
+                }).uiQuote
+                : buyQuoteInput({
+                    quote: buyAmountLamports,
+                    slippage: CONFIG.SLIPPAGE_PERCENT,
+                    baseReserve: state.poolBaseAmount,
+                    quoteReserve: state.poolQuoteAmount,
+                    baseMintAccount: state.baseMintAccount,
+                    baseMint: state.baseMint,
+                    coinCreator: state.pool.coinCreator,
+                    creator: state.pool.creator,
+                    feeConfig: state.feeConfig,
+                    globalConfig: state.globalConfig,
+                }).base;
+            baselineExitQuoteSol = getExitQuoteSolFromState(state, tokenMint, baselineTokenOutAtomic);
+        }
+
+        const currentExitQuoteSol =
+            baselineTokenOutAtomic && baselineExitQuoteSol !== null
+                ? getExitQuoteSolFromState(state, tokenMint, baselineTokenOutAtomic)
+                : null;
+
+        if (
+            baselineExitQuoteSol !== null &&
+            baselineExitQuoteSol > 0 &&
+            currentExitQuoteSol !== null &&
+            currentExitQuoteSol > 0
+        ) {
+            const improvementPct = ((currentExitQuoteSol - baselineExitQuoteSol) / baselineExitQuoteSol) * 100;
+            if (improvementPct >= minQuoteImprovementPct) {
+                stageLog(
+                    ctx,
+                    "WAIT",
+                    `pre-entry flow ok: sell_quote ${baselineExitQuoteSol.toFixed(6)} -> ${currentExitQuoteSol.toFixed(6)} SOL ` +
+                    `(${formatQuoteMovePct(baselineExitQuoteSol, currentExitQuoteSol)}, trades=${tradeCount})`
+                );
+                return { ok: true };
+            }
+        }
+
+        if (tradeCount >= minTrades) {
+            stageLog(ctx, "WAIT", `pre-entry flow ok: ${tradeCount} pool trades seen (min ${minTrades})`);
+            return { ok: true };
+        }
+
+        await new Promise((r) => setTimeout(r, pollMs));
+    }
+
+    return {
+        ok: false,
+        reason: `no quote improvement and only < ${minTrades} pool trades within ${windowMs}ms`,
+    };
 }
 
 async function preEntryWaitAndCheck(
@@ -641,6 +740,11 @@ async function preEntryWaitAndCheck(
     ctx: string,
 ): Promise<{ ok: boolean; reason?: string; currentLiquiditySol: number }> {
     await waitForFirstPoolTrade(connection, createSignature, poolAddress, ctx);
+
+    const flowSignal = await waitForPreEntryFlowSignal(connection, createSignature, poolAddress, tokenMint, ctx);
+    if (!flowSignal.ok) {
+        return { ok: false, reason: flowSignal.reason || "pre-entry flow gate failed", currentLiquiditySol: baselineLiquiditySol };
+    }
 
     try {
         const observerUser = walletKeypair?.publicKey ?? Keypair.generate().publicKey;
