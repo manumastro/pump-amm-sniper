@@ -314,7 +314,7 @@ Segnale:
 - `RRELAY` presente nel creator-risk pre-entry
 
 Esito:
-- hold ridotto (es. 10s) invece di `AUTO_SELL_DELAY_MS`
+- hold ridotto ma meno aggressivo (es. 15s) invece di `AUTO_SELL_DELAY_MS`
 
 Log:
 - `HOLD | suspicious relay root ... -> short hold ...ms`
