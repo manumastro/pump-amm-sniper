@@ -49,6 +49,19 @@ type InboundSprayPatternResult = {
     amountRatio: number;
 };
 
+type ConcentratedInboundFundingResult = {
+    detected: boolean;
+    transfers: number;
+    sources: number;
+    topSources: number;
+    medianSol: number;
+    totalSol: number;
+    relStdDev: number;
+    amountRatio: number;
+    topSourceShare: number;
+    windowSec: number | null;
+};
+
 type RepeatCreateRemovePatternResult = {
     detected: boolean;
     creates: number;
@@ -271,6 +284,112 @@ function extractOutboundTransfersFromParsedCreatorRiskTxs(
         });
 }
 
+function extractInboundTransfersFromParsedCreatorRiskTxs(
+    parsedCreatorRiskTxs: ParsedCreatorRiskTx[],
+    creatorAddress: string,
+): Array<{ source: string; sol: number; blockTime: number }> {
+    return parsedCreatorRiskTxs.flatMap(({ blockTime, tx }) => {
+        const eventTime = blockTime ?? tx?.blockTime ?? null;
+        return flattenParsedInstructions(tx)
+            .map((ix) => {
+                const parsed = ix?.parsed;
+                const type = getInstructionType(ix);
+                if (ix?.program !== "system" || type !== "transfer") return null;
+                const info = parsed?.info || {};
+                const source = info.source || info.from || null;
+                const destination = info.destination || info.to || null;
+                const lamports = Number(info.lamports || 0);
+                if (
+                    !source ||
+                    destination !== creatorAddress ||
+                    !Number.isFinite(eventTime) ||
+                    !Number.isFinite(lamports) ||
+                    lamports <= 0
+                ) {
+                    return null;
+                }
+                return {
+                    source,
+                    sol: lamports / 1e9,
+                    blockTime: Number(eventTime),
+                };
+            })
+            .filter((entry): entry is { source: string; sol: number; blockTime: number } => !!entry);
+    });
+}
+
+function classifyConcentratedInboundFunding(
+    parsedCreatorRiskTxs: ParsedCreatorRiskTx[],
+    creatorAddress: string,
+): ConcentratedInboundFundingResult {
+    const positive = extractInboundTransfersFromParsedCreatorRiskTxs(parsedCreatorRiskTxs, creatorAddress).filter(
+        (t) => Number.isFinite(t.sol) && t.sol >= CONFIG.CREATOR_RISK_CONCENTRATED_INBOUND_MIN_TRANSFER_SOL
+    );
+    if (!positive.length) {
+        return {
+            detected: false,
+            transfers: 0,
+            sources: 0,
+            topSources: 0,
+            medianSol: 0,
+            totalSol: 0,
+            relStdDev: Infinity,
+            amountRatio: Infinity,
+            topSourceShare: 0,
+            windowSec: null,
+        };
+    }
+
+    const values = positive.map((t) => t.sol).sort((a, b) => a - b);
+    const totalSol = values.reduce((sum, v) => sum + v, 0);
+    const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
+    const variance = values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / values.length;
+    const stdDev = Math.sqrt(Math.max(0, variance));
+    const relStdDev = mean > 0 ? stdDev / mean : Infinity;
+    const medianSol =
+        values.length % 2 === 0
+            ? (values[(values.length / 2) - 1] + values[values.length / 2]) / 2
+            : values[Math.floor(values.length / 2)];
+    const amountRatio = values[0] > 0 ? values[values.length - 1] / values[0] : Infinity;
+
+    const sourceCounts = new Map<string, number>();
+    for (const transfer of positive) {
+        sourceCounts.set(transfer.source, (sourceCounts.get(transfer.source) || 0) + 1);
+    }
+    const sortedCounts = [...sourceCounts.values()].sort((a, b) => b - a);
+    const topSources = Math.min(CONFIG.CREATOR_RISK_CONCENTRATED_INBOUND_TOP_SOURCE_COUNT, sortedCounts.length);
+    const topSourceTransfers = sortedCounts.slice(0, topSources).reduce((sum, count) => sum + count, 0);
+    const topSourceShare = positive.length > 0 ? topSourceTransfers / positive.length : 0;
+
+    const times = positive.map((t) => t.blockTime);
+    const windowSec = Math.max(0, Math.max(...times) - Math.min(...times));
+    const sources = sourceCounts.size;
+    const transfers = positive.length;
+
+    return {
+        detected:
+            CONFIG.CREATOR_RISK_CONCENTRATED_INBOUND_BLOCK_ENABLED &&
+            transfers >= CONFIG.CREATOR_RISK_CONCENTRATED_INBOUND_MIN_TRANSFERS &&
+            sources <= CONFIG.CREATOR_RISK_CONCENTRATED_INBOUND_MAX_SOURCES &&
+            topSourceShare >= CONFIG.CREATOR_RISK_CONCENTRATED_INBOUND_MIN_TOP_SOURCE_SHARE &&
+            totalSol >= CONFIG.CREATOR_RISK_CONCENTRATED_INBOUND_MIN_TOTAL_SOL &&
+            medianSol >= CONFIG.CREATOR_RISK_CONCENTRATED_INBOUND_MIN_MEDIAN_SOL &&
+            medianSol <= CONFIG.CREATOR_RISK_CONCENTRATED_INBOUND_MAX_MEDIAN_SOL &&
+            relStdDev <= CONFIG.CREATOR_RISK_CONCENTRATED_INBOUND_MAX_REL_STDDEV &&
+            amountRatio <= CONFIG.CREATOR_RISK_CONCENTRATED_INBOUND_MAX_AMOUNT_RATIO &&
+            windowSec <= CONFIG.CREATOR_RISK_CONCENTRATED_INBOUND_MAX_WINDOW_SEC,
+        transfers,
+        sources,
+        topSources,
+        medianSol,
+        totalSol,
+        relStdDev,
+        amountRatio,
+        topSourceShare,
+        windowSec,
+    };
+}
+
 function classifyPrecreateLargeUniformBurst(
     parsedCreatorRiskTxs: ParsedCreatorRiskTx[],
     creatorAddress: string,
@@ -430,7 +549,11 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
             normalized.includes("funder blacklisted") ||
             normalized.includes("relay funding recent on standard pool") ||
             normalized.includes("relay funding recent + micro burst") ||
+            normalized.includes("concentrated inbound funding") ||
             normalized.includes("micro inbound burst") ||
+            normalized.includes("lookup-table + setup burst") ||
+            normalized.includes("setup burst") ||
+            normalized.includes("close-account burst") ||
             normalized.includes("creator direct amm re-entry") ||
             normalized.includes("creator repeated create-remove pattern") ||
             normalized.includes("creator seed too small") ||
@@ -488,8 +611,12 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
         );
         const hardReason =
             isProbationBypassForbidden(creatorRisk) ||
+            reason.includes("lookup-table + setup burst") ||
+            reason.includes("setup burst") ||
+            reason.includes("close-account burst") ||
             reason.includes("creator direct amm re-entry") ||
             reason.includes("spray outbound") ||
+            reason.includes("concentrated inbound funding") ||
             reason.includes("micro inbound burst") ||
             reason.includes("relay funding recent + micro burst");
 
@@ -1128,6 +1255,7 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
             setupBurst = classifySetupBurst(combinedPrecreateTxs, creatorAddress);
             precreateOutboundTransfers = extractOutboundTransfersFromParsedCreatorRiskTxs(combinedPrecreateTxs, creatorAddress)
                 .map(({ destination, sol }) => ({ destination, sol }));
+            const concentratedInboundFunding = classifyConcentratedInboundFunding(combinedPrecreateTxs, creatorAddress);
             const precreateBurst = deps.classifyPrecreateOutboundBurst(precreateOutboundTransfers);
             const precreateLargeUniformBurst = classifyPrecreateLargeUniformBurst(combinedPrecreateTxs, creatorAddress);
             if (setupBurst.creates > 0 || setupBurst.lookupTables > 0) {
@@ -1135,6 +1263,15 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                     ctx,
                     "CSETUP",
                     `creates=${setupBurst.creates} lookups=${setupBurst.lookupTables} window=${setupBurst.windowSec ?? "n/a"}s`
+                );
+            }
+            if (concentratedInboundFunding.detected) {
+                stageLog(
+                    ctx,
+                    "CFANIN",
+                    `in=${concentratedInboundFunding.transfers} src=${concentratedInboundFunding.sources} top${concentratedInboundFunding.topSources}=${(concentratedInboundFunding.topSourceShare * 100).toFixed(0)}% ` +
+                    `total=${concentratedInboundFunding.totalSol.toFixed(3)} median=${concentratedInboundFunding.medianSol.toFixed(3)} ` +
+                    `rel_std=${concentratedInboundFunding.relStdDev.toFixed(2)} ratio=${concentratedInboundFunding.amountRatio.toFixed(2)} window=${concentratedInboundFunding.windowSec ?? "n/a"}s`
                 );
             }
             if (relayFunding.detected || relayFunding.inboundSol > 0 || relayFunding.outboundSol > 0) {
@@ -1216,6 +1353,36 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                     compressedWindowSec,
                     burner,
                     precreateLargeBurstTransfers: precreateLargeUniformBurst.transfers,
+                    deepChecksComplete: true,
+                    deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
+                }));
+            }
+
+            if (
+                deepChecksComplete &&
+                concentratedInboundFunding.detected &&
+                setupBurst.creates >= CONFIG.CREATOR_RISK_CONCENTRATED_INBOUND_MIN_SETUP_CREATES &&
+                repeatCreateRemovePattern.creates >= CONFIG.CREATOR_RISK_CONCENTRATED_INBOUND_MIN_REPEAT_CREATES
+            ) {
+                return cacheAndReturn(enrichBaseResult({
+                    ok: false,
+                    reason:
+                        `concentrated inbound funding ${concentratedInboundFunding.transfers} transfers ` +
+                        `from ${concentratedInboundFunding.sources} sources ` +
+                        `(top${concentratedInboundFunding.topSources} ${(concentratedInboundFunding.topSourceShare * 100).toFixed(0)}%, ` +
+                        `median ${concentratedInboundFunding.medianSol.toFixed(3)} SOL, total ${concentratedInboundFunding.totalSol.toFixed(3)} SOL)`,
+                    funder,
+                    uniqueCounterparties,
+                    compressedWindowSec,
+                    burner,
+                    setupBurstCreates: setupBurst.creates,
+                    setupBurstLookupTables: setupBurst.lookupTables,
+                    setupBurstWindowSec: setupBurst.windowSec,
+                    repeatedCreateRemoveCreates: repeatCreateRemovePattern.creates,
+                    repeatedCreateRemoveRemoves: repeatCreateRemovePattern.removes,
+                    repeatedCreateRemoveCashouts: repeatCreateRemovePattern.cashouts,
+                    repeatedCreateRemoveWindowSec: repeatCreateRemovePattern.windowSec,
+                    repeatedCreateRemoveMaxCashoutSol: repeatCreateRemovePattern.maxCashoutSol,
                     deepChecksComplete: true,
                     deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
                 }));

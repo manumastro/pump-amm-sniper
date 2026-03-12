@@ -21,6 +21,17 @@ RELATIVE_RE = re.compile(
 )
 ITEM_RANGE_RE = re.compile(r"Item\s+(\d+)\s+to\s+(\d+)", re.IGNORECASE)
 SHORT_ADDRESS_RE = re.compile(r"\b[1-9A-HJ-NP-Za-km-z]{8,12}\.\.\.[1-9A-HJ-NP-Za-km-z]{8,12}\b")
+TOKEN_SUMMARY_FIELDS = [
+    "Token name",
+    "Current Supply",
+    "Holders",
+    "Decimals",
+    "Authority",
+    "Creator",
+    "First Mint",
+    "Token address",
+    "Owner Program",
+]
 
 
 def short_account_variants(address: str) -> set[str]:
@@ -120,10 +131,11 @@ class SolscanDebugParser:
             time.sleep(1.0)
         print("[warn] cloudflare challenge still active after timeout")
 
-    def _open_account(self, address: str):
+    def _open_entity(self, entity_type: str, address: str):
         if not self.page:
             raise RuntimeError("Page not initialized")
-        self.page.get(f"https://solscan.io/account/{address}")
+        route = "account" if entity_type == "account" else "token"
+        self.page.get(f"https://solscan.io/{route}/{address}")
         self._wait_cf_pass()
         time.sleep(self.settle_sec)
 
@@ -265,14 +277,35 @@ class SolscanDebugParser:
             return False
         return True
 
-    def _current_page_matches_account(self, account: str) -> bool:
+    def _current_page_matches_entity(self, entity_type: str, address: str) -> bool:
         if not self.page:
             return False
         try:
             current_url = (self.page.url or "").strip()
         except Exception:
             return False
-        return f"/account/{account}" in current_url
+        route = "account" if entity_type == "account" else "token"
+        return f"/{route}/{address}" in current_url
+
+    def _extract_token_summary(self, token: str) -> dict:
+        self._open_entity("token", token)
+        self._dismiss_cookie_banner()
+        body = self._body_text()
+        lines = [line.strip() for line in body.splitlines() if line.strip()]
+        summary: dict[str, str] = {}
+        for index, line in enumerate(lines):
+            if line in TOKEN_SUMMARY_FIELDS:
+                if index + 1 < len(lines):
+                    summary[line] = lines[index + 1]
+        status = "ok" if summary else "summary_not_found"
+        return {
+            "address": token,
+            "summary": summary,
+            "diagnostics": {
+                "status": status,
+                "lines_seen": len(lines),
+            },
+        }
 
     def _current_item_range(self) -> str | None:
         body = self._body_text()
@@ -401,16 +434,17 @@ class SolscanDebugParser:
                 continue
         return False, "pagination_stalled"
 
-    def collect_account_tabs(
+    def collect_entity_tabs(
         self,
-        account: str,
+        entity_type: str,
+        address: str,
         tabs: list[str],
         start_utc: datetime,
         end_utc: datetime,
         local_tz: ZoneInfo,
         max_pages: int,
     ) -> dict:
-        self._open_account(account)
+        self._open_entity(entity_type, address)
         self._dismiss_cookie_banner()
 
         result: dict[str, dict] = {}
@@ -444,8 +478,9 @@ class SolscanDebugParser:
                 )
                 if (
                     page_rows
-                    and self._rows_conflict_with_account(page_rows, account)
-                    and not self._current_page_matches_account(account)
+                    and entity_type == "account"
+                    and self._rows_conflict_with_account(page_rows, address)
+                    and not self._current_page_matches_entity(entity_type, address)
                 ):
                     all_rows = page_rows
                     pagination_warning = "account_mismatch"
@@ -533,15 +568,21 @@ def normalize_tabs(raw: str) -> list[str]:
 
 def build_warnings(results: dict) -> list[str]:
     warnings: list[str] = []
-    for tab, tab_data in results.items():
-        diagnostics = tab_data["diagnostics"]
-        status = diagnostics["status"]
-        if status != "ok":
-            warnings.append(
-                f"{tab}: {status} "
-                f"(seen={diagnostics['rows_seen_count']}, in_range={diagnostics['rows_in_range_count']}, "
-                f"unparsed_ts={diagnostics['rows_without_parsed_timestamp_count']})"
-            )
+    if results and "creator" in results and isinstance(results.get("creator"), dict):
+        scopes = results.items()
+    else:
+        scopes = [("creator", results)]
+
+    for scope_name, scope_results in scopes:
+        for tab, tab_data in scope_results.items():
+            diagnostics = tab_data["diagnostics"]
+            status = diagnostics["status"]
+            if status != "ok":
+                warnings.append(
+                    f"{scope_name}.{tab}: {status} "
+                    f"(seen={diagnostics['rows_seen_count']}, in_range={diagnostics['rows_in_range_count']}, "
+                    f"unparsed_ts={diagnostics['rows_without_parsed_timestamp_count']})"
+                )
     return warnings
 
 
@@ -558,6 +599,7 @@ def main():
         )
     )
     parser.add_argument("--creator", required=True, help="Creator account")
+    parser.add_argument("--token", help="Optional token mint to scrape token page too")
     parser.add_argument(
         "--from-local",
         required=True,
@@ -637,8 +679,9 @@ def main():
     payload = {
         "query": {
             "creator": args.creator,
+            "token": args.token,
             "tabs": tabs,
-            "scope": "creator",
+            "scope": "creator" if not args.token else "creator+token",
             "tz": args.tz,
             "from_local": start_local.isoformat(),
             "to_local": end_local.isoformat(),
@@ -648,6 +691,7 @@ def main():
             "headless": args.headless,
         },
         "account": args.creator,
+        "token_summary": None,
         "results": {},
         "warnings": [],
         "partial": False,
@@ -659,14 +703,26 @@ def main():
             settle_sec=args.settle_sec,
             cloudflare_wait_sec=args.cloudflare_wait_sec,
         ) as scraper:
-            payload["results"] = scraper.collect_account_tabs(
-                account=args.creator,
+            payload["results"]["creator"] = scraper.collect_entity_tabs(
+                entity_type="account",
+                address=args.creator,
                 tabs=tabs,
                 start_utc=start_utc,
                 end_utc=end_utc,
                 local_tz=local_tz,
                 max_pages=args.max_pages,
             )
+            if args.token:
+                payload["results"]["token"] = scraper.collect_entity_tabs(
+                    entity_type="token",
+                    address=args.token,
+                    tabs=tabs,
+                    start_utc=start_utc,
+                    end_utc=end_utc,
+                    local_tz=local_tz,
+                    max_pages=args.max_pages,
+                )
+                payload["token_summary"] = scraper._extract_token_summary(args.token)
         payload["warnings"] = build_warnings(payload["results"])
         for warning in payload["warnings"]:
             print(f"[warn] {warning}")
@@ -686,16 +742,30 @@ def main():
         settle_sec=args.settle_sec,
         cloudflare_wait_sec=args.cloudflare_wait_sec,
     ) as scraper:
-        creator_data = scraper.collect_account_tabs(
-            account=args.creator,
+        creator_data = scraper.collect_entity_tabs(
+            entity_type="account",
+            address=args.creator,
             tabs=tabs,
             start_utc=start_utc,
             end_utc=end_utc,
             local_tz=local_tz,
             max_pages=args.max_pages,
         )
+        payload["results"] = {"creator": creator_data}
+        if args.token:
+            payload["results"]["token"] = scraper.collect_entity_tabs(
+                entity_type="token",
+                address=args.token,
+                tabs=tabs,
+                start_utc=start_utc,
+                end_utc=end_utc,
+                local_tz=local_tz,
+                max_pages=args.max_pages,
+            )
+            payload["token_summary"] = scraper._extract_token_summary(args.token)
 
-    payload["results"] = creator_data
+    if not payload["results"]:
+        payload["results"] = {"creator": creator_data}
     payload["partial"] = False
     payload["warnings"] = build_warnings(payload["results"])
     write_payload_file(output_path=output_path, payload=payload)

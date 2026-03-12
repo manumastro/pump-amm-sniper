@@ -1,0 +1,615 @@
+{
+  "query": {
+    "creator": "HBdMYXPAfaoMfmBrhM69ibTxv3urBhvxuyfeRZasAAGd",
+    "tabs": [
+      "Transactions",
+      "Transfers",
+      "Activities"
+    ],
+    "scope": "creator",
+    "tz": "Europe/Berlin",
+    "from_local": "2026-03-11T19:04:26+01:00",
+    "to_local": "2026-03-11T21:20:00+01:00",
+    "from_utc": "2026-03-11T18:04:26+00:00",
+    "to_utc": "2026-03-11T20:20:00+00:00",
+    "max_pages": 20,
+    "headless": false
+  },
+  "account": "HBdMYXPAfaoMfmBrhM69ibTxv3urBhvxuyfeRZasAAGd",
+  "results": {
+    "Transactions": {
+      "rows_seen": [
+        {
+          "tab": "Transactions",
+          "page": 3,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "41YnpwwzjyiVdLH3AgindEUwRqugcHRvZtfardrZx46FNdwvsz5m44KSiLqPBn4aueMq5sg2ngiFPtMkfz84QSEg\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.42"
+        },
+        {
+          "tab": "Transactions",
+          "page": 3,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "23dmEfxCetqzugMXR5Vmfhpm7qdSCcFL5oALZs6RiaGg8J4mnKBVr7TzCXrBUy7qTzwxpYJJ3VEFXRoBdT8H6B5J\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.49"
+        },
+        {
+          "tab": "Transactions",
+          "page": 3,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "4uypaWbShVJnBihXYJfqYhb2WEXbZbrkx9jcf8sHXG5uAMbmARJ84Ufty3CHrcdGoTU3saHnRrC7cLpuxwPvfHbM\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.48"
+        },
+        {
+          "tab": "Transactions",
+          "page": 3,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "QSjDnAANBK4pFQrftyqEqJkrzp7m2h4YxGz5as21XCwxYVsnF5UBtE91M4KPoo87cHVEKd2328kuTueLHU51sFu\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\t4MERA5nxun...dq8ukcSvVW\n\t0.4"
+        },
+        {
+          "tab": "Transactions",
+          "page": 3,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "TdtskhYYGxBZVRwxAfpS6YeHm7eriuPYyykxgd7CEahZbtsi7Z2LXiW933FKsUaMr9uTCiUbt3Hz4sELG482AA5\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.49"
+        },
+        {
+          "tab": "Transactions",
+          "page": 3,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "BE1TqzCoipt6Uivhn2pB3DVif9WH6LyvGwi32P5ZJ1TCwkvdqeMSZKsMnmaQKCzcpYqQayZQvbHm365LduPjqUv\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\t4MERA5nxun...dq8ukcSvVW\n\t0.41"
+        },
+        {
+          "tab": "Transactions",
+          "page": 3,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "5WSPYXHTQDkFjUXqmbd3DSL1jivvxrPGLeBZqpugTj8dSDqvZaoHkEYNdyP5QFCmQk8oxCrAyR7XkgNAjoqLLvXc\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\t4MERA5nxun...dq8ukcSvVW\n\t0.43"
+        },
+        {
+          "tab": "Transactions",
+          "page": 3,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "29LzTGoFL1axz3T7hpdypnpa4L2vsCgW8pLfFBEkCqZcnuEXtSHseQLVZ82uUqaMGXnWzrEtgfSZ3eH71E2bNU57\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\t4MERA5nxun...dq8ukcSvVW\n\t0.44"
+        },
+        {
+          "tab": "Transactions",
+          "page": 3,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "2LdezjjRQXHPxRFXjBQxN4tPbRA5Djq1QLFPbrQ2uqCLxnD4JsZzFXJpZQJnzDN5E37BgB1idQAii6LMYVaeocZz\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.45"
+        },
+        {
+          "tab": "Transactions",
+          "page": 3,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "3BEVQazfJjNvsL4Dy15zaSEAZWGg1FabpmCUAfxqRuHQvpYXnJBVjj3ZurJAmn9VTMpsux7fSg1N49pH9bmTQWjs\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.4"
+        }
+      ],
+      "rows_in_range": [
+        {
+          "tab": "Transactions",
+          "page": 3,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "41YnpwwzjyiVdLH3AgindEUwRqugcHRvZtfardrZx46FNdwvsz5m44KSiLqPBn4aueMq5sg2ngiFPtMkfz84QSEg\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.42"
+        },
+        {
+          "tab": "Transactions",
+          "page": 3,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "23dmEfxCetqzugMXR5Vmfhpm7qdSCcFL5oALZs6RiaGg8J4mnKBVr7TzCXrBUy7qTzwxpYJJ3VEFXRoBdT8H6B5J\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.49"
+        },
+        {
+          "tab": "Transactions",
+          "page": 3,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "4uypaWbShVJnBihXYJfqYhb2WEXbZbrkx9jcf8sHXG5uAMbmARJ84Ufty3CHrcdGoTU3saHnRrC7cLpuxwPvfHbM\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.48"
+        },
+        {
+          "tab": "Transactions",
+          "page": 3,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "QSjDnAANBK4pFQrftyqEqJkrzp7m2h4YxGz5as21XCwxYVsnF5UBtE91M4KPoo87cHVEKd2328kuTueLHU51sFu\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\t4MERA5nxun...dq8ukcSvVW\n\t0.4"
+        },
+        {
+          "tab": "Transactions",
+          "page": 3,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "TdtskhYYGxBZVRwxAfpS6YeHm7eriuPYyykxgd7CEahZbtsi7Z2LXiW933FKsUaMr9uTCiUbt3Hz4sELG482AA5\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.49"
+        },
+        {
+          "tab": "Transactions",
+          "page": 3,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "BE1TqzCoipt6Uivhn2pB3DVif9WH6LyvGwi32P5ZJ1TCwkvdqeMSZKsMnmaQKCzcpYqQayZQvbHm365LduPjqUv\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\t4MERA5nxun...dq8ukcSvVW\n\t0.41"
+        },
+        {
+          "tab": "Transactions",
+          "page": 3,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "5WSPYXHTQDkFjUXqmbd3DSL1jivvxrPGLeBZqpugTj8dSDqvZaoHkEYNdyP5QFCmQk8oxCrAyR7XkgNAjoqLLvXc\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\t4MERA5nxun...dq8ukcSvVW\n\t0.43"
+        },
+        {
+          "tab": "Transactions",
+          "page": 3,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "29LzTGoFL1axz3T7hpdypnpa4L2vsCgW8pLfFBEkCqZcnuEXtSHseQLVZ82uUqaMGXnWzrEtgfSZ3eH71E2bNU57\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\t4MERA5nxun...dq8ukcSvVW\n\t0.44"
+        },
+        {
+          "tab": "Transactions",
+          "page": 3,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "2LdezjjRQXHPxRFXjBQxN4tPbRA5Djq1QLFPbrQ2uqCLxnD4JsZzFXJpZQJnzDN5E37BgB1idQAii6LMYVaeocZz\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.45"
+        },
+        {
+          "tab": "Transactions",
+          "page": 3,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "3BEVQazfJjNvsL4Dy15zaSEAZWGg1FabpmCUAfxqRuHQvpYXnJBVjj3ZurJAmn9VTMpsux7fSg1N49pH9bmTQWjs\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.4"
+        }
+      ],
+      "diagnostics": {
+        "status": "rows_seen_account_mismatch",
+        "pagination_warning": "account_mismatch",
+        "rows_seen_count": 10,
+        "rows_in_range_count": 10,
+        "rows_with_parsed_timestamp_count": 10,
+        "rows_without_parsed_timestamp_count": 0,
+        "rows_with_relative_timestamp_count": 0,
+        "rows_with_absolute_timestamp_count": 10
+      }
+    },
+    "Transfers": {
+      "rows_seen": [
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:07.173442+00:00",
+          "timestamp_local": "2026-03-11T21:02:07.173442+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "41YnpwwzjyiVdLH3AgindEUwRqugcHRvZtfardrZx46FNdwvsz5m44KSiLqPBn4aueMq5sg2ngiFPtMkfz84QSEg\n\t10 mins ago\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.42"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:07.173442+00:00",
+          "timestamp_local": "2026-03-11T21:02:07.173442+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "23dmEfxCetqzugMXR5Vmfhpm7qdSCcFL5oALZs6RiaGg8J4mnKBVr7TzCXrBUy7qTzwxpYJJ3VEFXRoBdT8H6B5J\n\t10 mins ago\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.49"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:07.173442+00:00",
+          "timestamp_local": "2026-03-11T21:02:07.173442+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "4uypaWbShVJnBihXYJfqYhb2WEXbZbrkx9jcf8sHXG5uAMbmARJ84Ufty3CHrcdGoTU3saHnRrC7cLpuxwPvfHbM\n\t10 mins ago\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.48"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:07.173442+00:00",
+          "timestamp_local": "2026-03-11T21:02:07.173442+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "QSjDnAANBK4pFQrftyqEqJkrzp7m2h4YxGz5as21XCwxYVsnF5UBtE91M4KPoo87cHVEKd2328kuTueLHU51sFu\n\t10 mins ago\n\tTransfer\n\t4MERA5nxun...dq8ukcSvVW\n\t0.4"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:07.173442+00:00",
+          "timestamp_local": "2026-03-11T21:02:07.173442+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "TdtskhYYGxBZVRwxAfpS6YeHm7eriuPYyykxgd7CEahZbtsi7Z2LXiW933FKsUaMr9uTCiUbt3Hz4sELG482AA5\n\t10 mins ago\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.49"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:07.173442+00:00",
+          "timestamp_local": "2026-03-11T21:02:07.173442+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "BE1TqzCoipt6Uivhn2pB3DVif9WH6LyvGwi32P5ZJ1TCwkvdqeMSZKsMnmaQKCzcpYqQayZQvbHm365LduPjqUv\n\t10 mins ago\n\tTransfer\n\t4MERA5nxun...dq8ukcSvVW\n\t0.41"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:07.173442+00:00",
+          "timestamp_local": "2026-03-11T21:02:07.173442+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "5WSPYXHTQDkFjUXqmbd3DSL1jivvxrPGLeBZqpugTj8dSDqvZaoHkEYNdyP5QFCmQk8oxCrAyR7XkgNAjoqLLvXc\n\t10 mins ago\n\tTransfer\n\t4MERA5nxun...dq8ukcSvVW\n\t0.43"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:07.173442+00:00",
+          "timestamp_local": "2026-03-11T21:02:07.173442+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "29LzTGoFL1axz3T7hpdypnpa4L2vsCgW8pLfFBEkCqZcnuEXtSHseQLVZ82uUqaMGXnWzrEtgfSZ3eH71E2bNU57\n\t10 mins ago\n\tTransfer\n\t4MERA5nxun...dq8ukcSvVW\n\t0.44"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:07.173442+00:00",
+          "timestamp_local": "2026-03-11T21:02:07.173442+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "2LdezjjRQXHPxRFXjBQxN4tPbRA5Djq1QLFPbrQ2uqCLxnD4JsZzFXJpZQJnzDN5E37BgB1idQAii6LMYVaeocZz\n\t10 mins ago\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.45"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:07.173442+00:00",
+          "timestamp_local": "2026-03-11T21:02:07.173442+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "3BEVQazfJjNvsL4Dy15zaSEAZWGg1FabpmCUAfxqRuHQvpYXnJBVjj3ZurJAmn9VTMpsux7fSg1N49pH9bmTQWjs\n\t10 mins ago\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.4"
+        }
+      ],
+      "rows_in_range": [
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:07.173442+00:00",
+          "timestamp_local": "2026-03-11T21:02:07.173442+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "41YnpwwzjyiVdLH3AgindEUwRqugcHRvZtfardrZx46FNdwvsz5m44KSiLqPBn4aueMq5sg2ngiFPtMkfz84QSEg\n\t10 mins ago\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.42"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:07.173442+00:00",
+          "timestamp_local": "2026-03-11T21:02:07.173442+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "23dmEfxCetqzugMXR5Vmfhpm7qdSCcFL5oALZs6RiaGg8J4mnKBVr7TzCXrBUy7qTzwxpYJJ3VEFXRoBdT8H6B5J\n\t10 mins ago\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.49"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:07.173442+00:00",
+          "timestamp_local": "2026-03-11T21:02:07.173442+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "4uypaWbShVJnBihXYJfqYhb2WEXbZbrkx9jcf8sHXG5uAMbmARJ84Ufty3CHrcdGoTU3saHnRrC7cLpuxwPvfHbM\n\t10 mins ago\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.48"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:07.173442+00:00",
+          "timestamp_local": "2026-03-11T21:02:07.173442+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "QSjDnAANBK4pFQrftyqEqJkrzp7m2h4YxGz5as21XCwxYVsnF5UBtE91M4KPoo87cHVEKd2328kuTueLHU51sFu\n\t10 mins ago\n\tTransfer\n\t4MERA5nxun...dq8ukcSvVW\n\t0.4"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:07.173442+00:00",
+          "timestamp_local": "2026-03-11T21:02:07.173442+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "TdtskhYYGxBZVRwxAfpS6YeHm7eriuPYyykxgd7CEahZbtsi7Z2LXiW933FKsUaMr9uTCiUbt3Hz4sELG482AA5\n\t10 mins ago\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.49"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:07.173442+00:00",
+          "timestamp_local": "2026-03-11T21:02:07.173442+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "BE1TqzCoipt6Uivhn2pB3DVif9WH6LyvGwi32P5ZJ1TCwkvdqeMSZKsMnmaQKCzcpYqQayZQvbHm365LduPjqUv\n\t10 mins ago\n\tTransfer\n\t4MERA5nxun...dq8ukcSvVW\n\t0.41"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:07.173442+00:00",
+          "timestamp_local": "2026-03-11T21:02:07.173442+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "5WSPYXHTQDkFjUXqmbd3DSL1jivvxrPGLeBZqpugTj8dSDqvZaoHkEYNdyP5QFCmQk8oxCrAyR7XkgNAjoqLLvXc\n\t10 mins ago\n\tTransfer\n\t4MERA5nxun...dq8ukcSvVW\n\t0.43"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:07.173442+00:00",
+          "timestamp_local": "2026-03-11T21:02:07.173442+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "29LzTGoFL1axz3T7hpdypnpa4L2vsCgW8pLfFBEkCqZcnuEXtSHseQLVZ82uUqaMGXnWzrEtgfSZ3eH71E2bNU57\n\t10 mins ago\n\tTransfer\n\t4MERA5nxun...dq8ukcSvVW\n\t0.44"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:07.173442+00:00",
+          "timestamp_local": "2026-03-11T21:02:07.173442+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "2LdezjjRQXHPxRFXjBQxN4tPbRA5Djq1QLFPbrQ2uqCLxnD4JsZzFXJpZQJnzDN5E37BgB1idQAii6LMYVaeocZz\n\t10 mins ago\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.45"
+        },
+        {
+          "tab": "Transfers",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:07.173442+00:00",
+          "timestamp_local": "2026-03-11T21:02:07.173442+01:00",
+          "timestamp_source": "relative",
+          "in_range": true,
+          "text": "3BEVQazfJjNvsL4Dy15zaSEAZWGg1FabpmCUAfxqRuHQvpYXnJBVjj3ZurJAmn9VTMpsux7fSg1N49pH9bmTQWjs\n\t10 mins ago\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.4"
+        }
+      ],
+      "diagnostics": {
+        "status": "rows_seen_account_mismatch",
+        "pagination_warning": "account_mismatch",
+        "rows_seen_count": 10,
+        "rows_in_range_count": 10,
+        "rows_with_parsed_timestamp_count": 10,
+        "rows_without_parsed_timestamp_count": 0,
+        "rows_with_relative_timestamp_count": 10,
+        "rows_with_absolute_timestamp_count": 0
+      }
+    },
+    "Activities": {
+      "rows_seen": [
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "41YnpwwzjyiVdLH3AgindEUwRqugcHRvZtfardrZx46FNdwvsz5m44KSiLqPBn4aueMq5sg2ngiFPtMkfz84QSEg\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.42"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "23dmEfxCetqzugMXR5Vmfhpm7qdSCcFL5oALZs6RiaGg8J4mnKBVr7TzCXrBUy7qTzwxpYJJ3VEFXRoBdT8H6B5J\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.49"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "4uypaWbShVJnBihXYJfqYhb2WEXbZbrkx9jcf8sHXG5uAMbmARJ84Ufty3CHrcdGoTU3saHnRrC7cLpuxwPvfHbM\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.48"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "QSjDnAANBK4pFQrftyqEqJkrzp7m2h4YxGz5as21XCwxYVsnF5UBtE91M4KPoo87cHVEKd2328kuTueLHU51sFu\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\t4MERA5nxun...dq8ukcSvVW\n\t0.4"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "TdtskhYYGxBZVRwxAfpS6YeHm7eriuPYyykxgd7CEahZbtsi7Z2LXiW933FKsUaMr9uTCiUbt3Hz4sELG482AA5\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.49"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "BE1TqzCoipt6Uivhn2pB3DVif9WH6LyvGwi32P5ZJ1TCwkvdqeMSZKsMnmaQKCzcpYqQayZQvbHm365LduPjqUv\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\t4MERA5nxun...dq8ukcSvVW\n\t0.41"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "5WSPYXHTQDkFjUXqmbd3DSL1jivvxrPGLeBZqpugTj8dSDqvZaoHkEYNdyP5QFCmQk8oxCrAyR7XkgNAjoqLLvXc\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\t4MERA5nxun...dq8ukcSvVW\n\t0.43"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "29LzTGoFL1axz3T7hpdypnpa4L2vsCgW8pLfFBEkCqZcnuEXtSHseQLVZ82uUqaMGXnWzrEtgfSZ3eH71E2bNU57\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\t4MERA5nxun...dq8ukcSvVW\n\t0.44"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "2LdezjjRQXHPxRFXjBQxN4tPbRA5Djq1QLFPbrQ2uqCLxnD4JsZzFXJpZQJnzDN5E37BgB1idQAii6LMYVaeocZz\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.45"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "3BEVQazfJjNvsL4Dy15zaSEAZWGg1FabpmCUAfxqRuHQvpYXnJBVjj3ZurJAmn9VTMpsux7fSg1N49pH9bmTQWjs\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.4"
+        }
+      ],
+      "rows_in_range": [
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "41YnpwwzjyiVdLH3AgindEUwRqugcHRvZtfardrZx46FNdwvsz5m44KSiLqPBn4aueMq5sg2ngiFPtMkfz84QSEg\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.42"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "23dmEfxCetqzugMXR5Vmfhpm7qdSCcFL5oALZs6RiaGg8J4mnKBVr7TzCXrBUy7qTzwxpYJJ3VEFXRoBdT8H6B5J\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.49"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "4uypaWbShVJnBihXYJfqYhb2WEXbZbrkx9jcf8sHXG5uAMbmARJ84Ufty3CHrcdGoTU3saHnRrC7cLpuxwPvfHbM\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.48"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "QSjDnAANBK4pFQrftyqEqJkrzp7m2h4YxGz5as21XCwxYVsnF5UBtE91M4KPoo87cHVEKd2328kuTueLHU51sFu\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\t4MERA5nxun...dq8ukcSvVW\n\t0.4"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "TdtskhYYGxBZVRwxAfpS6YeHm7eriuPYyykxgd7CEahZbtsi7Z2LXiW933FKsUaMr9uTCiUbt3Hz4sELG482AA5\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.49"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "BE1TqzCoipt6Uivhn2pB3DVif9WH6LyvGwi32P5ZJ1TCwkvdqeMSZKsMnmaQKCzcpYqQayZQvbHm365LduPjqUv\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\t4MERA5nxun...dq8ukcSvVW\n\t0.41"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "5WSPYXHTQDkFjUXqmbd3DSL1jivvxrPGLeBZqpugTj8dSDqvZaoHkEYNdyP5QFCmQk8oxCrAyR7XkgNAjoqLLvXc\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\t4MERA5nxun...dq8ukcSvVW\n\t0.43"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "29LzTGoFL1axz3T7hpdypnpa4L2vsCgW8pLfFBEkCqZcnuEXtSHseQLVZ82uUqaMGXnWzrEtgfSZ3eH71E2bNU57\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\t4MERA5nxun...dq8ukcSvVW\n\t0.44"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "2LdezjjRQXHPxRFXjBQxN4tPbRA5Djq1QLFPbrQ2uqCLxnD4JsZzFXJpZQJnzDN5E37BgB1idQAii6LMYVaeocZz\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.45"
+        },
+        {
+          "tab": "Activities",
+          "page": 1,
+          "timestamp_utc": "2026-03-11T20:02:00+00:00",
+          "timestamp_local": "2026-03-11T21:02:00+01:00",
+          "timestamp_source": "absolute",
+          "in_range": true,
+          "text": "3BEVQazfJjNvsL4Dy15zaSEAZWGg1FabpmCUAfxqRuHQvpYXnJBVjj3ZurJAmn9VTMpsux7fSg1N49pH9bmTQWjs\n\t20:02:00 Mar 11, 2026\n\tTransfer\n\tHofZbS5fkD...G1q7mXF1PW\n\t0.4"
+        }
+      ],
+      "diagnostics": {
+        "status": "rows_seen_account_mismatch",
+        "pagination_warning": "account_mismatch",
+        "rows_seen_count": 10,
+        "rows_in_range_count": 10,
+        "rows_with_parsed_timestamp_count": 10,
+        "rows_without_parsed_timestamp_count": 0,
+        "rows_with_relative_timestamp_count": 0,
+        "rows_with_absolute_timestamp_count": 10
+      }
+    }
+  },
+  "warnings": [
+    "Transactions: rows_seen_account_mismatch (seen=10, in_range=10, unparsed_ts=0)",
+    "Transfers: rows_seen_account_mismatch (seen=10, in_range=10, unparsed_ts=0)",
+    "Activities: rows_seen_account_mismatch (seen=10, in_range=10, unparsed_ts=0)"
+  ],
+  "partial": false
+}
