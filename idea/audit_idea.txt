@@ -1,0 +1,47 @@
+
+[09:13:34.186] ────────────────────────────────────────────────────────
+[09:13:34.186] WORKER       | slot 2 done 2JooGv...qX4uCc
+[09:13:35.403] WORKER       | slot 2 start MCe3u9...NDBcT3
+[09:13:35.405] SIGNATURE    | MCe3u945yfJNrhbPBs1ovoMxH6ozTenJ12ss5axTVs7Yt8j8kkMMXwxzXRjXdxhpfSdNfQ9tfS4dpZm8ANDBcT3
+[09:13:35.407] START        | processing pool
+[09:13:35.407] STEP 1/7     | parse transaction
+[09:13:35.862] TX           | accounts=18
+[09:13:35.863] TX           | pump-amm instruction accounts=18
+[09:13:35.864] CREATOR      | 8RxXdXdA5AqX7kvPWPm6jd6SaETmt1LgikKP4aWw7mpF
+[09:13:35.864] TX           | fallback postTokenBalances
+[09:13:35.864] STEP 2/7     | resolve token/pool/creator
+[09:13:35.865] TOKEN        | Ee5y9rL8MWcneaGZiuppQZYP44UcjhBwvS7wk6LN2s7n
+[09:13:35.865] POOL         | HxvtkNXZ3nkduqbJJcFypEd6hacnpmc1Gt6cspXdQ8Jo
+[09:13:35.865] GMGN         | https://gmgn.ai/sol/token/Ee5y9rL8MWcneaGZiuppQZYP44UcjhBwvS7wk6LN2s7n
+[09:13:35.866] STEP 3/7     | liquidity check
+[09:13:36.252] LIQ          | 201.43 SOL (USD unavailable)
+[09:13:36.253] STEP 4/7     | mint/freeze security
+[09:13:36.374]    🛡️ Mint/Freeze Security: PASSED
+[09:13:36.374] STEP 5/7     | creator risk
+[09:13:45.949] CRISK        | cp=26 in=21 out=22 window=122s funder=HcA1TD...izVGRd refund=0.000 micro=20/3
+[09:13:45.949] SEED         | creator=200.000 SOL pct=99.29% growth=1.01x
+[09:13:45.949] RREPEAT      | create=0 remove=0 cashout=5 window=600s max_out=20.980
+[09:13:45.950] CRISKT       | hist=2ms parse=8747ms early=807ms deep=0ms total=9556ms
+[09:13:45.951] PROBATION    | paper-only bypass creator risk (unique counterparties 26 >= 25) hold=15000ms
+[09:13:45.952] WAIT         | waiting for first pool trade
+[09:13:46.063] WAIT         | first trade 2cCmhu...GQpx3u seen, starting flow gate
+[09:13:46.892] WAIT         | pre-entry flow ok: sell_quote 0.009939 -> 0.009939 SOL (flat 0.00%, trades=20)
+[09:13:49.122] WAIT         | pre-entry liquidity 202.72 SOL (min observed 202.41 SOL over 3 samples)
+[09:13:53.374] TOP10        | 1.29% (max 30.00%)
+[09:13:53.375] STEP 6/7     | paper simulation
+[09:13:53.379] PAPER        | simulate buy->sell
+[09:13:53.607] CRISK        | reused cached result (no new creator tx, latest=3Bf7VM...Ychp1P)
+[09:13:59.774] BUY_SPOT     | ~0.0₆2339 SOL/token
+[09:13:59.775] BUY_QUOTE    | 42619.409660 token for 0.010000 SOL
+[09:13:59.775] HOLD         | probation hold 15000ms (paper creator-risk bypass)
+[09:14:16.583] SELL_SPOT    | ~0.0₆2549 SOL/token
+[09:14:16.583] SELL_QUOTE   | 0.010834 SOL for 42619.409660 token
+[09:14:16.583] PNL          | +0.000834 SOL (8.34%)
+[09:14:16.584] STEP 7/7     | dev holdings
+[09:14:17.197] DEV          | holding 0 (0.00%)
+[09:14:17.197] DEV          | creator wallet token balance is 0 after create_pool (can be normal)
+[09:14:17.197] DEV          | check duration 613ms
+[09:14:17.197] ✅ Checks passed
+[09:14:17.197] MODE         | MONITOR_ONLY no live trade
+[09:14:17.198] END          | COMPLETED (41791ms)
+[09:14:17.198] ────────────────────────────────────────────────────────

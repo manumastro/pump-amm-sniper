@@ -55,7 +55,11 @@ export async function validatePreBuyEntryState(
     initialCreatorRisk?: CreatorRiskResult,
     options?: PaperSimulationOptions,
 ): Promise<PreBuyEntryValidationResult> {
-    if (creatorAddress && CONFIG.PRE_BUY_FINAL_CREATOR_RISK_RECHECK_ENABLED) {
+    if (
+        creatorAddress &&
+        CONFIG.PRE_BUY_FINAL_CREATOR_RISK_RECHECK_ENABLED &&
+        !options?.skipCreatorRiskRecheck
+    ) {
         const creatorRisk = await deps.recheckCreatorRisk(
             connection,
             creatorAddress,

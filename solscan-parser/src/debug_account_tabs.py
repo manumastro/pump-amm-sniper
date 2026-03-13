@@ -2,7 +2,9 @@ import argparse
 import json
 import re
 import signal
+import socket
 import shutil
+import tempfile
 import time
 import traceback
 from dataclasses import asdict, dataclass
@@ -69,6 +71,12 @@ def short_account_variants(address: str) -> set[str]:
     return variants
 
 
+def get_free_local_port() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
+
+
 @dataclass
 class ScrapeRow:
     tab: str
@@ -95,6 +103,9 @@ class SolscanDebugParser:
         self.cloudflare_wait_sec = cloudflare_wait_sec
         self.step_timeout_sec = step_timeout_sec
         self.page: ChromiumPage | None = None
+        self.current_entity_type: str | None = None
+        self.current_entity_address: str | None = None
+        self._profile_dir: str | None = None
 
     def _resolve_chromium_binary(self) -> str:
         candidates = [
@@ -114,8 +125,13 @@ class SolscanDebugParser:
 
     def __enter__(self):
         chromium_path = self._resolve_chromium_binary()
+        self._profile_dir = tempfile.mkdtemp(prefix="solscan-debug-")
         co = ChromiumOptions()
         co.set_browser_path(chromium_path)
+        co.set_local_port(get_free_local_port())
+        co.set_user_data_path(self._profile_dir)
+        co.set_tmp_path(self._profile_dir)
+        co.set_cache_path(str(Path(self._profile_dir) / "cache"))
         co.set_argument("--no-sandbox")
         co.set_argument("--disable-dev-shm-usage")
         co.set_argument("--disable-gpu")
@@ -129,6 +145,8 @@ class SolscanDebugParser:
     def __exit__(self, exc_type, exc_value, _):
         if self.page:
             self.page.quit()
+        if self._profile_dir:
+            shutil.rmtree(self._profile_dir, ignore_errors=True)
         if exc_type:
             print(f"[warn] parser exit with error: {exc_value}")
         return False
@@ -186,6 +204,8 @@ class SolscanDebugParser:
             self.page.get(f"https://solscan.io/{route}/{address}")
             self._wait_cf_pass()
             time.sleep(self.settle_sec)
+        self.current_entity_type = entity_type
+        self.current_entity_address = address
 
     def _dismiss_cookie_banner(self):
         if not self.page:
@@ -200,15 +220,51 @@ class SolscanDebugParser:
                 except Exception:
                     continue
 
-    def _open_tab(self, tab_name: str):
+    def _ensure_entity_page(self, entity_type: str | None = None, address: str | None = None):
+        target_entity_type = entity_type or self.current_entity_type
+        target_address = address or self.current_entity_address
+        if not target_entity_type or not target_address:
+            return
+        if self._current_page_matches_entity(target_entity_type, target_address):
+            return
+        self._open_entity(target_entity_type, target_address)
+        self._dismiss_cookie_banner()
+
+    def _find_tab(self, tab_name: str):
+        if not self.page:
+            return None
+        selectors = [
+            (
+                "xpath://*[self::a or self::button]"
+                f"[normalize-space(.)='{tab_name}']"
+                "[ancestor::*[contains(normalize-space(.), 'Transactions') and "
+                "contains(normalize-space(.), 'Transfers') and contains(normalize-space(.), 'Activities')]]"
+            ),
+            f"xpath://*[self::a or self::button][normalize-space(.)='{tab_name}']",
+            f"text:{tab_name}",
+        ]
+        for selector in selectors:
+            try:
+                tab = self.page.ele(selector, timeout=1.5)
+                if tab:
+                    return tab
+            except Exception:
+                continue
+        return None
+
+    def _open_tab(self, tab_name: str, entity_type: str | None = None, address: str | None = None):
         if not self.page:
             raise RuntimeError("Page not initialized")
         with time_limit(self.step_timeout_sec, f"open tab {tab_name}"):
-            tab = self.page.ele(f"text:{tab_name}", timeout=2)
+            self._ensure_entity_page(entity_type, address)
+            tab = self._find_tab(tab_name)
             if not tab:
                 raise RuntimeError(f"Tab not found: {tab_name}")
             tab.click(by_js=True)
             time.sleep(self.settle_sec)
+            self._ensure_entity_page(entity_type, address)
+            if not self._current_page_matches_entity(entity_type or self.current_entity_type, address or self.current_entity_address):
+                raise RuntimeError(f"Tab navigation left target entity: {tab_name}")
             self._try_enable_absolute_timestamps()
             if not self.page.ele("xpath://table//tbody//tr", timeout=self.timeout_sec):
                 raise RuntimeError(f"No table rows found on tab {tab_name}")
@@ -522,7 +578,7 @@ class SolscanDebugParser:
                     }
                 )
             try:
-                self._open_tab(tab)
+                self._open_tab(tab, entity_type, address)
             except Exception as exc:
                 result[tab] = {
                     "rows_seen": [],

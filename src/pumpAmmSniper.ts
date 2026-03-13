@@ -153,7 +153,7 @@ async function runShadowAudit(
         createPoolSignature,
         createPoolBlockTime,
         creatorRisk,
-        { ...options, auditMode: true },
+        { ...options, auditMode: true, skipCreatorRiskRecheck: true },
     );
     stageLog(ctx, "AUDIT", JSON.stringify({
         filter,
@@ -166,6 +166,102 @@ async function runShadowAudit(
         durationMs: Date.now() - startedAt,
         ...extra,
     }));
+}
+
+function logObservedShadowAudit(
+    ctx: string,
+    filter: string,
+    reason: string,
+    result: { ok: boolean; finalStatus?: string; reason?: string; pnlSol?: number; pnlPct?: number },
+    extra?: Record<string, unknown>,
+) {
+    stageLog(ctx, "AUDIT", JSON.stringify({
+        filter,
+        reason,
+        ok: result.ok,
+        finalStatus: result.finalStatus || null,
+        resultReason: result.reason || null,
+        pnlSol: typeof result.pnlSol === "number" ? Number(result.pnlSol.toFixed(9)) : null,
+        pnlPct: typeof result.pnlPct === "number" ? Number(result.pnlPct.toFixed(4)) : null,
+        observed: true,
+        durationMs: null,
+        ...extra,
+    }));
+}
+
+function logBlockedShadowAudit(
+    ctx: string,
+    filter: string,
+    reason: string,
+    finalStatus: string,
+    resultReason: string,
+    extra?: Record<string, unknown>,
+) {
+    stageLog(ctx, "AUDIT", JSON.stringify({
+        filter,
+        reason,
+        ok: false,
+        finalStatus,
+        resultReason,
+        pnlSol: null,
+        pnlPct: null,
+        observed: true,
+        durationMs: null,
+        ...extra,
+    }));
+}
+
+function getCreatorRiskShadowAuditTarget(reason?: string): { filter: string; extra?: Record<string, unknown> } | null {
+    const normalized = (reason || "").toLowerCase();
+    if (!normalized) return null;
+
+    if (
+        CONFIG.SHADOW_AUDIT_STANDARD_POOL_MICRO_BURST_ENABLED &&
+        normalized.includes("standard pool micro burst")
+    ) {
+        return { filter: "creator-risk-standard-pool-micro-burst" };
+    }
+    if (
+        CONFIG.SHADOW_AUDIT_STANDARD_POOL_OUTBOUND_HEAVY_ENABLED &&
+        normalized.includes("standard pool outbound-heavy creator history")
+    ) {
+        return { filter: "creator-risk-standard-pool-outbound-heavy" };
+    }
+    if (
+        CONFIG.SHADOW_AUDIT_CREATOR_CASHOUT_ENABLED &&
+        normalized.includes("creator cashout")
+    ) {
+        return { filter: "creator-risk-cashout" };
+    }
+    if (
+        CONFIG.SHADOW_AUDIT_CREATOR_REFUNDED_FUNDER_ENABLED &&
+        normalized.includes("creator refunded funder")
+    ) {
+        return { filter: "creator-risk-refunded-funder" };
+    }
+    if (
+        CONFIG.SHADOW_AUDIT_BURNER_PROFILE_ENABLED &&
+        normalized.includes("burner profile")
+    ) {
+        return { filter: "creator-risk-burner-profile" };
+    }
+    if (
+        CONFIG.SHADOW_AUDIT_RAPID_CREATOR_DISPERSAL_ENABLED &&
+        normalized.includes("rapid creator dispersal")
+    ) {
+        return { filter: "creator-risk-rapid-dispersal" };
+    }
+
+    return null;
+}
+
+function getPostBuyShadowAuditTarget(paper?: { exitReason?: string }): { filter: string; extra?: Record<string, unknown> } | null {
+    const normalized = (paper?.exitReason || "").toLowerCase();
+    if (!normalized) return null;
+    if (normalized.includes("creator risk: unique counterparties")) {
+        return { filter: "post-buy-creator-risk-unique-counterparties" };
+    }
+    return null;
 }
 
 // Initialize SDKs
@@ -480,14 +576,12 @@ async function handleNewPool(connection: Connection, signature: string) {
                     );
                 }
                 console.log(`🛑 SKIP: creator risk (${creatorRisk.reason})`);
-                if (
-                    CONFIG.SHADOW_AUDIT_CREATOR_UNIQUE_COUNTERPARTIES_ENABLED &&
-                    (creatorRisk.reason || "").toLowerCase().includes("unique counterparties")
-                ) {
+                const shadowAuditTarget = getCreatorRiskShadowAuditTarget(creatorRisk.reason);
+                if (shadowAuditTarget) {
                     await runShadowAudit(
                         connection,
                         ctx,
-                        "creator-risk-unique-counterparties",
+                        shadowAuditTarget.filter,
                         creatorRisk.reason || "unique counterparties",
                         paperTradeService,
                         poolAddress,
@@ -501,6 +595,7 @@ async function handleNewPool(connection: Connection, signature: string) {
                             forceHoldMs: creatorRiskService.getProbationHoldMs(creatorRisk.reason),
                             suppressCreatorRiskRecheck: true,
                         },
+                        shadowAuditTarget.extra,
                     );
                 }
                 finalStatus = "SKIP: creator risk";
@@ -509,6 +604,9 @@ async function handleNewPool(connection: Connection, signature: string) {
         }
 
         if (MONITOR_ONLY) {
+            const probationShadowAuditTarget = creatorRiskProbation
+                ? getCreatorRiskShadowAuditTarget(creatorRisk.reason)
+                : null;
             if (CONFIG.PRE_BUY_WAIT_MS > 0) {
                 const preEntry = await preEntryWaitAndCheck(
                     connection,
@@ -520,6 +618,16 @@ async function handleNewPool(connection: Connection, signature: string) {
                     creatorRisk,
                 );
                 if (!preEntry.ok) {
+                    if (probationShadowAuditTarget) {
+                        logBlockedShadowAudit(
+                            ctx,
+                            probationShadowAuditTarget.filter,
+                            creatorRisk.reason || "creator risk probation",
+                            "SKIP: pre-entry guard",
+                            preEntry.reason || "pre-entry guard",
+                            { source: "probation-blocked-pre-entry" },
+                        );
+                    }
                     console.log(`🛑 SKIP: pre-entry guard (${preEntry.reason})`);
                     finalStatus = "SKIP: pre-entry guard";
                     return;
@@ -528,35 +636,22 @@ async function handleNewPool(connection: Connection, signature: string) {
             }
             const top10 = await top10Service.runCheck(connection, tokenMint, poolAddress, ctx);
             if (!top10.ok) {
-                console.log(`🛑 SKIP: pre-buy top10 (${top10.reason})`);
-                if (
-                    CONFIG.SHADOW_AUDIT_TOP10_ENABLED &&
-                    typeof top10.top10Pct === "number" &&
-                    top10.top10Pct >= CONFIG.SHADOW_AUDIT_TOP10_MIN_PCT &&
-                    top10.top10Pct <= CONFIG.SHADOW_AUDIT_TOP10_MAX_PCT
-                ) {
-                    await runShadowAudit(
-                        connection,
+                if (probationShadowAuditTarget) {
+                    logBlockedShadowAudit(
                         ctx,
-                        "pre-buy-top10-borderline",
+                        probationShadowAuditTarget.filter,
+                        creatorRisk.reason || "creator risk probation",
+                        "SKIP: pre-buy top10",
                         top10.reason || "pre-buy top10",
-                        paperTradeService,
-                        poolAddress,
-                        tokenMint,
-                        liquiditySOL,
-                        creatorAddress || undefined,
-                        signature,
-                        tx.blockTime || null,
-                        creatorRisk,
-                        creatorRiskProbation
-                            ? {
-                                forceHoldMs: creatorRiskProbationHoldMs,
-                                suppressCreatorRiskRecheck: true,
-                              }
-                            : undefined,
-                        { top10Pct: Number(top10.top10Pct.toFixed(2)) },
+                        {
+                            source: "probation-blocked-top10",
+                            top10Pct: typeof top10.top10Pct === "number"
+                                ? Number(top10.top10Pct.toFixed(4))
+                                : null,
+                        },
                     );
                 }
+                console.log(`🛑 SKIP: pre-buy top10 (${top10.reason})`);
                 finalStatus = "SKIP: pre-buy top10";
                 return;
             }
@@ -575,9 +670,28 @@ async function handleNewPool(connection: Connection, signature: string) {
                     ? {
                         forceHoldMs: creatorRiskProbationHoldMs,
                         suppressCreatorRiskRecheck: true,
-                      }
+                    }
                     : undefined,
             );
+            if (probationShadowAuditTarget) {
+                logObservedShadowAudit(
+                    ctx,
+                    probationShadowAuditTarget.filter,
+                    creatorRisk.reason || "creator risk probation",
+                    paper,
+                    { source: "probation-observed" },
+                );
+            }
+            const postBuyShadowAuditTarget = getPostBuyShadowAuditTarget(paper);
+            if (postBuyShadowAuditTarget) {
+                logObservedShadowAudit(
+                    ctx,
+                    postBuyShadowAuditTarget.filter,
+                    paper.exitReason || "post-buy creator risk exit",
+                    paper,
+                    { source: "post-buy-observed" },
+                );
+            }
             if (!paper.ok) {
                 if (paper.finalStatus) {
                     console.log(`⚠️ PAPER_TRADE: ${paper.reason}`);

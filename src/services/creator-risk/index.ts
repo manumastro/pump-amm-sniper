@@ -660,6 +660,7 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
             normalized.includes("fresh-funded high-seed creator") ||
             normalized.includes("relay funding recent on standard pool") ||
             normalized.includes("relay funding recent + micro burst") ||
+            normalized.includes("standard pool outbound-heavy creator history") ||
             normalized.includes("concentrated inbound funding") ||
             normalized.includes("micro inbound burst") ||
             normalized.includes("lookup-table + setup burst") ||
@@ -705,6 +706,24 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
             uniqueCounterparties >= CONFIG.PAPER_CREATOR_RISK_EXTREME_UNIQUE_COUNTERPARTIES_MIN &&
             solOutTransfers >= CONFIG.PAPER_CREATOR_RISK_EXTREME_UNIQUE_COUNTERPARTIES_MIN_OUT_TRANSFERS &&
             solInTransfers <= CONFIG.PAPER_CREATOR_RISK_EXTREME_UNIQUE_COUNTERPARTIES_MAX_IN_TRANSFERS
+        ) {
+            return true;
+        }
+
+        if (
+            CONFIG.PAPER_CREATOR_RISK_PROBATION_UNIQUE_COUNTERPARTIES_BLOCK_ENABLED &&
+            uniqueCounterparties >= CONFIG.PAPER_CREATOR_RISK_PROBATION_UNIQUE_COUNTERPARTIES_MIN &&
+            solOutTransfers >= CONFIG.PAPER_CREATOR_RISK_PROBATION_UNIQUE_COUNTERPARTIES_MIN_OUT_TRANSFERS &&
+            solInTransfers <= CONFIG.PAPER_CREATOR_RISK_PROBATION_UNIQUE_COUNTERPARTIES_MAX_IN_TRANSFERS
+        ) {
+            return true;
+        }
+
+        if (
+            CONFIG.PAPER_CREATOR_RISK_PROBATION_LOW_CASHOUT_BLOCK_ENABLED &&
+            creatorCashoutSol >= CONFIG.PAPER_CREATOR_RISK_PROBATION_LOW_CASHOUT_MIN_SOL &&
+            creatorCashoutPct >= CONFIG.PAPER_CREATOR_RISK_PROBATION_LOW_CASHOUT_MIN_PCT_OF_LIQ &&
+            creatorCashoutScore >= CONFIG.PAPER_CREATOR_RISK_PROBATION_LOW_CASHOUT_MIN_SCORE
         ) {
             return true;
         }

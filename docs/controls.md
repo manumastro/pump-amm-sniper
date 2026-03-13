@@ -130,16 +130,27 @@ Controllo probation paper-only:
 - `PAPER_CREATOR_RISK_EXTREME_CASHOUT_BLOCK_ENABLED`
 - `PAPER_CREATOR_RISK_EXTREME_CASHOUT_MIN_PCT_OF_LIQ`
 - `PAPER_CREATOR_RISK_EXTREME_CASHOUT_MIN_SCORE`
+- `PAPER_CREATOR_RISK_PROBATION_UNIQUE_COUNTERPARTIES_BLOCK_ENABLED`
+- `PAPER_CREATOR_RISK_PROBATION_UNIQUE_COUNTERPARTIES_MIN`
+- `PAPER_CREATOR_RISK_PROBATION_UNIQUE_COUNTERPARTIES_MIN_OUT_TRANSFERS`
+- `PAPER_CREATOR_RISK_PROBATION_UNIQUE_COUNTERPARTIES_MAX_IN_TRANSFERS`
+- `PAPER_CREATOR_RISK_PROBATION_LOW_CASHOUT_BLOCK_ENABLED`
+- `PAPER_CREATOR_RISK_PROBATION_LOW_CASHOUT_MIN_SOL`
+- `PAPER_CREATOR_RISK_PROBATION_LOW_CASHOUT_MIN_PCT_OF_LIQ`
+- `PAPER_CREATOR_RISK_PROBATION_LOW_CASHOUT_MIN_SCORE`
 
 Eccezioni:
 - nessun probation bypass per `creator in historical rug blacklist`
 - nessun probation bypass per `funder blacklisted ...`
 - nessun probation bypass per `relay funding recent on standard pool`
 - nessun probation bypass per `relay funding recent + micro burst`
+- nessun probation bypass per `standard pool outbound-heavy creator history`
 - nessun probation bypass per `micro inbound burst`
 - nessun probation bypass per `creator direct AMM re-entry`
 - nessun probation bypass per `creator seed too small ...`
 - nessun probation bypass per `creator cashout` gia estremo rispetto alla liquidity iniziale
+- nessun probation bypass per `unique counterparties` gia outbound-heavy oltre le soglie dedicate
+- nessun probation bypass per `creator cashout` gia sospetto oltre le soglie probation dedicate
 
 Durata:
 - probation normale: `PAPER_CREATOR_RISK_PROBATION_HOLD_MS`
@@ -268,20 +279,27 @@ Regola:
 - gira solo come simulazione silenziosa aggiuntiva su casi mirati
 
 Target attuali:
-- `creator risk` con motivo `unique counterparties ...`
-- `pre-buy top10` borderline in finestra configurabile
+- `creator risk` con motivo `standard pool micro burst ...`
+- `creator risk` con motivo `standard pool outbound-heavy creator history ...`
+- `creator risk` con motivo `creator cashout ...`
+- `creator risk` con motivo `creator refunded funder ...`
+- `creator risk` con motivo `burner profile ...`
+- `creator risk` con motivo `rapid creator dispersal ...`
 
 Config:
 - `SHADOW_AUDIT_ENABLED`
-- `SHADOW_AUDIT_CREATOR_UNIQUE_COUNTERPARTIES_ENABLED`
-- `SHADOW_AUDIT_TOP10_ENABLED`
-- `SHADOW_AUDIT_TOP10_MIN_PCT`
-- `SHADOW_AUDIT_TOP10_MAX_PCT`
+- `SHADOW_AUDIT_STANDARD_POOL_MICRO_BURST_ENABLED`
+- `SHADOW_AUDIT_STANDARD_POOL_OUTBOUND_HEAVY_ENABLED`
+- `SHADOW_AUDIT_CREATOR_CASHOUT_ENABLED`
+- `SHADOW_AUDIT_CREATOR_REFUNDED_FUNDER_ENABLED`
+- `SHADOW_AUDIT_BURNER_PROFILE_ENABLED`
+- `SHADOW_AUDIT_RAPID_CREATOR_DISPERSAL_ENABLED`
 
 Comportamento:
 - se un evento matcha il filtro auditabile, il bot esegue una `paper simulation` silenziosa
 - la simulazione audit lascia attivi gli altri guard rail del motore paper
 - l'esito viene salvato come telemetria aggiuntiva, non come operazione reale
+- se il caso passa in `probation` ma viene fermato prima della `paper simulation` da `pre-entry guard` o `pre-buy top10`, viene comunque emesso un evento `AUDIT` con `pnlSol/pnlPct = null` e `finalStatus` valorizzato
 
 Output:
 - evento log `AUDIT | {...}`
@@ -294,8 +312,9 @@ Uso pratico:
 - non sostituisce il parser Solscan: Solscan resta strumento di drill-down manuale sui casi piu interessanti
 
 Nota:
-- se un filtro oggi manda il caso in `probation` invece che in `skip`, lo shadow audit sul ramo `skip` non parte
-- per questo motivo i bucket auditati vanno scelti in modo coerente con la policy reale del filtro
+- i casi `probation` dei bucket auditati vengono registrati in due modi:
+- `source: "probation-observed"` se completano la `paper simulation`
+- `source: "probation-blocked-pre-entry"` o `source: "probation-blocked-top10"` se vengono fermati prima
 
 ## 2. Durante hold
 

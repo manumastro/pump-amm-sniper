@@ -180,7 +180,7 @@ export function createPaperTradeService(deps: PaperTradeDeps) {
                 );
             }
 
-            const exitState = await waitForExitStateWithLiquidityStop(
+            const exitOutcome = await waitForExitStateWithLiquidityStop(
                 {
                     recheckCreatorRisk: deps.recheckCreatorRisk,
                     shouldEscalateProbationCreatorRisk: deps.shouldEscalateProbationCreatorRisk,
@@ -208,10 +208,12 @@ export function createPaperTradeService(deps: PaperTradeDeps) {
                 createPoolBlockTime,
                 initialCreatorRisk,
             );
-            if (!exitState) {
+            if (!exitOutcome?.state) {
                 console.log("⚠️ PAPER_TRADE: no exit pool state");
                 return { ok: false, reason: "exit state unavailable" };
             }
+            const exitState = exitOutcome.state;
+            const exitReason = exitOutcome.exitReason;
 
             let solOut: number;
             if (orientation.solIsBase) {
@@ -255,7 +257,7 @@ export function createPaperTradeService(deps: PaperTradeDeps) {
                     stageLog(ctx, "SELL_QUOTE", `${formatSolDecimal(0)} for ${tokenOutUi.toFixed(6)} token`);
                     stageLog(ctx, "PNL", `-${formatSolDecimal(Math.abs(pnlSol))} (${pnlPct.toFixed(2)}%)`);
                 }
-                return { ok: false, reason: "exit returned 0 SOL", finalStatus: "PAPER LOSS", pnlSol, pnlPct };
+                return { ok: false, reason: "exit returned 0 SOL", finalStatus: "PAPER LOSS", pnlSol, pnlPct, exitReason };
             }
             if (
                 Number.isFinite(exitSolLiquidity) &&
@@ -266,7 +268,7 @@ export function createPaperTradeService(deps: PaperTradeDeps) {
                     `⚠️ PAPER_TRADE invalid exit quote: ` +
                     `${solOut.toFixed(6)} SOL exceeds exit liquidity ${exitSolLiquidity.toFixed(6)} SOL`
                 );
-                return { ok: false, reason: "exit quote exceeded pool liquidity" };
+                return { ok: false, reason: "exit quote exceeded pool liquidity", exitReason };
             }
 
             const pnlSol = solOut - CONFIG.TRADE_AMOUNT_SOL;
@@ -284,10 +286,11 @@ export function createPaperTradeService(deps: PaperTradeDeps) {
                     finalStatus: "PAPER LOSS",
                     pnlSol,
                     pnlPct,
+                    exitReason,
                 };
             }
 
-            return { ok: true, finalStatus: "COMPLETED", pnlSol, pnlPct };
+            return { ok: true, finalStatus: "COMPLETED", pnlSol, pnlPct, exitReason };
         } catch (e: any) {
             console.log(`⚠️ PAPER_TRADE failed: ${e.message}`);
             return { ok: false, reason: e?.message || "paper simulation failed" };

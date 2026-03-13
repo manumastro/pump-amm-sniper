@@ -101,11 +101,13 @@ export type PaperTradeResult = {
     finalStatus?: string;
     pnlSol?: number;
     pnlPct?: number;
+    exitReason?: string;
 };
 
 export type PaperSimulationOptions = {
     forceHoldMs?: number;
     suppressCreatorRiskRecheck?: boolean;
+    skipCreatorRiskRecheck?: boolean;
     auditMode?: boolean;
 };
 

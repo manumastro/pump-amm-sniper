@@ -101,7 +101,7 @@ export async function waitForExitStateWithLiquidityStop(
     createPoolSignature?: string,
     createPoolBlockTime?: number | null,
     initialCreatorRisk?: CreatorRiskResult,
-): Promise<any | null> {
+): Promise<{ state: any | null; exitReason?: string } | null> {
     const startedAtMs = Date.now();
     const deadlineMs = startedAtMs + Math.max(1000, holdMs);
     const pollIntervalMs = Math.max(250, Math.min(CONFIG.HOLD_REMOVE_LIQ_CHECK_INTERVAL_MS, 1500));
@@ -171,7 +171,7 @@ export async function waitForExitStateWithLiquidityStop(
                         `token_to_creator=${(removeLiq.tokenToCreator || 0).toFixed(3)} ` +
                         `entry_liq=${entrySolLiquidity.toFixed(2)} SOL)`
                     );
-                    return s;
+                    return { state: s, exitReason: "remove liquidity" };
                 }
                 if (CONFIG.HOLD_CREATOR_AMM_BURST_DETECT_ENABLED && removeLiq.creatorAmmTouch) {
                     const eventTimeSec = removeLiq.eventTimeSec || Math.floor(Date.now() / 1000);
@@ -188,7 +188,7 @@ export async function waitForExitStateWithLiquidityStop(
                             `${creatorAmmTouchTimesSec.length} tx in ${windowSec}s ` +
                             `(${shortSig(removeLiq.signature || "-")})`
                         );
-                        return s;
+                        return { state: s, exitReason: "creator amm burst" };
                     }
                 }
             }
@@ -196,6 +196,7 @@ export async function waitForExitStateWithLiquidityStop(
             if (
                 creatorAddress &&
                 CONFIG.HOLD_CREATOR_RISK_RECHECK_ENABLED &&
+                !suppressCreatorRiskRecheck &&
                 Date.now() - lastCreatorRiskCheckAtMs >= scaledInterval(CONFIG.HOLD_CREATOR_RISK_RECHECK_INTERVAL_MS)
             ) {
                 lastCreatorRiskCheckAtMs = Date.now();
@@ -213,22 +214,8 @@ export async function waitForExitStateWithLiquidityStop(
                         stageLog(logPrefix, "CRISK", `transient error during hold recheck (${creatorRisk.reason || "rate limited"})`);
                         continue;
                     }
-                    if (suppressCreatorRiskRecheck) {
-                        const probationEscalation = deps.shouldEscalateProbationCreatorRisk(
-                            creatorRisk,
-                            baselineCreatorCashoutSol,
-                        );
-                        if (probationEscalation.escalate) {
-                            console.log(
-                                `⚠️ CREATOR RISK EXIT (probation hard): ${creatorRisk.reason}` +
-                                ` (cashout_delta=${probationEscalation.cashoutDeltaSol.toFixed(3)} SOL)`
-                            );
-                            return s;
-                        }
-                    } else {
-                        console.log(`⚠️ CREATOR RISK EXIT: ${creatorRisk.reason}`);
-                        return s;
-                    }
+                    console.log(`⚠️ CREATOR RISK EXIT: ${creatorRisk.reason}`);
+                    return { state: s, exitReason: `creator risk: ${creatorRisk.reason || "unknown"}` };
                 }
             }
 
@@ -256,7 +243,7 @@ export async function waitForExitStateWithLiquidityStop(
                             `⚠️ WINNER TAKE PROFIT EXIT: ` +
                             `${currentExitQuoteSol.toFixed(6)} SOL (${currentPnlPct.toFixed(2)}%)`
                         );
-                        return s;
+                        return { state: s, exitReason: "winner take profit" };
                     }
                     if (
                         peakExitQuoteSol >= minPeakSol &&
@@ -269,7 +256,7 @@ export async function waitForExitStateWithLiquidityStop(
                             `${currentExitQuoteSol.toFixed(6)} SOL (${currentPnlPct.toFixed(2)}%), ` +
                             `drawdown ${drawdownFromPeakPct.toFixed(2)}%`
                         );
-                        return s;
+                        return { state: s, exitReason: "winner trailing stop" };
                     }
                 }
             }
@@ -294,7 +281,7 @@ export async function waitForExitStateWithLiquidityStop(
                             `${baselineExitQuoteSol.toFixed(6)} -> ${currentExitQuoteSol.toFixed(6)} SOL ` +
                             `(drop ${dropPct.toFixed(2)}%, floor ${minExitSol.toFixed(6)} SOL)`
                         );
-                        return s;
+                        return { state: s, exitReason: "sell quote collapse" };
                     }
                 }
             }
@@ -345,7 +332,7 @@ export async function waitForExitStateWithLiquidityStop(
                             `(sell_quote ${baselineExitQuoteSol.toFixed(6)} -> ${currentExitQuoteSol.toFixed(6)} SOL, ` +
                             `${formatQuoteMovePct(baselineExitQuoteSol, currentExitQuoteSol)})`
                         );
-                        return s;
+                        return { state: s, exitReason: "pool churn" };
                     }
                 }
             }
@@ -370,7 +357,7 @@ export async function waitForExitStateWithLiquidityStop(
                         `${shortSig(creatorOutbound.signature || "-")} ` +
                         `(${(creatorOutbound.outboundSol || 0).toFixed(3)} SOL -> ${shortSig(creatorOutbound.destination || "-")})`
                     );
-                    return s;
+                    return { state: s, exitReason: "creator outbound" };
                 }
             }
 
@@ -404,7 +391,7 @@ export async function waitForExitStateWithLiquidityStop(
                         `${burst.txCount} tx / ${burst.totalCloseCount} closes in ${windowSec}s ` +
                         `(sig=${shortSig(burst.latestSignature)})`
                     );
-                    return s;
+                    return { state: s, exitReason: "creator close-account burst" };
                 }
             }
 
@@ -441,7 +428,7 @@ export async function waitForExitStateWithLiquidityStop(
                         `(median ${spray.medianSol.toFixed(3)} SOL, rel_std ${spray.relStdDev.toFixed(2)}, ` +
                         `ratio ${spray.amountRatio.toFixed(2)}, sig=${shortSig(latestSig)})`
                     );
-                    return s;
+                    return { state: s, exitReason: "creator outbound spray" };
                 }
             }
 
@@ -478,7 +465,7 @@ export async function waitForExitStateWithLiquidityStop(
                         `(median ${spray.medianSol.toFixed(3)} SOL, rel_std ${spray.relStdDev.toFixed(2)}, ` +
                         `ratio ${spray.amountRatio.toFixed(2)}, sig=${shortSig(latestSig)})`
                     );
-                    return s;
+                    return { state: s, exitReason: "creator inbound spray" };
                 }
             }
         }
@@ -486,5 +473,5 @@ export async function waitForExitStateWithLiquidityStop(
         await new Promise((r) => setTimeout(r, pollIntervalMs));
     }
 
-    return latestState || fetchStateWithRetry();
+    return { state: latestState || await fetchStateWithRetry(), exitReason: "hold timeout" };
 }
