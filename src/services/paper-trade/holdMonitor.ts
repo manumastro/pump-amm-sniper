@@ -1,7 +1,7 @@
 import BN from "bn.js";
 import { Connection } from "@solana/web3.js";
 import { CONFIG } from "../../app/config";
-import { CreatorRiskResult } from "../../domain/types";
+import { CreatorRiskResult, WinnerManagementProfile } from "../../domain/types";
 import { stageLog } from "../reporting/stageLog";
 import { formatQuoteMovePct } from "../../utils/format";
 import { shortSig } from "../../utils/pubkeys";
@@ -101,6 +101,9 @@ export async function waitForExitStateWithLiquidityStop(
     createPoolSignature?: string,
     createPoolBlockTime?: number | null,
     initialCreatorRisk?: CreatorRiskResult,
+    winnerProfile?: WinnerManagementProfile,
+    elapsedBeforeStartMs = 0,
+    initialPeakExitQuoteSol?: number,
 ): Promise<{ state: any | null; exitReason?: string } | null> {
     const startedAtMs = Date.now();
     const deadlineMs = startedAtMs + Math.max(1000, holdMs);
@@ -129,7 +132,18 @@ export async function waitForExitStateWithLiquidityStop(
     const creatorCloseAccountEvents: Array<{ closeCount: number; eventTimeSec: number; signature: string }> = [];
     const baselineCreatorCashoutSol = Number(initialCreatorRisk?.creatorCashoutSol || 0);
     const baselineExitQuoteSol = getExitQuoteSolFromState(entryState, tokenMint, tokenOutAtomic);
-    let peakExitQuoteSol = baselineExitQuoteSol || 0;
+    let peakExitQuoteSol = Number.isFinite(initialPeakExitQuoteSol)
+        ? Number(initialPeakExitQuoteSol)
+        : (baselineExitQuoteSol || 0);
+    const activeWinnerProfile: WinnerManagementProfile = winnerProfile || {
+        enabled: CONFIG.HOLD_WINNER_MANAGEMENT_ENABLED,
+        checkIntervalMs: CONFIG.HOLD_WINNER_CHECK_INTERVAL_MS,
+        minHoldMs: CONFIG.HOLD_WINNER_MIN_HOLD_MS,
+        armPnlPct: CONFIG.HOLD_WINNER_ARM_PNL_PCT,
+        trailingDropPct: CONFIG.HOLD_WINNER_TRAILING_DROP_PCT,
+        hardTakeProfitPct: CONFIG.HOLD_WINNER_HARD_TAKE_PROFIT_PCT,
+        minPeakSol: CONFIG.HOLD_WINNER_MIN_PEAK_SOL,
+    };
     if (createPoolSignature) seenPoolSignatures.add(createPoolSignature);
     if (createPoolSignature) seenCreatorSignatures.add(createPoolSignature);
     if (createPoolSignature) seenCreatorSpraySignatures.add(createPoolSignature);
@@ -220,9 +234,9 @@ export async function waitForExitStateWithLiquidityStop(
             }
 
             if (
-                CONFIG.HOLD_WINNER_MANAGEMENT_ENABLED &&
-                Date.now() - startedAtMs >= Math.max(0, CONFIG.HOLD_WINNER_MIN_HOLD_MS) &&
-                Date.now() - lastWinnerCheckAtMs >= scaledInterval(CONFIG.HOLD_WINNER_CHECK_INTERVAL_MS)
+                activeWinnerProfile.enabled &&
+                elapsedBeforeStartMs + (Date.now() - startedAtMs) >= Math.max(0, activeWinnerProfile.minHoldMs) &&
+                Date.now() - lastWinnerCheckAtMs >= scaledInterval(activeWinnerProfile.checkIntervalMs)
             ) {
                 lastWinnerCheckAtMs = Date.now();
                 const currentExitQuoteSol = getExitQuoteSolFromState(s, tokenMint, tokenOutAtomic);
@@ -234,10 +248,10 @@ export async function waitForExitStateWithLiquidityStop(
                         peakExitQuoteSol > 0
                             ? ((peakExitQuoteSol - currentExitQuoteSol) / peakExitQuoteSol) * 100
                             : 0;
-                    const minPeakSol = Math.max(0, CONFIG.HOLD_WINNER_MIN_PEAK_SOL);
+                    const minPeakSol = Math.max(0, activeWinnerProfile.minPeakSol);
                     if (
-                        CONFIG.HOLD_WINNER_HARD_TAKE_PROFIT_PCT > 0 &&
-                        currentPnlPct >= CONFIG.HOLD_WINNER_HARD_TAKE_PROFIT_PCT
+                        activeWinnerProfile.hardTakeProfitPct > 0 &&
+                        currentPnlPct >= activeWinnerProfile.hardTakeProfitPct
                     ) {
                         console.log(
                             `⚠️ WINNER TAKE PROFIT EXIT: ` +
@@ -247,8 +261,8 @@ export async function waitForExitStateWithLiquidityStop(
                     }
                     if (
                         peakExitQuoteSol >= minPeakSol &&
-                        peakPnlPct >= CONFIG.HOLD_WINNER_ARM_PNL_PCT &&
-                        drawdownFromPeakPct >= Math.abs(CONFIG.HOLD_WINNER_TRAILING_DROP_PCT)
+                        peakPnlPct >= activeWinnerProfile.armPnlPct &&
+                        drawdownFromPeakPct >= Math.abs(activeWinnerProfile.trailingDropPct)
                     ) {
                         console.log(
                             `⚠️ WINNER TRAILING EXIT: ` +

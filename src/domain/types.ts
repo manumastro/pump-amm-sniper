@@ -104,6 +104,16 @@ export type PaperTradeResult = {
     exitReason?: string;
 };
 
+export type WinnerManagementProfile = {
+    enabled: boolean;
+    checkIntervalMs: number;
+    minHoldMs: number;
+    armPnlPct: number;
+    trailingDropPct: number;
+    hardTakeProfitPct: number;
+    minPeakSol: number;
+};
+
 export type PaperSimulationOptions = {
     forceHoldMs?: number;
     suppressCreatorRiskRecheck?: boolean;
