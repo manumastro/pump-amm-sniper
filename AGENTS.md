@@ -52,14 +52,16 @@ Preferire:
 - Report testo: `logs/paper-report.txt`
 
 Regola operativa:
-- dopo modifiche importanti a logica/controlli del bot, prima del restart dei servizi va sempre fatto reset completo di log e report:
-  - `paper.log`
-  - `logs/paper-report.json`
-  - `logs/paper-report.txt`
-  - `logs/paper-worker-1.log`
-  - `logs/paper-worker-2.log`
-  - `logs/paper-worker-3.log`
-  - `logs/paper-report-daemon.log`
+- dopo modifiche importanti a logica/controlli del bot, prima del restart dei servizi va fatto un backup e un reset:
+  1. **Backup:** `cp logs/paper-report.json logs/archive/paper-report-$(date +%Y%m%d_%H%M%S).json` (e anche il .txt)
+  2. **Reset:** svuotare log e report attivi:
+    - `paper.log`
+    - `logs/paper-report.json`
+    - `logs/paper-report.txt`
+    - `logs/paper-worker-1.log`
+    - `logs/paper-worker-2.log`
+    - `logs/paper-worker-3.log`
+    - `logs/paper-report-daemon.log`
 
 Nota:
 - se il numero di worker aumenta, il reset deve includere tutti i file `logs/paper-worker-*.log` presenti

@@ -38,6 +38,7 @@ export function patchConsoleWithTimestamp() {
     console.error = wrap(originalError);
 }
 
-export function stageLog(_ctx: string, stage: string, message: string) {
-    console.log(`${stage.padEnd(12)} | ${message}`);
+export function stageLog(ctx: string, stage: string, message: string) {
+    const contextTag = ctx ? `${ctx.padEnd(12)} | ` : "";
+    console.log(`${contextTag}${stage.padEnd(12)} | ${message}`);
 }

@@ -13,12 +13,15 @@
 - Shadow audits for Ambitious, Aggressive, and Ultra run in parallel after a "winner" exit.
 
 ## Operational Procedures
-- **Reset Logs:** After significant logic changes, always delete:
+- **Backup prima del reset:** Prima di resettare i log, salva sempre una copia dei report correnti nell'archivio.
+  - `cp logs/paper-report.json logs/archive/paper-report-$(date +%Y%m%d_%H%M%S).json`
+  - `cp logs/paper-report.txt logs/archive/paper-report-$(date +%Y%m%d_%H%M%S).txt`
+- **Reset Logs:** Solo dopo il backup, svuota i file attivi (dopo aver fermato i servizi):
   - `paper.log`
   - `logs/*.log`
   - `logs/*.json`
   - `logs/*.txt`
-- **Build First:** Run `npm run build` before restarting systemd services.
+- **Build First:** Esegui sempre `npm run build` prima di riavviare i servizi systemd.
 - **Service Management:**
   - Bot: `pump-sniper.service`
   - Reporter: `pump-report.service`
