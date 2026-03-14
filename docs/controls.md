@@ -634,7 +634,7 @@ Gate specifico per pattern pre-create (spray quasi uniforme):
 - `CREATOR_RISK_PRECREATE_BURST_MAX_REL_STDDEV`
 - `CREATOR_RISK_PRECREATE_BURST_MAX_AMOUNT_RATIO`
 Winner exit shadow audit:
-- `winner-management-ambitious` osserva i winner reali con un profilo piu permissivo del live.
-- `winner-management-aggressive` osserva gli stessi winner con un profilo ancora piu offensivo.
-- `winner-management-ultra` osserva gli stessi winner con un profilo massimo pensato solo per test notturni.
-- Entrambi sono solo audit: non cambiano il path live, non alterano buy/sell del report principale e scrivono solo eventi `AUDIT`.
+- `winner-management-ambitious`: osserva i winner reali con un profilo di take profit/trailing stop leggermente piu permissivo del live.
+- `winner-management-aggressive`: osserva gli stessi winner con un profilo ancora piu offensivo per catturare i runner più forti.
+- `winner-management-ultra`: osserva gli stessi winner con un profilo estremo pensato per testare il limite massimo del momentum.
+- Tutti e tre sono solo audit: non cambiano il path live, non alterano l'esito buy/sell del report principale e scrivono solo eventi `AUDIT`. Le soglie di trigger (arm), trailing e hard take profit per ciascuno sono configurabili in `src/app/config.ts`.
