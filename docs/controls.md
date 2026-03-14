@@ -636,5 +636,5 @@ Gate specifico per pattern pre-create (spray quasi uniforme):
 Winner exit shadow audit:
 - `winner-management-ambitious`: osserva i winner reali con un profilo di take profit/trailing stop leggermente piu permissivo del live.
 - `winner-management-aggressive`: osserva gli stessi winner con un profilo ancora piu offensivo per catturare i runner più forti.
-- `winner-management-ultra`: osserva gli stessi winner con un profilo estremo pensato per testare il limite massimo del momentum.
+- `winner-management-ultra`: osserva gli stessi winner testando una strategia "Full Moonshot" (hard take profit disabilitato), uscendo solo se colpisce un forte trailing stop, per catturare run oltre il +100%.
 - Tutti e tre sono solo audit: non cambiano il path live, non alterano l'esito buy/sell del report principale e scrivono solo eventi `AUDIT`. Le soglie di trigger (arm), trailing e hard take profit per ciascuno sono configurabili in `src/app/config.ts`.
