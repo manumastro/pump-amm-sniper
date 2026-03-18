@@ -118,7 +118,6 @@ export type PaperSimulationOptions = {
     forceHoldMs?: number;
     suppressCreatorRiskRecheck?: boolean;
     skipCreatorRiskRecheck?: boolean;
-    auditMode?: boolean;
 };
 
 export type PreBuyEntryValidationResult = {
