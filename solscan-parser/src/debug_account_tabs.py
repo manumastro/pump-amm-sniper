@@ -21,7 +21,7 @@ DEFAULT_TZ = "Europe/Berlin"
 TIMESTAMP_RE = re.compile(r"(\d{2}:\d{2}:\d{2}\s+[A-Za-z]{3}\s+\d{2},\s+\d{4})")
 RELATIVE_RE = re.compile(
     r"(\d+)\s+"
-    r"(sec|secs|second|seconds|min|mins|minute|minutes|hour|hours|day|days|week|weeks|month|months)\s+ago",
+    r"(sec|secs|second|seconds|min|mins|minute|minutes|hr|hrs|hour|hours|day|days|week|weeks|month|months)\s+ago",
     re.IGNORECASE,
 )
 ITEM_RANGE_RE = re.compile(r"Item\s+(\d+)\s+to\s+(\d+)", re.IGNORECASE)
@@ -200,10 +200,26 @@ class SolscanDebugParser:
         if not self.page:
             raise RuntimeError("Page not initialized")
         route = "account" if entity_type == "account" else "token"
-        with time_limit(self.step_timeout_sec, f"open {entity_type} {address}"):
-            self.page.get(f"https://solscan.io/{route}/{address}")
-            self._wait_cf_pass()
-            time.sleep(self.settle_sec)
+
+        # Allow more time for Cloudflare checks. Some pages can take a long time to load.
+        open_timeout = max(self.step_timeout_sec, self.cloudflare_wait_sec + 30)
+
+        attempts = 0
+        while True:
+            attempts += 1
+            try:
+                with time_limit(open_timeout, f"open {entity_type} {address}"):
+                    self.page.get(f"https://solscan.io/{route}/{address}")
+                    self._wait_cf_pass()
+                    time.sleep(self.settle_sec)
+                break
+            except StepTimeoutError:
+                # If the page takes too long, retry once more before giving up.
+                if attempts >= 2:
+                    raise
+                print(f"[warn] retrying open {entity_type} {address} after timeout (attempt {attempts})")
+                time.sleep(1)
+
         self.current_entity_type = entity_type
         self.current_entity_address = address
 
@@ -319,7 +335,7 @@ class SolscanDebugParser:
             seconds = qty
         elif unit.startswith("min"):
             seconds = qty * 60
-        elif unit.startswith("hour"):
+        elif unit.startswith("hour") or unit.startswith("hr"):
             seconds = qty * 3600
         elif unit.startswith("day"):
             seconds = qty * 86400

@@ -1,0 +1,35 @@
+{
+  "query": {
+    "creator": "3ZWAXrEs2jyZkuXXQCwZPvcwnh8PabGkhM8EQjitEkdT",
+    "token": "5y4cfv1nmsCCoJpzAvSFCUChcgjWDjw84MTbZYqHdAfw",
+    "tabs": [
+      "Transactions",
+      "Transfers",
+      "Activities"
+    ],
+    "scope": "creator+token",
+    "tz": "Europe/Berlin",
+    "from_local": "2026-03-19T13:06:20+01:00",
+    "to_local": "2026-03-19T13:09:28+01:00",
+    "from_utc": "2026-03-19T12:06:20+00:00",
+    "to_utc": "2026-03-19T12:09:28+00:00",
+    "max_pages": 8,
+    "headless": true
+  },
+  "account": "3ZWAXrEs2jyZkuXXQCwZPvcwnh8PabGkhM8EQjitEkdT",
+  "token_summary": null,
+  "results": {
+    "creator": {}
+  },
+  "warnings": [
+    "bootstrap: scrape started, results may be incomplete if Solscan stalls",
+    "scrape_failed: open account 3ZWAXrEs2jyZkuXXQCwZPvcwnh8PabGkhM8EQjitEkdT exceeded 120s"
+  ],
+  "partial": true,
+  "progress": {
+    "stage": "failed",
+    "error": "open account 3ZWAXrEs2jyZkuXXQCwZPvcwnh8PabGkhM8EQjitEkdT exceeded 120s",
+    "traceback": "Traceback (most recent call last):\n  File \"/home/manu/pump-amm-sniper/solscan-parser/src/debug_account_tabs.py\", line 955, in main\n    creator_data = scraper.collect_entity_tabs(\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/manu/pump-amm-sniper/solscan-parser/src/debug_account_tabs.py\", line 566, in collect_entity_tabs\n    self._open_entity(entity_type, address)\n  File \"/home/manu/pump-amm-sniper/solscan-parser/src/debug_account_tabs.py\", line 205, in _open_entity\n    self._wait_cf_pass()\n  File \"/home/manu/pump-amm-sniper/solscan-parser/src/debug_account_tabs.py\", line 196, in _wait_cf_pass\n    time.sleep(1.0)\n  File \"/home/manu/pump-amm-sniper/solscan-parser/src/debug_account_tabs.py\", line 53, in _handle_timeout\n    raise StepTimeoutError(f\"{label} exceeded {seconds}s\")\nStepTimeoutError: open account 3ZWAXrEs2jyZkuXXQCwZPvcwnh8PabGkhM8EQjitEkdT exceeded 120s\n"
+  },
+  "updated_at_utc": "2026-03-19T13:38:48.108964+00:00"
+}
