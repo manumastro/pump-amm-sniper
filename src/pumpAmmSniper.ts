@@ -298,15 +298,20 @@ async function handleNewPool(connection: Connection, signature: string) {
         let liquiditySOL = 0;
         const observerUser = walletKeypair?.publicKey ?? Keypair.generate().publicKey;
         const poolKey = new PublicKey(poolAddress);
-        for (let i = 0; i < 6; i++) {
+        const MAX_WSOL_RETRIES = 20;
+        const WSOL_RETRY_DELAY = 300;
+        let wsolMissingLogged = false;
+        for (let i = 0; i < MAX_WSOL_RETRIES; i++) {
             try {
                 const poolState = await onlineSdk.swapSolanaState(poolKey, observerUser);
                 const orientation = getPoolOrientation(poolState, tokenMint);
                 if (!orientation.hasWsol) {
-                    stageLog(ctx, "LIQ", "pool has no WSOL side");
-                    console.log(`🛑 SKIP: pool has no WSOL side`);
-                    finalStatus = "SKIP: no WSOL side";
-                    return;
+                    if (!wsolMissingLogged) {
+                        stageLog(ctx, "LIQ", "pool has no WSOL side, retrying...");
+                        console.log(`⚠️ WSOL side missing, retry ${i + 1}/${MAX_WSOL_RETRIES}`);
+                        wsolMissingLogged = true;
+                    }
+                    continue;
                 }
                 const liq = getSolLiquidityFromState(poolState, tokenMint);
                 if (liq !== null && liq > 0) {
@@ -316,7 +321,13 @@ async function handleNewPool(connection: Connection, signature: string) {
             } catch {
                 // pool may not be indexable yet, retry shortly
             }
-            await new Promise((r) => setTimeout(r, 250));
+            await new Promise((r) => setTimeout(r, WSOL_RETRY_DELAY));
+        }
+        if (liquiditySOL <= 0 && wsolMissingLogged) {
+            stageLog(ctx, "LIQ", "pool has no WSOL side after retries");
+            console.log(`🛑 SKIP: pool has no WSOL side after ${MAX_WSOL_RETRIES} retries`);
+            finalStatus = "SKIP: no WSOL side";
+            return;
         }
 
         // Fallback to transaction balances if pool state is not yet indexable
@@ -676,6 +687,8 @@ async function waitForPreEntryFlowSignal(
 
     let baselineExitQuoteSol: number | null = null;
     let baselineTokenOutAtomic: BN | null = null;
+    let wsolMissingLogged = false;
+    let wsolFound = false;
 
     while (Date.now() <= deadlineMs) {
         const signatures = await connection.getSignaturesForAddress(poolKey, { limit: Math.max(20, minTrades + 5) }, "confirmed");
@@ -684,8 +697,15 @@ async function waitForPreEntryFlowSignal(
         const state = await onlineSdk.swapSolanaState(poolKey, observerUser);
         const orientation = getPoolOrientation(state, tokenMint);
         if (!orientation.hasWsol) {
-            return { ok: false, reason: "pool has no WSOL side on pre-entry flow gate" };
+            if (!wsolMissingLogged) {
+                stageLog(ctx, "WAIT", "pool has no WSOL side, retrying...");
+                console.log(`⚠️ WSOL side missing in pre-entry flow, retrying...`);
+                wsolMissingLogged = true;
+            }
+            await new Promise((r) => setTimeout(r, pollMs));
+            continue;
         }
+        wsolFound = true;
 
         if (!baselineTokenOutAtomic) {
             baselineTokenOutAtomic = orientation.solIsBase
@@ -747,6 +767,9 @@ async function waitForPreEntryFlowSignal(
         await new Promise((r) => setTimeout(r, pollMs));
     }
 
+    if (!wsolFound) {
+        return { ok: false, reason: "pool has no WSOL side on pre-entry flow gate after retries" };
+    }
     return {
         ok: false,
         reason: strictQuoteImprovementRequired
@@ -784,10 +807,21 @@ async function preEntryWaitAndCheck(
             : 0;
 
         for (let i = 0; i < samples; i++) {
-            const state = await onlineSdk.swapSolanaState(new PublicKey(poolAddress), observerUser);
-            const liq = getSolLiquidityFromState(state, tokenMint);
+            let liq = null;
+            const MAX_LIQUIDITY_RETRIES = 3;
+            const LIQUIDITY_RETRY_DELAY = 300;
+            for (let retry = 0; retry < MAX_LIQUIDITY_RETRIES; retry++) {
+                const state = await onlineSdk.swapSolanaState(new PublicKey(poolAddress), observerUser);
+                liq = getSolLiquidityFromState(state, tokenMint);
+                if (liq !== null && Number.isFinite(liq) && liq > 0) {
+                    break;
+                }
+                if (retry < MAX_LIQUIDITY_RETRIES - 1) {
+                    await new Promise(r => setTimeout(r, LIQUIDITY_RETRY_DELAY));
+                }
+            }
             if (liq === null || !Number.isFinite(liq) || liq <= 0) {
-                return { ok: false, reason: "pool has no WSOL side on pre-entry check", currentLiquiditySol: 0 };
+                return { ok: false, reason: "pool has no WSOL side on pre-entry check after retries", currentLiquiditySol: 0 };
             }
             latest = liq;
             observed.push(liq);
