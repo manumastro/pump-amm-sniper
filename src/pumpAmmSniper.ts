@@ -955,24 +955,31 @@ async function fetchParsedTransactionsForSignatures(
     connection: Connection,
     signatures: Array<{ signature: string; blockTime?: number | null }>,
 ): Promise<Array<{ signature: string; blockTime: number | null; tx: any }>> {
-    const results = await Promise.all(
-        signatures.map(async (sig) => {
-            try {
-                const tx = await connection.getParsedTransaction(sig.signature, {
-                    maxSupportedTransactionVersion: 0,
-                    commitment: "confirmed",
-                });
-                if (!tx) return null;
-                return {
-                    signature: sig.signature,
-                    blockTime: sig.blockTime ?? tx.blockTime ?? null,
-                    tx,
-                };
-            } catch {
-                return null;
-            }
-        })
-    );
+    const results: Array<{ signature: string; blockTime: number | null; tx: any } | null> = [];
+    const concurrency = Math.max(1, Math.min(10, CONFIG.CREATOR_RISK_PARSED_TX_CONCURRENCY || 4));
+
+    for (let i = 0; i < signatures.length; i += concurrency) {
+        const batch = signatures.slice(i, i + concurrency);
+        const batchResults = await Promise.all(
+            batch.map(async (sig) => {
+                try {
+                    const tx = await connection.getParsedTransaction(sig.signature, {
+                        maxSupportedTransactionVersion: 0,
+                        commitment: "confirmed",
+                    });
+                    if (!tx) return null;
+                    return {
+                        signature: sig.signature,
+                        blockTime: sig.blockTime ?? tx.blockTime ?? null,
+                        tx,
+                    };
+                } catch {
+                    return null;
+                }
+            })
+        );
+        results.push(...batchResults);
+    }
 
     return results.filter((item): item is { signature: string; blockTime: number | null; tx: any } => !!item);
 }

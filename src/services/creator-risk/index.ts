@@ -1902,6 +1902,9 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
             if (!result.transientError) {
                 return result;
             }
+            if ((result.reason || "").toLowerCase().includes("too many requests from your ip")) {
+                return result;
+            }
 
             lastResult = result;
             if (attempt < maxAttempts) {
