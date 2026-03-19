@@ -1,4 +1,0 @@
-[mcp_servers.helius]
-command = "npx"
-args = ["-y", "helius-mcp@latest"]
-startup_timeout_sec = 60

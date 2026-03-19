@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "helius": {
-      "command": "npx",
-      "args": ["-y", "helius-mcp@latest"]
-    }
-  }
-}
