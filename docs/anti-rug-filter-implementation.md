@@ -157,3 +157,74 @@ These may require:
 3. If false positives increase: monitor legitimate trades for patterns
 4. Analyze remaining unblocked rugs for new patterns
 
+---
+
+## Setup Burst Liquidity Bypass Filter
+
+### Overview
+Added a liquidity-based bypass for the `setup burst` anti-rug filter to reduce false positives on legitimate high-liquidity launches.
+
+**Problem**: The `setup burst` filter blocks pools with rapid creation/mint activity, but legitimate launches with high initial liquidity often exhibit similar patterns due to natural user activity.
+
+**Solution**: If a pool has high initial liquidity (>= 10 SOL), the `setup burst` check is bypassed, allowing entry.
+
+### Configuration (`src/app/config.ts`)
+```typescript
+CREATOR_RISK_SETUP_BURST_BLOCK_ENABLED: true
+CREATOR_RISK_SETUP_BURST_MIN_CREATES: 8
+CREATOR_RISK_SETUP_BURST_MAX_WINDOW_SEC: 60
+CREATOR_RISK_SETUP_BURST_LIQUIDITY_BYPASS_SOL: 10
+```
+
+### Implementation (`src/services/creator-risk/index.ts`)
+The bypass is applied to 4 setup burst variants:
+1. **Simple setup burst** (line ~1701)
+2. **Precreate dispersal + setup burst** (line ~1572)
+3. **Concentrated inbound + setup burst** (line ~1622)
+4. **Lookup-table + setup burst** (line ~1676)
+
+For each variant, the logic is:
+```typescript
+if (setupBurst.detected) {
+    const entrySol = options.entrySolLiquidity || 0;
+    const bypassLiqThreshold = CONFIG.CREATOR_RISK_SETUP_BURST_LIQUIDITY_BYPASS_SOL;
+    if (entrySol >= bypassLiqThreshold) {
+        // Bypass: allow entry (high liquidity = legitimate launch)
+        return cacheAndReturn(enrichBaseResult({ ok: true, ... }));
+    }
+    // Block: low liquidity + setup burst = likely rug
+    return cacheAndReturn(enrichBaseResult({ ok: false, reason: `setup burst ...`, ... }));
+}
+```
+
+### Analysis Results
+Tested on 14 setup burst cases from paper trading:
+
+| Outcome | Count | Percentage |
+|---------|-------|------------|
+| Rugged (Liquidity $0) | 9 | 64% |
+| Good trade (would have bypassed) | 5 | 36% |
+
+**Bypassed tokens with good performance:**
+- 2yas4AP...: +3875% (24h), Liquidity $16k
+- BSRiVis...: +434% (24h), Liquidity $27k
+- 4GuNGJL...: +112% (24h), Liquidity $10k
+- ArWpSMm...: +143% (24h), Liquidity $31k
+- 9h7C4yW...: +1070% (6h), Liquidity $133k
+
+### Estimated Impact
+Without bypass: ~36% of setup burst pools were legitimate launches
+With bypass: These opportunities are now captured
+
+### Git Commits
+```
+34df094 fix: add liquidity bypass to all setup burst variants (precreate dispersal, concentrated inbound, lookup-table)
+252adff feat: setup burst liquidity bypass - allow high-liq burst pools to pass
+```
+
+### Monitoring
+Watch logs for `bypassed` keyword:
+```bash
+grep "bypassed" paper.log
+```
+
