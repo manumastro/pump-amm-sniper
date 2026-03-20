@@ -245,6 +245,15 @@ function parseLine(logPath, line) {
       return;
     }
 
+    if (stage === 'CREATOR') {
+      ev = ev || ensureCurrentEvent(logPath, ts);
+      const addrMatch = message.match(/[1-9A-HJ-NP-Za-km-z]{32,44}/);
+      if (addrMatch) {
+        ev.creator = addrMatch[0];
+      }
+      return;
+    }
+
     if (stage === 'BUY_SPOT') {
       ev = ev || ensureCurrentEvent(logPath, ts);
       ev.buyAt = ts || ev.buyAt;
@@ -539,6 +548,7 @@ function summarize() {
       creatorCashoutRelPct: e.creatorCashoutRelPct,
       creatorCashoutScore: e.creatorCashoutScore,
       creatorCashoutDest: e.creatorCashoutDest,
+      creator: e.creator,
       pnlValidityIssue: getPnlValidityIssue(e),
     })),
     outcomeOperations,
