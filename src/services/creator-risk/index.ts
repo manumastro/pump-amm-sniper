@@ -991,7 +991,7 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                 ctx,
                 "CRISK",
                 `cp=${uniqueCounterparties} in=${solInTransfers} out=${solOutTransfers} ` +
-                `window=${compressedWindowSec ?? "n/a"}s funder=${funder ? shortSig(funder) : "-"} refund=${funderRefundSol.toFixed(3)} ` +
+                `window=${compressedWindowSec ?? "n/a"}s funder=${funder ? funder : "-"} refund=${funderRefundSol.toFixed(3)} ` +
                 `micro=${microInboundTransfers.length}/${microInboundSources.size}`
             );
 
@@ -1291,6 +1291,25 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                 });
             }
 
+            if (
+                CONFIG.CREATOR_RISK_FUNDING_PATTERN_BLOCK_ENABLED &&
+                (
+                    (microInboundTransfers.length >= CONFIG.CREATOR_RISK_FUNDING_PATTERN_MICRO_MIN_TRANSFERS &&
+                     microInboundSources.size >= CONFIG.CREATOR_RISK_FUNDING_PATTERN_MICRO_MIN_SOURCES)
+                )
+            ) {
+                return returnEarlyDecision({
+                    ok: false,
+                    reason: `suspicious funding pattern: ${microInboundTransfers.length} micro transfers from ${microInboundSources.size} sources`,
+                    funder,
+                    uniqueCounterparties,
+                    compressedWindowSec,
+                    burner,
+                    creatorRiskMicroTransfers: microInboundTransfers.length,
+                    creatorRiskMicroSources: microInboundSources.size,
+                });
+            }
+
             if (funder && CONFIG.CREATOR_RISK_FUNDER_CLUSTER_ENABLED) {
                 const historicalCount = rugHistory.rugFunderCounts.get(funder) || 0;
                 if (historicalCount >= CONFIG.CREATOR_RISK_HISTORICAL_FUNDER_CLUSTER_MIN_RUG_CREATORS) {
@@ -1461,7 +1480,7 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                 stageLog(
                     ctx,
                     "RRELAY",
-                    `root=${relayFunding.root ? shortSig(relayFunding.root) : "-"} funder=${funder ? shortSig(funder) : "-"} ` +
+                    `root=${relayFunding.root ? shortSig(relayFunding.root) : "-"} funder=${funder ? funder : "-"} ` +
                     `in=${relayFunding.inboundSol.toFixed(3)} out=${relayFunding.outboundSol.toFixed(3)} ` +
                     `window=${relayFunding.windowSec ?? "n/a"}s`
                 );
@@ -1837,6 +1856,32 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                 }));
             }
 
+            if (
+                deepChecksComplete &&
+                CONFIG.CREATOR_RISK_FUNDING_PATTERN_BLOCK_ENABLED &&
+                relayFunding.detected &&
+                relayFunding.inboundSol > 0 &&
+                relayFunding.inboundSol <= CONFIG.CREATOR_RISK_FUNDING_PATTERN_RELAY_INBOUND_MAX_SOL &&
+                relayFunding.outboundSol >= CONFIG.CREATOR_RISK_FUNDING_PATTERN_RELAY_OUTBOUND_MIN_SOL &&
+                (relayFunding.outboundSol / relayFunding.inboundSol) > CONFIG.CREATOR_RISK_FUNDING_PATTERN_RELAY_ASYMMETRY_RATIO
+            ) {
+                return cacheAndReturn(enrichBaseResult({
+                    ok: false,
+                    reason: `relay funding asymmetry pattern (in ${relayFunding.inboundSol.toFixed(3)} SOL, out ${relayFunding.outboundSol.toFixed(1)} SOL, ratio ${(relayFunding.outboundSol / relayFunding.inboundSol).toFixed(0)}x)`,
+                    funder,
+                    uniqueCounterparties,
+                    compressedWindowSec,
+                    burner,
+                    relayFundingRoot: relayFunding.root,
+                    relayFundingInboundSol: relayFunding.inboundSol,
+                    relayFundingOutboundSol: relayFunding.outboundSol,
+                    relayFundingWindowSec: relayFunding.windowSec,
+                    relayFundingFunder: funder,
+                    deepChecksComplete: true,
+                    deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
+                }));
+            }
+
             return cacheAndReturn(enrichBaseResult({
                 ok: true,
                 funder,
@@ -1852,6 +1897,12 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                 creatorCashoutScore: creatorCashout.score,
                 creatorCashoutDestination: creatorCashout.destination,
                 relayFundingRoot: relayFunding.root,
+                relayFundingInboundSol: relayFunding.inboundSol,
+                relayFundingOutboundSol: relayFunding.outboundSol,
+                relayFundingWindowSec: relayFunding.windowSec,
+                relayFundingFunder: funder,
+                creatorRiskMicroTransfers: microInboundTransfers.length,
+                creatorRiskMicroSources: microInboundSources.size,
                 directAmmReentrySig: directAmmReentry.signature,
                 strictPreEntryFlowRequired: freshFundedHighSeed.strictFlowRequired,
                 creatorSeedSol,

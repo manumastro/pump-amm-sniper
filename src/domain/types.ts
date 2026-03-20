@@ -57,6 +57,12 @@ export type CreatorRiskResult = {
     rapidDispersalWindowSec?: number | null;
     microInboundTransfers?: number;
     microInboundSources?: number;
+    creatorRiskMicroTransfers?: number;
+    creatorRiskMicroSources?: number;
+    relayFundingInboundSol?: number;
+    relayFundingOutboundSol?: number;
+    relayFundingWindowSec?: number | null;
+    relayFundingFunder?: string | null;
     repeatedCreateRemoveCreates?: number;
     repeatedCreateRemoveRemoves?: number;
     repeatedCreateRemoveCashouts?: number;
