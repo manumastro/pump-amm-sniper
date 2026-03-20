@@ -1,5 +1,7 @@
 # AGENTS
 
+**IMPORTANT**: This file must be kept in sync with `GEMINI.md` and `AGENTS.md`. Any updates to agent instructions must be made to ALL THREE files simultaneously.
+
 ## Docs
 - Controlli bot: `docs/controls.md`
 - Runbook systemd: `docs/systemd-runbook.md`
@@ -65,6 +67,31 @@ Regola deploy:
 - dopo modifiche a `src/**`, `systemctl --user restart ...` da solo non basta: prima va eseguito `npm run build`
 - sequenza corretta dopo modifiche runtime: build -> stop servizi -> reset log/report -> start/restart servizi
 
+## Anti-Rug Filter Strategy
+
+### Phase 1: Pre-Entry Funding Pattern Detection (ACTIVE)
+- **Documentation**: `docs/anti-rug-filter-implementation.md`
+- **Historical Coverage**: 81% (21/26 rugs blocked before entry)
+- **Implementation**: `src/services/creator-risk/index.ts` (lines ~1293-1311 early check, ~1859-1883 deep check)
+- **Patterns Detected**:
+  - Micro-transfer pattern: 2+ micro transfers from 2+ sources
+  - Relay funding asymmetry: inbound ≤3.0 SOL, outbound ≥10.0 SOL, ratio >10x
+- **Status**: Running in production, blocking hostile pools pre-entry
+
+### Phase 2: Post-Entry Creator AMM Buy Detection (ACTIVE - PRODUCTION MONITORING)
+- **Documentation**: `docs/phase2-creator-amm-buy-detection.md`
+- **Expected Coverage**: 19% additional (5 of 26 remaining rugs)
+- **Implementation**: `src/services/paper-trade/creatorAmmBuyDetector.ts`
+- **Integration**: `src/services/paper-trade/holdMonitor.ts` (detection loop every 500ms)
+- **Pattern**: Creator buying own token during hold = 100% rug indicator
+  - Detected via `getSignaturesForAddress(creatorAddress)` looking for "AMM: Buy"
+  - Triggers immediate exit with reason: "creator amm buy (rug pump)"
+- **Solscan Validation**: 100% consistency across 3 analyzable rugs (evt-000079, evt-000150, evt-000200)
+- **Configuration** (`src/app/config.ts` lines 175-177):
+  - `HOLD_CREATOR_AMM_BUY_DETECT_ENABLED: true`
+  - `HOLD_CREATOR_AMM_BUY_CHECK_INTERVAL_MS: 500`
+- **Status**: Running since 2026-03-20 09:18:53 CET, waiting for Phase 1 pass-throughs to validate
+
 ## Architettura codice
 - Entry runtime attuale: `src/pumpAmmSniper.ts`
 - Bootstrap / supervisor / worker lifecycle: `src/app/bootstrap.ts`, `src/app/runtime.ts`, `src/app/worker.ts`
@@ -72,6 +99,7 @@ Regola deploy:
 - Tipi condivisi: `src/domain/types.ts`
 - Motore creator risk: `src/services/creator-risk/`
 - Paper trade / pre-buy / hold: `src/services/paper-trade/`
+  - Phase 2 detector: `src/services/paper-trade/creatorAmmBuyDetector.ts`
 - Liquidity controls: `src/services/liquidity/`
 - Token security: `src/services/token-security/`
 - Top10 concentration: `src/services/top10/`
@@ -88,3 +116,4 @@ Regole:
 Nota transitoria:
 - il refactor e in corso, quindi alcune logiche vivono ancora in `src/pumpAmmSniper.ts`
 - quando tocchi il comportamento, segui la nuova struttura target descritta in `docs/architecture.md`
+- Phase 1 + Phase 2 anti-rug filter sono pienamente integrati e in produzione; vedi `docs/phase2-creator-amm-buy-detection.md` per dettagli

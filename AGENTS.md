@@ -1,5 +1,7 @@
 # AGENTS
 
+**IMPORTANT**: This file must be kept in sync with `CLAUDE.md` and `GEMINI.md`. Any updates to agent instructions must be made to ALL THREE files simultaneously.
+
 ## Docs
 - Controlli bot: `docs/controls.md`
 - Runbook systemd: `docs/systemd-runbook.md`
