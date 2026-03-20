@@ -6,6 +6,7 @@ import { stageLog } from "../reporting/stageLog";
 import { formatQuoteMovePct } from "../../utils/format";
 import { shortSig } from "../../utils/pubkeys";
 import { getExitQuoteSolFromState, getSolLiquidityFromState } from "./quote";
+import { detectCreatorAmmBuy } from "./creatorAmmBuyDetector";
 
 type HoldMonitorDeps = {
     recheckCreatorRisk: (
@@ -204,6 +205,27 @@ export async function waitForExitStateWithLiquidityStop(
                         );
                         return { state: s, exitReason: "creator amm burst" };
                     }
+                }
+            }
+
+            // Phase 2: Creator AMM Buy Detection - rug pump phase indicator
+            if (
+                creatorAddress &&
+                CONFIG.HOLD_CREATOR_AMM_BUY_DETECT_ENABLED &&
+                Date.now() - lastRemoveLiqCheckAtMs >= scaledInterval(CONFIG.HOLD_CREATOR_AMM_BUY_CHECK_INTERVAL_MS)
+            ) {
+                const creatorAmmBuy = await detectCreatorAmmBuy(
+                    connection,
+                    creatorAddress,
+                    seenCreatorSignatures,
+                    logPrefix
+                );
+                if (creatorAmmBuy.detected) {
+                    console.log(
+                        `⚠️ CREATOR AMM BUY EXIT: ` +
+                        `creator is buying their own token! (${creatorAmmBuy.buyCount} transactions)`
+                    );
+                    return { state: s, exitReason: "creator amm buy (rug pump)" };
                 }
             }
 
