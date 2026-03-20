@@ -68,6 +68,7 @@ export type CreatorRiskResult = {
     repeatedCreateRemoveCashouts?: number;
     repeatedCreateRemoveWindowSec?: number | null;
     repeatedCreateRemoveMaxCashoutSol?: number;
+    poolLiquiditySol?: number;
 };
 
 export type CreatorRiskCacheEntry = {

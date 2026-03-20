@@ -1651,6 +1651,24 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
             }
 
             if (setupBurst.detected) {
+                const entrySol = options.entrySolLiquidity || 0;
+                const bypassLiqThreshold = CONFIG.CREATOR_RISK_SETUP_BURST_LIQUIDITY_BYPASS_SOL;
+                if (entrySol >= bypassLiqThreshold) {
+                    stageLog(
+                        ctx,
+                        "CRISK",
+                        `setup burst ${setupBurst.creates} ops/${setupBurst.windowSec}s bypassed (${entrySol.toFixed(2)} SOL >= ${bypassLiqThreshold} SOL threshold)`
+                    );
+                    return cacheAndReturn(enrichBaseResult({
+                        ok: true,
+                        setupBurstCreates: setupBurst.creates,
+                        setupBurstLookupTables: setupBurst.lookupTables,
+                        setupBurstWindowSec: setupBurst.windowSec,
+                        poolLiquiditySol: entrySol,
+                        deepChecksComplete: true,
+                        deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
+                    }));
+                }
                 return cacheAndReturn(enrichBaseResult({
                     ok: false,
                     reason: `setup burst ${setupBurst.creates} create/mint ops in ${setupBurst.windowSec ?? "n/a"}s`,
@@ -1661,6 +1679,7 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                     setupBurstCreates: setupBurst.creates,
                     setupBurstLookupTables: setupBurst.lookupTables,
                     setupBurstWindowSec: setupBurst.windowSec,
+                    poolLiquiditySol: entrySol,
                     deepChecksComplete: true,
                     deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
                 }));

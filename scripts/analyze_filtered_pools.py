@@ -66,7 +66,7 @@ def main():
     samples = []
     
     for op in operations:
-        skip_reason = op.get('skipReason', '').lower()
+        skip_reason = str(op.get('skipReason') or '').lower()
         
         category = None
         if "suspicious funding" in skip_reason:
