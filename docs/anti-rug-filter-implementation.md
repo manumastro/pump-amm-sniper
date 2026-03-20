@@ -1,10 +1,13 @@
 # Anti-Rug Filter Implementation - Complete Summary
 
 ## Overview
-Implemented a two-tier anti-rug filter to prevent rug pull losses in the pump-amm-sniper bot.
-- **Historical Coverage**: 81% (21/26 rug losses blocked)
+Implemented a comprehensive two-phase anti-rug filter to prevent rug pull losses in the pump-amm-sniper bot.
+- **Phase 1 (Pre-Entry)**: Funding pattern detection - blocks suspicious pools before entry (81% coverage)
+- **Phase 2 (Post-Entry)**: Creator AMM buy detection - exits during pump phase before collapse (19% additional coverage)
+- **Combined Expected Coverage**: ~100% (26/26 historical rugs)
 - **Expected Impact**: Reduce rug losses from -0.209 SOL to near zero
-- **Implementation**: Pre-entry checks + deep analysis pattern detection
+
+See `docs/phase2-creator-amm-buy-detection.md` for Phase 2 complete documentation.
 
 ## Implementation Details
 

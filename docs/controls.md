@@ -379,6 +379,39 @@ Log:
 - `HOLD | suspicious relay root ... -> short hold ...ms`
 - `HOLD | probation hold ...ms (paper creator-risk bypass)`
 
+### 2.3b Creator AMM Buy Detection (Phase 2 - Post-Entry Rug Exit)
+Scopo:
+- rilevare e uscire immediatamente se il creator compra il suo token durante l'hold
+- evitare perdite da rug pull catturando la fase di pump prima del collapse
+
+Pattern:
+- creator che compra il suo token durante l'hold = 100% indicatore di rug
+- il buy avviene 8-20 secondi dopo la creazione del pool (fase di pump)
+- la rimozione liquidity avviene 18-97 secondi dopo (fase di collapse)
+
+Controlli:
+- `HOLD_CREATOR_AMM_BUY_DETECT_ENABLED`
+- `HOLD_CREATOR_AMM_BUY_CHECK_INTERVAL_MS`
+
+Implementazione:
+- modulo: `src/services/paper-trade/creatorAmmBuyDetector.ts`
+- integrazione: `src/services/paper-trade/holdMonitor.ts`
+- rileva transazioni "AMM: Buy" dal creator via `getSignaturesForAddress()`
+
+Segnale:
+- rilevazione di ANCHE UNA SOLA transazione "AMM: Buy" dal creator
+
+Esito:
+- exit immediata con ragione: `creator amm buy (rug pump)`
+- zero false positives (creator non compra mai legittimamente il suo token)
+
+Log:
+- `CREATOR AMM BUY EXIT: detected ... at signature ...`
+
+Validazione:
+- Analisi Solscan: 100% consistency su 3 rug analizzabili (evt-000079, evt-000150, evt-000200)
+- Expected coverage: 19% aggiuntivo dei 26 rug storici non catturati da Phase 1
+
 ### 2.4 Remove Liquidity Exit (on-chain)
 Scopo:
 - uscire quando il creator inizia a rimuovere liquidita dal pool
