@@ -10,6 +10,10 @@ const OUT_TXT = path.join(ROOT, 'logs', 'paper-report.txt');
 const OUT_OUTCOMES_JSON = path.join(ROOT, 'logs', 'paper-report-outcomes.json');
 const OUT_OUTCOMES_TXT = path.join(ROOT, 'logs', 'paper-report-outcomes.txt');
 
+// Per-worker report paths
+const OUT_WORKER_PREFIX = path.join(ROOT, 'logs', 'paper-worker-');
+const OUT_WORKER_SUFFIX = '-report.json';
+
 const SUB_TO_DIGIT = { '₀': '0', '₁': '1', '₂': '2', '₃': '3', '₄': '4', '₅': '5', '₆': '6', '₇': '7', '₈': '8', '₉': '9' };
 const DEFAULT_TRADE_AMOUNT_SOL = Number(process.env.TRADE_AMOUNT_SOL || '0.01');
 
@@ -46,6 +50,7 @@ const carries = new Map();
 let lastWriteAt = 0;
 let eventSeq = 0;
 const currentEventIds = new Map();
+const workerEvents = new Map(); // worker slot -> Set of event IDs
 
 function discoverLogPaths() {
   const workerLogs = fs.existsSync(LOG_DIR)
@@ -62,6 +67,7 @@ function getEvent(id) {
   if (!events.has(id)) {
     events.set(id, {
       id,
+      workerSlot: null,
       startedAt: null,
       endedAt: null,
       signature: null,
@@ -97,6 +103,11 @@ function getEvent(id) {
     });
   }
   return events.get(id);
+}
+
+function getWorkerSlotFromPath(logPath) {
+  const match = logPath.match(/paper-worker-(\d+)\.log$/);
+  return match ? Number(match[1]) : null;
 }
 
 function classifyOperation(e) {
@@ -171,10 +182,25 @@ function getCurrentEvent(logPath) {
 function ensureCurrentEvent(logPath, ts) {
   let ev = getCurrentEvent(logPath);
   if (ev) return ev;
-  const id = `evt-${String(++eventSeq).padStart(6, '0')}`;
+  
+  // Check if an event was already created for this logPath via WORKER parsing
+  const existingId = currentEventIds.get(logPath);
+  const id = existingId || `evt-${String(++eventSeq).padStart(6, '0')}`;
   ev = getEvent(id);
   ev.startedAt = ev.startedAt || ts || null;
+  if (!ev.workerSlot) {
+    ev.workerSlot = getWorkerSlotFromPath(logPath);
+  }
   currentEventIds.set(logPath, ev.id);
+  
+  // Track event per worker
+  if (ev.workerSlot !== null) {
+    if (!workerEvents.has(ev.workerSlot)) {
+      workerEvents.set(ev.workerSlot, new Set());
+    }
+    workerEvents.get(ev.workerSlot).add(ev.id);
+  }
+  
   return ev;
 }
 
@@ -205,12 +231,23 @@ function parseLine(logPath, line) {
     }
 
     if (stage === 'WORKER') {
-      const startMatch = message.match(/^slot\s+\d+\s+start\s+([A-Za-z0-9.]+)$/);
+      const startMatch = message.match(/^slot\s+(\d+)\s+start\s+([A-Za-z0-9.]+)$/);
       if (startMatch) {
-        const id = `evt-${String(++eventSeq).padStart(6, '0')}`;
+        const slot = Number(startMatch[1]);
+        const shortSig = startMatch[2];
+        // Use unique ID per worker: shortSig + slot
+        const id = `evt-${shortSig}-w${slot}`;
         ev = getEvent(id);
+        ev.workerSlot = slot;  // Always update workerSlot
         ev.startedAt = ev.startedAt || ts;
+        ev.poolSignature = shortSig;  // Link events by pool signature
         currentEventIds.set(logPath, ev.id);
+        
+        // Track event per worker
+        if (!workerEvents.has(slot)) {
+          workerEvents.set(slot, new Set());
+        }
+        workerEvents.get(slot).add(ev.id);
       }
       return;
     }
@@ -513,6 +550,7 @@ function summarize() {
     outcomeOperationCount: outcomeOperations.length,
     operations: enriched.map(e => ({
       id: e.id,
+      workerSlot: e.workerSlot,
       startedAt: e.startedAt,
       buyAt: e.buyAt,
       sellAt: e.sellAt,
@@ -667,6 +705,63 @@ function writeReports(force = false) {
       : ['(none)']),
   ].join('\n');
   fs.writeFileSync(OUT_OUTCOMES_TXT, outcomesTxt + '\n');
+
+  // Write per-worker reports
+  for (const [workerSlot, eventIds] of workerEvents) {
+    const workerFinished = [...events.values()].filter(e => e.workerSlot === workerSlot && e.endedAt);
+    const workerPnlKnown = workerFinished.filter(e => typeof e.effectivePnlSol === 'number');
+    const workerValidPnl = workerPnlKnown.filter(e => !getPnlValidityIssue(e));
+    const workerTotalPnl = workerValidPnl.reduce((a, e) => a + e.effectivePnlSol, 0);
+    const workerAvgPnlPct = workerValidPnl.length ? workerValidPnl.reduce((a, e) => a + (e.effectivePnlPct || 0), 0) / workerValidPnl.length : 0;
+    const workerWins = workerValidPnl.filter(e => e.effectivePnlSol > 0).length;
+    const workerLosses = workerValidPnl.filter(e => e.effectivePnlSol < 0).length;
+    const workerChecksPassed = workerFinished.filter(e => e.checksPassed).length;
+    const workerSkipped = workerFinished.filter(e => e.skipReason || (e.endStatus && e.endStatus.startsWith('SKIP'))).length;
+    const workerRugLosses = workerFinished.filter(e => isRugLossEvent(e)).length;
+    
+    const workerReport = {
+      generatedAt: nowIso(),
+      workerSlot,
+      eventsSeen: eventIds.size,
+      finishedEvents: workerFinished.length,
+      checksPassed: workerChecksPassed,
+      skipped: workerSkipped,
+      hostileSkipCount: workerFinished.filter(e => classifyOperation(e) === 'hostile').length,
+      rugLossCount: workerRugLosses,
+      totalPnlSol: Number(workerTotalPnl.toFixed(9)),
+      avgPnlPct: Number(workerAvgPnlPct.toFixed(4)),
+      wins: workerWins,
+      losses: workerLosses,
+      winRatePct: workerValidPnl.length ? Number(((workerWins / workerValidPnl.length) * 100).toFixed(2)) : 0,
+      operations: workerFinished.map(e => ({
+        id: e.id,
+        workerSlot: e.workerSlot,
+        startedAt: e.startedAt,
+        buyAt: e.buyAt,
+        sellAt: e.sellAt,
+        pnlAt: e.pnlAt,
+        endedAt: e.endedAt,
+        signature: e.signature,
+        tokenMint: e.tokenMint,
+        pool: e.pool,
+        gmgn: e.gmgn || (e.tokenMint ? `https://gmgn.ai/sol/token/${e.tokenMint}` : null),
+        buySpotSolPerToken: fmtNum(e.buySpotSolPerToken),
+        sellSpotSolPerToken: fmtNum(e.sellSpotSolPerToken),
+        pnlSol: e.effectivePnlSol,
+        pnlPct: e.effectivePnlPct,
+        checksPassed: e.checksPassed,
+        skipReason: e.skipReason,
+        endStatus: e.endStatus,
+        durationMs: e.durationMs,
+        rugPull: isRugLossEvent(e),
+        rugLoss: isRugLossEvent(e),
+        classification: classifyOperation(e),
+      })),
+    };
+    
+    const workerReportPath = `${OUT_WORKER_PREFIX}${workerSlot}${OUT_WORKER_SUFFIX}`;
+    fs.writeFileSync(workerReportPath, JSON.stringify(workerReport, null, 2));
+  }
 }
 
 function processChunk(logPath, chunk) {

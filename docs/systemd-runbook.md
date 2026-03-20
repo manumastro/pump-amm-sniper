@@ -90,6 +90,36 @@ tail -f /home/manu/pump-amm-sniper/paper.log
 tail -f /home/manu/pump-amm-sniper/logs/paper-report-daemon.log
 ```
 
+## Worker Logs
+
+Ogni worker scrive nel proprio file:
+
+```bash
+tail -f /home/manu/pump-amm-sniper/logs/paper-worker-1.log  # Worker 1 (baseline)
+tail -f /home/manu/pump-amm-sniper/logs/paper-worker-2.log  # Worker 2 (unique_counterparties=50)
+tail -f /home/manu/pump-amm-sniper/logs/paper-worker-3.log  # Worker 3 (burner bypass)
+```
+
+## Worker A/B/C Testing
+
+Per testare configurazioni diverse su worker differenti, vedi `docs/worker-ab-testing.md`.
+
+Per avviare con 3 worker:
+
+```bash
+# Stop servizi
+systemctl --user stop pump-sniper.service
+
+# Reset log
+truncate -s 0 /home/manu/pump-amm-sniper/logs/paper-worker-*.log
+
+# Avvia con env vars per worker 2 e 3
+WORKER_2_CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES=50 \
+WORKER_3_CREATOR_RISK_BURNER_LIQUIDITY_BYPASS_ENABLED=true \
+WORKER_3_CREATOR_RISK_BURNER_LIQUIDITY_BYPASS_MIN_SOL=50000 \
+systemctl --user start pump-sniper.service
+```
+
 ## Nota importante (persistenza senza login)
 
 Stato attuale:

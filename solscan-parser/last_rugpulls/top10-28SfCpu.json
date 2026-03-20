@@ -1,0 +1,500 @@
+{
+  "query": {
+    "creator": "UNKNOWN",
+    "token": "28SfCpuP225eKrSPWGBmHwon7ZTJMbuEYHnxB6GhszW5",
+    "tabs": [
+      "Transactions",
+      "Transfers"
+    ],
+    "scope": "creator+token",
+    "tz": "Europe/Berlin",
+    "from_local": "2026-03-20T18:00:00+01:00",
+    "to_local": "2026-03-20T23:00:00+01:00",
+    "from_utc": "2026-03-20T17:00:00+00:00",
+    "to_utc": "2026-03-20T22:00:00+00:00",
+    "max_pages": 8,
+    "headless": false
+  },
+  "account": "UNKNOWN",
+  "token_summary": {
+    "address": "28SfCpuP225eKrSPWGBmHwon7ZTJMbuEYHnxB6GhszW5",
+    "summary": {
+      "Current Supply": "99,999,999,999",
+      "Holders": "13",
+      "Token name": "USA Oil Reserve (U.S. UGOR)",
+      "Decimals": "6",
+      "Authority": "Fp6Ncz...M229SV",
+      "Creator": "Fp6Ncz...M229SV",
+      "First Mint": "19:21:33 Mar 20, 2026 (UTC)",
+      "Token address": "28SfCp...GhszW5",
+      "Owner Program": "Token Program"
+    },
+    "diagnostics": {
+      "status": "ok",
+      "lines_seen": 155,
+      "page": {
+        "status": "ok",
+        "title": "USA Oil Reserve (U.S. UGOR) | Solscan",
+        "url": "https://solscan.io/token/28SfCpuP225eKrSPWGBmHwon7ZTJMbuEYHnxB6GhszW5",
+        "body_excerpt": "$88.96 +0.08%\nAvg Fee: 0.00002186\nAnalytics \nDefi \nLeaderboard \nBlockchain \nResources \nSign in\n$88.96 +0.08%\nAvg Fee: 0.00002186\nToken USA Oil Reserve\nSponsored:  1inch | Take control: swap your memes & stables at 1inch.com. Swap safer.\nBuy\nPresale\nPlay\nGaming\nAPI\nMarket Overview\nCurrent Supply\n99,999,999,999\nSocial Channels\nGMGN\nHolders\n13\nProfile Summary\nToken name\nUSA Oil Reserve (U.S. UGOR)\nDecimals\n6\nAuthority\nFp6Ncz...M229SV\nCreator\nFp6Ncz...M229SV\nFirst Mint\n19:21:33 Mar 20, 2026 (UTC)\nToken Extensions\nFalse\nMisc\nToken address\n28SfCp...GhszW5\nOwner Program\nToken Program\nPersonal label\nSign in to add personal label\nAd\nTransfersTransactionsActivitiesHoldersAnalyticsMetadataMarketsCards\nTotal 3,190 transfers\nHide Zero Value\nVisualize\nExport CSV\nVisualize\n\tSignature\n\tTime\n\tAction\n\tFrom\n\tTo\n\tAmount\n\tToken\n\tGAM58RSdwuo3Lz4kmGXY8pvsqnZ8Ayr6nSVkMSmeXTmeLLqvKdTNageEwC5Zc6HbDX2xDgMfn7u31oZZkSSPyWx\n\t21 mins ago\n\tTRANSFER\n\t2jyNypsrSR...gmHmyvfcVz\n\tPump.fun AMM: Protocol Fee 3\n\t807,651.81901"
+      }
+    }
+  },
+  "results": {
+    "creator": {
+      "Transactions": {
+        "rows_seen": [],
+        "rows_in_range": [],
+        "diagnostics": {
+          "status": "tab_open_failed",
+          "error": "Tab not found: Transactions",
+          "rows_seen_count": 0,
+          "rows_in_range_count": 0,
+          "rows_with_parsed_timestamp_count": 0,
+          "rows_without_parsed_timestamp_count": 0,
+          "page": {
+            "status": "ok",
+            "title": "Account is not valid",
+            "url": "https://solscan.io/account/UNKNOWN",
+            "body_excerpt": "$89.16 +0.34%\nAvg Fee: 0.00001248\nAnalytics \nDefi \nLeaderboard \nBlockchain \nResources \nSign in\n$89.16 +0.34%\nAvg Fee: 0.00001248\nAccount is not valid.\nThe account you are looking for is not valid. Please check the account address and try again.\nGo back to homepage \nBack to Top\nPowered by Solana Blockchain\nSolscan is the leading Block Explorer and Search, API & Analytics Platform for Solana blockchain.\nCompany\nAbout Us\nBranding\nContact Us\nTerms of Service\nPrivacy Policy\nBug Bounty\nCommunity\nAPI Docs\nSolscan Docs\nKnowledge Base\nProducts & Services\nAdvertise\nExplorer as a Service (EaaS)\nAPI Plans\nPriority Support\nToken Update\nSolscan @2026\nDonations: \nD27Dgi...L5EuLK"
+          }
+        }
+      },
+      "Transfers": {
+        "rows_seen": [],
+        "rows_in_range": [],
+        "diagnostics": {
+          "status": "tab_open_failed",
+          "error": "Tab not found: Transfers",
+          "rows_seen_count": 0,
+          "rows_in_range_count": 0,
+          "rows_with_parsed_timestamp_count": 0,
+          "rows_without_parsed_timestamp_count": 0,
+          "page": {
+            "status": "ok",
+            "title": "Account is not valid",
+            "url": "https://solscan.io/account/UNKNOWN",
+            "body_excerpt": "$89.16 +0.34%\nAvg Fee: 0.00001248\nAnalytics \nDefi \nLeaderboard \nBlockchain \nResources \nSign in\n$89.16 +0.34%\nAvg Fee: 0.00001248\nAccount is not valid.\nThe account you are looking for is not valid. Please check the account address and try again.\nGo back to homepage \nBack to Top\nPowered by Solana Blockchain\nSolscan is the leading Block Explorer and Search, API & Analytics Platform for Solana blockchain.\nCompany\nAbout Us\nBranding\nContact Us\nTerms of Service\nPrivacy Policy\nBug Bounty\nCommunity\nAPI Docs\nSolscan Docs\nKnowledge Base\nProducts & Services\nAdvertise\nExplorer as a Service (EaaS)\nAPI Plans\nPriority Support\nToken Update\nSolscan @2026\nDonations: \nD27Dgi...L5EuLK"
+          }
+        }
+      }
+    },
+    "token": {
+      "Transactions": {
+        "rows_seen": [
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:13+00:00",
+            "timestamp_local": "2026-03-20T21:12:13+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "GAM58RSdwuo3Lz4kmGXY8pvsqnZ8Ayr6nSVkMSmeXTmeLLqvKdTNageEwC5Zc6HbDX2xDgMfn7u31oZZkSSPyWx\n\t20:12:13 Mar 20, 2026\n\tTRANSFER\n\t2jyNypsrSR...gmHmyvfcVz\n\tPump.fun AMM: Protocol Fee 3\n\t807,651.819017\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:13+00:00",
+            "timestamp_local": "2026-03-20T21:12:13+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "GAM58RSdwuo3Lz4kmGXY8pvsqnZ8Ayr6nSVkMSmeXTmeLLqvKdTNageEwC5Zc6HbDX2xDgMfn7u31oZZkSSPyWx\n\t20:12:13 Mar 20, 2026\n\tTRANSFER\n\t2jyNypsrSR...gmHmyvfcVz\n\tPump.fun AMM (WSOL-U.S. UGOR) Market\n\t1,619,341,897.128545\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:13+00:00",
+            "timestamp_local": "2026-03-20T21:12:13+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "GAM58RSdwuo3Lz4kmGXY8pvsqnZ8Ayr6nSVkMSmeXTmeLLqvKdTNageEwC5Zc6HbDX2xDgMfn7u31oZZkSSPyWx\n\t20:12:13 Mar 20, 2026\n\tTRANSFER\n\tPump.fun AMM (WSOL-U.S. UGOR) Market\n\tPump.fun AMM: Protocol Fee 4\n\t803,467.289582\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:13+00:00",
+            "timestamp_local": "2026-03-20T21:12:13+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "GAM58RSdwuo3Lz4kmGXY8pvsqnZ8Ayr6nSVkMSmeXTmeLLqvKdTNageEwC5Zc6HbDX2xDgMfn7u31oZZkSSPyWx\n\t20:12:13 Mar 20, 2026\n\tTRANSFER\n\tPump.fun AMM (WSOL-U.S. UGOR) Market\n\t2jyNypsrSR...gmHmyvfcVz\n\t1,602,113,775.425443\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:12+00:00",
+            "timestamp_local": "2026-03-20T21:12:12+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "3cNSdx29DCyAGvFR36qEKEfkPN9HNz7HDqySroJTqnhrqvv1w5KGBZ32kS7bDNvRemx6cGZPRfKhP5jia1aavF3h\n\t20:12:12 Mar 20, 2026\n\tTRANSFER\n\t2jyNypsrSR...gmHmyvfcVz\n\tPump.fun AMM: Protocol Fee 5\n\t802,112.390589\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:12+00:00",
+            "timestamp_local": "2026-03-20T21:12:12+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "3cNSdx29DCyAGvFR36qEKEfkPN9HNz7HDqySroJTqnhrqvv1w5KGBZ32kS7bDNvRemx6cGZPRfKhP5jia1aavF3h\n\t20:12:12 Mar 20, 2026\n\tTRANSFER\n\t2jyNypsrSR...gmHmyvfcVz\n\tPump.fun AMM (WSOL-U.S. UGOR) Market\n\t1,608,235,343.129846\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:12+00:00",
+            "timestamp_local": "2026-03-20T21:12:12+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "3cNSdx29DCyAGvFR36qEKEfkPN9HNz7HDqySroJTqnhrqvv1w5KGBZ32kS7bDNvRemx6cGZPRfKhP5jia1aavF3h\n\t20:12:12 Mar 20, 2026\n\tTRANSFER\n\tPump.fun AMM (WSOL-U.S. UGOR) Market\n\tPump.fun AMM: Protocol Fee 8\n\t797,956.561518\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:12+00:00",
+            "timestamp_local": "2026-03-20T21:12:12+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "3cNSdx29DCyAGvFR36qEKEfkPN9HNz7HDqySroJTqnhrqvv1w5KGBZ32kS7bDNvRemx6cGZPRfKhP5jia1aavF3h\n\t20:12:12 Mar 20, 2026\n\tTRANSFER\n\tPump.fun AMM (WSOL-U.S. UGOR) Market\n\t2jyNypsrSR...gmHmyvfcVz\n\t1,591,125,383.665572\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:12+00:00",
+            "timestamp_local": "2026-03-20T21:12:12+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "373QYsGqTsx4qB3c1Sns5U4puZkPZBRXruzubJKKSBgju1BUZVDmoyn34K5UrTYjaBGVqrW87XJYZAAUKW1MqeuK\n\t20:12:12 Mar 20, 2026\n\tTRANSFER\n\t2jyNypsrSR...gmHmyvfcVz\n\tPump.fun AMM: Protocol Fee\n\t796,610.955349\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:12+00:00",
+            "timestamp_local": "2026-03-20T21:12:12+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "373QYsGqTsx4qB3c1Sns5U4puZkPZBRXruzubJKKSBgju1BUZVDmoyn34K5UrTYjaBGVqrW87XJYZAAUKW1MqeuK\n\t20:12:12 Mar 20, 2026\n\tTRANSFER\n\t2jyNypsrSR...gmHmyvfcVz\n\tPump.fun AMM (WSOL-U.S. UGOR) Market\n\t1,597,204,965.472873\n\tU.S. UGOR"
+          }
+        ],
+        "rows_in_range": [
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:13+00:00",
+            "timestamp_local": "2026-03-20T21:12:13+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "GAM58RSdwuo3Lz4kmGXY8pvsqnZ8Ayr6nSVkMSmeXTmeLLqvKdTNageEwC5Zc6HbDX2xDgMfn7u31oZZkSSPyWx\n\t20:12:13 Mar 20, 2026\n\tTRANSFER\n\t2jyNypsrSR...gmHmyvfcVz\n\tPump.fun AMM: Protocol Fee 3\n\t807,651.819017\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:13+00:00",
+            "timestamp_local": "2026-03-20T21:12:13+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "GAM58RSdwuo3Lz4kmGXY8pvsqnZ8Ayr6nSVkMSmeXTmeLLqvKdTNageEwC5Zc6HbDX2xDgMfn7u31oZZkSSPyWx\n\t20:12:13 Mar 20, 2026\n\tTRANSFER\n\t2jyNypsrSR...gmHmyvfcVz\n\tPump.fun AMM (WSOL-U.S. UGOR) Market\n\t1,619,341,897.128545\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:13+00:00",
+            "timestamp_local": "2026-03-20T21:12:13+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "GAM58RSdwuo3Lz4kmGXY8pvsqnZ8Ayr6nSVkMSmeXTmeLLqvKdTNageEwC5Zc6HbDX2xDgMfn7u31oZZkSSPyWx\n\t20:12:13 Mar 20, 2026\n\tTRANSFER\n\tPump.fun AMM (WSOL-U.S. UGOR) Market\n\tPump.fun AMM: Protocol Fee 4\n\t803,467.289582\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:13+00:00",
+            "timestamp_local": "2026-03-20T21:12:13+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "GAM58RSdwuo3Lz4kmGXY8pvsqnZ8Ayr6nSVkMSmeXTmeLLqvKdTNageEwC5Zc6HbDX2xDgMfn7u31oZZkSSPyWx\n\t20:12:13 Mar 20, 2026\n\tTRANSFER\n\tPump.fun AMM (WSOL-U.S. UGOR) Market\n\t2jyNypsrSR...gmHmyvfcVz\n\t1,602,113,775.425443\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:12+00:00",
+            "timestamp_local": "2026-03-20T21:12:12+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "3cNSdx29DCyAGvFR36qEKEfkPN9HNz7HDqySroJTqnhrqvv1w5KGBZ32kS7bDNvRemx6cGZPRfKhP5jia1aavF3h\n\t20:12:12 Mar 20, 2026\n\tTRANSFER\n\t2jyNypsrSR...gmHmyvfcVz\n\tPump.fun AMM: Protocol Fee 5\n\t802,112.390589\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:12+00:00",
+            "timestamp_local": "2026-03-20T21:12:12+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "3cNSdx29DCyAGvFR36qEKEfkPN9HNz7HDqySroJTqnhrqvv1w5KGBZ32kS7bDNvRemx6cGZPRfKhP5jia1aavF3h\n\t20:12:12 Mar 20, 2026\n\tTRANSFER\n\t2jyNypsrSR...gmHmyvfcVz\n\tPump.fun AMM (WSOL-U.S. UGOR) Market\n\t1,608,235,343.129846\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:12+00:00",
+            "timestamp_local": "2026-03-20T21:12:12+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "3cNSdx29DCyAGvFR36qEKEfkPN9HNz7HDqySroJTqnhrqvv1w5KGBZ32kS7bDNvRemx6cGZPRfKhP5jia1aavF3h\n\t20:12:12 Mar 20, 2026\n\tTRANSFER\n\tPump.fun AMM (WSOL-U.S. UGOR) Market\n\tPump.fun AMM: Protocol Fee 8\n\t797,956.561518\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:12+00:00",
+            "timestamp_local": "2026-03-20T21:12:12+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "3cNSdx29DCyAGvFR36qEKEfkPN9HNz7HDqySroJTqnhrqvv1w5KGBZ32kS7bDNvRemx6cGZPRfKhP5jia1aavF3h\n\t20:12:12 Mar 20, 2026\n\tTRANSFER\n\tPump.fun AMM (WSOL-U.S. UGOR) Market\n\t2jyNypsrSR...gmHmyvfcVz\n\t1,591,125,383.665572\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:12+00:00",
+            "timestamp_local": "2026-03-20T21:12:12+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "373QYsGqTsx4qB3c1Sns5U4puZkPZBRXruzubJKKSBgju1BUZVDmoyn34K5UrTYjaBGVqrW87XJYZAAUKW1MqeuK\n\t20:12:12 Mar 20, 2026\n\tTRANSFER\n\t2jyNypsrSR...gmHmyvfcVz\n\tPump.fun AMM: Protocol Fee\n\t796,610.955349\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:12+00:00",
+            "timestamp_local": "2026-03-20T21:12:12+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "373QYsGqTsx4qB3c1Sns5U4puZkPZBRXruzubJKKSBgju1BUZVDmoyn34K5UrTYjaBGVqrW87XJYZAAUKW1MqeuK\n\t20:12:12 Mar 20, 2026\n\tTRANSFER\n\t2jyNypsrSR...gmHmyvfcVz\n\tPump.fun AMM (WSOL-U.S. UGOR) Market\n\t1,597,204,965.472873\n\tU.S. UGOR"
+          }
+        ],
+        "diagnostics": {
+          "status": "ok_pagination_stalled",
+          "pagination_warning": "pagination_stalled",
+          "rows_seen_count": 10,
+          "rows_in_range_count": 10,
+          "rows_with_parsed_timestamp_count": 10,
+          "rows_without_parsed_timestamp_count": 0,
+          "rows_with_relative_timestamp_count": 0,
+          "rows_with_absolute_timestamp_count": 10,
+          "page": {
+            "status": "ok",
+            "title": "USA Oil Reserve (U.S. UGOR) | Solscan",
+            "url": "https://solscan.io/token/28SfCpuP225eKrSPWGBmHwon7ZTJMbuEYHnxB6GhszW5",
+            "body_excerpt": "$88.96 +0.08%\nAvg Fee: 0.00002186\nAnalytics \nDefi \nLeaderboard \nBlockchain \nResources \nSign in\n$88.96 +0.08%\nAvg Fee: 0.00002186\nToken USA Oil Reserve\nSponsored:  $METAWIN Presale: $350,000 Raised! Last Chance To Buy At Under 10c. Buy Now\nBuy\nPresale\nPlay\nGaming\nAPI\nMarket Overview\nCurrent Supply\n99,999,999,999\nSocial Channels\nGMGN\nHolders\n13\nProfile Summary\nToken name\nUSA Oil Reserve (U.S. UGOR)\nDecimals\n6\nAuthority\nFp6Ncz...M229SV\nCreator\nFp6Ncz...M229SV\nFirst Mint\n19:21:33 Mar 20, 2026 (UTC)\nToken Extensions\nFalse\nMisc\nToken address\n28SfCp...GhszW5\nOwner Program\nToken Program\nPersonal label\nSign in to add personal label\nTransfersTransactionsActivitiesHoldersAnalyticsMetadataMarketsCards\nTotal 3,190 transfers\nHide Zero Value\nVisualize\nExport CSV\nVisualize\n\tSignature\n\tTime\n(UTC)\n\tAction\n\tFrom\n\tTo\n\tAmount\n\tToken\n\tGAM58RSdwuo3Lz4kmGXY8pvsqnZ8Ayr6nSVkMSmeXTmeLLqvKdTNageEwC5Zc6HbDX2xDgMfn7u31oZZkSSPyWx\n\t20:12:13 Mar 20, 2026\n\tTRANSFER\n\t2jyNypsrSR...gmHmyvfcVz\n\tPump.fun AMM: Protocol Fee 3"
+          }
+        }
+      },
+      "Transfers": {
+        "rows_seen": [
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:00.442689+00:00",
+            "timestamp_local": "2026-03-20T21:12:00.442689+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "GAM58RSdwuo3Lz4kmGXY8pvsqnZ8Ayr6nSVkMSmeXTmeLLqvKdTNageEwC5Zc6HbDX2xDgMfn7u31oZZkSSPyWx\n\t21 mins ago\n\tTRANSFER\n\t2jyNypsrSR...gmHmyvfcVz\n\tPump.fun AMM: Protocol Fee 3\n\t807,651.819017\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:00.442689+00:00",
+            "timestamp_local": "2026-03-20T21:12:00.442689+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "GAM58RSdwuo3Lz4kmGXY8pvsqnZ8Ayr6nSVkMSmeXTmeLLqvKdTNageEwC5Zc6HbDX2xDgMfn7u31oZZkSSPyWx\n\t21 mins ago\n\tTRANSFER\n\t2jyNypsrSR...gmHmyvfcVz\n\tPump.fun AMM (WSOL-U.S. UGOR) Market\n\t1,619,341,897.128545\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:00.442689+00:00",
+            "timestamp_local": "2026-03-20T21:12:00.442689+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "GAM58RSdwuo3Lz4kmGXY8pvsqnZ8Ayr6nSVkMSmeXTmeLLqvKdTNageEwC5Zc6HbDX2xDgMfn7u31oZZkSSPyWx\n\t21 mins ago\n\tTRANSFER\n\tPump.fun AMM (WSOL-U.S. UGOR) Market\n\tPump.fun AMM: Protocol Fee 4\n\t803,467.289582\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:00.442689+00:00",
+            "timestamp_local": "2026-03-20T21:12:00.442689+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "GAM58RSdwuo3Lz4kmGXY8pvsqnZ8Ayr6nSVkMSmeXTmeLLqvKdTNageEwC5Zc6HbDX2xDgMfn7u31oZZkSSPyWx\n\t21 mins ago\n\tTRANSFER\n\tPump.fun AMM (WSOL-U.S. UGOR) Market\n\t2jyNypsrSR...gmHmyvfcVz\n\t1,602,113,775.425443\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:00.442689+00:00",
+            "timestamp_local": "2026-03-20T21:12:00.442689+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "3cNSdx29DCyAGvFR36qEKEfkPN9HNz7HDqySroJTqnhrqvv1w5KGBZ32kS7bDNvRemx6cGZPRfKhP5jia1aavF3h\n\t21 mins ago\n\tTRANSFER\n\t2jyNypsrSR...gmHmyvfcVz\n\tPump.fun AMM: Protocol Fee 5\n\t802,112.390589\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:00.442689+00:00",
+            "timestamp_local": "2026-03-20T21:12:00.442689+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "3cNSdx29DCyAGvFR36qEKEfkPN9HNz7HDqySroJTqnhrqvv1w5KGBZ32kS7bDNvRemx6cGZPRfKhP5jia1aavF3h\n\t21 mins ago\n\tTRANSFER\n\t2jyNypsrSR...gmHmyvfcVz\n\tPump.fun AMM (WSOL-U.S. UGOR) Market\n\t1,608,235,343.129846\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:00.442689+00:00",
+            "timestamp_local": "2026-03-20T21:12:00.442689+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "3cNSdx29DCyAGvFR36qEKEfkPN9HNz7HDqySroJTqnhrqvv1w5KGBZ32kS7bDNvRemx6cGZPRfKhP5jia1aavF3h\n\t21 mins ago\n\tTRANSFER\n\tPump.fun AMM (WSOL-U.S. UGOR) Market\n\tPump.fun AMM: Protocol Fee 8\n\t797,956.561518\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:00.442689+00:00",
+            "timestamp_local": "2026-03-20T21:12:00.442689+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "3cNSdx29DCyAGvFR36qEKEfkPN9HNz7HDqySroJTqnhrqvv1w5KGBZ32kS7bDNvRemx6cGZPRfKhP5jia1aavF3h\n\t21 mins ago\n\tTRANSFER\n\tPump.fun AMM (WSOL-U.S. UGOR) Market\n\t2jyNypsrSR...gmHmyvfcVz\n\t1,591,125,383.665572\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:00.442689+00:00",
+            "timestamp_local": "2026-03-20T21:12:00.442689+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "373QYsGqTsx4qB3c1Sns5U4puZkPZBRXruzubJKKSBgju1BUZVDmoyn34K5UrTYjaBGVqrW87XJYZAAUKW1MqeuK\n\t21 mins ago\n\tTRANSFER\n\t2jyNypsrSR...gmHmyvfcVz\n\tPump.fun AMM: Protocol Fee\n\t796,610.955349\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:00.442689+00:00",
+            "timestamp_local": "2026-03-20T21:12:00.442689+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "373QYsGqTsx4qB3c1Sns5U4puZkPZBRXruzubJKKSBgju1BUZVDmoyn34K5UrTYjaBGVqrW87XJYZAAUKW1MqeuK\n\t21 mins ago\n\tTRANSFER\n\t2jyNypsrSR...gmHmyvfcVz\n\tPump.fun AMM (WSOL-U.S. UGOR) Market\n\t1,597,204,965.472873\n\tU.S. UGOR"
+          }
+        ],
+        "rows_in_range": [
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:00.442689+00:00",
+            "timestamp_local": "2026-03-20T21:12:00.442689+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "GAM58RSdwuo3Lz4kmGXY8pvsqnZ8Ayr6nSVkMSmeXTmeLLqvKdTNageEwC5Zc6HbDX2xDgMfn7u31oZZkSSPyWx\n\t21 mins ago\n\tTRANSFER\n\t2jyNypsrSR...gmHmyvfcVz\n\tPump.fun AMM: Protocol Fee 3\n\t807,651.819017\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:00.442689+00:00",
+            "timestamp_local": "2026-03-20T21:12:00.442689+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "GAM58RSdwuo3Lz4kmGXY8pvsqnZ8Ayr6nSVkMSmeXTmeLLqvKdTNageEwC5Zc6HbDX2xDgMfn7u31oZZkSSPyWx\n\t21 mins ago\n\tTRANSFER\n\t2jyNypsrSR...gmHmyvfcVz\n\tPump.fun AMM (WSOL-U.S. UGOR) Market\n\t1,619,341,897.128545\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:00.442689+00:00",
+            "timestamp_local": "2026-03-20T21:12:00.442689+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "GAM58RSdwuo3Lz4kmGXY8pvsqnZ8Ayr6nSVkMSmeXTmeLLqvKdTNageEwC5Zc6HbDX2xDgMfn7u31oZZkSSPyWx\n\t21 mins ago\n\tTRANSFER\n\tPump.fun AMM (WSOL-U.S. UGOR) Market\n\tPump.fun AMM: Protocol Fee 4\n\t803,467.289582\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:00.442689+00:00",
+            "timestamp_local": "2026-03-20T21:12:00.442689+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "GAM58RSdwuo3Lz4kmGXY8pvsqnZ8Ayr6nSVkMSmeXTmeLLqvKdTNageEwC5Zc6HbDX2xDgMfn7u31oZZkSSPyWx\n\t21 mins ago\n\tTRANSFER\n\tPump.fun AMM (WSOL-U.S. UGOR) Market\n\t2jyNypsrSR...gmHmyvfcVz\n\t1,602,113,775.425443\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:00.442689+00:00",
+            "timestamp_local": "2026-03-20T21:12:00.442689+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "3cNSdx29DCyAGvFR36qEKEfkPN9HNz7HDqySroJTqnhrqvv1w5KGBZ32kS7bDNvRemx6cGZPRfKhP5jia1aavF3h\n\t21 mins ago\n\tTRANSFER\n\t2jyNypsrSR...gmHmyvfcVz\n\tPump.fun AMM: Protocol Fee 5\n\t802,112.390589\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:00.442689+00:00",
+            "timestamp_local": "2026-03-20T21:12:00.442689+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "3cNSdx29DCyAGvFR36qEKEfkPN9HNz7HDqySroJTqnhrqvv1w5KGBZ32kS7bDNvRemx6cGZPRfKhP5jia1aavF3h\n\t21 mins ago\n\tTRANSFER\n\t2jyNypsrSR...gmHmyvfcVz\n\tPump.fun AMM (WSOL-U.S. UGOR) Market\n\t1,608,235,343.129846\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:00.442689+00:00",
+            "timestamp_local": "2026-03-20T21:12:00.442689+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "3cNSdx29DCyAGvFR36qEKEfkPN9HNz7HDqySroJTqnhrqvv1w5KGBZ32kS7bDNvRemx6cGZPRfKhP5jia1aavF3h\n\t21 mins ago\n\tTRANSFER\n\tPump.fun AMM (WSOL-U.S. UGOR) Market\n\tPump.fun AMM: Protocol Fee 8\n\t797,956.561518\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:00.442689+00:00",
+            "timestamp_local": "2026-03-20T21:12:00.442689+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "3cNSdx29DCyAGvFR36qEKEfkPN9HNz7HDqySroJTqnhrqvv1w5KGBZ32kS7bDNvRemx6cGZPRfKhP5jia1aavF3h\n\t21 mins ago\n\tTRANSFER\n\tPump.fun AMM (WSOL-U.S. UGOR) Market\n\t2jyNypsrSR...gmHmyvfcVz\n\t1,591,125,383.665572\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:00.442689+00:00",
+            "timestamp_local": "2026-03-20T21:12:00.442689+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "373QYsGqTsx4qB3c1Sns5U4puZkPZBRXruzubJKKSBgju1BUZVDmoyn34K5UrTYjaBGVqrW87XJYZAAUKW1MqeuK\n\t21 mins ago\n\tTRANSFER\n\t2jyNypsrSR...gmHmyvfcVz\n\tPump.fun AMM: Protocol Fee\n\t796,610.955349\n\tU.S. UGOR"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:12:00.442689+00:00",
+            "timestamp_local": "2026-03-20T21:12:00.442689+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "373QYsGqTsx4qB3c1Sns5U4puZkPZBRXruzubJKKSBgju1BUZVDmoyn34K5UrTYjaBGVqrW87XJYZAAUKW1MqeuK\n\t21 mins ago\n\tTRANSFER\n\t2jyNypsrSR...gmHmyvfcVz\n\tPump.fun AMM (WSOL-U.S. UGOR) Market\n\t1,597,204,965.472873\n\tU.S. UGOR"
+          }
+        ],
+        "diagnostics": {
+          "status": "ok_pagination_stalled",
+          "pagination_warning": "pagination_stalled",
+          "rows_seen_count": 10,
+          "rows_in_range_count": 10,
+          "rows_with_parsed_timestamp_count": 10,
+          "rows_without_parsed_timestamp_count": 0,
+          "rows_with_relative_timestamp_count": 10,
+          "rows_with_absolute_timestamp_count": 0,
+          "page": {
+            "status": "ok",
+            "title": "USA Oil Reserve (U.S. UGOR) | Solscan",
+            "url": "https://solscan.io/token/28SfCpuP225eKrSPWGBmHwon7ZTJMbuEYHnxB6GhszW5",
+            "body_excerpt": "$88.96 +0.08%\nAvg Fee: 0.00002186\nAnalytics \nDefi \nLeaderboard \nBlockchain \nResources \nSign in\n$88.96 +0.08%\nAvg Fee: 0.00002186\nToken USA Oil Reserve\nSponsored:  $METAWIN Presale: $350,000 Raised! Last Chance To Buy At Under 10c. Buy Now\nBuy\nPresale\nPlay\nGaming\nAPI\nMarket Overview\nCurrent Supply\n99,999,999,999\nSocial Channels\nGMGN\nHolders\n13\nProfile Summary\nToken name\nUSA Oil Reserve (U.S. UGOR)\nDecimals\n6\nAuthority\nFp6Ncz...M229SV\nCreator\nFp6Ncz...M229SV\nFirst Mint\n19:21:33 Mar 20, 2026 (UTC)\nToken Extensions\nFalse\nMisc\nToken address\n28SfCp...GhszW5\nOwner Program\nToken Program\nPersonal label\nSign in to add personal label\nTransfersTransactionsActivitiesHoldersAnalyticsMetadataMarketsCards\nTotal 3,190 transfers\nHide Zero Value\nVisualize\nExport CSV\nVisualize\n\tSignature\n\tTime\n\tAction\n\tFrom\n\tTo\n\tAmount\n\tToken\n\tGAM58RSdwuo3Lz4kmGXY8pvsqnZ8Ayr6nSVkMSmeXTmeLLqvKdTNageEwC5Zc6HbDX2xDgMfn7u31oZZkSSPyWx\n\t21 mins ago\n\tTRANSFER\n\t2jyNypsrSR...gmHmyvfcVz\n\tPump.fun AMM: Protocol Fee 3\n\t807,651.819017"
+          }
+        }
+      }
+    }
+  },
+  "warnings": [
+    "creator.Transactions: tab_open_failed (seen=0, in_range=0, unparsed_ts=0)",
+    "creator.Transfers: tab_open_failed (seen=0, in_range=0, unparsed_ts=0)",
+    "token.Transactions: ok_pagination_stalled (seen=10, in_range=10, unparsed_ts=0)",
+    "token.Transfers: ok_pagination_stalled (seen=10, in_range=10, unparsed_ts=0)"
+  ],
+  "partial": false,
+  "progress": {
+    "stage": "completed"
+  },
+  "updated_at_utc": "2026-03-20T20:33:21.311099+00:00"
+}

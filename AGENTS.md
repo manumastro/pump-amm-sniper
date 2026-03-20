@@ -6,7 +6,13 @@
 - Controlli bot: `docs/controls.md`
 - Runbook systemd: `docs/systemd-runbook.md`
 - Architettura / ownership moduli: `docs/architecture.md`
+- Anti-rug filter (Phase 1 + bypass guard): `docs/anti-rug-filter-implementation.md`
+- Phase 2 creator AMM buy detection: `docs/phase2-creator-amm-buy-detection.md`
+- Worker A/B/C testing setup: `docs/worker-ab-testing.md`
 - Analisi creator/dev: `idea/creator-tx-analysis.md`
+- Operazioni recenti / note: `docs/operations-notes.md`
+- Profit roadmap: `docs/profit-roadmap.md`
+- Production checklist: `PRODUCTION_BOT_CHECKLIST.md`
 
 ## Config
 - Esempio env: `.env.example`
@@ -91,6 +97,12 @@ Regola deploy:
   - `HOLD_CREATOR_AMM_BUY_DETECT_ENABLED: true`
   - `HOLD_CREATOR_AMM_BUY_CHECK_INTERVAL_MS: 500`
 - **Status**: Running since 2026-03-20 09:18:53 CET, waiting for Phase 1 pass-throughs to validate
+
+### Setup Burst Liquidity Bypass with Fresh-Funding Guard (ACTIVE)
+- **Documentation**: `docs/anti-rug-filter-implementation.md` (section: Setup Burst Liquidity Bypass)
+- **Problem**: The setup burst filter blocks pools with rapid creation/mint activity, but legitimate high-liquidity launches often exhibit similar patterns
+- **Solution**: High-liquidity pools (>= 10 SOL) bypass the setup burst filter, but only if no fresh-funded creator pattern detected
+- **See**: `docs/anti-rug-filter-implementation.md` for complete documentation including the fresh-funding guard fix
 
 ## Architettura codice
 - Entry runtime attuale: `src/pumpAmmSniper.ts`

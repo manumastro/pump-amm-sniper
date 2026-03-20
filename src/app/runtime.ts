@@ -46,6 +46,10 @@ export function createSupervisorRuntime(options: {
         return workerSlots.find((slot) => !slot.busy) || null;
     }
 
+    function allWorkersIdle(): boolean {
+        return workerSlots.every((slot) => !slot.busy);
+    }
+
     function enqueuePendingSignature(signature: string) {
         if (pendingSignatureSet.has(signature)) return;
 
@@ -64,11 +68,28 @@ export function createSupervisorRuntime(options: {
     }
 
     function dispatchPoolToWorker(signature: string): boolean {
+        if (workerSlots.length > 1) {
+            if (!allWorkersIdle()) {
+                console.log(`QUEUE        | waiting for all workers idle (pending=${pendingSignatures.length})`);
+                enqueuePendingSignature(signature);
+                return false;
+            }
+            console.log(`DISPATCH     | all ${workerSlots.length} workers idle, dispatching to all`);
+            for (const slot of workerSlots) {
+                dispatchToSlot(signature, slot);
+            }
+            return true;
+        }
+        
         const slot = findIdleWorkerSlot();
         if (!slot) {
             return false;
         }
+        dispatchToSlot(signature, slot);
+        return true;
+    }
 
+    function dispatchToSlot(signature: string, slot: WorkerSlotState): void {
         fs.mkdirSync(options.workerLogDir, { recursive: true });
         const workerLogPath = getWorkerLogPath(slot.slot);
         if (!fs.existsSync(workerLogPath)) {
@@ -110,8 +131,6 @@ export function createSupervisorRuntime(options: {
             slot.child = null;
             drainPendingQueue();
         });
-
-        return true;
     }
 
     function drainPendingQueue() {

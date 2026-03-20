@@ -1,0 +1,500 @@
+{
+  "query": {
+    "creator": "UNKNOWN",
+    "token": "Hv91ZhjPVSz6GxiFyNU6EAJWHftQeRzjfEANG6cYNUKN",
+    "tabs": [
+      "Transactions",
+      "Transfers"
+    ],
+    "scope": "creator+token",
+    "tz": "Europe/Berlin",
+    "from_local": "2026-03-20T18:00:00+01:00",
+    "to_local": "2026-03-20T23:00:00+01:00",
+    "from_utc": "2026-03-20T17:00:00+00:00",
+    "to_utc": "2026-03-20T22:00:00+00:00",
+    "max_pages": 8,
+    "headless": false
+  },
+  "account": "UNKNOWN",
+  "token_summary": {
+    "address": "Hv91ZhjPVSz6GxiFyNU6EAJWHftQeRzjfEANG6cYNUKN",
+    "summary": {
+      "Current Supply": "999,999,540.245897",
+      "Holders": "1,884",
+      "Token name": "Chuck Norris Never Dies (Chuck)",
+      "Decimals": "6",
+      "Authority": "s4p7dD...z9hcWV",
+      "Creator": "s4p7dD...z9hcWV",
+      "First Mint": "19:16:09 Mar 20, 2026 (UTC)",
+      "Token address": "Hv91Zh...cYNUKN",
+      "Owner Program": "Token Program"
+    },
+    "diagnostics": {
+      "status": "ok",
+      "lines_seen": 155,
+      "page": {
+        "status": "ok",
+        "title": "Chuck Norris Never Dies (Chuck) | Solscan",
+        "url": "https://solscan.io/token/Hv91ZhjPVSz6GxiFyNU6EAJWHftQeRzjfEANG6cYNUKN",
+        "body_excerpt": "$88.96 +0.08%\nAvg Fee: 0.00002186\nAnalytics \nDefi \nLeaderboard \nBlockchain \nResources \nSign in\n$88.96 +0.08%\nAvg Fee: 0.00002186\nToken Chuck Norris Never Dies\nSponsored:  MetaWin: FREE TO ENTER: Win 1 Bitcoin (BTC) ! Claim Now\nBuy\nPresale\nPlay\nGaming\nAPI\nMarket Overview\nCurrent Supply\n999,999,540.245897\nSocial Channels\nGMGN\nHolders\n1,884\nProfile Summary\nToken name\nChuck Norris Never Dies (Chuck)\nDecimals\n6\nAuthority\ns4p7dD...z9hcWV\nCreator\ns4p7dD...z9hcWV\nFirst Mint\n19:16:09 Mar 20, 2026 (UTC)\nToken Extensions\nFalse\nMisc\nToken address\nHv91Zh...cYNUKN\nOwner Program\nToken Program\nPersonal label\nSign in to add personal label\nAd\nTransfersTransactionsActivitiesHoldersAnalyticsMetadataMarketsCards\nTotal 36,454 transfers\nHide Zero Value\nVisualize\nExport CSV\nVisualize\n\tSignature\n\tTime\n\tAction\n\tFrom\n\tTo\n\tAmount\n\tToken\n\t2ahqGHSKoRaLJNXEwvtKMKJYB36fRtiNeEA63v2gcvmiJDVg37oqDcaZpgy1v7okmm5ybJPbyoGZLKVJFXMf1zp4\n\t6 secs ago\n\tTRANSFER\n\t4L5zPGkon8...3PABsLy8GH\n\tPump.fun AMM: Protocol Fee 8\n\t1,837.59315"
+      }
+    }
+  },
+  "results": {
+    "creator": {
+      "Transactions": {
+        "rows_seen": [],
+        "rows_in_range": [],
+        "diagnostics": {
+          "status": "tab_open_failed",
+          "error": "Tab not found: Transactions",
+          "rows_seen_count": 0,
+          "rows_in_range_count": 0,
+          "rows_with_parsed_timestamp_count": 0,
+          "rows_without_parsed_timestamp_count": 0,
+          "page": {
+            "status": "ok",
+            "title": "Account is not valid",
+            "url": "https://solscan.io/account/UNKNOWN",
+            "body_excerpt": "$88.96 +0.08%\nAvg Fee: 0.00002186\nAnalytics \nDefi \nLeaderboard \nBlockchain \nResources \nSign in\n$88.96 +0.08%\nAvg Fee: 0.00002186\nAccount is not valid.\nThe account you are looking for is not valid. Please check the account address and try again.\nGo back to homepage \nBack to Top\nPowered by Solana Blockchain\nSolscan is the leading Block Explorer and Search, API & Analytics Platform for Solana blockchain.\nCompany\nAbout Us\nBranding\nContact Us\nTerms of Service\nPrivacy Policy\nBug Bounty\nCommunity\nAPI Docs\nSolscan Docs\nKnowledge Base\nProducts & Services\nAdvertise\nExplorer as a Service (EaaS)\nAPI Plans\nPriority Support\nToken Update\nSolscan @2026\nDonations: \nD27Dgi...L5EuLK"
+          }
+        }
+      },
+      "Transfers": {
+        "rows_seen": [],
+        "rows_in_range": [],
+        "diagnostics": {
+          "status": "tab_open_failed",
+          "error": "Tab not found: Transfers",
+          "rows_seen_count": 0,
+          "rows_in_range_count": 0,
+          "rows_with_parsed_timestamp_count": 0,
+          "rows_without_parsed_timestamp_count": 0,
+          "page": {
+            "status": "ok",
+            "title": "Account is not valid",
+            "url": "https://solscan.io/account/UNKNOWN",
+            "body_excerpt": "$88.96 +0.08%\nAvg Fee: 0.00002186\nAnalytics \nDefi \nLeaderboard \nBlockchain \nResources \nSign in\n$88.96 +0.08%\nAvg Fee: 0.00002186\nAccount is not valid.\nThe account you are looking for is not valid. Please check the account address and try again.\nGo back to homepage \nBack to Top\nPowered by Solana Blockchain\nSolscan is the leading Block Explorer and Search, API & Analytics Platform for Solana blockchain.\nCompany\nAbout Us\nBranding\nContact Us\nTerms of Service\nPrivacy Policy\nBug Bounty\nCommunity\nAPI Docs\nSolscan Docs\nKnowledge Base\nProducts & Services\nAdvertise\nExplorer as a Service (EaaS)\nAPI Plans\nPriority Support\nToken Update\nSolscan @2026\nDonations: \nD27Dgi...L5EuLK"
+          }
+        }
+      }
+    },
+    "token": {
+      "Transactions": {
+        "rows_seen": [
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:37+00:00",
+            "timestamp_local": "2026-03-20T21:33:37+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "DaZV2dzdKtJDGpXLn9svNRHMhYJqyvfYVDnFeT5uVSaPw2DB8ZRdqk9Hr86kd4z85gkPpAaXWhHgdscE7ES38EN\n\t20:33:37 Mar 20, 2026\n\tTRANSFER\n\tAtGWHY41WD...vRdVRGCKfK\n\tPump.fun AMM: Protocol Fee 8\n\t1,917.664765\n\tChuck"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:37+00:00",
+            "timestamp_local": "2026-03-20T21:33:37+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "DaZV2dzdKtJDGpXLn9svNRHMhYJqyvfYVDnFeT5uVSaPw2DB8ZRdqk9Hr86kd4z85gkPpAaXWhHgdscE7ES38EN\n\t20:33:37 Mar 20, 2026\n\tTRANSFER\n\tAtGWHY41WD...vRdVRGCKfK\n\tPump.fun AMM (WSOL-Chuck) Market\n\t3,844,917.852094\n\tChuck"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:37+00:00",
+            "timestamp_local": "2026-03-20T21:33:37+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "DaZV2dzdKtJDGpXLn9svNRHMhYJqyvfYVDnFeT5uVSaPw2DB8ZRdqk9Hr86kd4z85gkPpAaXWhHgdscE7ES38EN\n\t20:33:37 Mar 20, 2026\n\tTRANSFER\n\tPump.fun AMM (WSOL-Chuck) Market\n\tPump.fun AMM: Protocol Fee 8\n\t1,867.814644\n\tChuck"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:37+00:00",
+            "timestamp_local": "2026-03-20T21:33:37+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "DaZV2dzdKtJDGpXLn9svNRHMhYJqyvfYVDnFeT5uVSaPw2DB8ZRdqk9Hr86kd4z85gkPpAaXWhHgdscE7ES38EN\n\t20:33:37 Mar 20, 2026\n\tTRANSFER\n\tPump.fun AMM (WSOL-Chuck) Market\n\t8o6cQNDze3...BnZoYa5FT7\n\t3,724,422.398782\n\tChuck"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:37+00:00",
+            "timestamp_local": "2026-03-20T21:33:37+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "2d4fHGPq1YMhQKTjxxEFuT53nyZSNcqCHWSTyuopWLfzfb3geyaht4uaccC5KcQJv4sjHTsaxQpUqkMkaTZL6inX\n\t20:33:37 Mar 20, 2026\n\tTRANSFER\n\tDbadBoyTsn...9XCQT7dBFw\n\tPump.fun AMM: Protocol Fee 8\n\t2,137.599834\n\tChuck"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:37+00:00",
+            "timestamp_local": "2026-03-20T21:33:37+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "2d4fHGPq1YMhQKTjxxEFuT53nyZSNcqCHWSTyuopWLfzfb3geyaht4uaccC5KcQJv4sjHTsaxQpUqkMkaTZL6inX\n\t20:33:37 Mar 20, 2026\n\tTRANSFER\n\tDbadBoyTsn...9XCQT7dBFw\n\tPump.fun AMM (WSOL-Chuck) Market\n\t4,285,887.66635\n\tChuck"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:37+00:00",
+            "timestamp_local": "2026-03-20T21:33:37+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "2d4fHGPq1YMhQKTjxxEFuT53nyZSNcqCHWSTyuopWLfzfb3geyaht4uaccC5KcQJv4sjHTsaxQpUqkMkaTZL6inX\n\t20:33:37 Mar 20, 2026\n\tTRANSFER\n\tPump.fun AMM (WSOL-Chuck) Market\n\tPump.fun AMM: Protocol Fee 8\n\t2,191.197072\n\tChuck"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:37+00:00",
+            "timestamp_local": "2026-03-20T21:33:37+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "2d4fHGPq1YMhQKTjxxEFuT53nyZSNcqCHWSTyuopWLfzfb3geyaht4uaccC5KcQJv4sjHTsaxQpUqkMkaTZL6inX\n\t20:33:37 Mar 20, 2026\n\tTRANSFER\n\tPump.fun AMM (WSOL-Chuck) Market\n\tD6ypJPbHmH...AgyUePS7Gn\n\t4,369,246.959638\n\tChuck"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:36+00:00",
+            "timestamp_local": "2026-03-20T21:33:36+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "SKz2fQFBEeWrtceJYyFoqxQs6eTX51UZC1BANT99C7LUvnj1XoB8mV8D1YXY6nXq86sSQQHDPeVFJ55hTFtkQHB\n\t20:33:36 Mar 20, 2026\n\tTRANSFER\n\t4zwAMGgLT5...7cczre7xJC\n\tPump.fun AMM: Protocol Fee 8\n\t2,031.872372\n\tChuck"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:36+00:00",
+            "timestamp_local": "2026-03-20T21:33:36+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "SKz2fQFBEeWrtceJYyFoqxQs6eTX51UZC1BANT99C7LUvnj1XoB8mV8D1YXY6nXq86sSQQHDPeVFJ55hTFtkQHB\n\t20:33:36 Mar 20, 2026\n\tTRANSFER\n\t4zwAMGgLT5...7cczre7xJC\n\tPump.fun AMM (WSOL-Chuck) Market\n\t4,073,904.105242\n\tChuck"
+          }
+        ],
+        "rows_in_range": [
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:37+00:00",
+            "timestamp_local": "2026-03-20T21:33:37+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "DaZV2dzdKtJDGpXLn9svNRHMhYJqyvfYVDnFeT5uVSaPw2DB8ZRdqk9Hr86kd4z85gkPpAaXWhHgdscE7ES38EN\n\t20:33:37 Mar 20, 2026\n\tTRANSFER\n\tAtGWHY41WD...vRdVRGCKfK\n\tPump.fun AMM: Protocol Fee 8\n\t1,917.664765\n\tChuck"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:37+00:00",
+            "timestamp_local": "2026-03-20T21:33:37+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "DaZV2dzdKtJDGpXLn9svNRHMhYJqyvfYVDnFeT5uVSaPw2DB8ZRdqk9Hr86kd4z85gkPpAaXWhHgdscE7ES38EN\n\t20:33:37 Mar 20, 2026\n\tTRANSFER\n\tAtGWHY41WD...vRdVRGCKfK\n\tPump.fun AMM (WSOL-Chuck) Market\n\t3,844,917.852094\n\tChuck"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:37+00:00",
+            "timestamp_local": "2026-03-20T21:33:37+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "DaZV2dzdKtJDGpXLn9svNRHMhYJqyvfYVDnFeT5uVSaPw2DB8ZRdqk9Hr86kd4z85gkPpAaXWhHgdscE7ES38EN\n\t20:33:37 Mar 20, 2026\n\tTRANSFER\n\tPump.fun AMM (WSOL-Chuck) Market\n\tPump.fun AMM: Protocol Fee 8\n\t1,867.814644\n\tChuck"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:37+00:00",
+            "timestamp_local": "2026-03-20T21:33:37+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "DaZV2dzdKtJDGpXLn9svNRHMhYJqyvfYVDnFeT5uVSaPw2DB8ZRdqk9Hr86kd4z85gkPpAaXWhHgdscE7ES38EN\n\t20:33:37 Mar 20, 2026\n\tTRANSFER\n\tPump.fun AMM (WSOL-Chuck) Market\n\t8o6cQNDze3...BnZoYa5FT7\n\t3,724,422.398782\n\tChuck"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:37+00:00",
+            "timestamp_local": "2026-03-20T21:33:37+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "2d4fHGPq1YMhQKTjxxEFuT53nyZSNcqCHWSTyuopWLfzfb3geyaht4uaccC5KcQJv4sjHTsaxQpUqkMkaTZL6inX\n\t20:33:37 Mar 20, 2026\n\tTRANSFER\n\tDbadBoyTsn...9XCQT7dBFw\n\tPump.fun AMM: Protocol Fee 8\n\t2,137.599834\n\tChuck"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:37+00:00",
+            "timestamp_local": "2026-03-20T21:33:37+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "2d4fHGPq1YMhQKTjxxEFuT53nyZSNcqCHWSTyuopWLfzfb3geyaht4uaccC5KcQJv4sjHTsaxQpUqkMkaTZL6inX\n\t20:33:37 Mar 20, 2026\n\tTRANSFER\n\tDbadBoyTsn...9XCQT7dBFw\n\tPump.fun AMM (WSOL-Chuck) Market\n\t4,285,887.66635\n\tChuck"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:37+00:00",
+            "timestamp_local": "2026-03-20T21:33:37+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "2d4fHGPq1YMhQKTjxxEFuT53nyZSNcqCHWSTyuopWLfzfb3geyaht4uaccC5KcQJv4sjHTsaxQpUqkMkaTZL6inX\n\t20:33:37 Mar 20, 2026\n\tTRANSFER\n\tPump.fun AMM (WSOL-Chuck) Market\n\tPump.fun AMM: Protocol Fee 8\n\t2,191.197072\n\tChuck"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:37+00:00",
+            "timestamp_local": "2026-03-20T21:33:37+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "2d4fHGPq1YMhQKTjxxEFuT53nyZSNcqCHWSTyuopWLfzfb3geyaht4uaccC5KcQJv4sjHTsaxQpUqkMkaTZL6inX\n\t20:33:37 Mar 20, 2026\n\tTRANSFER\n\tPump.fun AMM (WSOL-Chuck) Market\n\tD6ypJPbHmH...AgyUePS7Gn\n\t4,369,246.959638\n\tChuck"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:36+00:00",
+            "timestamp_local": "2026-03-20T21:33:36+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "SKz2fQFBEeWrtceJYyFoqxQs6eTX51UZC1BANT99C7LUvnj1XoB8mV8D1YXY6nXq86sSQQHDPeVFJ55hTFtkQHB\n\t20:33:36 Mar 20, 2026\n\tTRANSFER\n\t4zwAMGgLT5...7cczre7xJC\n\tPump.fun AMM: Protocol Fee 8\n\t2,031.872372\n\tChuck"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:36+00:00",
+            "timestamp_local": "2026-03-20T21:33:36+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "SKz2fQFBEeWrtceJYyFoqxQs6eTX51UZC1BANT99C7LUvnj1XoB8mV8D1YXY6nXq86sSQQHDPeVFJ55hTFtkQHB\n\t20:33:36 Mar 20, 2026\n\tTRANSFER\n\t4zwAMGgLT5...7cczre7xJC\n\tPump.fun AMM (WSOL-Chuck) Market\n\t4,073,904.105242\n\tChuck"
+          }
+        ],
+        "diagnostics": {
+          "status": "ok_pagination_stalled",
+          "pagination_warning": "pagination_stalled",
+          "rows_seen_count": 10,
+          "rows_in_range_count": 10,
+          "rows_with_parsed_timestamp_count": 10,
+          "rows_without_parsed_timestamp_count": 0,
+          "rows_with_relative_timestamp_count": 0,
+          "rows_with_absolute_timestamp_count": 10,
+          "page": {
+            "status": "ok",
+            "title": "Chuck Norris Never Dies (Chuck) | Solscan",
+            "url": "https://solscan.io/token/Hv91ZhjPVSz6GxiFyNU6EAJWHftQeRzjfEANG6cYNUKN",
+            "body_excerpt": "$88.96 +0.08%\nAvg Fee: 0.00002186\nAnalytics \nDefi \nLeaderboard \nBlockchain \nResources \nSign in\n$88.96 +0.08%\nAvg Fee: 0.00002186\nToken Chuck Norris Never Dies\nSolscan - Get your ad in the spotlight! \ud83c\udf1f Book your slot today!\nBuy\nPresale\nPlay\nGaming\nAPI\nMarket Overview\nCurrent Supply\n999,999,540.245897\nSocial Channels\nPadre\nHolders\n1,884\nProfile Summary\nToken name\nChuck Norris Never Dies (Chuck)\nDecimals\n6\nAuthority\ns4p7dD...z9hcWV\nCreator\ns4p7dD...z9hcWV\nFirst Mint\n19:16:09 Mar 20, 2026 (UTC)\nToken Extensions\nFalse\nMisc\nToken address\nHv91Zh...cYNUKN\nOwner Program\nToken Program\nPersonal label\nSign in to add personal label\nTransfersTransactionsActivitiesHoldersAnalyticsMetadataMarketsCards\nTotal 36,454 transfers\nHide Zero Value\nVisualize\nExport CSV\nVisualize\n\tSignature\n\tTime\n(UTC)\n\tAction\n\tFrom\n\tTo\n\tAmount\n\tToken\n\tDaZV2dzdKtJDGpXLn9svNRHMhYJqyvfYVDnFeT5uVSaPw2DB8ZRdqk9Hr86kd4z85gkPpAaXWhHgdscE7ES38EN\n\t20:33:37 Mar 20, 2026\n\tTRANSFER\n\tAtGWHY41WD...vRdVRGCKfK\n\tPump.fun AMM: Protocol Fee 8\n\t1"
+          }
+        }
+      },
+      "Transfers": {
+        "rows_seen": [
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:37.799742+00:00",
+            "timestamp_local": "2026-03-20T21:33:37.799742+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "DaZV2dzdKtJDGpXLn9svNRHMhYJqyvfYVDnFeT5uVSaPw2DB8ZRdqk9Hr86kd4z85gkPpAaXWhHgdscE7ES38EN\n\t28 secs ago\n\tTRANSFER\n\tAtGWHY41WD...vRdVRGCKfK\n\tPump.fun AMM: Protocol Fee 8\n\t1,917.664765\n\tChuck"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:37.799742+00:00",
+            "timestamp_local": "2026-03-20T21:33:37.799742+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "DaZV2dzdKtJDGpXLn9svNRHMhYJqyvfYVDnFeT5uVSaPw2DB8ZRdqk9Hr86kd4z85gkPpAaXWhHgdscE7ES38EN\n\t28 secs ago\n\tTRANSFER\n\tAtGWHY41WD...vRdVRGCKfK\n\tPump.fun AMM (WSOL-Chuck) Market\n\t3,844,917.852094\n\tChuck"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:37.799742+00:00",
+            "timestamp_local": "2026-03-20T21:33:37.799742+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "DaZV2dzdKtJDGpXLn9svNRHMhYJqyvfYVDnFeT5uVSaPw2DB8ZRdqk9Hr86kd4z85gkPpAaXWhHgdscE7ES38EN\n\t28 secs ago\n\tTRANSFER\n\tPump.fun AMM (WSOL-Chuck) Market\n\tPump.fun AMM: Protocol Fee 8\n\t1,867.814644\n\tChuck"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:37.799742+00:00",
+            "timestamp_local": "2026-03-20T21:33:37.799742+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "DaZV2dzdKtJDGpXLn9svNRHMhYJqyvfYVDnFeT5uVSaPw2DB8ZRdqk9Hr86kd4z85gkPpAaXWhHgdscE7ES38EN\n\t28 secs ago\n\tTRANSFER\n\tPump.fun AMM (WSOL-Chuck) Market\n\t8o6cQNDze3...BnZoYa5FT7\n\t3,724,422.398782\n\tChuck"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:37.799742+00:00",
+            "timestamp_local": "2026-03-20T21:33:37.799742+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "2d4fHGPq1YMhQKTjxxEFuT53nyZSNcqCHWSTyuopWLfzfb3geyaht4uaccC5KcQJv4sjHTsaxQpUqkMkaTZL6inX\n\t28 secs ago\n\tTRANSFER\n\tDbadBoyTsn...9XCQT7dBFw\n\tPump.fun AMM: Protocol Fee 8\n\t2,137.599834\n\tChuck"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:37.799742+00:00",
+            "timestamp_local": "2026-03-20T21:33:37.799742+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "2d4fHGPq1YMhQKTjxxEFuT53nyZSNcqCHWSTyuopWLfzfb3geyaht4uaccC5KcQJv4sjHTsaxQpUqkMkaTZL6inX\n\t28 secs ago\n\tTRANSFER\n\tDbadBoyTsn...9XCQT7dBFw\n\tPump.fun AMM (WSOL-Chuck) Market\n\t4,285,887.66635\n\tChuck"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:37.799742+00:00",
+            "timestamp_local": "2026-03-20T21:33:37.799742+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "2d4fHGPq1YMhQKTjxxEFuT53nyZSNcqCHWSTyuopWLfzfb3geyaht4uaccC5KcQJv4sjHTsaxQpUqkMkaTZL6inX\n\t28 secs ago\n\tTRANSFER\n\tPump.fun AMM (WSOL-Chuck) Market\n\tPump.fun AMM: Protocol Fee 8\n\t2,191.197072\n\tChuck"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:37.799742+00:00",
+            "timestamp_local": "2026-03-20T21:33:37.799742+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "2d4fHGPq1YMhQKTjxxEFuT53nyZSNcqCHWSTyuopWLfzfb3geyaht4uaccC5KcQJv4sjHTsaxQpUqkMkaTZL6inX\n\t28 secs ago\n\tTRANSFER\n\tPump.fun AMM (WSOL-Chuck) Market\n\tD6ypJPbHmH...AgyUePS7Gn\n\t4,369,246.959638\n\tChuck"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:36.799742+00:00",
+            "timestamp_local": "2026-03-20T21:33:36.799742+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "SKz2fQFBEeWrtceJYyFoqxQs6eTX51UZC1BANT99C7LUvnj1XoB8mV8D1YXY6nXq86sSQQHDPeVFJ55hTFtkQHB\n\t29 secs ago\n\tTRANSFER\n\t4zwAMGgLT5...7cczre7xJC\n\tPump.fun AMM: Protocol Fee 8\n\t2,031.872372\n\tChuck"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:36.799742+00:00",
+            "timestamp_local": "2026-03-20T21:33:36.799742+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "SKz2fQFBEeWrtceJYyFoqxQs6eTX51UZC1BANT99C7LUvnj1XoB8mV8D1YXY6nXq86sSQQHDPeVFJ55hTFtkQHB\n\t29 secs ago\n\tTRANSFER\n\t4zwAMGgLT5...7cczre7xJC\n\tPump.fun AMM (WSOL-Chuck) Market\n\t4,073,904.105242\n\tChuck"
+          }
+        ],
+        "rows_in_range": [
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:37.799742+00:00",
+            "timestamp_local": "2026-03-20T21:33:37.799742+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "DaZV2dzdKtJDGpXLn9svNRHMhYJqyvfYVDnFeT5uVSaPw2DB8ZRdqk9Hr86kd4z85gkPpAaXWhHgdscE7ES38EN\n\t28 secs ago\n\tTRANSFER\n\tAtGWHY41WD...vRdVRGCKfK\n\tPump.fun AMM: Protocol Fee 8\n\t1,917.664765\n\tChuck"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:37.799742+00:00",
+            "timestamp_local": "2026-03-20T21:33:37.799742+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "DaZV2dzdKtJDGpXLn9svNRHMhYJqyvfYVDnFeT5uVSaPw2DB8ZRdqk9Hr86kd4z85gkPpAaXWhHgdscE7ES38EN\n\t28 secs ago\n\tTRANSFER\n\tAtGWHY41WD...vRdVRGCKfK\n\tPump.fun AMM (WSOL-Chuck) Market\n\t3,844,917.852094\n\tChuck"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:37.799742+00:00",
+            "timestamp_local": "2026-03-20T21:33:37.799742+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "DaZV2dzdKtJDGpXLn9svNRHMhYJqyvfYVDnFeT5uVSaPw2DB8ZRdqk9Hr86kd4z85gkPpAaXWhHgdscE7ES38EN\n\t28 secs ago\n\tTRANSFER\n\tPump.fun AMM (WSOL-Chuck) Market\n\tPump.fun AMM: Protocol Fee 8\n\t1,867.814644\n\tChuck"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:37.799742+00:00",
+            "timestamp_local": "2026-03-20T21:33:37.799742+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "DaZV2dzdKtJDGpXLn9svNRHMhYJqyvfYVDnFeT5uVSaPw2DB8ZRdqk9Hr86kd4z85gkPpAaXWhHgdscE7ES38EN\n\t28 secs ago\n\tTRANSFER\n\tPump.fun AMM (WSOL-Chuck) Market\n\t8o6cQNDze3...BnZoYa5FT7\n\t3,724,422.398782\n\tChuck"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:37.799742+00:00",
+            "timestamp_local": "2026-03-20T21:33:37.799742+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "2d4fHGPq1YMhQKTjxxEFuT53nyZSNcqCHWSTyuopWLfzfb3geyaht4uaccC5KcQJv4sjHTsaxQpUqkMkaTZL6inX\n\t28 secs ago\n\tTRANSFER\n\tDbadBoyTsn...9XCQT7dBFw\n\tPump.fun AMM: Protocol Fee 8\n\t2,137.599834\n\tChuck"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:37.799742+00:00",
+            "timestamp_local": "2026-03-20T21:33:37.799742+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "2d4fHGPq1YMhQKTjxxEFuT53nyZSNcqCHWSTyuopWLfzfb3geyaht4uaccC5KcQJv4sjHTsaxQpUqkMkaTZL6inX\n\t28 secs ago\n\tTRANSFER\n\tDbadBoyTsn...9XCQT7dBFw\n\tPump.fun AMM (WSOL-Chuck) Market\n\t4,285,887.66635\n\tChuck"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:37.799742+00:00",
+            "timestamp_local": "2026-03-20T21:33:37.799742+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "2d4fHGPq1YMhQKTjxxEFuT53nyZSNcqCHWSTyuopWLfzfb3geyaht4uaccC5KcQJv4sjHTsaxQpUqkMkaTZL6inX\n\t28 secs ago\n\tTRANSFER\n\tPump.fun AMM (WSOL-Chuck) Market\n\tPump.fun AMM: Protocol Fee 8\n\t2,191.197072\n\tChuck"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:37.799742+00:00",
+            "timestamp_local": "2026-03-20T21:33:37.799742+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "2d4fHGPq1YMhQKTjxxEFuT53nyZSNcqCHWSTyuopWLfzfb3geyaht4uaccC5KcQJv4sjHTsaxQpUqkMkaTZL6inX\n\t28 secs ago\n\tTRANSFER\n\tPump.fun AMM (WSOL-Chuck) Market\n\tD6ypJPbHmH...AgyUePS7Gn\n\t4,369,246.959638\n\tChuck"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:36.799742+00:00",
+            "timestamp_local": "2026-03-20T21:33:36.799742+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "SKz2fQFBEeWrtceJYyFoqxQs6eTX51UZC1BANT99C7LUvnj1XoB8mV8D1YXY6nXq86sSQQHDPeVFJ55hTFtkQHB\n\t29 secs ago\n\tTRANSFER\n\t4zwAMGgLT5...7cczre7xJC\n\tPump.fun AMM: Protocol Fee 8\n\t2,031.872372\n\tChuck"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-20T20:33:36.799742+00:00",
+            "timestamp_local": "2026-03-20T21:33:36.799742+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "SKz2fQFBEeWrtceJYyFoqxQs6eTX51UZC1BANT99C7LUvnj1XoB8mV8D1YXY6nXq86sSQQHDPeVFJ55hTFtkQHB\n\t29 secs ago\n\tTRANSFER\n\t4zwAMGgLT5...7cczre7xJC\n\tPump.fun AMM (WSOL-Chuck) Market\n\t4,073,904.105242\n\tChuck"
+          }
+        ],
+        "diagnostics": {
+          "status": "ok_pagination_stalled",
+          "pagination_warning": "pagination_stalled",
+          "rows_seen_count": 10,
+          "rows_in_range_count": 10,
+          "rows_with_parsed_timestamp_count": 10,
+          "rows_without_parsed_timestamp_count": 0,
+          "rows_with_relative_timestamp_count": 10,
+          "rows_with_absolute_timestamp_count": 0,
+          "page": {
+            "status": "ok",
+            "title": "Chuck Norris Never Dies (Chuck) | Solscan",
+            "url": "https://solscan.io/token/Hv91ZhjPVSz6GxiFyNU6EAJWHftQeRzjfEANG6cYNUKN",
+            "body_excerpt": "$88.96 +0.08%\nAvg Fee: 0.00002186\nAnalytics \nDefi \nLeaderboard \nBlockchain \nResources \nSign in\n$88.96 +0.08%\nAvg Fee: 0.00002186\nToken Chuck Norris Never Dies\nSolscan - Get your ad in the spotlight! \ud83c\udf1f Book your slot today!\nBuy\nPresale\nPlay\nGaming\nAPI\nMarket Overview\nCurrent Supply\n999,999,540.245897\nSocial Channels\nPadre\nHolders\n1,884\nProfile Summary\nToken name\nChuck Norris Never Dies (Chuck)\nDecimals\n6\nAuthority\ns4p7dD...z9hcWV\nCreator\ns4p7dD...z9hcWV\nFirst Mint\n19:16:09 Mar 20, 2026 (UTC)\nToken Extensions\nFalse\nMisc\nToken address\nHv91Zh...cYNUKN\nOwner Program\nToken Program\nPersonal label\nSign in to add personal label\nTransfersTransactionsActivitiesHoldersAnalyticsMetadataMarketsCards\nTotal 36,454 transfers\nHide Zero Value\nVisualize\nExport CSV\nVisualize\n\tSignature\n\tTime\n\tAction\n\tFrom\n\tTo\n\tAmount\n\tToken\n\tDaZV2dzdKtJDGpXLn9svNRHMhYJqyvfYVDnFeT5uVSaPw2DB8ZRdqk9Hr86kd4z85gkPpAaXWhHgdscE7ES38EN\n\t28 secs ago\n\tTRANSFER\n\tAtGWHY41WD...vRdVRGCKfK\n\tPump.fun AMM: Protocol Fee 8\n\t1,917.664765\n\tChu"
+          }
+        }
+      }
+    }
+  },
+  "warnings": [
+    "creator.Transactions: tab_open_failed (seen=0, in_range=0, unparsed_ts=0)",
+    "creator.Transfers: tab_open_failed (seen=0, in_range=0, unparsed_ts=0)",
+    "token.Transactions: ok_pagination_stalled (seen=10, in_range=10, unparsed_ts=0)",
+    "token.Transfers: ok_pagination_stalled (seen=10, in_range=10, unparsed_ts=0)"
+  ],
+  "partial": false,
+  "progress": {
+    "stage": "completed"
+  },
+  "updated_at_utc": "2026-03-20T20:34:25.647692+00:00"
+}

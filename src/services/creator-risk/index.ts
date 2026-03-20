@@ -1,5 +1,5 @@
 import { Connection, PublicKey } from "@solana/web3.js";
-import { CONFIG } from "../../app/config";
+import { CONFIG, getWorkerConfigKey } from "../../app/config";
 import { CreatorRiskCacheEntry, CreatorRiskCheckOptions, CreatorRiskResult, ParsedCreatorRiskTx, RugHistory } from "../../domain/types";
 import { stageLog } from "../reporting/stageLog";
 import { shortSig } from "../../utils/pubkeys";
@@ -1360,10 +1360,10 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                 });
             }
 
-            if (uniqueCounterparties >= CONFIG.CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES) {
+            if (uniqueCounterparties >= getWorkerConfigKey('CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES')) {
                 return returnEarlyDecision({
                     ok: false,
-                    reason: `unique counterparties ${uniqueCounterparties} >= ${CONFIG.CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES}`,
+                    reason: `unique counterparties ${uniqueCounterparties} >= ${getWorkerConfigKey('CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES')}`,
                     funder,
                     uniqueCounterparties,
                     compressedWindowSec,
@@ -1387,14 +1387,22 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
             }
 
             if (burner) {
-                return returnEarlyDecision({
-                    ok: false,
-                    reason: `burner profile out=${solOutSol.toFixed(2)} SOL with no inbound transfers`,
-                    funder,
-                    uniqueCounterparties,
-                    compressedWindowSec,
-                    burner,
-                });
+                const entrySol = options.entrySolLiquidity || 0;
+                const burnerBypassEnabled = getWorkerConfigKey('CREATOR_RISK_BURNER_LIQUIDITY_BYPASS_ENABLED');
+                const burnerBypassMinSol = getWorkerConfigKey('CREATOR_RISK_BURNER_LIQUIDITY_BYPASS_MIN_SOL');
+                
+                if (burnerBypassEnabled && entrySol * 80 >= burnerBypassMinSol) {
+                    stageLog(ctx, "CRISK", `burner profile bypass (${entrySol.toFixed(2)} SOL >= ${burnerBypassMinSol} threshold)`);
+                } else {
+                    return returnEarlyDecision({
+                        ok: false,
+                        reason: `burner profile out=${solOutSol.toFixed(2)} SOL with no inbound transfers`,
+                        funder,
+                        uniqueCounterparties,
+                        compressedWindowSec,
+                        burner,
+                    });
+                }
             }
 
             const deepChecksPromise = Promise.all([
@@ -1572,7 +1580,7 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
             if (deepChecksComplete && precreateDispersalSetup.detected) {
                 const entrySol = options.entrySolLiquidity || 0;
                 const bypassLiqThreshold = CONFIG.CREATOR_RISK_SETUP_BURST_LIQUIDITY_BYPASS_SOL;
-                if (entrySol >= bypassLiqThreshold) {
+                if (entrySol >= bypassLiqThreshold && !freshFundedHighSeed.strictFlowRequired) {
                     stageLog(
                         ctx,
                         "CRISK",
@@ -1683,7 +1691,7 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
             ) {
                 const entrySol = options.entrySolLiquidity || 0;
                 const bypassLiqThreshold = CONFIG.CREATOR_RISK_SETUP_BURST_LIQUIDITY_BYPASS_SOL;
-                if (entrySol >= bypassLiqThreshold) {
+                if (entrySol >= bypassLiqThreshold && !freshFundedHighSeed.strictFlowRequired) {
                     stageLog(
                         ctx,
                         "CRISK",
@@ -1720,7 +1728,7 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
             if (setupBurst.detected) {
                 const entrySol = options.entrySolLiquidity || 0;
                 const bypassLiqThreshold = CONFIG.CREATOR_RISK_SETUP_BURST_LIQUIDITY_BYPASS_SOL;
-                if (entrySol >= bypassLiqThreshold) {
+                if (entrySol >= bypassLiqThreshold && !freshFundedHighSeed.strictFlowRequired) {
                     stageLog(
                         ctx,
                         "CRISK",

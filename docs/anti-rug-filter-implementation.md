@@ -228,3 +228,44 @@ Watch logs for `bypassed` keyword:
 grep "bypassed" paper.log
 ```
 
+---
+
+## Fresh-Funding Guard Fix (2026-03-20)
+
+### Problem
+The liquidity bypass was bypassing BOTH the setup burst filter AND the fresh-funded creator detection. This allowed a rug (evt-000259) to pass through:
+
+- **evt-000259**: Creator received 349 SOL from funder, created pool with 100 SOL seed (fund >> seed pattern)
+- **Timeline**: Pool created → buy at 18:31:02 → liquidity removed at 18:31:29 (27 seconds later) → -100% loss
+- **Root cause**: `freshFundedHighSeed.strictFlowRequired` was set but bypass returned `ok: true` before FFSEED could log
+
+### Solution
+Added `!freshFundedHighSeed.strictFlowRequired` check to ALL 3 bypass variants:
+1. **Precreate dispersal + setup burst** (line ~1575)
+2. **Lookup-table + setup burst** (line ~1686)
+3. **Setup burst** (line ~1723)
+
+### Implementation
+```typescript
+if (entrySol >= bypassLiqThreshold && !freshFundedHighSeed.strictFlowRequired) {
+    // Bypass allowed - high liquidity AND no fresh funding pattern
+    return cacheAndReturn(enrichBaseResult({ ok: true, ... }));
+}
+// Otherwise fall through to normal block/allow logic
+```
+
+### Why This Works
+- Legitimate high-liquidity pools (evt-000041, evt-000049, evt-000060): fund ≈ seed, bypass applies
+- Rug pools with fresh funding (evt-000259): fund=349 SOL >> seed=100 SOL, FFSEED blocks before bypass
+
+### Git Commit
+```
+<new commit for fresh-funding guard>
+```
+
+### Monitoring
+After fix, watch for FFSEED logs followed by bypass decisions:
+```bash
+grep "FFSEED\|bypassed" logs/paper-worker-*.log
+```
+

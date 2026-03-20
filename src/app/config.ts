@@ -97,6 +97,8 @@ export const CONFIG = {
     CREATOR_RISK_COMPRESSED_MAX_COUNTERPARTIES: 20,
     CREATOR_RISK_COMPRESSED_WINDOW_SEC: 120,
     CREATOR_RISK_BURNER_MIN_OUT_SOL: 100,
+    CREATOR_RISK_BURNER_LIQUIDITY_BYPASS_ENABLED: false,
+    CREATOR_RISK_BURNER_LIQUIDITY_BYPASS_MIN_SOL: 50000,
     CREATOR_RISK_FUNDER_CLUSTER_ENABLED: true,
     CREATOR_RISK_FUNDER_CLUSTER_MIN_CREATORS: 2,
     CREATOR_RISK_FUNDER_CLUSTER_WINDOW_SEC: 900,
@@ -288,7 +290,7 @@ export const CONFIG = {
     LOW_LIQUIDITY_RECHECK_WINDOW_MS: 5000,
     LOW_LIQUIDITY_RECHECK_INTERVAL_MS: 300,
     LOW_LIQUIDITY_POOL_COOLDOWN_MS: 120000,
-    MAX_CONCURRENT_OPERATIONS: 2,
+    MAX_CONCURRENT_OPERATIONS: Number(process.env.MAX_CONCURRENT_OPERATIONS || 2),
     QUEUE_MAX_PENDING_SIGNATURES: 300,
     CREATOR_RISK_RATE_LIMIT_RETRIES: 1,
     CREATOR_RISK_RATE_LIMIT_RETRY_BASE_MS: 600,
@@ -306,3 +308,40 @@ export const HOLD_WINNER_PROFILE: WinnerManagementProfile = {
     hardTakeProfitPct: CONFIG.HOLD_WINNER_HARD_TAKE_PROFIT_PCT,
     minPeakSol: CONFIG.HOLD_WINNER_MIN_PEAK_SOL,
 };
+
+type ConfigKey = keyof typeof CONFIG;
+
+function getWorkerConfigOverrides(workerSlot: number): Partial<typeof CONFIG> {
+    const overrides: Partial<typeof CONFIG> = {};
+    const prefix = `WORKER_${workerSlot}_`;
+    
+    for (const key of Object.keys(CONFIG) as ConfigKey[]) {
+        const envKey = prefix + key;
+        const envValue = process.env[envKey];
+        if (envValue !== undefined) {
+            const configValue = CONFIG[key];
+            const isNumber = typeof configValue === 'number';
+            if (isNumber) {
+                (overrides as any)[key] = Number(envValue);
+            } else if (typeof configValue === 'boolean') {
+                (overrides as any)[key] = envValue === 'true';
+            } else {
+                (overrides as any)[key] = envValue;
+            }
+        }
+    }
+    
+    return overrides;
+}
+
+export function getWorkerConfig(workerSlot: number): typeof CONFIG {
+    if (workerSlot <= 1) {
+        return CONFIG;
+    }
+    const overrides = getWorkerConfigOverrides(workerSlot);
+    return { ...CONFIG, ...overrides };
+}
+
+export function getWorkerConfigKey(key: ConfigKey): any {
+    return getWorkerConfig(WORKER_SLOT)[key];
+}
