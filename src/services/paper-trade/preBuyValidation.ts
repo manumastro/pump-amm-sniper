@@ -6,7 +6,7 @@ import { CreatorRiskResult, PaperSimulationOptions, PreBuyEntryValidationResult 
 import { stageLog } from "../reporting/stageLog";
 import { formatSolCompact } from "../../utils/format";
 import { shortSig } from "../../utils/pubkeys";
-import { getPoolOrientation, getSolLiquidityFromState, getSpotSolPerTokenFromState } from "./quote";
+import { describePoolMints, getPoolOrientation, getSolLiquidityFromState, getSpotSolPerTokenFromState } from "./quote";
 
 type ValidatePreBuyDeps = {
     recheckCreatorRisk: (
@@ -124,7 +124,7 @@ export async function validatePreBuyEntryState(
 
     const orientation = getPoolOrientation(entryState, tokenMint);
     if (!orientation.hasWsol) {
-        return { ok: false, reason: "pool has no WSOL side" };
+        return { ok: false, reason: `pool has no WSOL side (${describePoolMints(entryState, tokenMint)})` };
     }
 
     const entrySolLiquidity = getSolLiquidityFromState(entryState, tokenMint) || 0;

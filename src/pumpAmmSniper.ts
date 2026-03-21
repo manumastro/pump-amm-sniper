@@ -19,7 +19,14 @@ import { createCreatorRiskService } from "./services/creator-risk";
 import { createDevHoldingsService } from "./services/dev-holdings";
 import { createLiquidityService } from "./services/liquidity";
 import { createPaperTradeService } from "./services/paper-trade";
-import { calcSpotSolPerToken, getExitQuoteSolFromState, getPoolOrientation, getSolLiquidityFromState, getSpotSolPerTokenFromState } from "./services/paper-trade/quote";
+import {
+    calcSpotSolPerToken,
+    describePoolMints,
+    getExitQuoteSolFromState,
+    getPoolOrientation,
+    getSolLiquidityFromState,
+    getSpotSolPerTokenFromState,
+} from "./services/paper-trade/quote";
 import { patchConsoleWithTimestamp, stageLog } from "./services/reporting/stageLog";
 import { createTop10Service } from "./services/top10";
 import { checkTokenSecurity, getMintInfoRobust } from "./services/token-security";
@@ -303,8 +310,9 @@ async function handleNewPool(connection: Connection, signature: string) {
                 const poolState = await onlineSdk.swapSolanaState(poolKey, observerUser);
                 const orientation = getPoolOrientation(poolState, tokenMint);
                 if (!orientation.hasWsol) {
-                    stageLog(ctx, "LIQ", "pool has no WSOL side");
-                    console.log(`🛑 SKIP: pool has no WSOL side`);
+                    const mintInfo = describePoolMints(poolState, tokenMint);
+                    stageLog(ctx, "LIQ", `pool has no WSOL side (${mintInfo})`);
+                    console.log(`🛑 SKIP: pool has no WSOL side (${mintInfo})`);
                     finalStatus = "SKIP: no WSOL side";
                     return;
                 }
@@ -684,7 +692,10 @@ async function waitForPreEntryFlowSignal(
         const state = await onlineSdk.swapSolanaState(poolKey, observerUser);
         const orientation = getPoolOrientation(state, tokenMint);
         if (!orientation.hasWsol) {
-            return { ok: false, reason: "pool has no WSOL side on pre-entry flow gate" };
+            return {
+                ok: false,
+                reason: `pool has no WSOL side on pre-entry flow gate (${describePoolMints(state, tokenMint)})`,
+            };
         }
 
         if (!baselineTokenOutAtomic) {
@@ -787,7 +798,11 @@ async function preEntryWaitAndCheck(
             const state = await onlineSdk.swapSolanaState(new PublicKey(poolAddress), observerUser);
             const liq = getSolLiquidityFromState(state, tokenMint);
             if (liq === null || !Number.isFinite(liq) || liq <= 0) {
-                return { ok: false, reason: "pool has no WSOL side on pre-entry check", currentLiquiditySol: 0 };
+                return {
+                    ok: false,
+                    reason: `pool has no WSOL side on pre-entry check (${describePoolMints(state, tokenMint)})`,
+                    currentLiquiditySol: 0,
+                };
             }
             latest = liq;
             observed.push(liq);

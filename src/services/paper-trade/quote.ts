@@ -9,6 +9,12 @@ function toMintString(value: any): string {
     return value?.toBase58?.() || String(value);
 }
 
+export function describePoolMints(state: any, tokenMint: string): string {
+    const baseMintStr = toMintString(state?.baseMint) || "-";
+    const quoteMintStr = toMintString(state?.quoteMint) || "-";
+    return `base=${baseMintStr} quote=${quoteMintStr} token=${tokenMint}`;
+}
+
 export function calcSpotSolPerToken(baseReserve: BN, quoteReserve: BN, tokenDecimals: number): number {
     const baseSol = Number(baseReserve.toString()) / 1e9;
     const quoteTokens = Number(quoteReserve.toString()) / 10 ** tokenDecimals;
@@ -18,9 +24,10 @@ export function calcSpotSolPerToken(baseReserve: BN, quoteReserve: BN, tokenDeci
 
 export function getPoolOrientation(state: any, tokenMint: string): { solIsBase: boolean; tokenIsBase: boolean; hasWsol: boolean } {
     const baseMintStr = toMintString(state?.baseMint);
+    const quoteMintStr = toMintString(state?.quoteMint);
     const tokenIsBase = baseMintStr === tokenMint;
     const solIsBase = baseMintStr === WSOL;
-    const hasWsol = solIsBase;
+    const hasWsol = solIsBase || quoteMintStr === WSOL;
     return { solIsBase, tokenIsBase, hasWsol };
 }
 
