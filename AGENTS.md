@@ -8,6 +8,7 @@ Questo file e ridotto al minimo per abilitare un approccio **lazy-load**:
 - Non aggiungere nuovi controlli direttamente in `src/pumpAmmSniper.ts`.
 - Controlli creator/funder/relay/pattern wallet: `src/services/creator-risk/`.
 - Controlli pre-buy/hold/exit: `src/services/paper-trade/`.
+- Test corrente: A/B/C sincronizzato su 3 worker (w1 baseline, w2 unique counterparties=50, w3 burner bypass) con report dedicati `logs/paper-worker-*-report.json`.
 - Dopo modifiche a `src/**` che impattano runtime: `npm run build` prima del restart systemd.
 - I servizi systemd usano `dist/`, non `src/`.
 - Parser Solscan (`solscan-parser/`) solo per debug/investigazione, mai nel path realtime.

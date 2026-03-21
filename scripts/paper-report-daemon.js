@@ -708,13 +708,13 @@ function writeReports(force = false) {
 
   // Write per-worker reports
   for (const [workerSlot, eventIds] of workerEvents) {
-    const workerFinished = [...events.values()].filter(e => e.workerSlot === workerSlot && e.endedAt);
-    const workerPnlKnown = workerFinished.filter(e => typeof e.effectivePnlSol === 'number');
+    const workerFinished = report.operations.filter(e => e.workerSlot === workerSlot);
+    const workerPnlKnown = workerFinished.filter(e => typeof e.pnlSol === 'number');
     const workerValidPnl = workerPnlKnown.filter(e => !getPnlValidityIssue(e));
-    const workerTotalPnl = workerValidPnl.reduce((a, e) => a + e.effectivePnlSol, 0);
-    const workerAvgPnlPct = workerValidPnl.length ? workerValidPnl.reduce((a, e) => a + (e.effectivePnlPct || 0), 0) / workerValidPnl.length : 0;
-    const workerWins = workerValidPnl.filter(e => e.effectivePnlSol > 0).length;
-    const workerLosses = workerValidPnl.filter(e => e.effectivePnlSol < 0).length;
+    const workerTotalPnl = workerValidPnl.reduce((a, e) => a + e.pnlSol, 0);
+    const workerAvgPnlPct = workerValidPnl.length ? workerValidPnl.reduce((a, e) => a + (e.pnlPct || 0), 0) / workerValidPnl.length : 0;
+    const workerWins = workerValidPnl.filter(e => e.pnlSol > 0).length;
+    const workerLosses = workerValidPnl.filter(e => e.pnlSol < 0).length;
     const workerChecksPassed = workerFinished.filter(e => e.checksPassed).length;
     const workerSkipped = workerFinished.filter(e => e.skipReason || (e.endStatus && e.endStatus.startsWith('SKIP'))).length;
     const workerRugLosses = workerFinished.filter(e => isRugLossEvent(e)).length;
@@ -747,8 +747,8 @@ function writeReports(force = false) {
         gmgn: e.gmgn || (e.tokenMint ? `https://gmgn.ai/sol/token/${e.tokenMint}` : null),
         buySpotSolPerToken: fmtNum(e.buySpotSolPerToken),
         sellSpotSolPerToken: fmtNum(e.sellSpotSolPerToken),
-        pnlSol: e.effectivePnlSol,
-        pnlPct: e.effectivePnlPct,
+        pnlSol: e.pnlSol,
+        pnlPct: e.pnlPct,
         checksPassed: e.checksPassed,
         skipReason: e.skipReason,
         endStatus: e.endStatus,
