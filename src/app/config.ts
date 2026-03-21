@@ -354,6 +354,66 @@ export const CONFIG = {
     PAPER_TRADE_MAX_LOSS_PCT: Number(cfgEnv("PAPER_TRADE_MAX_LOSS_PCT") || 80),
 } as const;
 
+export const CONFIG_GROUPS = {
+    preBuy: {
+        waitMs: CONFIG.PRE_BUY_WAIT_MS,
+        signalMinTrades: CONFIG.PRE_BUY_SIGNAL_MIN_TRADES,
+        signalMinQuoteImprovementPct: CONFIG.PRE_BUY_SIGNAL_MIN_QUOTE_IMPROVEMENT_PCT,
+        strictSignalMinQuoteImprovementPct: CONFIG.PRE_BUY_STRICT_SIGNAL_MIN_QUOTE_IMPROVEMENT_PCT,
+        confirmSnapshots: CONFIG.PRE_BUY_CONFIRM_SNAPSHOTS,
+        confirmIntervalMs: CONFIG.PRE_BUY_CONFIRM_INTERVAL_MS,
+        revalidationEnabled: CONFIG.PRE_BUY_REVALIDATION_ENABLED,
+        finalCreatorRiskRecheckEnabled: CONFIG.PRE_BUY_FINAL_CREATOR_RISK_RECHECK_ENABLED,
+        finalRemoveLiqCheckEnabled: CONFIG.PRE_BUY_FINAL_REMOVE_LIQ_CHECK_ENABLED,
+        top10CheckEnabled: CONFIG.PRE_BUY_TOP10_CHECK_ENABLED,
+        top10MaxPct: CONFIG.PRE_BUY_TOP10_MAX_PCT,
+        top10ExcludePool: CONFIG.PRE_BUY_TOP10_EXCLUDE_POOL,
+        top10FailOpen: CONFIG.PRE_BUY_TOP10_FAIL_OPEN,
+    },
+    hold: {
+        autoSellDelayMs: CONFIG.AUTO_SELL_DELAY_MS,
+        removeLiqDetectEnabled: CONFIG.HOLD_REMOVE_LIQ_DETECT_ENABLED,
+        removeLiqCheckIntervalMs: CONFIG.HOLD_REMOVE_LIQ_CHECK_INTERVAL_MS,
+        creatorRiskRecheckEnabled: CONFIG.HOLD_CREATOR_RISK_RECHECK_ENABLED,
+        creatorRiskRecheckIntervalMs: CONFIG.HOLD_CREATOR_RISK_RECHECK_INTERVAL_MS,
+        creatorCashoutExitEnabled: CONFIG.HOLD_CREATOR_CASHOUT_EXIT_ENABLED,
+        suspiciousRelayShortHoldEnabled: CONFIG.HOLD_SUSPICIOUS_RELAY_SHORT_HOLD_ENABLED,
+        suspiciousRelayShortHoldMs: CONFIG.HOLD_SUSPICIOUS_RELAY_SHORT_HOLD_MS,
+        poolChurnDetectEnabled: CONFIG.HOLD_POOL_CHURN_DETECT_ENABLED,
+        sellQuoteCollapseExitEnabled: CONFIG.HOLD_SELL_QUOTE_COLLAPSE_EXIT_ENABLED,
+        winnerManagementEnabled: CONFIG.HOLD_WINNER_MANAGEMENT_ENABLED,
+    },
+    creatorRisk: {
+        enabled: CONFIG.CREATOR_RISK_CHECK_ENABLED,
+        sigLimit: CONFIG.CREATOR_RISK_SIG_LIMIT,
+        parsedTxLimit: CONFIG.CREATOR_RISK_PARSED_TX_LIMIT,
+        maxUniqueCounterparties: CONFIG.CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES,
+        relayFundingEnabled: CONFIG.CREATOR_RISK_RELAY_FUNDING_ENABLED,
+        setupBurstBlockEnabled: CONFIG.CREATOR_RISK_SETUP_BURST_BLOCK_ENABLED,
+        freshFundedHighSeedBlockEnabled: CONFIG.CREATOR_RISK_FRESH_FUNDED_HIGH_SEED_BLOCK_ENABLED,
+        directAmmReentryEnabled: CONFIG.CREATOR_RISK_DIRECT_AMM_REENTRY_ENABLED,
+    },
+    paper: {
+        enabled: CONFIG.PAPER_TRADE_ENABLED,
+        maxLossPct: CONFIG.PAPER_TRADE_MAX_LOSS_PCT,
+        probationEnabled: CONFIG.PAPER_CREATOR_RISK_PROBATION_ENABLED,
+        probationHoldMs: CONFIG.PAPER_CREATOR_RISK_PROBATION_HOLD_MS,
+    },
+    runtime: {
+        maxConcurrentOperations: CONFIG.MAX_CONCURRENT_OPERATIONS,
+        queueMaxPendingSignatures: CONFIG.QUEUE_MAX_PENDING_SIGNATURES,
+        lowLiquidityRecheckEnabled: CONFIG.LOW_LIQUIDITY_RECHECK_ENABLED,
+        lowLiquidityRecheckWindowMs: CONFIG.LOW_LIQUIDITY_RECHECK_WINDOW_MS,
+        lowLiquidityRecheckIntervalMs: CONFIG.LOW_LIQUIDITY_RECHECK_INTERVAL_MS,
+    },
+} as const;
+
+export const PRE_BUY_CONFIG = CONFIG_GROUPS.preBuy;
+export const HOLD_CONFIG = CONFIG_GROUPS.hold;
+export const CREATOR_RISK_CONFIG = CONFIG_GROUPS.creatorRisk;
+export const PAPER_CONFIG = CONFIG_GROUPS.paper;
+export const RUNTIME_CONFIG = CONFIG_GROUPS.runtime;
+
 export const HOLD_WINNER_PROFILE: WinnerManagementProfile = {
     enabled: CONFIG.HOLD_WINNER_MANAGEMENT_ENABLED,
     checkIntervalMs: CONFIG.HOLD_WINNER_CHECK_INTERVAL_MS,
