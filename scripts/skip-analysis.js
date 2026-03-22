@@ -11,6 +11,13 @@ const path = require('path');
 const ROOT = process.cwd();
 const REPORT_JSON = path.join(ROOT, 'logs', 'paper-report.json');
 const HISTORY_JSON = path.join(ROOT, 'logs', 'skip-analysis-history.json');
+const FETCH_LOG = path.join(ROOT, 'logs', 'skip-analysis-fetch.log');
+
+function writeFetchLog(msg) {
+    const ts = new Date().toISOString();
+    const line = `[${ts}] ${msg}\n`;
+    fs.appendFileSync(FETCH_LOG, line);
+}
 
 function loadReport() {
     if (!fs.existsSync(REPORT_JSON)) {
@@ -52,48 +59,124 @@ function categorize(reason) {
 async function fetchPrices(tokens) {
     const results = {};
     const batchSize = 10;
+    const notFoundTokens = [];
+    let rateLimitCount = 0;
+    let errorCount = 0;
+    let successCount = 0;
+    
+    // Clear old log
+    if (fs.existsSync(FETCH_LOG)) fs.unlinkSync(FETCH_LOG);
+    writeFetchLog(`Starting fetch for ${tokens.length} tokens in ${Math.ceil(tokens.length/batchSize)} batches`);
     
     for (let i = 0; i < tokens.length; i += batchSize) {
         const batch = tokens.slice(i, i + batchSize);
         const addresses = batch.join(',');
+        const batchNum = Math.floor(i/batchSize) + 1;
+        const totalBatches = Math.ceil(tokens.length/batchSize);
         const url = `https://api.dexscreener.com/latest/dex/tokens/${addresses}`;
         
-        try {
-            const resp = await fetch(url, {
-                headers: { 'Accept': 'application/json' },
-                signal: AbortSignal.timeout(10000)
-            });
-            
-            if (!resp.ok) {
-                console.error(`  Batch ${Math.floor(i/batchSize)+1}: HTTP ${resp.status}`);
-                continue;
-            }
-            
-            const data = await resp.json();
-            for (const pair of (data.pairs || [])) {
-                const addr = pair.baseToken?.address;
-                if (!results[addr]) {
-                    results[addr] = {
-                        symbol: pair.baseToken?.symbol || '?',
-                        name: pair.baseToken?.name || '?',
-                        priceUsd: pair.priceUsd || null,
-                        change24h: pair.priceChange?.h24 || null,
-                        liquidityUsd: pair.liquidity?.usd || null,
-                        marketCap: pair.fv || pair.fdv || null,
-                        volume24h: pair.volume?.h24 || null,
-                        dexId: pair.dexId || '?',
-                    };
+        let lastError = null;
+        let retries = 0;
+        const maxRetries = 3;
+        
+        while (retries <= maxRetries) {
+            try {
+                const resp = await fetch(url, {
+                    headers: { 'Accept': 'application/json' },
+                    signal: AbortSignal.timeout(15000)
+                });
+                
+                if (resp.status === 429) {
+                    rateLimitCount++;
+                    const waitMs = Math.pow(2, retries) * 2000; // exponential backoff: 2s, 4s, 8s
+                    writeFetchLog(`Batch ${batchNum}/${totalBatches}: RATE LIMITED (429) - retry ${retries+1}/${maxRetries} after ${waitMs}ms`);
+                    console.log(`  ⚠️  Rate limited on batch ${batchNum}, waiting ${waitMs/1000}s...`);
+                    await new Promise(r => setTimeout(r, waitMs));
+                    retries++;
+                    continue;
+                }
+                
+                if (!resp.ok) {
+                    errorCount++;
+                    writeFetchLog(`Batch ${batchNum}/${totalBatches}: HTTP ${resp.status} ${resp.statusText}`);
+                    console.error(`  ❌ Batch ${batchNum}: HTTP ${resp.status}`);
+                    break;
+                }
+                
+                const data = await resp.json();
+                const pairs = data.pairs || [];
+                const foundAddrs = new Set(pairs.map(p => p.baseToken?.address));
+                
+                // Track which tokens were found vs not found
+                for (const addr of batch) {
+                    if (!foundAddrs.has(addr)) {
+                        notFoundTokens.push(addr);
+                        writeFetchLog(`Token not found: ${addr.substring(0, 12)}...`);
+                    }
+                }
+                
+                for (const pair of pairs) {
+                    const addr = pair.baseToken?.address;
+                    if (!results[addr]) {
+                        successCount++;
+                        results[addr] = {
+                            symbol: pair.baseToken?.symbol || '?',
+                            name: pair.baseToken?.name || '?',
+                            priceUsd: pair.priceUsd || null,
+                            change24h: pair.priceChange?.h24 || null,
+                            liquidityUsd: pair.liquidity?.usd || null,
+                            marketCap: pair.fv || pair.fdv || null,
+                            volume24h: pair.volume?.h24 || null,
+                            dexId: pair.dexId || '?',
+                        };
+                    }
+                }
+                
+                writeFetchLog(`Batch ${batchNum}/${totalBatches}: OK - ${pairs.length} pairs found for ${batch.length} tokens`);
+                break; // success, exit retry loop
+                
+            } catch (err) {
+                lastError = err;
+                if (err.name === 'AbortError' || err.message.includes('timeout')) {
+                    writeFetchLog(`Batch ${batchNum}/${totalBatches}: TIMEOUT - retry ${retries+1}/${maxRetries}`);
+                    retries++;
+                    await new Promise(r => setTimeout(r, 2000));
+                } else if (err.message.includes('429') || err.message.includes('rate')) {
+                    rateLimitCount++;
+                    writeFetchLog(`Batch ${batchNum}/${totalBatches}: RATE LIMIT ERROR - ${err.message}`);
+                    retries++;
+                    await new Promise(r => setTimeout(r, 3000));
+                } else {
+                    errorCount++;
+                    writeFetchLog(`Batch ${batchNum}/${totalBatches}: ERROR - ${err.message}`);
+                    console.error(`  ❌ Batch ${batchNum}: ${err.message}`);
+                    break;
                 }
             }
-        } catch (err) {
-            console.error(`  Batch ${Math.floor(i/batchSize)+1}: ${err.message}`);
         }
         
-        // Rate limit delay
+        if (retries > maxRetries && lastError) {
+            errorCount++;
+            writeFetchLog(`Batch ${batchNum}/${totalBatches}: FAILED after ${maxRetries} retries`);
+            console.error(`  ❌ Batch ${batchNum}: Failed after ${maxRetries} retries`);
+        }
+        
+        // Rate limit delay between batches
         if (i + batchSize < tokens.length) {
-            await new Promise(r => setTimeout(r, 1500));
+            await new Promise(r => setTimeout(r, 1200));
         }
     }
+    
+    // Summary
+    writeFetchLog(`\n=== FETCH SUMMARY ===`);
+    writeFetchLog(`Total tokens requested: ${tokens.length}`);
+    writeFetchLog(`Prices found: ${Object.keys(results).length}`);
+    writeFetchLog(`Not found on DexScreener: ${notFoundTokens.length}`);
+    writeFetchLog(`Rate limit hits: ${rateLimitCount}`);
+    writeFetchLog(`Other errors: ${errorCount}`);
+    
+    console.log(`\n  📊 Fetch summary: ${Object.keys(results).length}/${tokens.length} prices, ${notFoundTokens.length} not found, ${rateLimitCount} rate limits, ${errorCount} errors`);
+    console.log(`  📄 Detailed log: ${FETCH_LOG}`);
     
     return results;
 }
@@ -320,7 +403,26 @@ async function main() {
         console.log(`${label} | ${withData.length} with data | ${rate}% bad outcome | ${saved} rugs avoided`);
     }
     
+    // ─── NO DATA ANALYSIS ───
+    const noDataTokens = all.filter(i => i.outcome === 'no_data');
+    if (noDataTokens.length > 0) {
+        console.log('\n═══ NO DATA ANALYSIS ═══\n');
+        console.log(`${noDataTokens.length} tokens have no price data. Possible reasons:`);
+        console.log('  - Token was rug pulled and removed from DexScreener');
+        console.log('  - Token never had liquidity (instant rug)');
+        console.log('  - Token contract was renounced/invalidated');
+        console.log('  - Rate limiting during fetch (check logs/skip-analysis-fetch.log)');
+        console.log('\nNo data by category:');
+        for (const [cat, items] of Object.entries(categories)) {
+            const nd = items.filter(i => i.outcome === 'no_data');
+            if (nd.length > 0) {
+                console.log(`  ${(CAT_LABELS[cat] || cat).padEnd(20)}: ${nd.length} tokens`);
+            }
+        }
+    }
+    
     console.log('\n✅ Analysis saved to logs/skip-analysis-history.json');
+    console.log('📄 Fetch log: logs/skip-analysis-fetch.log');
 }
 
 main().catch(err => {
