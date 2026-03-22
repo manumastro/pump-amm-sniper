@@ -1069,7 +1069,7 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                     `max_out=${repeatCreateRemovePattern.maxCashoutSol.toFixed(3)}`
                 );
             }
-            if (directAmmReentry.detected) {
+            if (CONFIG.CREATOR_RISK_DIRECT_AMM_REENTRY_ENABLED && directAmmReentry.detected) {
                 stageLog(
                     ctx,
                     "CAMM",
