@@ -421,6 +421,40 @@ async function main() {
         }
     }
     
+    // ─── GAIN/MOON BLOCKED BY FILTER ───
+    const gainMoon = enriched.filter(i => ['gain', 'big_gain', 'moon'].includes(i.outcome));
+    const gainMoonBlocked = gainMoon.filter(i => i.outcome !== 'no_data');
+    
+    console.log('\n═══ GAIN/MOON BLOCKED BY FILTER ═══\n');
+    
+    if (gainMoonBlocked.length > 0) {
+        // Group by filter category
+        const byFilter = {};
+        for (const t of gainMoonBlocked) {
+            if (!byFilter[t.category]) byFilter[t.category] = [];
+            byFilter[t.category].push(t);
+        }
+        
+        console.log('Filter'.padEnd(20) + ' | ' + 'Count'.padEnd(6) + ' | ' + 'Tokens (change24h, mcap)');
+        console.log('-'.repeat(20) + '-+-' + '-'.repeat(6) + '-+-' + '-'.repeat(60));
+        
+        for (const [cat, items] of Object.entries(byFilter).sort((a, b) => b[1].length - a[1].length)) {
+            const label = (CAT_LABELS[cat] || cat).padEnd(20);
+            const count = String(items.length).padEnd(6);
+            const details = items.map(i => {
+                const change = i.change24h ? `${i.change24h > 0 ? '+' : ''}${parseFloat(i.change24h).toFixed(0)}%` : '?';
+                const mcap = i.marketCap ? `$${Number(i.marketCap).toLocaleString()}` : '-';
+                return `${i.symbol} (${change}, ${mcap})`;
+            }).join(', ');
+            console.log(`${label} | ${count} | ${details}`);
+        }
+        
+        console.log(`\nTotal gain/moon tokens SKIPPED: ${gainMoonBlocked.length}`);
+        console.log('These tokens could have been captured if the filter was disabled.');
+    } else {
+        console.log('No gain/moon tokens were skipped.');
+    }
+    
     console.log('\n✅ Analysis saved to logs/skip-analysis-history.json');
     console.log('📄 Fetch log: logs/skip-analysis-fetch.log');
 }

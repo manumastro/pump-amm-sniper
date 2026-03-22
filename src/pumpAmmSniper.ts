@@ -570,10 +570,9 @@ async function handleNewPool(connection: Connection, signature: string) {
                     cr_uniqueCounterparties: {
                         enabled: true,
                         observed: cp,
-                        minThreshold: CONFIG.CREATOR_RISK_MIN_UNIQUE_COUNTERPARTIES,
                         maxThreshold: cpMax,
-                        belowMin: cp < CONFIG.CREATOR_RISK_MIN_UNIQUE_COUNTERPARTIES,
-                        pass: cp >= CONFIG.CREATOR_RISK_MIN_UNIQUE_COUNTERPARTIES && cp <= cpMax,
+                        aboveMax: cp >= cpMax,
+                        pass: cp < cpMax,
                     },
                     cr_compressedActivity: {
                         enabled: CONFIG.CREATOR_RISK_CHECK_ENABLED,
