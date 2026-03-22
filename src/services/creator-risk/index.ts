@@ -1372,6 +1372,17 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                 });
             }
 
+            if (uniqueCounterparties < CONFIG.CREATOR_RISK_MIN_UNIQUE_COUNTERPARTIES) {
+                return returnEarlyDecision({
+                    ok: false,
+                    reason: `low counterparties ${uniqueCounterparties} < ${CONFIG.CREATOR_RISK_MIN_UNIQUE_COUNTERPARTIES}`,
+                    funder,
+                    uniqueCounterparties,
+                    compressedWindowSec,
+                    burner,
+                });
+            }
+
             if (burner) {
                 return returnEarlyDecision({
                     ok: false,
