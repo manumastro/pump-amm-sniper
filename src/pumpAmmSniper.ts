@@ -477,6 +477,10 @@ async function handleNewPool(connection: Connection, signature: string) {
             }
 
             const crObs = creatorRisk;
+            const funderBlacklisted = !!crObs.funderBlacklistedTriggered;
+            const precreateBurstTriggered = !!crObs.precreateBurstTriggered;
+            const funderHistRugCount = Number(crObs.funderClusterHistoricalCount || 0);
+            const funderRecentCreators = Number(crObs.funderClusterRecentCreatorCount || 0);
             const cp = Number(crObs.uniqueCounterparties || 0);
             const cpMax = CONFIG.CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES;
             const seedPct = Number(crObs.creatorSeedPctOfCurrentLiq || 0);
@@ -592,7 +596,8 @@ async function handleNewPool(connection: Connection, signature: string) {
                     cr_funderBlacklisted: {
                         enabled: true,
                         observed: crObs.funder || null,
-                        pass: !crObs.funder,
+                        inRugHistory: funderBlacklisted,
+                        pass: !funderBlacklisted,
                     },
                     cr_creatorSeed: {
                         enabled: CONFIG.CREATOR_RISK_CREATOR_SEED_RATIO_BLOCK_ENABLED,
@@ -662,16 +667,15 @@ async function handleNewPool(connection: Connection, signature: string) {
                     },
                     cr_precreateBurst: {
                         enabled: CONFIG.CREATOR_RISK_PRECREATE_BURST_BLOCK_ENABLED,
+                        deepChecksComplete: crObs.deepChecksComplete || false,
                         observedTransfers: preT,
                         observedDestinations: preD,
                         observedTotalSol: Number(preSol.toFixed(6)),
                         thresholdTransfers: preMinT,
                         thresholdDestinations: preMinD,
                         thresholdTotalSol: preMinSol,
-                        signTransfers: ">=",
-                        signDestinations: ">=",
-                        signTotalSol: ">=",
-                        pass: preT >= preMinT && preD >= preMinD && preSol >= preMinSol,
+                        triggered: precreateBurstTriggered,
+                        pass: !precreateBurstTriggered,
                     },
                     cr_precreateLargeBurst: {
                         enabled: CONFIG.CREATOR_RISK_PRECREATE_LARGE_UNIFORM_BLOCK_ENABLED,
@@ -714,12 +718,18 @@ async function handleNewPool(connection: Connection, signature: string) {
                     cr_funderCluster: {
                         enabled: probF,
                         observedCounterparties: funderCl,
-                        threshold: funderClMin,
-                        sign: ">=",
-                        pass: funderCl <= funderClMin,
+                        historicalRugCount: funderHistRugCount,
+                        recentCreatorCount: funderRecentCreators,
+                        thresholdHistorical: CONFIG.CREATOR_RISK_HISTORICAL_FUNDER_CLUSTER_MIN_RUG_CREATORS,
+                        thresholdRecent: CONFIG.CREATOR_RISK_FUNDER_CLUSTER_MIN_CREATORS,
+                        triggered: funderHistRugCount >= CONFIG.CREATOR_RISK_HISTORICAL_FUNDER_CLUSTER_MIN_RUG_CREATORS
+                            || funderRecentCreators >= CONFIG.CREATOR_RISK_FUNDER_CLUSTER_MIN_CREATORS,
+                        pass: funderHistRugCount < CONFIG.CREATOR_RISK_HISTORICAL_FUNDER_CLUSTER_MIN_RUG_CREATORS
+                            && funderRecentCreators < CONFIG.CREATOR_RISK_FUNDER_CLUSTER_MIN_CREATORS,
                     },
                     cr_allPassed: !!creatorRisk.ok || creatorRiskProbation,
                     cr_probationBypass: creatorRiskProbation,
+                    cr_entryBlocked: !creatorRisk.ok && !creatorRiskProbation ? creatorRisk.reason || "unknown" : null,
                     cr_reason: creatorRisk.reason || null,
                 })
             );

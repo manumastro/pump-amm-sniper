@@ -57,6 +57,10 @@ export type CreatorRiskResult = {
     rapidDispersalWindowSec?: number | null;
     microInboundTransfers?: number;
     microInboundSources?: number;
+    funderBlacklistedTriggered?: boolean;
+    precreateBurstTriggered?: boolean;
+    funderClusterHistoricalCount?: number;
+    funderClusterRecentCreatorCount?: number;
     repeatedCreateRemoveCreates?: number;
     repeatedCreateRemoveRemoves?: number;
     repeatedCreateRemoveCashouts?: number;

@@ -1099,6 +1099,7 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                     ok: false,
                     reason: `funder blacklisted ${funder}`,
                     funder,
+                    funderBlacklistedTriggered: true,
                     uniqueCounterparties,
                     compressedWindowSec,
                     burner,
@@ -1293,23 +1294,27 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
 
             if (funder && CONFIG.CREATOR_RISK_FUNDER_CLUSTER_ENABLED) {
                 const historicalCount = rugHistory.rugFunderCounts.get(funder) || 0;
+                const recentCreatorCount = deps.trackRecentFunderCreator(funder, creatorAddress);
                 if (historicalCount >= CONFIG.CREATOR_RISK_HISTORICAL_FUNDER_CLUSTER_MIN_RUG_CREATORS) {
                     return returnEarlyDecision({
                         ok: false,
                         reason: `funder cluster historical ${historicalCount} rug creators`,
                         funder,
+                        funderClusterHistoricalCount: historicalCount,
+                        funderClusterRecentCreatorCount: recentCreatorCount,
                         uniqueCounterparties,
                         compressedWindowSec,
                         burner,
                     });
                 }
 
-                const recentCreatorCount = deps.trackRecentFunderCreator(funder, creatorAddress);
                 if (recentCreatorCount >= CONFIG.CREATOR_RISK_FUNDER_CLUSTER_MIN_CREATORS) {
                     return returnEarlyDecision({
                         ok: false,
                         reason: `funder cluster recent ${recentCreatorCount} creators in ${CONFIG.CREATOR_RISK_FUNDER_CLUSTER_WINDOW_SEC}s`,
                         funder,
+                        funderClusterHistoricalCount: historicalCount,
+                        funderClusterRecentCreatorCount: recentCreatorCount,
                         uniqueCounterparties,
                         compressedWindowSec,
                         burner,
@@ -1524,6 +1529,7 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                         `(total ${precreateBurst.totalSol.toFixed(3)} SOL, ` +
                         `median ${precreateBurst.medianSol.toFixed(3)} SOL, rel_std ${precreateBurst.relStdDev.toFixed(2)})`,
                     funder,
+                    precreateBurstTriggered: true,
                     uniqueCounterparties,
                     compressedWindowSec,
                     burner,
