@@ -40,6 +40,45 @@ function fmtNum(v, digits = 12) {
   return typeof v === 'number' && Number.isFinite(v) ? Number(v.toFixed(digits)) : null;
 }
 
+function safeJsonParse(raw) {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function summarizeEntryFilters(entryFilters, preBuyUltraGuard) {
+  if (!entryFilters && !preBuyUltraGuard) return '-';
+  const parts = [];
+  if (entryFilters?.liquidity) {
+    const liq = entryFilters.liquidity;
+    parts.push(`liq ${liq.observedSol ?? 'n/a'}>=${liq.minSol ?? 'n/a'} (${liq.pass ? 'PASS' : 'FAIL'})`);
+  }
+  if (entryFilters?.tokenSecurity) {
+    parts.push(`token ${entryFilters.tokenSecurity.pass ? 'PASS' : 'FAIL'}`);
+  }
+  if (entryFilters?.creatorRisk) {
+    const c = entryFilters.creatorRisk;
+    parts.push(
+      `creator pass=${c.pass ? 'YES' : 'NO'} cp=${c.uniqueCounterparties ?? 'n/a'}/${c.maxUniqueCounterparties ?? 'n/a'} ` +
+      `seed%=${c.seedPctOfLiq ?? 'n/a'}/${c.minSeedPctOfLiq ?? 'n/a'} fund=${c.freshFundingSol ?? 'n/a'}/${c.minFreshFundingSol ?? 'n/a'} ` +
+      `age=${c.freshFundingAgeSec ?? 'n/a'}/${c.maxFreshFundingAgeSec ?? 'n/a'} reentry=${c.directAmmReentryEnabled ? 'on' : 'off'}:${c.directAmmReentrySigPresent ? 'seen' : 'none'}`
+    );
+  }
+  if (entryFilters?.top10) {
+    const t = entryFilters.top10;
+    parts.push(`top10 ${t.pct ?? 'n/a'}<=${t.maxPct ?? 'n/a'} (${t.pass ? 'PASS' : 'FAIL'})`);
+  }
+  if (preBuyUltraGuard) {
+    parts.push(
+      `ultraGuard liqDropMax=${preBuyUltraGuard.maxObservedLiqDropPct ?? 'n/a'}<=${preBuyUltraGuard.maxLiqDropPct ?? 'n/a'} ` +
+      `quoteDropMax=${preBuyUltraGuard.maxObservedQuoteDropPct ?? 'n/a'}<=${preBuyUltraGuard.maxQuoteDropPct ?? 'n/a'}`
+    );
+  }
+  return parts.join(' | ');
+}
+
 const events = new Map();
 const offsets = new Map();
 const carries = new Map();
@@ -94,6 +133,9 @@ function getEvent(id) {
       creatorCashoutRelPct: null,
       creatorCashoutScore: null,
       creatorCashoutDest: null,
+      entryFilters: null,
+      preBuyUltraGuard: null,
+      holdLog: null,
     });
   }
   return events.get(id);
@@ -316,6 +358,43 @@ function parseLine(logPath, line) {
       return;
     }
 
+    if (stage === 'FILTERS') {
+      ev = ev || ensureCurrentEvent(logPath, ts);
+      const parsed = safeJsonParse(message);
+      if (parsed && typeof parsed === 'object') {
+        ev.entryFilters = parsed;
+      }
+      return;
+    }
+
+    if (stage === 'PREGUARD') {
+      ev = ev || ensureCurrentEvent(logPath, ts);
+      const liqDropMax = Number((message.match(/liq_drop_max=([-0-9.]+)%/) || [])[1]);
+      const quoteDropMax = Number((message.match(/quote_drop_max=([-0-9.]+)%/) || [])[1]);
+      const maxLiq = Number((message.match(/max_liq=([-0-9.]+)%/) || [])[1]);
+      const maxQuote = Number((message.match(/max_quote=([-0-9.]+)%/) || [])[1]);
+      const windowMs = Number((message.match(/window=([0-9]+)ms/) || [])[1]);
+      const intervalMs = Number((message.match(/interval=([0-9]+)ms/) || [])[1]);
+      ev.preBuyUltraGuard = {
+        maxObservedLiqDropPct: Number.isFinite(liqDropMax) ? liqDropMax : null,
+        maxObservedQuoteDropPct: Number.isFinite(quoteDropMax) ? quoteDropMax : null,
+        maxLiqDropPct: Number.isFinite(maxLiq) ? maxLiq : null,
+        maxQuoteDropPct: Number.isFinite(maxQuote) ? maxQuote : null,
+        windowMs: Number.isFinite(windowMs) ? windowMs : null,
+        intervalMs: Number.isFinite(intervalMs) ? intervalMs : null,
+      };
+      return;
+    }
+
+    if (stage === 'HOLDLOG') {
+      ev = ev || ensureCurrentEvent(logPath, ts);
+      const parsed = safeJsonParse(message);
+      if (parsed && typeof parsed === 'object') {
+        ev.holdLog = parsed;
+      }
+      return;
+    }
+
     if (stage === 'CHECKS' && message === 'passed') {
       ev = ev || ensureCurrentEvent(logPath, ts);
       ev.checksPassed = true;
@@ -483,6 +562,9 @@ function summarize() {
       rugLoss: isRugLossEvent(e),
       classification: classifyOperation(e),
       pnlValidityIssue: getPnlValidityIssue(e),
+      entryFilters: e.entryFilters,
+      preBuyUltraGuard: e.preBuyUltraGuard,
+      holdLog: e.holdLog,
     }));
 
   return {
@@ -540,6 +622,9 @@ function summarize() {
       creatorCashoutScore: e.creatorCashoutScore,
       creatorCashoutDest: e.creatorCashoutDest,
       pnlValidityIssue: getPnlValidityIssue(e),
+      entryFilters: e.entryFilters,
+      preBuyUltraGuard: e.preBuyUltraGuard,
+      holdLog: e.holdLog,
     })),
     outcomeOperations,
     rugPullEvents: rugLosses.slice(-20).map(e => ({
@@ -560,6 +645,9 @@ function summarize() {
       skipReason: e.skipReason,
       endStatus: e.endStatus,
       classification: classifyOperation(e),
+      entryFilters: e.entryFilters,
+      preBuyUltraGuard: e.preBuyUltraGuard,
+      holdLog: e.holdLog,
     })),
   };
 }
@@ -614,7 +702,8 @@ function writeReports(force = false) {
         `pnl=${e.pnlSol ?? 'n/a'} (${e.pnlPct ?? 'n/a'}%) ` +
         `class=${e.classification} ` +
         `reason=${e.skipReason || e.endStatus || '-'} ` +
-        `gmgn=${e.gmgn || '-'}`
+        `gmgn=${e.gmgn || '-'} ` +
+        `filters=${summarizeEntryFilters(e.entryFilters, e.preBuyUltraGuard)}`
       )
       : ['(none)']),
   ].join('\n');

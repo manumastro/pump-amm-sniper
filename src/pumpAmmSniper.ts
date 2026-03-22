@@ -450,6 +450,7 @@ async function handleNewPool(connection: Connection, signature: string) {
         }
 
         if (MONITOR_ONLY) {
+            let preEntryCurrentLiquiditySol: number | null = null;
             if (CONFIG.PRE_BUY_WAIT_MS > 0) {
                 const preEntry = await preEntryWaitAndCheck(
                     connection,
@@ -466,6 +467,7 @@ async function handleNewPool(connection: Connection, signature: string) {
                     return;
                 }
                 liquiditySOL = preEntry.currentLiquiditySol;
+                preEntryCurrentLiquiditySol = preEntry.currentLiquiditySol;
             }
             const top10 = await top10Service.runCheck(connection, tokenMint, poolAddress, ctx);
             if (!top10.ok) {
@@ -473,6 +475,255 @@ async function handleNewPool(connection: Connection, signature: string) {
                 finalStatus = "SKIP: pre-buy top10";
                 return;
             }
+
+            const crObs = creatorRisk;
+            const cp = Number(crObs.uniqueCounterparties || 0);
+            const cpMax = CONFIG.CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES;
+            const seedPct = Number(crObs.creatorSeedPctOfCurrentLiq || 0);
+            const seedMinPct = CONFIG.CREATOR_RISK_CREATOR_SEED_MIN_PCT_OF_CURRENT_LIQ;
+            const seedGrowth = crObs.creatorSeedSol && Number(crObs.creatorSeedSol) > 0
+                ? Number(liquiditySOL) / Number(crObs.creatorSeedSol)
+                : null;
+            const seedGrowthMax = CONFIG.CREATOR_RISK_CREATOR_SEED_MAX_GROWTH_MULTIPLIER;
+            const freshSol = Number(crObs.freshFundingSol || 0);
+            const freshMinSol = CONFIG.CREATOR_RISK_FRESH_FUNDED_HIGH_SEED_MIN_FUNDING_SOL;
+            const freshAge = Number(crObs.freshFundingAgeSec || 0);
+            const freshMaxAge = CONFIG.CREATOR_RISK_FRESH_FUNDED_HIGH_SEED_MAX_FUNDING_AGE_SEC;
+            const freshSeedPct = Number(crObs.creatorSeedPctOfCurrentLiq || 0);
+            const freshMinSeedPct = CONFIG.CREATOR_RISK_FRESH_FUNDED_HIGH_SEED_MIN_SEED_PCT_OF_LIQ;
+            const freshCp = Number(crObs.uniqueCounterparties || 0);
+            const freshMaxCp = CONFIG.CREATOR_RISK_FRESH_FUNDED_HIGH_SEED_MAX_COUNTERPARTIES;
+            const compCp = Number(crObs.uniqueCounterparties || 0);
+            const compMaxCp = CONFIG.CREATOR_RISK_COMPRESSED_MAX_COUNTERPARTIES;
+            const compWin = Number(crObs.compressedWindowSec || 0);
+            const compMaxWin = CONFIG.CREATOR_RISK_COMPRESSED_WINDOW_SEC;
+            const rapidT = Number(crObs.rapidDispersalTransfers || 0);
+            const rapidMinT = CONFIG.CREATOR_RISK_RAPID_DISPERSAL_MIN_TRANSFERS;
+            const rapidD = Number(crObs.rapidDispersalDestinations || 0);
+            const rapidMinD = CONFIG.CREATOR_RISK_RAPID_DISPERSAL_MIN_DESTINATIONS;
+            const rapidSol = Number(crObs.rapidDispersalTotalSol || 0);
+            const rapidMinSol = CONFIG.CREATOR_RISK_RAPID_DISPERSAL_MIN_TOTAL_SOL;
+            const burnOut = Number(crObs.solOutTransfers || 0);
+            const burnMin = CONFIG.CREATOR_RISK_BURNER_MIN_OUT_SOL;
+            const setupC = Number(crObs.setupBurstCreates || 0);
+            const setupMinC = CONFIG.CREATOR_RISK_SETUP_BURST_MIN_CREATES;
+            const setupL = Number(crObs.setupBurstLookupTables || 0);
+            const setupMinL = CONFIG.CREATOR_RISK_LOOKUP_TABLE_NEAR_CREATE_MIN_LOOKUPS;
+            const lookupC = Number(crObs.setupBurstCreates || 0);
+            const lookupMinC = CONFIG.CREATOR_RISK_LOOKUP_TABLE_NEAR_CREATE_MIN_CREATES;
+            const lookupL = Number(crObs.setupBurstLookupTables || 0);
+            const lookupMinL = CONFIG.CREATOR_RISK_LOOKUP_TABLE_NEAR_CREATE_MIN_LOOKUPS;
+            const preT = Number(crObs.precreateBurstTransfers || 0);
+            const preMinT = CONFIG.CREATOR_RISK_PRECREATE_BURST_MIN_TRANSFERS;
+            const preD = Number(crObs.precreateDispersalSetupDestinations || 0);
+            const preMinD = CONFIG.CREATOR_RISK_PRECREATE_BURST_MIN_DESTINATIONS;
+            const preSol = Number(crObs.precreateDispersalSetupTotalSol || 0);
+            const preMinSol = CONFIG.CREATOR_RISK_PRECREATE_BURST_MIN_TOTAL_SOL;
+            const preLargeT = Number(crObs.precreateLargeBurstTransfers || 0);
+            const preLargeMinT = CONFIG.CREATOR_RISK_PRECREATE_LARGE_UNIFORM_MIN_TRANSFERS;
+            const cashSol = Number(crObs.creatorCashoutSol || 0);
+            const cashPct = Number(crObs.creatorCashoutPctOfEntryLiquidity || 0);
+            const cashScore = Number(crObs.creatorCashoutScore || 0);
+            const microT = Number(crObs.microInboundTransfers || 0);
+            const microMinT = CONFIG.CREATOR_RISK_MICRO_INBOUND_MIN_TRANSFERS;
+            const microSrc = Number(crObs.microInboundSources || 0);
+            const microMinSrc = CONFIG.CREATOR_RISK_MICRO_INBOUND_MIN_SOURCES;
+            const closeT = Number(crObs.closeAccountBurstTxs || 0);
+            const closeMinT = CONFIG.CREATOR_RISK_CLOSE_ACCOUNT_BURST_MIN_TXS;
+            const closeC = Number(crObs.closeAccountBurstCloses || 0);
+            const closeMinC = CONFIG.CREATOR_RISK_CLOSE_ACCOUNT_BURST_MIN_CLOSES;
+            const reentryEn = CONFIG.CREATOR_RISK_DIRECT_AMM_REENTRY_ENABLED;
+            const reentrySig = !!crObs.directAmmReentrySig;
+            const relayEn = CONFIG.CREATOR_RISK_RELAY_FUNDING_ENABLED;
+            const relayFunder = !!crObs.relayFundingRoot;
+            const probF = CONFIG.CREATOR_RISK_FUNDER_CLUSTER_ENABLED;
+            const funderCl = Number(crObs.uniqueCounterparties || 0);
+            const funderClMin = CONFIG.CREATOR_RISK_FUNDER_CLUSTER_MIN_CREATORS;
+
+            stageLog(
+                ctx,
+                "FILTERS",
+                JSON.stringify({
+                    liquidity: {
+                        pass: liquiditySOL >= CONFIG.MIN_POOL_LIQUIDITY_SOL,
+                        observed: Number(liquiditySOL.toFixed(6)),
+                        threshold: CONFIG.MIN_POOL_LIQUIDITY_SOL,
+                        sign: ">=",
+                    },
+                    tokenSecurity: { pass: true },
+                    top10: {
+                        pass: top10.ok,
+                        observed: Number.isFinite(Number(top10.top10Pct)) ? Number(Number(top10.top10Pct).toFixed(4)) : null,
+                        threshold: CONFIG.PRE_BUY_TOP10_MAX_PCT,
+                        sign: "<=",
+                    },
+                    ultraShortGuard: {
+                        observedLiqDropMax: 0,
+                        observedQuoteDropMax: 0,
+                        thresholdLiqDropPct: CONFIG.PRE_BUY_ULTRA_SHORT_RUG_GUARD_MAX_LIQ_DROP_PCT,
+                        thresholdQuoteDropPct: CONFIG.PRE_BUY_ULTRA_SHORT_RUG_GUARD_MAX_QUOTE_DROP_PCT,
+                    },
+                    cr_uniqueCounterparties: {
+                        enabled: true,
+                        observed: cp,
+                        threshold: cpMax,
+                        sign: "<=",
+                        pass: cp <= cpMax,
+                    },
+                    cr_compressedActivity: {
+                        enabled: CONFIG.CREATOR_RISK_CHECK_ENABLED,
+                        observedCp: compCp,
+                        observedWindowSec: compWin,
+                        thresholdCp: compMaxCp,
+                        thresholdWindowSec: compMaxWin,
+                        sign: "<=",
+                        pass: compCp <= compMaxCp,
+                    },
+                    cr_directAmmReentry: {
+                        enabled: reentryEn,
+                        observed: reentrySig,
+                        pass: !reentryEn || !reentrySig,
+                    },
+                    cr_relayFunding: {
+                        enabled: relayEn,
+                        observed: relayFunder,
+                        pass: !relayEn || !relayFunder,
+                    },
+                    cr_funderBlacklisted: {
+                        enabled: true,
+                        observed: crObs.funder || null,
+                        pass: !crObs.funder,
+                    },
+                    cr_creatorSeed: {
+                        enabled: CONFIG.CREATOR_RISK_CREATOR_SEED_RATIO_BLOCK_ENABLED,
+                        observedSeedPct: Number(seedPct.toFixed(4)),
+                        observedGrowth: seedGrowth !== null ? Number(seedGrowth.toFixed(4)) : null,
+                        thresholdSeedPct: seedMinPct,
+                        thresholdGrowth: seedGrowthMax,
+                        signSeedPct: ">=",
+                        signGrowth: "<=",
+                        pass: seedPct >= seedMinPct && (seedGrowth === null || seedGrowth <= seedGrowthMax),
+                    },
+                    cr_freshFundedHighSeed: {
+                        enabled: CONFIG.CREATOR_RISK_FRESH_FUNDED_HIGH_SEED_BLOCK_ENABLED,
+                        observedFundingSol: Number(freshSol.toFixed(6)),
+                        observedAgeSec: freshAge,
+                        observedSeedPct: Number(freshSeedPct.toFixed(4)),
+                        observedCp: freshCp,
+                        thresholdFundingSol: freshMinSol,
+                        thresholdAgeSec: freshMaxAge,
+                        thresholdSeedPct: freshMinSeedPct,
+                        thresholdCp: freshMaxCp,
+                        signFundingSol: ">=",
+                        signAgeSec: "<=",
+                        signSeedPct: ">=",
+                        signCp: "<=",
+                        pass: freshSol >= freshMinSol || freshAge <= freshMaxAge || freshSeedPct >= freshMinSeedPct || freshCp <= freshMaxCp,
+                    },
+                    cr_rapidDispersal: {
+                        enabled: CONFIG.CREATOR_RISK_RAPID_DISPERSAL_BLOCK_ENABLED,
+                        observedTransfers: rapidT,
+                        observedDestinations: rapidD,
+                        observedTotalSol: Number(rapidSol.toFixed(6)),
+                        thresholdTransfers: rapidMinT,
+                        thresholdDestinations: rapidMinD,
+                        thresholdTotalSol: rapidMinSol,
+                        signTransfers: ">=",
+                        signDestinations: ">=",
+                        signTotalSol: ">=",
+                        pass: rapidT >= rapidMinT && rapidD >= rapidMinD && rapidSol >= rapidMinSol,
+                    },
+                    cr_burnerProfile: {
+                        enabled: CONFIG.CREATOR_RISK_CHECK_ENABLED,
+                        observedOutSol: Number(burnOut.toFixed(6)),
+                        threshold: burnMin,
+                        sign: ">=",
+                        pass: burnOut <= burnMin,
+                    },
+                    cr_setupBurst: {
+                        enabled: CONFIG.CREATOR_RISK_SETUP_BURST_BLOCK_ENABLED,
+                        observedCreates: setupC,
+                        observedLookups: setupL,
+                        thresholdCreates: setupMinC,
+                        thresholdLookups: setupMinL,
+                        signCreates: ">=",
+                        signLookups: ">=",
+                        pass: setupC <= setupMinC,
+                    },
+                    cr_lookupTable: {
+                        enabled: CONFIG.CREATOR_RISK_LOOKUP_TABLE_NEAR_CREATE_BLOCK_ENABLED,
+                        observedCreates: lookupC,
+                        observedLookups: lookupL,
+                        thresholdCreates: lookupMinC,
+                        thresholdLookups: lookupMinL,
+                        signCreates: ">=",
+                        signLookups: ">=",
+                        pass: lookupC <= lookupMinC,
+                    },
+                    cr_precreateBurst: {
+                        enabled: CONFIG.CREATOR_RISK_PRECREATE_BURST_BLOCK_ENABLED,
+                        observedTransfers: preT,
+                        observedDestinations: preD,
+                        observedTotalSol: Number(preSol.toFixed(6)),
+                        thresholdTransfers: preMinT,
+                        thresholdDestinations: preMinD,
+                        thresholdTotalSol: preMinSol,
+                        signTransfers: ">=",
+                        signDestinations: ">=",
+                        signTotalSol: ">=",
+                        pass: preT >= preMinT && preD >= preMinD && preSol >= preMinSol,
+                    },
+                    cr_precreateLargeBurst: {
+                        enabled: CONFIG.CREATOR_RISK_PRECREATE_LARGE_UNIFORM_BLOCK_ENABLED,
+                        observedTransfers: preLargeT,
+                        threshold: preLargeMinT,
+                        sign: ">=",
+                        pass: preLargeT <= preLargeMinT,
+                    },
+                    cr_creatorCashout: {
+                        enabled: CONFIG.CREATOR_RISK_CHECK_ENABLED,
+                        observedCashoutSol: Number(cashSol.toFixed(6)),
+                        observedLiqPct: Number(cashPct.toFixed(4)),
+                        observedScore: Number(cashScore.toFixed(4)),
+                        thresholdLiqPct: CONFIG.CREATOR_RISK_CASHOUT_REL_LIQ_PCT,
+                        thresholdScore: CONFIG.CREATOR_RISK_CASHOUT_EXIT_SCORE,
+                        signLiqPct: "<=",
+                        signScore: "<=",
+                        pass: cashPct <= CONFIG.CREATOR_RISK_CASHOUT_REL_LIQ_PCT && cashScore <= CONFIG.CREATOR_RISK_CASHOUT_EXIT_SCORE,
+                    },
+                    cr_microInbound: {
+                        enabled: CONFIG.CREATOR_RISK_CHECK_ENABLED,
+                        observedTransfers: microT,
+                        observedSources: microSrc,
+                        thresholdTransfers: microMinT,
+                        thresholdSources: microMinSrc,
+                        signTransfers: ">=",
+                        signSources: ">=",
+                        pass: microT <= microMinT,
+                    },
+                    cr_closeAccountBurst: {
+                        enabled: CONFIG.CREATOR_RISK_CLOSE_ACCOUNT_BURST_BLOCK_ENABLED,
+                        observedTxs: closeT,
+                        observedCloses: closeC,
+                        thresholdTxs: closeMinT,
+                        thresholdCloses: closeMinC,
+                        signTxs: ">=",
+                        signCloses: ">=",
+                        pass: closeT <= closeMinT,
+                    },
+                    cr_funderCluster: {
+                        enabled: probF,
+                        observedCounterparties: funderCl,
+                        threshold: funderClMin,
+                        sign: ">=",
+                        pass: funderCl <= funderClMin,
+                    },
+                    cr_allPassed: !!creatorRisk.ok || creatorRiskProbation,
+                    cr_probationBypass: creatorRiskProbation,
+                    cr_reason: creatorRisk.reason || null,
+                })
+            );
+
             stageLog(ctx, "STEP 6/7", "paper simulation");
             const paper = await paperTradeService.runSimulation(
                 connection,

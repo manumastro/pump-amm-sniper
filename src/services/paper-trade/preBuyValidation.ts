@@ -196,6 +196,8 @@ export async function validatePreBuyEntryState(
         const guardWindowMs = Math.max(0, CONFIG.PRE_BUY_ULTRA_SHORT_RUG_GUARD_WINDOW_MS);
         const guardIntervalMs = Math.max(100, CONFIG.PRE_BUY_ULTRA_SHORT_RUG_GUARD_INTERVAL_MS);
         const guardStartMs = Date.now();
+        let maxObservedLiqDropPct = 0;
+        let maxObservedQuoteDropPct = 0;
 
         while (Date.now() - guardStartMs < guardWindowMs) {
             await new Promise((r) => setTimeout(r, guardIntervalMs));
@@ -217,12 +219,18 @@ export async function validatePreBuyEntryState(
             const liqDropPct = entrySolLiquidity > 0
                 ? ((entrySolLiquidity - probeSolLiquidity) / entrySolLiquidity) * 100
                 : 0;
+            if (Number.isFinite(liqDropPct)) {
+                maxObservedLiqDropPct = Math.max(maxObservedLiqDropPct, liqDropPct);
+            }
             if (Number.isFinite(liqDropPct) && liqDropPct >= CONFIG.PRE_BUY_ULTRA_SHORT_RUG_GUARD_MAX_LIQ_DROP_PCT) {
                 stageLog(ctx, "PREBUY", `ultra-guard liq drop ${liqDropPct.toFixed(2)}% in ${Date.now() - guardStartMs}ms`);
                 return { ok: false, reason: `ultra-short rug guard liquidity drop ${liqDropPct.toFixed(2)}%` };
             }
 
             const quoteDropPct = ((effectiveEntryQuote.tokenOutUi - probeQuote.tokenOutUi) / effectiveEntryQuote.tokenOutUi) * 100;
+            if (Number.isFinite(quoteDropPct)) {
+                maxObservedQuoteDropPct = Math.max(maxObservedQuoteDropPct, quoteDropPct);
+            }
             if (Number.isFinite(quoteDropPct) && quoteDropPct >= CONFIG.PRE_BUY_ULTRA_SHORT_RUG_GUARD_MAX_QUOTE_DROP_PCT) {
                 stageLog(ctx, "PREBUY", `ultra-guard quote drop ${quoteDropPct.toFixed(2)}% in ${Date.now() - guardStartMs}ms`);
                 return { ok: false, reason: `ultra-short rug guard quote drop ${quoteDropPct.toFixed(2)}%` };
@@ -231,6 +239,17 @@ export async function validatePreBuyEntryState(
             effectiveEntryState = probeState;
             effectiveEntryQuote = probeQuote;
         }
+
+        stageLog(
+            ctx,
+            "PREGUARD",
+            `ultra-short pass ` +
+                `liq_drop_max=${maxObservedLiqDropPct.toFixed(2)}% ` +
+                `quote_drop_max=${maxObservedQuoteDropPct.toFixed(2)}% ` +
+                `(max_liq=${CONFIG.PRE_BUY_ULTRA_SHORT_RUG_GUARD_MAX_LIQ_DROP_PCT.toFixed(2)}% ` +
+                `max_quote=${CONFIG.PRE_BUY_ULTRA_SHORT_RUG_GUARD_MAX_QUOTE_DROP_PCT.toFixed(2)}% ` +
+                `window=${guardWindowMs}ms interval=${guardIntervalMs}ms)`
+        );
     }
 
     const tokenOutAtomic = effectiveEntryQuote.tokenOutAtomic;
