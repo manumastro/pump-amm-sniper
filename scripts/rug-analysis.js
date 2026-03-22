@@ -46,41 +46,38 @@ function main() {
     console.log(`Generated: ${data.generatedAt}`);
     console.log(`Total events: ${data.eventsSeen} | Checks passed: ${data.checksPassed} | Rug losses: ${data.rugLossCount}\n`);
 
-    // ─── PRE-ENTRY TABLE ───
+    // ─── PRE-ENTRY TABLE (all checks) ───
     console.log('═══ PRE-ENTRY FILTERS ═══\n');
 
-    const preHeaders = ['Event', 'Liq', 'Top10', 'CP', 'Seed', 'Fresh', 'funderBL', 'precreate', 'funderCluster', 'allPassed', 'blocked'];
-    const preWidths = [12, 8, 8, 8, 8, 8, 10, 10, 12, 10, 30];
+    const allChecks = ['cp', 'compressed', 'directReentry', 'relay', 'funderBL', 'seed', 'freshFunded',
+        'rapidDispersal', 'burner', 'setupBurst', 'lookupTable', 'precreateBurst', 'precreateLargeBurst',
+        'cashout', 'microInbound', 'closeAcct', 'funderCluster'];
+
+    const preHeaders = ['Event', 'liq', 'top10', 'token', ...allChecks, 'allPassed'];
+    const preWidths = [12, 6, 6, 6, ...allChecks.map(() => 4), 10];
 
     console.log(preHeaders.map((h, i) => h.padEnd(preWidths[i])).join(' | '));
     printDivider(preWidths);
 
     for (const e of rugs) {
         const ef = e.entryFilters || {};
-        const cr_bl = ef.cr_funderBlacklisted || {};
-        const cr_pb = ef.cr_precreateBurst || {};
-        const cr_fc = ef.cr_funderCluster || {};
-        const cr_seed = ef.cr_creatorSeed || {};
-        const cr_fresh = ef.cr_freshFundedHighSeed || {};
-        const cr_cp = ef.cr_uniqueCounterparties || {};
-        const top10 = ef.top10 || {};
         const liq = ef.liquidity || {};
+        const top10 = ef.top10 || {};
+        const token = ef.tokenSecurity || {};
 
         const row = [
             e.id,
             boolIcon(liq.pass),
             boolIcon(top10.pass),
-            boolIcon(cr_cp.pass),
-            boolIcon(cr_seed.pass),
-            boolIcon(cr_fresh.pass),
-            cr_bl.inRugHistory === undefined ? '-' : (cr_bl.inRugHistory ? 'IN HISTORY' : 'new'),
-            cr_pb.deepChecksComplete === undefined ? '-' :
-                (cr_pb.triggered ? 'TRIGGERED' : (cr_pb.deepChecksComplete ? 'ok' : 'timeout')),
-            cr_fc.historicalRugCount === undefined ? '-' :
-                (cr_fc.triggered ? `h=${cr_fc.historicalRugCount} r=${cr_fc.recentCreatorCount}` : 'ok'),
-            boolIcon(ef.cr_allPassed),
-            ef.cr_entryBlocked || '-'
+            boolIcon(token.pass),
         ];
+
+        for (const check of allChecks) {
+            const c = ef[`cr_${check}`];
+            row.push(c && c.enabled !== false ? boolIcon(c.pass) : '-');
+        }
+
+        row.push(boolIcon(ef.cr_allPassed));
 
         console.log(row.map((v, i) => String(v).padEnd(preWidths[i])).join(' | '));
     }
@@ -103,14 +100,50 @@ function main() {
         // Creator risk summary
         console.log(`  cr_allPassed: ${boolIcon(ef.cr_allPassed)} | cr_entryBlocked: ${fmt(ef.cr_entryBlocked)}`);
 
-        // The 3 key filters
-        const cr_bl = ef.cr_funderBlacklisted || {};
-        const cr_pb = ef.cr_precreateBurst || {};
-        const cr_fc = ef.cr_funderCluster || {};
+        // All creator-risk checks
+        const cr = {
+            'liq': ef.liquidity,
+            'top10': ef.top10,
+            'tokenSec': ef.tokenSecurity,
+            'ultraGuard': ef.ultraShortGuard,
+            'cp': ef.cr_uniqueCounterparties,
+            'compressed': ef.cr_compressedActivity,
+            'directReentry': ef.cr_directAmmReentry,
+            'relay': ef.cr_relayFunding,
+            'funderBL': ef.cr_funderBlacklisted,
+            'seed': ef.cr_creatorSeed,
+            'freshFunded': ef.cr_freshFundedHighSeed,
+            'rapidDispersal': ef.cr_rapidDispersal,
+            'burner': ef.cr_burnerProfile,
+            'setupBurst': ef.cr_setupBurst,
+            'lookupTable': ef.cr_lookupTable,
+            'precreateBurst': ef.cr_precreateBurst,
+            'precreateLargeBurst': ef.cr_precreateLargeBurst,
+            'cashout': ef.cr_creatorCashout,
+            'microInbound': ef.cr_microInbound,
+            'closeAcct': ef.cr_closeAccountBurst,
+            'funderCluster': ef.cr_funderCluster,
+        };
 
-        console.log(`  funderBlacklisted: funder=${fmt(cr_bl.observed)} inRugHistory=${fmt(cr_bl.inRugHistory)} ${boolIcon(cr_bl.pass)}`);
-        console.log(`  precreateBurst: deepChecksComplete=${fmt(cr_pb.deepChecksComplete)} transfers=${fmt(cr_pb.observedTransfers)}/${fmt(cr_pb.thresholdTransfers)} triggered=${fmt(cr_pb.triggered)} ${boolIcon(cr_pb.pass)}`);
-        console.log(`  funderCluster: histRug=${fmt(cr_fc.historicalRugCount)}/${fmt(cr_fc.thresholdHistorical)} recentCreators=${fmt(cr_fc.recentCreatorCount)}/${fmt(cr_fc.thresholdRecent)} triggered=${fmt(cr_fc.triggered)} ${boolIcon(cr_fc.pass)}`);
+        console.log('  ALL CHECKS:');
+        for (const [name, c] of Object.entries(cr)) {
+            if (!c || c.pass === undefined) continue;
+            const icon = boolIcon(c.pass);
+            const details = [];
+            if (c.observed !== undefined) details.push(`obs=${c.observed}`);
+            if (c.threshold !== undefined) details.push(`thr=${c.threshold}`);
+            if (c.observedTransfers !== undefined) details.push(`t=${c.observedTransfers}/${c.thresholdTransfers}`);
+            if (c.observedDestinations !== undefined) details.push(`d=${c.observedDestinations}/${c.thresholdDestinations}`);
+            if (c.observedTotalSol !== undefined) details.push(`sol=${c.observedTotalSol}/${c.thresholdTotalSol}`);
+            if (c.observedCp !== undefined) details.push(`cp=${c.observedCp}/${c.thresholdCp}`);
+            if (c.historicalRugCount !== undefined) details.push(`hist=${c.historicalRugCount}/${c.thresholdHistorical}`);
+            if (c.recentCreatorCount !== undefined) details.push(`recent=${c.recentCreatorCount}/${c.thresholdRecent}`);
+            if (c.inRugHistory !== undefined) details.push(`inRugHistory=${c.inRugHistory}`);
+            if (c.triggered !== undefined) details.push(`triggered=${c.triggered}`);
+            if (c.deepChecksComplete !== undefined) details.push(`deep=${c.deepChecksComplete}`);
+            if (c.enabled === false) continue; // skip disabled
+            console.log(`    ${icon} ${name.padEnd(20)} ${details.join(' ')}`);
+        }
         console.log('');
     }
 
