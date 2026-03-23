@@ -1,640 +1,744 @@
 # Controls
 
-Guida breve ai controlli del bot, divisi per fase.
+Documentazione operativa completa dei controlli del bot.
 
-## Implementazione
+Obiettivo del file:
+- spiegare in modo semplice cosa controlla il bot
+- chiarire quali controlli bloccano l'entry e quali invece fanno uscire durante l'hold
+- allineare la documentazione alla logica reale del codice attuale
 
-Direzione architetturale attuale:
-- orchestrazione runtime: `src/pumpAmmSniper.ts`
-- bootstrap / supervisor / worker lifecycle: `src/app/bootstrap.ts`, `src/app/runtime.ts`, `src/app/worker.ts`
-- config condivisa: `src/app/config.ts`
-- tipi condivisi: `src/domain/types.ts`
-- motore creator risk: `src/services/creator-risk/index.ts`
-- pre-buy / hold / paper simulation: `src/services/paper-trade/`
-- liquidity recheck: `src/services/liquidity/`
-- token security: `src/services/token-security/`
-- top10 concentration: `src/services/top10/`
-- dev holdings: `src/services/dev-holdings/`
-- logging operativo: `src/services/reporting/stageLog.ts`
-- struttura target del refactor: `docs/architecture.md`
+Riferimenti principali:
+- config: `src/app/config.ts`
+- orchestrazione: `src/pumpAmmSniper.ts`
+- creator risk: `src/services/creator-risk/index.ts`
+- pre-buy validation: `src/services/paper-trade/preBuyValidation.ts`
+- hold monitor: `src/services/paper-trade/holdMonitor.ts`
+- token security: `src/services/token-security/index.ts`
+- top10: `src/services/top10/index.ts`
+- dev holdings: `src/services/dev-holdings/index.ts`
 
-Regola:
-- i nuovi controlli non vanno aggiunti direttamente in `src/pumpAmmSniper.ts`
-- i controlli vanno estratti progressivamente in servizi dedicati mantenendo invariati comportamento e log operativi
+## 1. Mappa veloce
 
-## Obiettivo
+Il bot lavora in 4 fasi:
 
-Il bot prova a evitare 3 classi di problemi:
-1. token formalmente insicuri
-2. creator / funder / relay sospetti
-3. pool che collassano poco dopo l'ingresso
+1. controlli pre-entry base
+2. controlli creator risk pre-entry
+3. controlli finali immediatamente prima del buy
+4. controlli di uscita durante l'hold
 
-## Flusso generale
+In pratica:
+- se fallisce un controllo pre-entry, il bot fa `SKIP`
+- se il buy e gia avvenuto, i controlli hold fanno `EXIT`
+- alcuni controlli creator risk vengono rieseguiti anche durante l'hold
+
+## 2. Flusso reale del bot
 
 Per ogni nuovo `create_pool` il bot esegue:
-1. parse della tx
-2. risoluzione di `token`, `pool`, `creator`
-3. controllo liquidita iniziale
-4. controllo mint / freeze
-5. controllo creator risk
-6. attesa pre-buy e conferme
-7. controllo `Top 10`
-8. buy simulato o live
-9. monitoraggio durante hold
-10. controllo finale dev holdings
 
-## 1. Pre-entry
+1. parse della tx e risoluzione di token / pool / creator
+2. check liquidita minima
+3. check token security (mint authority / freeze authority)
+4. check creator risk
+5. attesa pre-buy + flow gate
+6. revalidation finale pre-buy
+7. check Top 10
+8. buy simulato/live
+9. monitor hold con uscite protettive
+10. check dev holdings
 
-### 1.1 Parse e Resolve
+## 3. Stato attuale dei controlli creator-risk
+
+### Attivi ora
+
+Controlli creator-risk ON in config:
+
+- `CREATOR_RISK_CHECK_ENABLED`
+- `CREATOR_RISK_FUNDER_CLUSTER_ENABLED`
+- `CREATOR_RISK_STANDARD_POOL_MICRO_BLOCK_ENABLED`
+- `CREATOR_RISK_STANDARD_POOL_OUTBOUND_HEAVY_BLOCK_ENABLED`
+- `CREATOR_RISK_SUSPICIOUS_ROOT_PATTERN_BLOCK_ENABLED`
+- `CREATOR_RISK_SPRAY_OUTBOUND_BLOCK_ENABLED`
+- `CREATOR_RISK_INBOUND_SPRAY_BLOCK_ENABLED`
+- `CREATOR_RISK_SETUP_BURST_BLOCK_ENABLED`
+- `CREATOR_RISK_CLOSE_ACCOUNT_BURST_BLOCK_ENABLED`
+- `CREATOR_RISK_RAPID_DISPERSAL_BLOCK_ENABLED`
+- `CREATOR_RISK_FRESH_FUNDED_HIGH_SEED_BLOCK_ENABLED`
+- `CREATOR_RISK_FRESH_FUNDED_HIGH_SEED_STRICT_FLOW_ENABLED`
+- `CREATOR_RISK_PRECREATE_BURST_BLOCK_ENABLED`
+- `CREATOR_RISK_PRECREATE_LARGE_UNIFORM_BLOCK_ENABLED`
+- `CREATOR_RISK_PRECREATE_DISPERSAL_SETUP_BLOCK_ENABLED`
+- `CREATOR_RISK_CONCENTRATED_INBOUND_BLOCK_ENABLED`
+- `CREATOR_RISK_LOOKUP_TABLE_NEAR_CREATE_BLOCK_ENABLED`
+- `CREATOR_RISK_REPEAT_CREATE_REMOVE_BLOCK_ENABLED`
+
+### Disattivi ora
+
+Controlli creator-risk OFF in config:
+
+- `CREATOR_RISK_RELAY_FUNDING_ENABLED`
+- `CREATOR_RISK_STANDARD_POOL_RELAY_BLOCK_ENABLED`
+- `CREATOR_RISK_STANDARD_POOL_RELAY_OUTBOUND_BLOCK_ENABLED`
+- `CREATOR_RISK_CREATOR_SEED_RATIO_BLOCK_ENABLED`
+- `CREATOR_RISK_DIRECT_AMM_REENTRY_ENABLED`
+- `PAPER_CREATOR_RISK_PROBATION_ENABLED`
+
+Nota importante:
+- un controllo puo comparire nel report anche quando non e il motivo reale dello skip
+- il motivo reale e quello che porta `creatorRisk.ok = false`
+- quindi il campo da guardare per capire il blocco vero e il `reason`, non solo i singoli flag nel report
+
+## 4. Controlli pre-entry base
+
+### 4.1 Liquidity check
+
 Scopo:
-- capire quale token e quale pool stiamo guardando
-- ricavare il creator reale
+- evitare pool troppo piccoli
 
-Log principali:
-- `TOKEN`
-- `POOL`
-- `GMGN`
-- `CREATOR`
-
-### 1.2 Liquidity Check
-Scopo:
-- evitare pool troppo piccoli o inutili
-
-Controllo:
-- solo soglia in SOL
-- variabile: `MIN_POOL_LIQUIDITY_SOL`
+Regola:
+- la liquidita in SOL deve essere almeno `MIN_POOL_LIQUIDITY_SOL`
 
 Esito:
 - se sotto soglia: `SKIP: low liquidity`
 
-Log:
-- `LIQ | <n> SOL`
+### 4.2 Token security
 
-### 1.3 Mint / Freeze Security
 Scopo:
-- evitare token ancora controllabili dal dev
-
-Controlli:
-- mint authority deve essere rinunciata
-- freeze authority deve essere assente
-
-Esito:
-- se uno dei due fallisce: `SKIP: token security`
-
-Log:
-- `Mint Authority NOT renounced`
-- `Freeze Authority ENABLED`
-- `Mint/Freeze Security: PASSED`
-
-### 1.4 Creator Risk
-Scopo:
-- bloccare creator sospetti anche se il token sembra pulito
-
-Segnali usati:
-- seed SOL reale del creator nella `create_pool`, confrontato con la liquidity osservata prima del buy
-- creator blacklistato
-- funder blacklistato
-- micro-burst source blacklistata
-- cashout relay blacklistato
-- funder gia visto in piu rug storici
-- funder attivo su piu creator in una finestra breve
-- molte controparti in poco tempo
-- attivita molto compressa nel tempo
-- creator che rimborsa il funder
-- micro-transfer burst verso il creator
-- relay funding recente: `root -> funder -> creator`
-- relay funding recente combinato con micro-burst
-- relay funding recente su pool standard (`84.99 / 100 / 120 SOL`)
-- relay-root gia noto come sospetto + `cp` alto + `out` alto + micro quasi assente
-- relay-root sospetto + `spray outbound`: tante uscite molto simili verso molte destinazioni
-- `inbound collector pattern`: tanti inbound simili da molte source verso il creator in finestra breve
-- creator che richiama direttamente `pAMMBay...` dopo `create_pool`
-- burst outbound pre-create (anche sub-SOL se molto uniformi e numerosi, non solo ~1 SOL)
-- pattern ripetuto `create_pool -> remove_liquidity -> cashout`, seguito da un nuovo `create_pool` nella stessa finestra breve
-
-Blacklist lette solo da:
-- `blacklists/creators.txt`
-- `blacklists/funders.txt`
-- `blacklists/micro-burst-sources.txt`
-- `blacklists/cashout-relays.txt`
-- `blacklists/funder-counts.json`
-
-Esito:
-- se il rischio e alto: `SKIP: creator risk`
-- opzionale in paper-only: `probation` (niente skip, hold corto forzato)
-
-Controllo probation paper-only:
-- `PAPER_CREATOR_RISK_PROBATION_ENABLED`
-- `PAPER_CREATOR_RISK_PROBATION_HOLD_MS`
-- `PAPER_CREATOR_CASHOUT_PROBATION_HOLD_MS`
-- `PAPER_CREATOR_RISK_EXTREME_CASHOUT_BLOCK_ENABLED`
-- `PAPER_CREATOR_RISK_EXTREME_CASHOUT_MIN_PCT_OF_LIQ`
-- `PAPER_CREATOR_RISK_EXTREME_CASHOUT_MIN_SCORE`
-- `PAPER_CREATOR_RISK_PROBATION_UNIQUE_COUNTERPARTIES_BLOCK_ENABLED`
-- `PAPER_CREATOR_RISK_PROBATION_UNIQUE_COUNTERPARTIES_MIN`
-- `PAPER_CREATOR_RISK_PROBATION_UNIQUE_COUNTERPARTIES_MIN_OUT_TRANSFERS`
-- `PAPER_CREATOR_RISK_PROBATION_UNIQUE_COUNTERPARTIES_MAX_IN_TRANSFERS`
-- `PAPER_CREATOR_RISK_PROBATION_LOW_CASHOUT_BLOCK_ENABLED`
-- `PAPER_CREATOR_RISK_PROBATION_LOW_CASHOUT_MIN_SOL`
-- `PAPER_CREATOR_RISK_PROBATION_LOW_CASHOUT_MIN_PCT_OF_LIQ`
-- `PAPER_CREATOR_RISK_PROBATION_LOW_CASHOUT_MIN_SCORE`
-
-Eccezioni:
-- nessun probation bypass per `creator in historical rug blacklist`
-- nessun probation bypass per `funder blacklisted ...`
-- nessun probation bypass per `relay funding recent on standard pool`
-- nessun probation bypass per `relay funding recent + micro burst`
-- nessun probation bypass per `standard pool outbound-heavy creator history`
-- nessun probation bypass per `micro inbound burst`
-- nessun probation bypass per `creator direct AMM re-entry`
-- nessun probation bypass per `creator seed too small ...`
-- nessun probation bypass per `creator cashout` gia estremo rispetto alla liquidity iniziale
-- nessun probation bypass per `unique counterparties` gia outbound-heavy oltre le soglie dedicate
-- nessun probation bypass per `creator cashout` gia sospetto oltre le soglie probation dedicate
-
-Durata:
-- probation normale: `PAPER_CREATOR_RISK_PROBATION_HOLD_MS`
-- probation per `creator cashout ...`: `PAPER_CREATOR_CASHOUT_PROBATION_HOLD_MS`
-- block hard se il `creator cashout` e gia circa tutta la liquidity iniziale
-
-Log principali:
-- `CRISK | cp=... in=... out=... window=... funder=... refund=... micro=.../...`
-- `RRELAY | root=... funder=... in=... out=... window=...`
-- `CAMM | creator direct pAMMBay... re-entry via ...`
-- `CCASH | total=... max=... rel=... score=... dest=...`
-- `SEED | creator=... SOL pct=...% growth=...x`
-- `ISPRAY | in=... src=... median=... rel_std=... ratio=...`
-- `PBURST | precreate out=... dest=... total=... median=... rel_std=... ratio=...`
-- `RREPEAT | create=... remove=... cashout=... window=... max_out=...`
-- `PROBATION | paper-only bypass creator risk (...) hold=...ms`
-
-Lettura pratica:
-1. `RRELAY` da solo non significa per forza rug.
-2. Su pool standard da creator fresh/relay-funded e molto piu pericoloso.
-3. `CAMM` e un segnale duro: il creator ha toccato di nuovo l'AMM dopo il `create_pool`.
-4. `cp alto + out alto + low micro + relay-root sospetto` e un pattern da wallet operativo, non retail.
-5. `spray outbound` = il creator distribuisce importi quasi uguali a molti wallet: pattern infrastrutturale, non utente normale.
-6. `seed troppo piccolo` = il creator ha quasi zero skin in the game rispetto alla liquidity che vedevamo prima del buy.
-7. `inbound collector` = molti wallet alimentano il creator con importi simili in poco tempo: pattern di coordinamento, non domanda organica.
-8. `precreate burst` = raffica di outbound quasi uguali subito prima del create_pool, anche sub-SOL se numerosi: pattern operativo ad alto rischio.
-9. `RREPEAT` = il creator ha gia fatto almeno un ciclo `create/remove/cashout` recente e sta riprovando: da trattare come skip pre-buy, non come segnale da hold.
-
-Gerarchia pratica dei segnali:
-1. `CCASH` = segnale economico forte: il creator sta gia portando via SOL.
-2. `RRELAY` = segnale infrastrutturale forte: funding coordinato `root -> funder -> creator`.
-3. `micro-burst` = segnale comportamentale: attivita compressa e artificiale.
-
-### 1.5 Pre-Buy Wait
-Scopo:
-- non comprare subito alla detection del pool
-- aspettare il primo trade reale
-- vedere se la liquidita regge un minimo
-
-Regola:
-- il timer parte dal primo trade del pool, non dalla detection
-
-Controlli:
-- attesa del primo trade
-- `PRE_BUY_WAIT_MS`
-- `PRE_BUY_CONFIRM_SNAPSHOTS`
-- `PRE_BUY_CONFIRM_INTERVAL_MS`
-
-Esito:
-- se la liquidita degrada troppo durante l'attesa: `SKIP: pre-entry wait`
-
-Log:
-- `WAIT | waiting for first pool trade`
-- `WAIT | first trade ... remaining ...`
-- `WAIT | pre-entry liquidity ... (min observed ...)`
-
-### 1.6 Pre-Buy Revalidation
-Scopo:
-- rifare il check del pool immediatamente prima del buy
-- evitare ingressi dopo wait/probation su pool gia degradati o svuotati
-
-Controlli:
-- `PRE_BUY_REVALIDATION_ENABLED`
-- `PRE_BUY_FINAL_CREATOR_RISK_RECHECK_ENABLED`
-- `PRE_BUY_FINAL_REMOVE_LIQ_CHECK_ENABLED`
-- `PRE_BUY_REVALIDATION_MAX_LIQ_DROP_PCT`
-- `PRE_BUY_REVALIDATION_MAX_QUOTE_VS_SPOT_RATIO`
-
-Segnali:
-- creator risk peggiorato nell'ultima frazione di secondo prima del buy
-- `remove liquidity` gia visibile sul pool prima dell'ingresso
-- liquidity live troppo bassa rispetto alla baseline osservata
-- `buy quote` molto peggiore dello `spot`
-
-Esito:
-- `SKIP: pre-buy revalidation`
-
-Log:
-- `PREBUY | liq ...`
-- `PREBUY | quote_vs_spot=...x ...`
-
-### 1.7 Top 10 Concentration
-Scopo:
-- evitare distribuzioni esterne troppo concentrate
-
-Cosa misura:
-- quota dei maggiori holder esterni
-- opzionalmente esclude il pool dal conteggio
-
-Controlli:
-- `PRE_BUY_TOP10_CHECK_ENABLED`
-- `PRE_BUY_TOP10_MAX_PCT`
-- `PRE_BUY_TOP10_EXCLUDE_POOL`
-- `PRE_BUY_TOP10_FAIL_OPEN`
-- `PRE_BUY_TOP10_MAX_ATTEMPTS`
-- `PRE_BUY_TOP10_RETRY_BASE_MS`
-
-Comportamento:
-- prova il mint estratto
-- se serve, prova fallback dal pool
-- ritenta alcune volte con backoff crescente
-- se il dato non e calcolabile per errore tecnico:
-  - `PRE_BUY_TOP10_FAIL_OPEN=true` -> `fail-open`
-  - `PRE_BUY_TOP10_FAIL_OPEN=false` -> `fail-closed` (default consigliato)
-- se il dato e calcolabile e supera soglia: blocca
-
-Esito:
-- `SKIP: pre-buy top10` quando:
-  - la concentrazione supera soglia
-  - oppure il check non e calcolabile in modalita fail-closed
-
-Log:
-- `TOP10 | <pct>% (max <pct>%)`
-- `TOP10 | retry X/Y after error: ...`
-- `TOP10 | unavailable (...) -> fail-open`
-- `TOP10 | unavailable (...) -> fail-closed`
-
-### 1.8 Shadow Audit Dei Filtri
-Scopo:
-- misurare l'upside perso su alcuni filtri senza cambiare il path decisionale live
-- capire se un filtro sta scartando troppe operazioni non-rug
-
-Regola:
-- lo shadow audit non apre trade live
-- lo shadow audit non cambia `skip`, `probation`, `buy` o `sell` del bot
-- gira solo come simulazione silenziosa aggiuntiva su casi mirati
-
-Target attuali:
-- `creator risk` con motivo `standard pool micro burst ...`
-- `creator risk` con motivo `standard pool outbound-heavy creator history ...`
-- `creator risk` con motivo `creator cashout ...`
-- `creator risk` con motivo `creator refunded funder ...`
-- `creator risk` con motivo `burner profile ...`
-- `creator risk` con motivo `rapid creator dispersal ...`
-
-Config:
-- `SHADOW_AUDIT_ENABLED`
-- `SHADOW_AUDIT_STANDARD_POOL_MICRO_BURST_ENABLED`
-- `SHADOW_AUDIT_STANDARD_POOL_OUTBOUND_HEAVY_ENABLED`
-- `SHADOW_AUDIT_CREATOR_CASHOUT_ENABLED`
-- `SHADOW_AUDIT_CREATOR_REFUNDED_FUNDER_ENABLED`
-- `SHADOW_AUDIT_BURNER_PROFILE_ENABLED`
-- `SHADOW_AUDIT_RAPID_CREATOR_DISPERSAL_ENABLED`
-
-Comportamento:
-- se un evento matcha il filtro auditabile, il bot esegue una `paper simulation` silenziosa
-- la simulazione audit lascia attivi gli altri guard rail del motore paper
-- l'esito viene salvato come telemetria aggiuntiva, non come operazione reale
-- se il caso passa in `probation` ma viene fermato prima della `paper simulation` da `pre-entry guard` o `pre-buy top10`, viene comunque emesso un evento `AUDIT` con `pnlSol/pnlPct = null` e `finalStatus` valorizzato
-
-Output:
-- evento log `AUDIT | {...}`
-- riepilogo in `logs/paper-report.json` sotto `shadowAuditSummary`
-- riepilogo testo in `logs/paper-report.txt` sotto `Shadow audit summary`
-
-Uso pratico:
-- serve per stimare `quanti casi bloccati sarebbero stati profittevoli`
-- serve per stimare `quanto pnl teorico abbiamo lasciato sul tavolo` per filtro
-- non sostituisce il parser Solscan: Solscan resta strumento di drill-down manuale sui casi piu interessanti
-
-Nota:
-- i casi `probation` dei bucket auditati vengono registrati in due modi:
-- `source: "probation-observed"` se completano la `paper simulation`
-- `source: "probation-blocked-pre-entry"` o `source: "probation-blocked-top10"` se vengono fermati prima
-
-## 2. Durante hold
-
-Questi controlli possono far uscire prima del `AUTO_SELL_DELAY_MS`.
-
-### 2.1 Creator Risk Recheck
-Scopo:
-- vedere segnali sospetti che emergono solo dopo il buy
-
-Controlli:
-- `HOLD_CREATOR_RISK_RECHECK_ENABLED`
-- `HOLD_CREATOR_RISK_RECHECK_INTERVAL_MS`
-
-Esito:
-- se il creator diventa sospetto dopo il buy: exit immediata
-
-Log:
-- `CRISK | ...`
-- `RRELAY | ...`
-- `CAMM | ...`
-- `CREATOR RISK EXIT: ...`
-
-### 2.2 Creator Cashout Risk
-Scopo:
-- capire se il creator inizia a spostare SOL verso terzi
-
-Non usa una sola soglia secca.
-Usa un punteggio basato su:
-- cashout totale in SOL
-- cashout relativo alla liquidita iniziale
-- singolo cashout massimo
-
-Controlli:
-- `HOLD_CREATOR_CASHOUT_EXIT_ENABLED`
-- `CREATOR_RISK_CASHOUT_ABS_SOL`
-- `CREATOR_RISK_CASHOUT_REL_LIQ_PCT`
-- `CREATOR_RISK_CASHOUT_WARN_SCORE`
-- `CREATOR_RISK_CASHOUT_EXIT_SCORE`
-
-Esito:
-- warning se borderline
-- exit se il punteggio supera la soglia critica
-
-Log:
-- `CCASH | total=... max=... rel=... score=... dest=...`
-
-### 2.3 Short Hold su RRELAY
-Scopo:
-- ridurre la finestra di esposizione quando c'e relay funding sospetto
-
-Controlli:
-- `HOLD_SUSPICIOUS_RELAY_SHORT_HOLD_ENABLED`
-- `HOLD_SUSPICIOUS_RELAY_SHORT_HOLD_MS`
-
-Segnale:
-- `RRELAY` presente nel creator-risk pre-entry
-
-Esito:
-- hold ridotto ma meno aggressivo (es. 15s) invece di `AUTO_SELL_DELAY_MS`
-
-Log:
-- `HOLD | suspicious relay root ... -> short hold ...ms`
-- `HOLD | probation hold ...ms (paper creator-risk bypass)`
-
-### 2.4 Remove Liquidity Exit (on-chain)
-Scopo:
-- uscire quando il creator inizia a rimuovere liquidita dal pool
-
-Controlli:
-- `HOLD_REMOVE_LIQ_DETECT_ENABLED`
-- `HOLD_REMOVE_LIQ_CHECK_INTERVAL_MS`
-- `HOLD_REMOVE_LIQ_MIN_WSOL_TO_CREATOR`
-- `HOLD_REMOVE_LIQ_MIN_SOL_TO_CREATOR`
-- `HOLD_CREATOR_AMM_BURST_DETECT_ENABLED`
-- `HOLD_CREATOR_AMM_BURST_WINDOW_SEC`
-- `HOLD_CREATOR_AMM_BURST_MIN_TXS`
-- `HOLD_CREATOR_OUTBOUND_EXIT_ENABLED`
-- `HOLD_CREATOR_OUTBOUND_CHECK_INTERVAL_MS`
-- `HOLD_CREATOR_OUTBOUND_MIN_SOL`
-- `HOLD_CREATOR_CLOSE_ACCOUNT_BURST_EXIT_ENABLED`
-- `HOLD_CREATOR_CLOSE_ACCOUNT_BURST_CHECK_INTERVAL_MS`
-- `HOLD_CREATOR_CLOSE_ACCOUNT_BURST_WINDOW_SEC`
-- `HOLD_CREATOR_CLOSE_ACCOUNT_BURST_MIN_TXS`
-- `HOLD_CREATOR_CLOSE_ACCOUNT_BURST_MIN_CLOSES`
-- `HOLD_CREATOR_OUTBOUND_SPRAY_EXIT_ENABLED`
-- `HOLD_CREATOR_OUTBOUND_SPRAY_CHECK_INTERVAL_MS`
-- `HOLD_CREATOR_OUTBOUND_SPRAY_WINDOW_SEC`
-- `HOLD_CREATOR_OUTBOUND_SPRAY_MIN_TRANSFERS`
-- `HOLD_CREATOR_OUTBOUND_SPRAY_MIN_DESTINATIONS`
-- `HOLD_CREATOR_OUTBOUND_SPRAY_MAX_MEDIAN_SOL`
-- `HOLD_CREATOR_OUTBOUND_SPRAY_MAX_REL_STDDEV`
-- `HOLD_CREATOR_OUTBOUND_SPRAY_MAX_AMOUNT_RATIO`
-- `HOLD_CREATOR_INBOUND_SPRAY_EXIT_ENABLED`
-- `HOLD_CREATOR_INBOUND_SPRAY_CHECK_INTERVAL_MS`
-- `HOLD_CREATOR_INBOUND_SPRAY_WINDOW_SEC`
-- `HOLD_CREATOR_INBOUND_SPRAY_MIN_TRANSFERS`
-- `HOLD_CREATOR_INBOUND_SPRAY_MIN_SOURCES`
-- `HOLD_CREATOR_INBOUND_SPRAY_MAX_REL_STDDEV`
-- `HOLD_CREATOR_INBOUND_SPRAY_MAX_AMOUNT_RATIO`
-- `HOLD_POOL_CHURN_DETECT_ENABLED`
-- `HOLD_POOL_CHURN_CHECK_INTERVAL_MS`
-- `HOLD_POOL_CHURN_SIG_LIMIT`
-- `HOLD_POOL_CHURN_WINDOW_SHORT_MS`
-- `HOLD_POOL_CHURN_WINDOW_LONG_MS`
-- `HOLD_POOL_CHURN_WINDOW_CRITICAL_MS`
-- `HOLD_POOL_CHURN_TX_SHORT_MIN`
-- `HOLD_POOL_CHURN_TX_LONG_MIN`
-- `HOLD_POOL_CHURN_TX_CRITICAL_MIN`
-- `HOLD_POOL_CHURN_SELL_DROP_PCT`
-- `HOLD_POOL_CHURN_CRITICAL_SELL_DROP_PCT`
-- `HOLD_SELL_QUOTE_COLLAPSE_EXIT_ENABLED`
-- `HOLD_SELL_QUOTE_COLLAPSE_CHECK_INTERVAL_MS`
-- `HOLD_SELL_QUOTE_COLLAPSE_MIN_HOLD_MS`
-- `HOLD_SELL_QUOTE_COLLAPSE_DROP_PCT`
-- `HOLD_SELL_QUOTE_COLLAPSE_MIN_SOL`
-- `HOLD_PROBATION_CASHOUT_DELTA_MIN_SOL`
-- `HOLD_PROBATION_INTERVAL_MULTIPLIER`
-
-Segnali:
-- tx on-chain che tocca il programma AMM del pool
-- ingresso WSOL/SOL significativo verso creator durante la tx
-- burst di tx AMM del creator sullo stesso pool in finestra breve
-- burst di `closeAccount` firmati/pagati dal creator durante l'hold
-- churn anomalo del pool in finestra breve combinato con collasso della `SELL_QUOTE`
-- collasso diretto della `SELL_QUOTE` rispetto alla baseline del buy anche senza churn sufficiente
-
-Esito:
-- exit anticipata immediata su `remove-liquidity-like`
-- exit anticipata immediata su burst outbound piccoli/uniformi del creator durante l'hold
-- exit anticipata immediata su burst inbound piccoli/uniformi verso il creator durante l'hold
-- exit anticipata immediata su `CREATOR CLOSE ACCOUNT BURST EXIT`
-- exit anticipata immediata su `POOL CHURN EXIT` quando il numero di tx recenti e la `SELL_QUOTE` peggiorano insieme
-- exit anticipata immediata su `SELL QUOTE COLLAPSE EXIT` quando la quote perde troppo o scende sotto una soglia minima assoluta
-- in probation i polling di hold diventano piu aggressivi usando `HOLD_PROBATION_INTERVAL_MULTIPLIER`
-
-Log:
-- `REMOVE LIQUIDITY EXIT: ...`
-- `CREATOR AMM BURST EXIT: ...`
-- `CREATOR OUTBOUND EXIT: ...`
-- `CREATOR CLOSE ACCOUNT BURST EXIT: ...`
-- `POOL CHURN EXIT: ...`
-- `SELL QUOTE COLLAPSE EXIT: ...`
-- `CREATOR RISK EXIT: ...`
-- `CREATOR RISK EXIT (probation hard): ...`
-
-## 3. Post-trade
-
-### 3.1 Sell Guard
-Scopo:
-- marcare i casi in cui il sell simulato e di fatto non eseguibile
+- evitare token ancora controllabili dal creator/dev
 
 Regole:
-- se `solOut <= 0`: perdita piena `-100%` con stato `PAPER LOSS` (non `SKIP`)
-- se perdita oltre guard: `PAPER LOSS`
-
-Log:
-- `BUY_SPOT`
-- `BUY_QUOTE`
-- `SELL_SPOT`
-- `SELL_QUOTE`
-- `PNL`
-
-Lettura:
-- `*_SPOT` = prezzo teorico da riserve del pool
-- `*_QUOTE` = output eseguibile usato per il PnL
-
-### 3.2 Dev Holdings Check
-Scopo:
-- vedere quanta supply resta al creator dopo l'operazione
-
-Controlli:
-- wallet creator
-- token accounts creator
-- percentuale detenuta
+- se `REQUIRE_RENOUNCED_MINT = true`, la mint authority deve essere nulla
+- se `REQUIRE_NO_FREEZE = true`, la freeze authority deve essere nulla
 
 Esito:
-- warning o blocco in base alla configurazione
+- se fallisce: `SKIP: token security`
 
-Log:
-- `DEV | holding ...`
-- `DEV | creator wallet token balance is 0 after create_pool (can be normal)`
+### 4.3 Top 10 concentration
 
-## 4. File importanti
+Scopo:
+- evitare supply troppo concentrata in pochi wallet
 
-### Config
-- `.env`
-- `.env.example`
-- `SILENCE_RPC_429_LOGS` (se `true`, nasconde i log rumorosi di retry `429 Too Many Requests`)
+Regole:
+- calcola la percentuale detenuta dai top 10 holder
+- puo escludere il pool se `PRE_BUY_TOP10_EXCLUDE_POOL = true`
+- fallisce se supera `PRE_BUY_TOP10_MAX_PCT`
 
-### Blacklist
-- `blacklists/creators.txt`
-- `blacklists/funders.txt`
-- `blacklists/micro-burst-sources.txt`
-- `blacklists/cashout-relays.txt`
-- `blacklists/funder-counts.json`
+Esito:
+- se supera soglia: `SKIP` con motivo `top10 concentration ...`
+- se il dato non e disponibile, il comportamento dipende da `PRE_BUY_TOP10_FAIL_OPEN`
 
-### Report
-- `paper.log`
-- `logs/paper-report.json`
-- `logs/paper-report.txt`
+### 4.4 Dev holdings
 
-## 5. Lettura rapida dei log
-
-### Se vedi questo
-- `SKIP: token security`
-  - token non sicuro a livello mint/freeze
-
-- `SKIP: creator risk`
-  - creator / funder / relay / micro-burst sospetti
-
-- `SKIP: pre-buy top10`
-  - concentrazione holder esterni troppo alta
-
-- `CREATOR RISK EXIT`
-  - creator diventato sospetto durante hold
-
-- `REMOVE LIQUIDITY EXIT`
-  - rilevata rimozione liquidita on-chain verso creator durante hold
-
-- `PAPER LOSS` con `exit returned 0 SOL`
-  - la pool era di fatto morta per noi al momento dell'uscita, e va in PnL come `-100%`
-
-## 6. Regola pratica
-
-Se un caso passa i controlli ma finisce comunque in `-100%`, di solito manca uno di questi segnali:
-1. relay funding recente non ancora blacklistato
-2. micro-burst infra non ancora blacklistata
-3. cashout path nuovo non ancora blacklistato
-4. `Top10` non calcolabile e andato `fail-open`
-
-Quando succede:
-- analizza creator, funder, relay e micro-sources
-- aggiungi gli indirizzi sospetti nelle blacklist dedicate
-- non usare i report come fonte blacklist
-
-Regola operativa restart:
-- dopo modifiche importanti ai controlli, fermare i servizi, azzerare log/report e poi riavviare.
-
-## 6.0 Modifiche precedenti (prima del tuning top10)
-
-Correzioni implementate:
-- `exit returned 0 SOL` in paper trade ora e `PAPER LOSS` con PnL `-100%` (non `SKIP`)
-- in monitor-only il risultato usa `paper.finalStatus` (evita classificazioni ambigue su perdite reali)
-- `creator risk` include forzatamente la `create_pool` tx anche quando `getSignaturesForAddress` lagga
-- during hold il loop controlla subito (non aspetta il primo sleep) e usa polling capped per ridurre blind window
-- report daemon inferisce PnL effettivo `-100%` anche sui record legacy con PnL nullo e `exit returned 0 SOL`
-
-## 6.1 Scoperte operative (forensics rug-loss, 2026-03-09)
-
-Dati emersi su `logs/rug-loss-forensics.{json,txt}`:
-- `36` rug-loss analizzati
-- `32` casi `exit returned 0 SOL`
-- `29/36` con `TOP10 unavailable -> fail-open`
-- `24/36` con withdraw creator rapido dopo `create_pool`
-- `8/36` con cashout creator rapido dopo withdraw
-
-Conclusioni:
-- i casi `exit returned 0 SOL` non vanno trattati come `skip`, ma come perdita reale `-100%`
-- il `top10 fail-open` e un punto debole concreto da irrigidire quando il contesto creator/funder e sospetto
-- i pattern `create -> withdraw rapido -> cashout rapido` sono segnali dev ad alta priorita
-
-## 7. Grey-Zone Winners
-
-Esistono token che non sono `clean`, ma nemmeno rug immediati.
-
-Caso tipico:
-- `RRELAY` presente
-- creator/funder/rete di funding con pattern infrastrutturale
-- `TOP10` basso
-- `DEV holding` a zero
-- nessun refund al funder
-- nessun drain durante il nostro hold
-- trade comunque profittevole
-
-Interpretazione:
-- `trade buono`
-- `dev non pulito`
-- quindi non e un token sicuro, ma un `grey-zone winner`
+Scopo:
+- evitare token dove il creator trattiene troppo supply
 
 Regola:
-- non classificare come `dev buono` solo perche resta vivo 5-10 minuti
-- classificare separatamente:
-  1. qualita del trade
-  2. pulizia del dev / funder / relay
+- stima la quota del creator dopo `create_pool`
+- blocca se `devPct > MAX_DEV_HOLDINGS_PCT`
 
-## 8. Tre leve di tuning
+Esito:
+- se enforcement attivo e supera soglia: `SKIP: Dev holds too much ...`
 
-Se vuoi rendere il bot piu severo sui casi grigi, le 3 leve piu utili sono:
+## 5. Creator Risk: come ragiona davvero
 
-1. `RRELAY` come warning forte
-- non blocca da solo
-- ma va considerato segnale strutturale di funding coordinato
+Il creator-risk lavora in due livelli:
 
-2. soglia micro-burst piu bassa
-- oggi il caso passa se i micro-transfer non superano il gate
-- abbassare la soglia aumenta gli `SKIP: creator risk`
+- `early checks`: veloci, fatti subito
+- `deep checks`: piu costosi, fatti dopo
 
-3. soglia cashout piu bassa
-- se `CCASH` resta sotto la soglia critica, il bot continua
-- abbassare la soglia rende piu facile uscire dai casi sospetti ma ancora vivi
+Un creator puo essere bloccato da:
+- blacklist diretta
+- pattern comportamentali storici o recenti
+- cashout sospetti
+- pattern di funding o dispersal
+- burst tecnici e setup wallet sospetti
 
-## 9. Tuning sampling creator
+Se un check creator-risk blocca:
+- il risultato diventa `ok: false`
+- il bot fa `SKIP: creator risk`
 
-Per ridurre i falsi negativi sui creator molto attivi:
-- `CREATOR_RISK_SIG_LIMIT` (default 40)
-- `CREATOR_RISK_PARSED_TX_LIMIT` (default 25)
+## 6. Elenco completo dei controlli creator-risk
 
-Gate specifico per pattern pre-create (spray quasi uniforme):
-- `CREATOR_RISK_PRECREATE_BURST_BLOCK_ENABLED`
-- `CREATOR_RISK_PRECREATE_BURST_WINDOW_SEC`
-- `CREATOR_RISK_PRECREATE_BURST_SIG_LIMIT`
-- `CREATOR_RISK_PRECREATE_BURST_PARSED_TX_LIMIT`
-- `CREATOR_RISK_PRECREATE_BURST_MIN_TRANSFERS`
-- `CREATOR_RISK_PRECREATE_BURST_MIN_DESTINATIONS`
-- `CREATOR_RISK_PRECREATE_BURST_MIN_MEDIAN_SOL`
-- `CREATOR_RISK_PRECREATE_BURST_MAX_MEDIAN_SOL`
-- `CREATOR_RISK_PRECREATE_BURST_MAX_REL_STDDEV`
-- `CREATOR_RISK_PRECREATE_BURST_MAX_AMOUNT_RATIO`
-Winner exit shadow audit:
-- `winner-management-ambitious`: osserva i winner reali con un profilo di take profit/trailing stop leggermente piu permissivo del live.
-- `winner-management-aggressive`: osserva gli stessi winner con un profilo ancora piu offensivo per catturare i runner più forti.
-- `winner-management-ultra`: osserva gli stessi winner con un profilo estremo pensato per testare il limite massimo del momentum.
-- Tutti e tre sono solo audit: non cambiano il path live, non alterano l'esito buy/sell del report principale e scrivono solo eventi `AUDIT`. Le soglie di trigger (arm), trailing e hard take profit per ciascuno sono configurabili in `src/app/config.ts`.
+### 6.1 Historical rug blacklist
+
+Blocca se:
+- il creator e gia nella blacklist storica dei rug
+
+Motivo tipico:
+- `creator in historical rug blacklist`
+
+### 6.2 Funder blacklisted / suspicious infra
+
+Blocca se:
+- il funder e gia noto in rug history
+- oppure il funder e legato a infrastruttura sospetta nota
+
+Motivi tipici:
+- `funder blacklisted ...`
+- `funder linked to suspicious infra ...`
+
+### 6.3 Micro-burst source blacklisted
+
+Blocca se:
+- una source dei micro inbound e gia nota come wallet sospetto
+
+Motivo tipico:
+- `micro-burst source blacklisted ...`
+
+### 6.4 Fresh-funded high-seed
+
+Blocca se:
+- il creator ha ricevuto funding fresco rilevante poco prima del create
+- il seed del creator e molto alto rispetto alla liquidita del pool
+- il numero di counterparties resta basso entro soglia
+
+Effetto aggiuntivo:
+- puo anche attivare `strictPreEntryFlowRequired`
+
+Motivo tipico:
+- `fresh-funded high-seed creator ...`
+
+### 6.5 Creator seed ratio
+
+Stato:
+- attualmente OFF
+
+Quando sarebbe attivo:
+- bloccherebbe creator con seed troppo piccolo rispetto alla liquidita osservata
+
+Motivo tipico:
+- `creator seed too small ...`
+
+### 6.6 Micro inbound burst
+
+Blocca se:
+- molti micro-transfer inbound verso il creator
+- da abbastanza source
+- in una finestra temporale stretta
+
+Motivo tipico:
+- `micro inbound burst ...`
+
+### 6.7 Inbound collector pattern
+
+Blocca se:
+- molti inbound simili da molte source verso il creator
+- distribuzione compatta / poco naturale
+
+Motivo tipico:
+- `inbound collector pattern ...`
+
+### 6.8 Spray outbound pattern
+
+Blocca se:
+- il creator manda molti transfer simili a molte destinazioni
+
+Motivo tipico:
+- `spray outbound pattern ...`
+
+### 6.9 Repeated create-remove pattern
+
+Blocca se:
+- il creator mostra schema ripetuto `create_pool -> remove_liquidity -> cashout`
+
+Motivo tipico:
+- `creator repeated create-remove pattern ...`
+
+### 6.10 Standard pool micro burst
+
+Blocca se:
+- il pool rientra nella fascia standard monitorata
+- e il creator mostra micro-burst inbound su quella fascia
+
+Motivo tipico:
+- `standard pool micro burst ...`
+
+### 6.11 Standard pool outbound-heavy creator history
+
+Blocca se:
+- pool standard
+- counterparties alte
+- tante uscite
+- pochissimi ingressi
+
+Motivo tipico:
+- `standard pool outbound-heavy creator history ...`
+
+### 6.12 Funder cluster
+
+Blocca se:
+- lo stesso funder compare in molti creator rug storici
+- oppure compare su molti creator recenti in finestra breve
+
+Motivi tipici:
+- `funder cluster historical ...`
+- `funder cluster recent ...`
+
+### 6.13 Linked to historical rug creator
+
+Blocca se:
+- dalle istruzioni emerge collegamento diretto a creator gia noti come rug
+
+Motivo tipico:
+- `linked to historical rug creator ...`
+
+### 6.14 Creator refunded funder
+
+Blocca se:
+- il creator rimanda SOL al proprio funder oltre soglia
+
+Motivo tipico:
+- `creator refunded funder ...`
+
+### 6.15 Unique counterparties
+
+Blocca se:
+- `uniqueCounterparties >= CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES`
+
+Stato pratico attuale:
+- soglia molto stretta: `2`
+- quindi e uno dei filtri piu severi oggi
+
+Motivo tipico:
+- `unique counterparties X >= 2`
+
+### 6.16 Compressed activity
+
+Blocca se:
+- molte counterparties in finestra molto corta
+
+Motivo tipico:
+- `compressed activity ...`
+
+### 6.17 Burner profile
+
+Blocca se:
+- quasi nessun inbound
+- poche uscite ma grosse
+- pattern da wallet burner/operativo
+
+Motivo tipico:
+- `burner profile out=...`
+
+### 6.18 Precreate uniform outbound burst
+
+Blocca se:
+- prima del create ci sono molte uscite simili verso molte destinazioni
+
+Motivo tipico:
+- `precreate uniform outbound burst ...`
+
+### 6.19 Precreate large uniform outbound burst
+
+Blocca se:
+- come sopra, ma con importi piu grandi e molto uniformi
+
+Motivo tipico:
+- `precreate large uniform outbound burst ...`
+
+### 6.20 Precreate dispersal + setup burst
+
+Blocca se:
+- pattern dispersal precreate
+- seguito da burst di setup/create
+
+Motivo tipico:
+- `precreate dispersal + setup burst ...`
+
+### 6.21 Concentrated inbound funding
+
+Blocca se:
+- funding inbound concentrato da poche source
+- insieme a setup burst e repeat-create
+
+Motivo tipico:
+- `concentrated inbound funding ...`
+
+### 6.22 Lookup-table + setup burst
+
+Blocca se:
+- `lookupTables >= soglia`
+- `creates >= soglia`
+- `windowSec <= soglia`
+
+Importante:
+- non basta avere tanti `create`
+- servono anche i lookup tables vicini nel tempo
+
+Motivo tipico:
+- `lookup-table + setup burst ...`
+
+### 6.23 Setup burst
+
+Blocca se:
+- troppe create/mint ops in poco tempo
+
+Motivo tipico:
+- `setup burst ...`
+
+### 6.24 Close-account burst
+
+Blocca se:
+- molte chiusure account in poco tempo
+
+Motivo tipico:
+- `close-account burst ...`
+
+### 6.25 Rapid dispersal
+
+Blocca se:
+- c'e `rapidDispersal.detected`
+- e in piu vale almeno una di queste:
+  - c'e gia `creatorCashout.totalSol > 0`
+  - la dispersal pesa almeno `CREATOR_RISK_RAPID_DISPERSAL_MIN_PCT_OF_ENTRY_LIQ` sulla liquidita di entry
+
+Questa e una modifica recente importante.
+
+Prima:
+- di fatto era molto piu permissivo
+- il blocco forte dipendeva troppo dal cashout
+
+Ora:
+- puo bloccare anche senza cashout, se la dispersal e severa rispetto alla liquidita del pool
+
+Motivo tipico:
+- `rapid creator dispersal ...`
+
+### 6.26 Creator cashout
+
+Blocca se:
+- il cashout del creator produce score abbastanza alto
+
+Motivo tipico:
+- `creator cashout ...`
+
+### 6.27 Relay funding recent on standard pool
+
+Stato pratico:
+- il blocco standard-pool relay resta attivo nel ramo finale quando `relayFunding.detected` e il pool e standard-risk
+- ma i toggle relay principali sono attualmente OFF, quindi questa famiglia va trattata con cautela quando si legge la config
+
+Motivo tipico:
+- `relay funding recent on standard pool ...`
+
+### 6.28 Relay funding recent + micro burst
+
+Blocca se:
+- relay funding rilevato
+- insieme a micro burst inbound
+
+Motivo tipico:
+- `relay funding recent + micro burst ...`
+
+### 6.29 Relay funding root blacklisted
+
+Blocca se:
+- il root del relay funding e gia blacklisted
+
+Motivo tipico:
+- `relay funding root blacklisted ...`
+
+### 6.30 Direct AMM re-entry
+
+Stato:
+- attualmente OFF
+
+Quando attivo:
+- blocca se il creator torna a toccare direttamente l'AMM dopo il create
+
+Motivo tipico:
+- `creator direct AMM re-entry ...`
+
+## 7. Pre-buy wait e revalidation finale
+
+Questa fase serve a evitare di comprare troppo presto.
+
+### 7.1 Wait / flow gate
+
+Scopo:
+- aspettare il primo trade reale del pool
+- non entrare immediatamente sul create
+
+Controlli principali:
+- `PRE_BUY_WAIT_MS`
+- `PRE_BUY_SIGNAL_MIN_TRADES`
+- conferme multiple
+
+### 7.2 Final creator-risk recheck
+
+Scopo:
+- rifare creator-risk subito prima del buy
+
+Se fallisce:
+- il buy viene annullato
+
+Motivo tipico:
+- `creator risk recheck (...)`
+
+### 7.3 Final remove-liquidity recheck
+
+Scopo:
+- evitare entry se il creator ha gia iniziato remove liquidity
+
+Se rilevato:
+- entry bloccata
+
+Motivo tipico:
+- `remove liquidity detected before entry ...`
+
+### 7.4 Liquidity revalidation
+
+Scopo:
+- evitare entry se la liquidita e peggiorata troppo rispetto alla baseline
+
+Blocca se:
+- la liquidita corrente scende sotto la soglia minima
+- oppure scende troppo rispetto alla baseline pre-entry
+
+Motivo tipico:
+- `liquidity ... below revalidation threshold`
+
+### 7.5 Ultra-short rug guard
+
+Scopo:
+- osservare il pool per una piccola finestra finale prima del buy
+
+Blocca se in quella finestra:
+- la liquidita crolla troppo
+- oppure la quote peggiora troppo
+
+Motivi tipici:
+- `ultra-short rug guard liquidity drop ...`
+- `ultra-short rug guard quote drop ...`
+
+### 7.6 Quote sanity check
+
+Scopo:
+- evitare buy se la quote e troppo distante dallo spot
+
+Motivo tipico:
+- `quote sanity ...x spot`
+
+## 8. Controlli durante l'hold
+
+Una volta entrato, il bot continua a difendersi.
+
+### 8.1 Remove liquidity exit
+
+Esce se:
+- rileva remove liquidity verso il creator
+
+Exit reason:
+- `remove liquidity`
+
+### 8.2 Creator AMM burst
+
+Esce se:
+- il creator tocca ripetutamente l'AMM entro finestra breve
+
+Exit reason:
+- `creator amm burst`
+
+### 8.3 Creator risk recheck
+
+Esce se:
+- il creator-risk peggiora dopo l'entry
+
+Exit reason:
+- `creator risk: ...`
+
+### 8.4 Winner management
+
+Serve a proteggere i winner e i pump rapidi.
+
+Puo uscire in due modi:
+- `winner take profit`
+- `winner trailing stop`
+
+Regole importanti recenti:
+- token CP=1 hanno TP piu alto
+- token CP=0 hanno trailing piu stretto per proteggersi da slow rug
+
+### 8.5 Sell quote collapse
+
+Esce se:
+- la quote di uscita crolla troppo rispetto alla baseline
+- oppure scende sotto un floor minimo in SOL
+
+Exit reason:
+- `sell quote collapse`
+
+### 8.6 Pool churn
+
+Esce se:
+- il pool mostra attivita troppo intensa e insieme calo quote significativo
+
+Exit reason:
+- `pool churn`
+
+### 8.7 Creator outbound
+
+Esce se:
+- il creator manda grosse uscite durante hold
+
+Exit reason:
+- `creator outbound`
+
+### 8.8 Creator close-account burst
+
+Esce se:
+- il creator chiude molti account in poco tempo
+
+Exit reason:
+- `creator close-account burst`
+
+### 8.9 Creator outbound spray
+
+Esce se:
+- il creator in hold distribuisce a molte destinazioni con pattern da spray
+
+Exit reason:
+- `creator outbound spray`
+
+### 8.10 Creator inbound spray
+
+Esce se:
+- il creator riceve molti inbound coordinati durante hold
+
+Exit reason:
+- `creator inbound spray`
+
+## 9. Probation
+
+Stato attuale:
+- `PAPER_CREATOR_RISK_PROBATION_ENABLED = false`
+
+Quindi oggi:
+- in pratica non c'e bypass paper-only standard del creator-risk
+
+Se verra riattivata:
+- alcuni risk non faranno skip immediato ma forzeranno hold corto e controlli piu aggressivi
+
+## 10. Come leggere i log senza confondersi
+
+Regola pratica:
+- il log diagnostico mostra tanti segnali
+- ma il blocco vero e il primo che produce `ok: false`
+
+Quindi per capire perche un token e stato saltato:
+
+1. guarda `SKIP: ...`
+2. se e `SKIP: creator risk`, guarda il `reason`
+3. usa i `FILTERS` solo come supporto, non come verita assoluta del blocco
+
+Importante dopo le ultime patch:
+- il report e piu allineato alla logica reale
+- `rapidDispersal` e `lookupTable` non vanno piu letti in modo fuorviante come prima
+
+## 11. Ultime modifiche rilevanti ai controlli
+
+Negli ultimi giorni sono cambiate soprattutto queste cose:
+
+- filtro CP reso molto severo: oggi blocca gia da `uniqueCounterparties >= 2`
+- `seed ratio` disattivato
+- `direct AMM re-entry` disattivato ma fixato il rispetto del toggle
+- introdotta guardia pre-buy ultra-short anti rug rapido
+- `rapidDispersal` irrigidito: ora puo bloccare anche senza cashout se la dispersal e alta rispetto alla liquidita entry
+- winner management differenziato per classi CP
+- reporting dei filtri e analisi rug resi piu coerenti con la logica reale
+- fix runtime e report per evitare eventi duplicati o fantasma
+
+## 12. Checklist pratica quando analizzi un rug o uno skip
+
+Se vuoi capire un caso velocemente:
+
+1. controlla `endStatus` e `skipReason`
+2. se e `creator risk`, leggi il `reason`
+3. guarda `entryFilters` solo dopo, per contesto
+4. se c'e stato buy, guarda `holdLog.exitReason`
+5. controlla se l'uscita e stata da:
+   - `sell quote collapse`
+   - `winner trailing stop`
+   - `creator risk recheck`
+   - `remove liquidity`
+   - `pool churn`
+
+## 13. File chiave da consultare quando cambi i controlli
+
+- regole e soglie: `src/app/config.ts`
+- blocchi creator-risk: `src/services/creator-risk/index.ts`
+- snapshot/report dei filtri: `src/pumpAmmSniper.ts`
+- controlli immediati prima del buy: `src/services/paper-trade/preBuyValidation.ts`
+- uscite durante hold: `src/services/paper-trade/holdMonitor.ts`
+- report runtime: `scripts/paper-report-daemon.js`
+- analisi rug: `scripts/rug-analysis.js`
+
+## 14. Tabella compatta finale
+
+### Controlli pre-entry
+
+| Controllo | Fase | Stato | Azione | Motivo tipico |
+| --- | --- | --- | --- | --- |
+| Liquidity minima | pre-entry | ON | skip | `low liquidity` |
+| Token security | pre-entry | ON | skip | `token security` |
+| Creator risk globale | pre-entry | ON | skip | `creator risk (...)` |
+| Pre-buy wait / flow gate | pre-entry | ON | skip | `pre-entry wait` |
+| Final creator-risk recheck | pre-buy finale | ON | skip | `creator risk recheck (...)` |
+| Final remove-liq recheck | pre-buy finale | ON | skip | `remove liquidity detected before entry ...` |
+| Liquidity revalidation | pre-buy finale | ON | skip | `liquidity ... below revalidation threshold` |
+| Ultra-short rug guard | pre-buy finale | ON | skip | `ultra-short rug guard ...` |
+| Quote sanity | pre-buy finale | ON | skip | `quote sanity ...x spot` |
+| Top10 concentration | pre-entry finale | ON | skip | `top10 concentration ...` |
+| Dev holdings | post-resolve / gate | ON | skip | `Dev holds too much ...` |
+
+### Controlli creator-risk pre-entry
+
+| Controllo | Stato | Blocca davvero? | Motivo tipico |
+| --- | --- | --- | --- |
+| Historical rug blacklist | ON | si | `creator in historical rug blacklist` |
+| Funder blacklisted | ON | si | `funder blacklisted ...` |
+| Funder suspicious infra | ON | si | `funder linked to suspicious infra ...` |
+| Micro-burst source blacklisted | ON | si | `micro-burst source blacklisted ...` |
+| Fresh-funded high-seed | ON | si | `fresh-funded high-seed creator ...` |
+| Creator seed ratio | OFF | no | `creator seed too small ...` |
+| Micro inbound burst | ON | si | `micro inbound burst ...` |
+| Inbound collector pattern | ON | si | `inbound collector pattern ...` |
+| Spray outbound pattern | ON | si | `spray outbound pattern ...` |
+| Repeated create-remove | ON | si | `creator repeated create-remove pattern ...` |
+| Standard pool micro | ON | si | `standard pool micro burst ...` |
+| Standard pool outbound-heavy | ON | si | `standard pool outbound-heavy creator history ...` |
+| Funder cluster | ON | si | `funder cluster historical ...` / `recent ...` |
+| Linked to rug creator | ON | si | `linked to historical rug creator ...` |
+| Creator refunded funder | ON | si | `creator refunded funder ...` |
+| Unique counterparties | ON | si | `unique counterparties X >= 2` |
+| Compressed activity | ON | si | `compressed activity ...` |
+| Burner profile | ON | si | `burner profile ...` |
+| Precreate burst | ON | si | `precreate uniform outbound burst ...` |
+| Precreate large uniform | ON | si | `precreate large uniform outbound burst ...` |
+| Precreate dispersal + setup | ON | si | `precreate dispersal + setup burst ...` |
+| Concentrated inbound funding | ON | si | `concentrated inbound funding ...` |
+| Lookup-table + setup burst | ON | si | `lookup-table + setup burst ...` |
+| Setup burst | ON | si | `setup burst ...` |
+| Close-account burst | ON | si | `close-account burst ...` |
+| Rapid dispersal | ON | si | `rapid creator dispersal ...` |
+| Creator cashout | ON | si | `creator cashout ...` |
+| Relay funding recent on standard pool | parziale | dipende | `relay funding recent on standard pool ...` |
+| Relay funding recent + micro burst | parziale | dipende | `relay funding recent + micro burst ...` |
+| Relay funding root blacklisted | parziale | dipende | `relay funding root blacklisted ...` |
+| Direct AMM re-entry | OFF | no | `creator direct AMM re-entry ...` |
+
+### Controlli hold / exit
+
+| Controllo | Fase | Stato | Azione | Exit reason |
+| --- | --- | --- | --- | --- |
+| Remove liquidity | hold | ON | exit | `remove liquidity` |
+| Creator AMM burst | hold | ON | exit | `creator amm burst` |
+| Creator risk recheck | hold | ON | exit | `creator risk: ...` |
+| Winner take profit | hold | ON | exit | `winner take profit` |
+| Winner trailing stop | hold | ON | exit | `winner trailing stop` |
+| Sell quote collapse | hold | ON | exit | `sell quote collapse` |
+| Pool churn | hold | ON | exit | `pool churn` |
+| Creator outbound | hold | ON | exit | `creator outbound` |
+| Creator close-account burst | hold | ON | exit | `creator close-account burst` |
+| Creator outbound spray | hold | ON | exit | `creator outbound spray` |
+| Creator inbound spray | hold | ON | exit | `creator inbound spray` |
+| Hold timeout | hold | ON | exit | `hold timeout` |

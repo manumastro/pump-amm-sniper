@@ -233,8 +233,9 @@ function ensureCurrentEvent(logPath, ts) {
 }
 
 function parseLine(logPath, line) {
-  const ts = (line.match(/^\[([^\]]+)\]/) || [])[1] || null;
-  const stageLine = line.match(/^\[[^\]]+\]\s+(?:([^\s|]+)\s+\|\s+)?([^|]+?)\s+\|\s+(.+)$/);
+  const normalizedLine = line.replace(/^(\[[^\]]+\])\s+\[[A-Z0-9]+\]\s+/, '$1 ');
+  const ts = (normalizedLine.match(/^\[([^\]]+)\]/) || [])[1] || null;
+  const stageLine = normalizedLine.match(/^\[[^\]]+\]\s+(?:([^\s|]+)\s+\|\s+)?([^|]+?)\s+\|\s+(.+)$/);
   if (stageLine) {
     const maybeId = stageLine[1] ? stageLine[1].replace(/^\[|\]$/g, '') : null;
     const stage = stageLine[2].trim();

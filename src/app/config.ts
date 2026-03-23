@@ -7,7 +7,7 @@ dotenv.config();
 export const EARLY_ROOT_DIR = process.cwd();
 export const IS_WORKER_PROCESS = !!process.env.WORKER_TASK_SIGNATURE;
 export const WORKER_SLOT = Number(process.env.WORKER_SLOT || 0);
-export const SILENCE_RPC_429_LOGS = process.env.SILENCE_RPC_429_LOGS === "true";
+export const SILENCE_RPC_429_LOGS = process.env.SILENCE_RPC_429_LOGS !== "false";
 
 export const CONFIG = {
     TRADE_AMOUNT_SOL: 0.01,

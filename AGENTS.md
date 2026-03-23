@@ -10,6 +10,8 @@
 - **Analisi rug:** `node scripts/rug-analysis.js` — mostra tabella completa pre-entry (tutti i 18+ controlli) e post-entry (triggers, guards, exit reason) per ogni rug loss.
 
 ## Regole operative non negoziabili
+- **I controlli sono la parte piu importante del bot.** Prima di modificare logiche di entry, hold, creator-risk, report o analisi rug, consultare sempre `docs/controls.md`.
+- **Ogni modifica ai controlli deve aggiornare anche la documentazione.** Se cambia una soglia, un toggle, una regola di blocco, una guardia hold o il significato dei report/log, aggiornare subito `docs/controls.md` nello stesso ciclo di lavoro.
 - **DOPO OGNI MODIFICA A `src/**`:** `npm run build` → stop servizi → reset log/report → start servizi. Senza build, il bot esegue il codice vecchio in `dist/`.
 - Sequenza deploy runtime: build -> stop servizi -> reset log/report -> start/restart servizi.
 - File da resettare dopo modifiche importanti: `paper.log`, `logs/paper-report.json`, `logs/paper-report.txt`, `logs/paper-report-daemon.log`, tutti i `logs/paper-worker-*.log`.

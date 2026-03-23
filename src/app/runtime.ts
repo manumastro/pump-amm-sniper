@@ -92,6 +92,7 @@ export function createSupervisorRuntime(options: {
                 ...process.env,
                 WORKER_TASK_SIGNATURE: signature,
                 WORKER_SLOT: String(slot.slot),
+                SILENCE_RPC_429_LOGS: process.env.SILENCE_RPC_429_LOGS || "true",
             },
             stdio: "ignore",
         });
