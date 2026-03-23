@@ -70,6 +70,18 @@ function summarizeEntryFilters(entryFilters, preBuyUltraGuard) {
     const t = entryFilters.top10;
     parts.push(`top10 ${t.pct ?? 'n/a'}<=${t.maxPct ?? 'n/a'} (${t.pass ? 'PASS' : 'FAIL'})`);
   }
+  if (entryFilters?.cr_rapidDispersal) {
+    const rd = entryFilters.cr_rapidDispersal;
+    parts.push(`rapidDispersal t=${rd.observedTransfers ?? 0}/${rd.thresholdTransfers ?? 3} d=${rd.observedDestinations ?? 0}/${rd.thresholdDestinations ?? 3} sol=${rd.observedTotalSol ?? 0}/${rd.thresholdTotalSol ?? 100} (${rd.pass ? 'PASS' : 'BLOCK'})`);
+  }
+  if (entryFilters?.cr_lookupTable) {
+    const lt = entryFilters.cr_lookupTable;
+    parts.push(`lookupTable creates=${lt.observedCreates ?? 0}/${lt.thresholdCreates ?? 20} lookups=${lt.observedLookups ?? 0}/${lt.thresholdLookups ?? 2} (${lt.pass ? 'PASS' : 'BLOCK'})`);
+  }
+  if (entryFilters?.cr_setupBurst) {
+    const sb = entryFilters.cr_setupBurst;
+    parts.push(`setupBurst creates=${sb.observedCreates ?? 0}/${sb.thresholdCreates ?? 250} window=${sb.observedWindowSec ?? 'n/a'}s (${sb.pass ? 'PASS' : 'BLOCK'})`);
+  }
   if (preBuyUltraGuard) {
     parts.push(
       `ultraGuard liqDropMax=${preBuyUltraGuard.maxObservedLiqDropPct ?? 'n/a'}<=${preBuyUltraGuard.maxLiqDropPct ?? 'n/a'} ` +

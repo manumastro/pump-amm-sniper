@@ -166,14 +166,23 @@ export function createPaperTradeService(deps: PaperTradeDeps) {
                     ? Math.max(1000, CONFIG.HOLD_SUSPICIOUS_RELAY_SHORT_HOLD_MS)
                     : Math.max(1000, CONFIG.AUTO_SELL_DELAY_MS);
 
-            // Adjust winner profile for CP=1 tokens
+            // Adjust winner profile based on CP value
             const cpValue = initialCreatorRisk?.uniqueCounterparties;
-            const activeWinnerProfile = cpValue === 1
-                ? {
+            let activeWinnerProfile = HOLD_WINNER_PROFILE;
+            
+            if (cpValue === 1) {
+                // CP=1: Higher take profit (100%)
+                activeWinnerProfile = {
                     ...HOLD_WINNER_PROFILE,
                     hardTakeProfitPct: CONFIG.HOLD_WINNER_HARD_TAKE_PROFIT_PCT_CP1,
-                }
-                : HOLD_WINNER_PROFILE;
+                };
+            } else if (cpValue === 0) {
+                // CP=0: Tighter trailing stop (10%) to protect against slow rugs
+                activeWinnerProfile = {
+                    ...HOLD_WINNER_PROFILE,
+                    trailingDropPct: CONFIG.HOLD_WINNER_TRAILING_DROP_PCT_CP0,
+                };
+            }
 
             if (forcedProbationHoldMs > 0) {
                 stageLog(ctx, "HOLD", `probation hold ${effectiveHoldMs}ms (paper creator-risk bypass)`);
