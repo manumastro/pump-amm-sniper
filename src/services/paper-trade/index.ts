@@ -166,6 +166,15 @@ export function createPaperTradeService(deps: PaperTradeDeps) {
                     ? Math.max(1000, CONFIG.HOLD_SUSPICIOUS_RELAY_SHORT_HOLD_MS)
                     : Math.max(1000, CONFIG.AUTO_SELL_DELAY_MS);
 
+            // Adjust winner profile for CP=1 tokens
+            const cpValue = initialCreatorRisk?.uniqueCounterparties;
+            const activeWinnerProfile = cpValue === 1
+                ? {
+                    ...HOLD_WINNER_PROFILE,
+                    hardTakeProfitPct: CONFIG.HOLD_WINNER_HARD_TAKE_PROFIT_PCT_CP1,
+                }
+                : HOLD_WINNER_PROFILE;
+
             if (forcedProbationHoldMs > 0) {
                 stageLog(ctx, "HOLD", `probation hold ${effectiveHoldMs}ms (paper creator-risk bypass)`);
             } else if (suspiciousRelay) {
@@ -203,7 +212,7 @@ export function createPaperTradeService(deps: PaperTradeDeps) {
                 createPoolSignature,
                 createPoolBlockTime,
                 initialCreatorRisk,
-                HOLD_WINNER_PROFILE,
+                activeWinnerProfile,
             );
             if (!exitOutcome?.state) {
                 console.log("⚠️ PAPER_TRADE: no exit pool state");
