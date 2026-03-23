@@ -564,6 +564,14 @@ async function handleNewPool(connection: Connection, signature: string) {
                         observed: Number.isFinite(Number(top10.top10Pct)) ? Number(Number(top10.top10Pct).toFixed(4)) : null,
                         threshold: CONFIG.PRE_BUY_TOP10_MAX_PCT,
                         sign: "<=",
+                        top1ExternalEnabled: CONFIG.PRE_BUY_TOP1_EXTERNAL_HOLDER_CHECK_ENABLED,
+                        observedTop1External:
+                            Number.isFinite(Number(top10.top1ExternalHolderPct))
+                                ? Number(Number(top10.top1ExternalHolderPct).toFixed(4))
+                                : null,
+                        thresholdTop1External: CONFIG.PRE_BUY_TOP1_EXTERNAL_HOLDER_MAX_PCT,
+                        signTop1External: "<=",
+                        top1ExternalOwner: top10.top1ExternalHolderOwner || null,
                     },
                     ultraShortGuard: {
                         observedLiqDropMax: 0,

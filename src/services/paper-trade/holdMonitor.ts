@@ -120,6 +120,7 @@ export async function waitForExitStateWithLiquidityStop(
     let lastPoolChurnCheckAtMs = 0;
     let lastPoolChurnWarnAtMs = 0;
     let lastSellQuoteCollapseCheckAtMs = 0;
+    let lastSingleSwapShockCheckAtMs = 0;
     let lastWinnerCheckAtMs = 0;
     const seenPoolSignatures = new Set<string>();
     const seenCreatorSignatures = new Set<string>();
@@ -158,6 +159,7 @@ export async function waitForExitStateWithLiquidityStop(
                 creatorRiskRecheck: { enabled: CONFIG.HOLD_CREATOR_RISK_RECHECK_ENABLED && !suppressCreatorRiskRecheck },
                 winnerManagement: { enabled: activeWinnerProfile.enabled, armPct: activeWinnerProfile.armPnlPct, trailingPct: activeWinnerProfile.trailingDropPct, hardTpPct: activeWinnerProfile.hardTakeProfitPct, minHoldMs: activeWinnerProfile.minHoldMs },
                 sellQuoteCollapse: { enabled: CONFIG.HOLD_SELL_QUOTE_COLLAPSE_EXIT_ENABLED, minHoldMs: CONFIG.HOLD_SELL_QUOTE_COLLAPSE_MIN_HOLD_MS, dropPct: CONFIG.HOLD_SELL_QUOTE_COLLAPSE_DROP_PCT },
+                singleSwapShock: { enabled: CONFIG.HOLD_SINGLE_SWAP_SHOCK_EXIT_ENABLED, minHoldMs: CONFIG.HOLD_SINGLE_SWAP_SHOCK_MIN_HOLD_MS, dropPct: CONFIG.HOLD_SINGLE_SWAP_SHOCK_DROP_PCT },
                 poolChurn: { enabled: CONFIG.HOLD_POOL_CHURN_DETECT_ENABLED },
                 creatorOutbound: { enabled: CONFIG.HOLD_CREATOR_OUTBOUND_EXIT_ENABLED },
                 creatorCloseAccount: { enabled: CONFIG.HOLD_CREATOR_CLOSE_ACCOUNT_BURST_EXIT_ENABLED },
@@ -170,6 +172,7 @@ export async function waitForExitStateWithLiquidityStop(
     let peakExitQuoteSol = Number.isFinite(initialPeakExitQuoteSol)
         ? Number(initialPeakExitQuoteSol)
         : (baselineExitQuoteSol || 0);
+    let previousExitQuoteSol = baselineExitQuoteSol;
     const activeWinnerProfile: WinnerManagementProfile = winnerProfile || {
         enabled: CONFIG.HOLD_WINNER_MANAGEMENT_ENABLED,
         checkIntervalMs: CONFIG.HOLD_WINNER_CHECK_INTERVAL_MS,
@@ -299,6 +302,32 @@ export async function waitForExitStateWithLiquidityStop(
                         logHoldSummary("winner trailing stop");
                         return { state: s, exitReason: "winner trailing stop" };
                     }
+                }
+            }
+
+            if (
+                CONFIG.HOLD_SINGLE_SWAP_SHOCK_EXIT_ENABLED &&
+                Date.now() - startedAtMs >= Math.max(0, CONFIG.HOLD_SINGLE_SWAP_SHOCK_MIN_HOLD_MS) &&
+                Date.now() - lastSingleSwapShockCheckAtMs >= scaledInterval(CONFIG.HOLD_SINGLE_SWAP_SHOCK_CHECK_INTERVAL_MS)
+            ) {
+                lastSingleSwapShockCheckAtMs = Date.now();
+                const currentExitQuoteSol = getExitQuoteSolFromState(s, tokenMint, tokenOutAtomic);
+                if (
+                    previousExitQuoteSol !== null &&
+                    previousExitQuoteSol > 0 &&
+                    currentExitQuoteSol !== null &&
+                    Number.isFinite(currentExitQuoteSol)
+                ) {
+                    const dropPct = ((previousExitQuoteSol - currentExitQuoteSol) / previousExitQuoteSol) * 100;
+                    if (dropPct >= Math.abs(CONFIG.HOLD_SINGLE_SWAP_SHOCK_DROP_PCT)) {
+                        recordTrigger("singleSwapShock", true, `${previousExitQuoteSol.toFixed(6)}->${currentExitQuoteSol.toFixed(6)} drop=${dropPct.toFixed(2)}%`);
+                        console.log(`⚠️ SINGLE SWAP SHOCK EXIT: ${previousExitQuoteSol.toFixed(6)} -> ${currentExitQuoteSol.toFixed(6)} SOL (drop ${dropPct.toFixed(2)}%)`);
+                        logHoldSummary("single swap shock");
+                        return { state: s, exitReason: "single swap shock" };
+                    }
+                }
+                if (currentExitQuoteSol !== null && Number.isFinite(currentExitQuoteSol) && currentExitQuoteSol > 0) {
+                    previousExitQuoteSol = currentExitQuoteSol;
                 }
             }
 

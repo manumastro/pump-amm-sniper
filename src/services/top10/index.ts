@@ -69,7 +69,13 @@ export function createTop10Service(deps: Top10Deps) {
         tokenMint: string,
         poolAddress: string,
         ctx: string,
-    ): Promise<{ ok: boolean; reason?: string; top10Pct?: number }> {
+    ): Promise<{
+        ok: boolean;
+        reason?: string;
+        top10Pct?: number;
+        top1ExternalHolderPct?: number;
+        top1ExternalHolderOwner?: string | null;
+    }> {
         if (!CONFIG.PRE_BUY_TOP10_CHECK_ENABLED) {
             stageLog(ctx, "TOP10", "check disabled");
             return { ok: true };
@@ -129,11 +135,20 @@ export function createTop10Service(deps: Top10Deps) {
                 );
 
                 let top10Raw = 0;
+                let top1ExternalRaw = 0;
+                let top1ExternalOwner: string | null = null;
                 for (let i = 0; i < top10Accounts.length; i++) {
                     const amount = Number(top10Accounts[i].amount || "0");
                     if (!Number.isFinite(amount) || amount <= 0) continue;
 
                     const owner = (parsed[i] as any)?.value?.data?.parsed?.info?.owner as string | undefined;
+                    const ownerOrUnknown = owner || "unknown";
+
+                    if (ownerOrUnknown !== poolAddress && amount > top1ExternalRaw) {
+                        top1ExternalRaw = amount;
+                        top1ExternalOwner = owner || null;
+                    }
+
                     if (CONFIG.PRE_BUY_TOP10_EXCLUDE_POOL && owner && owner === poolAddress) {
                         continue;
                     }
@@ -142,17 +157,47 @@ export function createTop10Service(deps: Top10Deps) {
                 }
 
                 const top10Pct = (top10Raw / totalSupplyRaw) * 100;
-                stageLog(ctx, "TOP10", `${top10Pct.toFixed(2)}% (max ${CONFIG.PRE_BUY_TOP10_MAX_PCT.toFixed(2)}%)`);
+                const top1ExternalHolderPct = (top1ExternalRaw / totalSupplyRaw) * 100;
+                stageLog(
+                    ctx,
+                    "TOP10",
+                    `${top10Pct.toFixed(2)}% (max ${CONFIG.PRE_BUY_TOP10_MAX_PCT.toFixed(2)}%), ` +
+                    `top1_ext=${top1ExternalHolderPct.toFixed(2)}% ` +
+                    `(max ${CONFIG.PRE_BUY_TOP1_EXTERNAL_HOLDER_MAX_PCT.toFixed(2)}%)`
+                );
+
+                if (
+                    CONFIG.PRE_BUY_TOP1_EXTERNAL_HOLDER_CHECK_ENABLED &&
+                    top1ExternalHolderPct > CONFIG.PRE_BUY_TOP1_EXTERNAL_HOLDER_MAX_PCT
+                ) {
+                    return {
+                        ok: false,
+                        reason:
+                            `top1 external holder concentration ${top1ExternalHolderPct.toFixed(2)}% ` +
+                            `> ${CONFIG.PRE_BUY_TOP1_EXTERNAL_HOLDER_MAX_PCT.toFixed(2)}%` +
+                            (top1ExternalOwner ? ` (owner ${top1ExternalOwner})` : ""),
+                        top10Pct,
+                        top1ExternalHolderPct,
+                        top1ExternalHolderOwner: top1ExternalOwner,
+                    };
+                }
 
                 if (top10Pct > CONFIG.PRE_BUY_TOP10_MAX_PCT) {
                     return {
                         ok: false,
                         reason: `top10 concentration ${top10Pct.toFixed(2)}% > ${CONFIG.PRE_BUY_TOP10_MAX_PCT.toFixed(2)}%`,
                         top10Pct,
+                        top1ExternalHolderPct,
+                        top1ExternalHolderOwner: top1ExternalOwner,
                     };
                 }
 
-                return { ok: true, top10Pct };
+                return {
+                    ok: true,
+                    top10Pct,
+                    top1ExternalHolderPct,
+                    top1ExternalHolderOwner: top1ExternalOwner,
+                };
             } catch (e: any) {
                 lastUnavailableReason = e?.message || lastUnavailableReason;
                 if (attempt < maxAttempts) {

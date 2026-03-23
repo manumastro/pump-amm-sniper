@@ -121,6 +121,7 @@ Regole:
 - calcola la percentuale detenuta dai top 10 holder
 - puo escludere il pool se `PRE_BUY_TOP10_EXCLUDE_POOL = true`
 - fallisce se supera `PRE_BUY_TOP10_MAX_PCT`
+- opzionale: blocca anche se il maggiore holder esterno al pool supera `PRE_BUY_TOP1_EXTERNAL_HOLDER_MAX_PCT`
 
 Esito:
 - se supera soglia: `SKIP` con motivo `top10 concentration ...`
@@ -567,6 +568,17 @@ Esce se:
 Exit reason:
 - `sell quote collapse`
 
+### 8.11 Single swap shock
+
+Esce se:
+- tra due campioni consecutivi la `sell quote` crolla oltre soglia in pochi istanti
+
+Scopo:
+- intercettare dump violenti da whale/wallet esterni anche quando il creator-risk resta pulito
+
+Exit reason:
+- `single swap shock`
+
 ### 8.6 Pool churn
 
 Esce se:
@@ -688,6 +700,7 @@ Se vuoi capire un caso velocemente:
 | Ultra-short rug guard | pre-buy finale | ON | skip | `ultra-short rug guard ...` |
 | Quote sanity | pre-buy finale | ON | skip | `quote sanity ...x spot` |
 | Top10 concentration | pre-entry finale | ON | skip | `top10 concentration ...` |
+| Top1 external holder concentration | pre-entry finale | ON | skip | `top1 external holder concentration ...` |
 | Dev holdings | post-resolve / gate | ON | skip | `Dev holds too much ...` |
 
 ### Controlli creator-risk pre-entry
@@ -736,6 +749,7 @@ Se vuoi capire un caso velocemente:
 | Winner take profit | hold | ON | exit | `winner take profit` |
 | Winner trailing stop | hold | ON | exit | `winner trailing stop` |
 | Sell quote collapse | hold | ON | exit | `sell quote collapse` |
+| Single swap shock | hold | ON | exit | `single swap shock` |
 | Pool churn | hold | ON | exit | `pool churn` |
 | Creator outbound | hold | ON | exit | `creator outbound` |
 | Creator close-account burst | hold | ON | exit | `creator close-account burst` |

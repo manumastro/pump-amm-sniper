@@ -1,0 +1,1186 @@
+{
+  "query": {
+    "creator": "EGfYPj1AT4KVLx2xFKN9WD73dvRVVU5NBXrCt726SJzZ",
+    "token": null,
+    "tabs": [
+      "Transactions",
+      "Transfers",
+      "Activities"
+    ],
+    "scope": "creator",
+    "tz": "Europe/Berlin",
+    "from_local": "2026-03-23T15:05:00+01:00",
+    "to_local": "2026-03-23T15:15:00+01:00",
+    "from_utc": "2026-03-23T14:05:00+00:00",
+    "to_utc": "2026-03-23T14:15:00+00:00",
+    "max_pages": 8,
+    "headless": false
+  },
+  "account": "EGfYPj1AT4KVLx2xFKN9WD73dvRVVU5NBXrCt726SJzZ",
+  "token_summary": null,
+  "results": {
+    "creator": {
+      "Transactions": {
+        "rows_seen": [
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:32:16+00:00",
+            "timestamp_local": "2026-03-23T15:32:16+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "svzP8ZPp76YiK74hPeh1JZcX4hgWiaBdiHcKGLZpiHeUx6CXRP2EmJsRUJATGnGSitqDBcN38WssoSiWhVg5DB6\n\t14:32:16 Mar 23, 2026\n\tAMM: Buy\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.4534\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:32:09+00:00",
+            "timestamp_local": "2026-03-23T15:32:09+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "39K2Wc8qic6VKWmM3eBYkNsG7Wykg1j236U5UzP2zt4GrgcXYXVG4eWtm6B1HV1LenpaV5p3RnsxYT5r6Kr6r3ms\n\t14:32:09 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.3607\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:32:03+00:00",
+            "timestamp_local": "2026-03-23T15:32:03+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "2EtgLok27LVrhBmF9GQiC4M5jZBBFKCoJjUiJHvU7FvxyZBdZeLQw9uN3TD7diWh1msMbHfwiC6oHHbchLtF8k2n\n\t14:32:03 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.3416\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:31:03+00:00",
+            "timestamp_local": "2026-03-23T15:31:03+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "5SjFgyqNGY3YP3AtwKeNosUDNjmTVyVWZzFrp5JYYkbR34xTXT9u5X6wcwjxNvhzaGbotZv1UDHf93gmxcSc8KQU\n\t14:31:03 Mar 23, 2026\n\tTransfer\n\ttg\ud83c\udf40alphastrikesol\u2796x100-signals.sol\n\t0.000005021"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:30:42+00:00",
+            "timestamp_local": "2026-03-23T15:30:42+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "4KrZMjJq3WEtzQDQz1jiTXJXVUzLivyaARax93GV3FFwvEEyB372GrEJpy6kAAcTVhqhDid7MausotsHUG2dQqc\n\t14:30:42 Mar 23, 2026\n\tAMM: Buy\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.2644\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:30:37+00:00",
+            "timestamp_local": "2026-03-23T15:30:37+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "4YFiPFwJ5eY5V1xNB8QRYQRsnS45c9x4AXfUnq9xdt5q8XBY6hY6wYsk5KYWdK91aDzjAUBpZHBvDCL22oqFnSjL\n\t14:30:37 Mar 23, 2026\n\tAMM: Buy\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.2669\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:30:36+00:00",
+            "timestamp_local": "2026-03-23T15:30:36+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "5cgF7yPoZrDp8foBgu1vqp3Lp9i7gfX796FqCmB5hxTSdKEQJkHY9cZ5hNrodAH5vUza8mycoKrW1hn8qC2zUZiL\n\t14:30:36 Mar 23, 2026\n\tAMM: Buy\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.3355\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:30:27+00:00",
+            "timestamp_local": "2026-03-23T15:30:27+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "HWWU67ss4NGff32wrBLmSvYNjGDtU5EWNXmY3eb3DGWDWnMdw4s55dmcyVy8mA1xxQoQzR4tabnoug6gSaDtmDB\n\t14:30:27 Mar 23, 2026\n\tAMM: Buy\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.08917\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:27:27+00:00",
+            "timestamp_local": "2026-03-23T15:27:27+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "5n5LNdTLXeAX8S8Ffk9n65e32VeUw8keb9BzFDWELv9t6kziEXQb8w7c3ErbuR6qLqUKM5BWMM1XRKBzSexG8KV5\n\t14:27:27 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.2874\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:26:36+00:00",
+            "timestamp_local": "2026-03-23T15:26:36+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "wgAafdUVwPo52KzxXvB9m7rgPD9NYbDuSoTpn2tR87GWHEua4PD6EUfG7detTEHrH1XLAgVbTvr1bXbCaNARskK\n\t14:26:36 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.1948\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 2,
+            "timestamp_utc": "2026-03-23T14:26:26+00:00",
+            "timestamp_local": "2026-03-23T15:26:26+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "5dhKZxDrcRfFaxdnAbYY4FTjjwU6ao5juMaAUQT9w91iAzhYuqDEAVR4Kz3LiWTAhytWf8WBtwDkXaoCpgvuiVgy\n\t14:26:26 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.1729\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 2,
+            "timestamp_utc": "2026-03-23T14:26:02+00:00",
+            "timestamp_local": "2026-03-23T15:26:02+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "5qV8ra78MPp7ySoxLJbkhtojyEF6SqVk1TzKic8mo2Ny5TW4pR8bpvXMjeJenauKn9Gb3R4wRswXT8iFRpNFXcxw\n\t14:26:02 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.5721\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 2,
+            "timestamp_utc": "2026-03-23T14:25:57+00:00",
+            "timestamp_local": "2026-03-23T15:25:57+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "4uFidHH54eiQxzVryZ4BREFbU3cwap1acJ9ayjAZyuLTwSNiaWB9CTvMP2q3tsbLt9bsFWroE8Zr6SxoE8gsQtaG\n\t14:25:57 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.5556\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 2,
+            "timestamp_utc": "2026-03-23T14:24:09+00:00",
+            "timestamp_local": "2026-03-23T15:24:09+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "44P5JmTADTsawS1Rd5bLvFuRHDJaM4kjYUkmybmS1JNoAxM5QVsAMmf9M2ar9gwAuKADKEF8Y8YLxVTdZNWxKMjE\n\t14:24:09 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.3843\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 2,
+            "timestamp_utc": "2026-03-23T14:23:43+00:00",
+            "timestamp_local": "2026-03-23T15:23:43+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "3VH8vqMQMWp8x11bBXkk8avstEBhbZmhHhkEq4mK1iFVRCzwrYRf3cMT1RSbaSpD1G4GNdSuKB46ScBty15yQuKE\n\t14:23:43 Mar 23, 2026\n\tAMM: Buy\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.1812\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 2,
+            "timestamp_utc": "2026-03-23T14:23:38+00:00",
+            "timestamp_local": "2026-03-23T15:23:38+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "MWWwux2R1iW4ztpxwRLJGio4JKzgaLfKFwZcg8zszZPHozXmfnLNx1HYP6PoQsm8j7WNfmbev9r8tew5VxJLdVv\n\t14:23:38 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.1863\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 2,
+            "timestamp_utc": "2026-03-23T14:23:24+00:00",
+            "timestamp_local": "2026-03-23T15:23:24+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "2PB49HNDbfVe1dVJ8bzdw3nth96YYgHyAZjTZwxt3HMfqkTteHPfz7HZhK3nNDGvV61SutRCGQLhWijyT9rifpFW\n\t14:23:24 Mar 23, 2026\n\tAMM: Buy\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.1115\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 2,
+            "timestamp_utc": "2026-03-23T14:22:33+00:00",
+            "timestamp_local": "2026-03-23T15:22:33+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "5aAdorY6EXwwfXYpb3qi2cAwA1BxAvMM8NtVmWZiSaBataKmqGCg1Ly4WnWwcdsfNNeoSushCCso421xMfkJBnyC\n\t14:22:33 Mar 23, 2026\n\tAMM: Buy\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.1655\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 2,
+            "timestamp_utc": "2026-03-23T14:21:29+00:00",
+            "timestamp_local": "2026-03-23T15:21:29+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "2tuafrEmsu3J9kVUCMHwt1FKUjdMvguYSf9tYpUErR3GufbgUJqHxhESoNKsbZ9qB8oYWikB7x3k5Y9NHk1EHJGf\n\t14:21:29 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.2405\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 2,
+            "timestamp_utc": "2026-03-23T14:21:22+00:00",
+            "timestamp_local": "2026-03-23T15:21:22+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "5pGHsFAYMu1sHiGDQWMkPjSfxeVhFJEHMc3eb55Ks5ttwqyUhDzFWyEvxi6n9UZGifiGqnqaLh1NB8LvKrD4d9nk\n\t14:21:22 Mar 23, 2026\n\tAMM: Buy\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.2043\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 3,
+            "timestamp_utc": "2026-03-23T14:20:55+00:00",
+            "timestamp_local": "2026-03-23T15:20:55+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "T7NdvxXDfusysbZkrZh5TMzTu3r2ndiXLdbBuvJTLGyGdtmBruYg1ATQVgEUzRo3pRtxtpYatuRJHte4kdN9DET\n\t14:20:55 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.151\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 3,
+            "timestamp_utc": "2026-03-23T14:19:49+00:00",
+            "timestamp_local": "2026-03-23T15:19:49+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "2cF1P3kK46vC9KYmF77Lq3UYyS7gMib37bjLc9Xc8o426fz21LoxvX6HTM4Szx19jcqbTfVyTSD8VJ4eEEtX4pim\n\t14:19:49 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.148\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 3,
+            "timestamp_utc": "2026-03-23T14:19:38+00:00",
+            "timestamp_local": "2026-03-23T15:19:38+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "2ESQ2N4DZsC3rFBCVC3rBB3w5sahtiN5Ri9VyfkojR9SV6jhbQrkXamXjxTadvYw1YWpBYnqp6L6C2AozdXXiN3U\n\t14:19:38 Mar 23, 2026\n\tAMM: Buy\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.3885\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 3,
+            "timestamp_utc": "2026-03-23T14:18:58+00:00",
+            "timestamp_local": "2026-03-23T15:18:58+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "4rLQHiZL8veMcxUFNxNA1vfT3z7JWCww4azdEdMdfBvRDpzetHqrPe8cPuXE63wnGgeyMifFebTJE1r1wHrq9c1y\n\t14:18:58 Mar 23, 2026\n\tAMM: Buy\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.544\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 3,
+            "timestamp_utc": "2026-03-23T14:18:57+00:00",
+            "timestamp_local": "2026-03-23T15:18:57+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "1Z8goAh8qZNc1VWTkn7MRTsCZApJ6SezAHiFUZd6BNPhb9nba9V3P6MQ7vkZ1fticWQwgFjWAZU8BCJDqkwwyir\n\t14:18:57 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.2681\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 3,
+            "timestamp_utc": "2026-03-23T14:18:55+00:00",
+            "timestamp_local": "2026-03-23T15:18:55+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "21fc2MPxST7JfV1ZpGBzsgMr1AihrBSSRyB787f8fYy39rJTWAtZKbRqboM4Yfd9teYLnXcfiyWk9tosEm2uYAog\n\t14:18:55 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.4809\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 3,
+            "timestamp_utc": "2026-03-23T14:17:49+00:00",
+            "timestamp_local": "2026-03-23T15:17:49+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "32JJzcHtTPoVx8BYvNfM3N8qujsE5AVYvt31ssSfMWQk3KDUHDsLFudti8Vh7Bx8iyTpm38TBrkC24j4fwvWHpx1\n\t14:17:49 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.153\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 3,
+            "timestamp_utc": "2026-03-23T14:17:34+00:00",
+            "timestamp_local": "2026-03-23T15:17:34+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "aS9eCmTBKJ71RBkgcLCQnziheVkBjw6BnUkAhygBq9v1kmikPf8uF9aKhvSJeXKHqDeeZebU6Aey7xQRC68wJ9T\n\t14:17:34 Mar 23, 2026\n\tAMM: Buy\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.5427\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 3,
+            "timestamp_utc": "2026-03-23T14:17:31+00:00",
+            "timestamp_local": "2026-03-23T15:17:31+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "3ZBdpME4nS8mokNufXg66yF59kQUm5GdjcyYYZiokCqmd7E4DMHABoyETqbH1pEo9VeLTp1ACmyx34ks1RqpisWT\n\t14:17:31 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.06997\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 3,
+            "timestamp_utc": "2026-03-23T14:16:16+00:00",
+            "timestamp_local": "2026-03-23T15:16:16+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "f2uvWHjaYVR9dUFkP5HLY4TJvm7VQM4FzzfMeMv8fX7dbeELMz9at8cFfp1zdwJ2xmc2mngsrafd4UJUQUkqhTx\n\t14:16:16 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.03386\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 4,
+            "timestamp_utc": "2026-03-23T14:15:35+00:00",
+            "timestamp_local": "2026-03-23T15:15:35+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "2azZiqqvhwQEpJhpDXsdFcpmRLxA7ySuZqS2pnX6e5nT4bxmd3jCjSXjs6tAQFQ1Z6bd3CA1jYiJ1PqCtQadcMf9\n\t14:15:35 Mar 23, 2026\n\tTransfer\n\t4VteHU5Z7z...2cKz9v6Hy6\n\t0.002079\n\t+1"
+          },
+          {
+            "tab": "Transactions",
+            "page": 4,
+            "timestamp_utc": "2026-03-23T14:15:11+00:00",
+            "timestamp_local": "2026-03-23T15:15:11+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "2a5pViMAUGHBCpAh1eTiNrQNuWVqannYALcV57iWYyL44ZHqw1b8mwUJm4w5svQzUDBcj78JbPmXekk93iHKH8Yj\n\t14:15:11 Mar 23, 2026\n\tTransfer\n\t4VteHU5Z7z...2cKz9v6Hy6\n\t1.8"
+          },
+          {
+            "tab": "Transactions",
+            "page": 4,
+            "timestamp_utc": "2026-03-23T14:14:42+00:00",
+            "timestamp_local": "2026-03-23T15:14:42+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "2t8MtmiaZopXTSSRhNJEqHy9EZZXfxMFKTnU8skr7ix9Zi43QMZL5WXo47SmvEPEHwVKcwv5wtigkXK1LKJhDh2f\n\t14:14:42 Mar 23, 2026\n\tTransfer\n\tFgJN1ucbeP...7bYzD9z5ax\n\t0.000015"
+          },
+          {
+            "tab": "Transactions",
+            "page": 4,
+            "timestamp_utc": "2026-03-23T14:14:31+00:00",
+            "timestamp_local": "2026-03-23T15:14:31+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "24eZeJ66jhuZxjgP6uEoq9u6fmvB8ZRgg55sRML9UDoLXmade8bUtuQa6sRgarAULUmPqUhTdmwTSdNzejet6yTk\n\t14:14:31 Mar 23, 2026\n\tTransfer\n\tEGfYPj1AT4...rCt726SJzZ\n\t106.98"
+          },
+          {
+            "tab": "Transactions",
+            "page": 4,
+            "timestamp_utc": "2026-03-23T14:14:13+00:00",
+            "timestamp_local": "2026-03-23T15:14:13+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "4P4F2YifK2MVJkfCBxLHfFzmqZZUeuSoCGHxiEVQQfVkFUisSbzeFMabsQxVSRJLfQpPUzYS4PFLvL5AqBNkNk2g\n\t14:14:13 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.5953\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 4,
+            "timestamp_utc": "2026-03-23T14:13:50+00:00",
+            "timestamp_local": "2026-03-23T15:13:50+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "375QStcC9oUHXSifvPkPVHvYz6BaX6bzDyCFABpMKfG6gttcU8dZ5xGeVev9R6w3j5n3jxfdiviVdkhN8sB4mJwQ\n\t14:13:50 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.5766\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 4,
+            "timestamp_utc": "2026-03-23T14:13:46+00:00",
+            "timestamp_local": "2026-03-23T15:13:46+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "4RdTVnLrCn9wwNm4LTZRKKRyeQwFxxdLK4XZMD3sJAihpHGEjpREbneXMYHGFLYJvKheNHQxHrys5U81NCRpTmCU\n\t14:13:46 Mar 23, 2026\n\tAMM: Buy\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.08249\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 4,
+            "timestamp_utc": "2026-03-23T14:13:00+00:00",
+            "timestamp_local": "2026-03-23T15:13:00+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "3HW9w8LqtwTe9X7A4wMZBrCFcSHvND9aqDfbVKSi4qwRdtnPXDU1MBNJiMh1V79jnMgt3bue4nYqnCw8RM9AdEcF\n\t14:13:00 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.2327\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 4,
+            "timestamp_utc": "2026-03-23T14:11:41+00:00",
+            "timestamp_local": "2026-03-23T15:11:41+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "21PSdcNxSts54QcRybgNtNTfxuqxzSXK2ZyD5JFkzDRhh87VaR9Yuu9wfR5cppRD4eiZ18S3Qb3DpgtjQ9AxexNp\n\t14:11:41 Mar 23, 2026\n\tAMM: Buy\n+2\n\tEGfYPj1AT4...rCt726SJzZ\n\t107.9\n\tPF\n+3"
+          },
+          {
+            "tab": "Transactions",
+            "page": 4,
+            "timestamp_utc": "2026-03-23T14:11:38+00:00",
+            "timestamp_local": "2026-03-23T15:11:38+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "GoiNzdVsY76jxjPWrm3R3QWBbihTPtc2xUPa3YTER6AMnmGJ5UDnNvNwES8Sfk1oZDzUxhjtFN7iuBQumhezejV\n\t14:11:38 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.3333\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 5,
+            "timestamp_utc": "2026-03-23T14:11:35+00:00",
+            "timestamp_local": "2026-03-23T15:11:35+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "613W5J69kT7otncERb1YjP3trsthSRmkzyMF3Typ2Fh8vjWfhBZnEQ8xFxjSkxYJphQE2SoMHjRJTTNqYmJpiTuU\n\t14:11:35 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.1024\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 5,
+            "timestamp_utc": "2026-03-23T14:11:35+00:00",
+            "timestamp_local": "2026-03-23T15:11:35+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "3z7QoXAJuLnPkcvvjuipoz733CL4wJpWueXVkXJZVyTBHFUuPSbAgpqdo4FYrKdeJxk71TXMYBdopfF9PMtpVBeG\n\t14:11:35 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.1918\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 5,
+            "timestamp_utc": "2026-03-23T14:11:28+00:00",
+            "timestamp_local": "2026-03-23T15:11:28+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "Wv3Z4UYVEzbZ5UcdggE5NQWp1w2Duyyk158ZZBop4NsLanpT6vJ6YLSR1MJUtHUt5GaVDMsMFLZ4D4GKE4PVCt9\n\t14:11:28 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.1855\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 5,
+            "timestamp_utc": "2026-03-23T14:11:12+00:00",
+            "timestamp_local": "2026-03-23T15:11:12+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "5Z1qezosXL8C8ZpetCcu36K2QYKADWHaPB5VeNYz9WWQrjS4C7sxF4qb3kz2P5iLN8vQtN6vK1Feeyxae3PLSVrn\n\t14:11:12 Mar 23, 2026\n\tTransfer\n\tFlip gg: #1 Solana Casino\ud83c\udf40\ud83c\udf40\ud83c\udf40.flip\ud83c\udf40gg.sol\n\t0.000005017"
+          },
+          {
+            "tab": "Transactions",
+            "page": 5,
+            "timestamp_utc": "2026-03-23T14:11:12+00:00",
+            "timestamp_local": "2026-03-23T15:11:12+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "2vGUWosYtWg67Jqwkt8bKUDphC2BxvUpH8287yFjQLx5pheD4TZpQexNVRv9YYdEu8eWFzkufa4Jvk2GQvenjAxN\n\t14:11:12 Mar 23, 2026\n\tTransfer\n\tAFXigaYuRK...jvJRztUGb6\n\t0.000005017"
+          },
+          {
+            "tab": "Transactions",
+            "page": 5,
+            "timestamp_utc": "2026-03-23T14:11:09+00:00",
+            "timestamp_local": "2026-03-23T15:11:09+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "3AaPXN5RFMFzQnKJnG7Ha65XEPJmQaQc9WgaJqN4ijw52wkGChGhcRiTzbckQPGainhUyapXHMiKQcBvoAshMoBe\n\t14:11:09 Mar 23, 2026\n\tTransfer\n\tAFXigaYuRK...jvJRztUGb6\n\t0.000005018"
+          },
+          {
+            "tab": "Transactions",
+            "page": 5,
+            "timestamp_utc": "2026-03-23T14:11:09+00:00",
+            "timestamp_local": "2026-03-23T15:11:09+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "3CXDm7W2YjwTMT6oi97aquLdVfSPrJXjxF58hfQY7xuDtHdLF56Gda6h3pA63VWumcjZCSN4cxGWXS4mg9sqc2WM\n\t14:11:09 Mar 23, 2026\n\tTransfer\n\tFlip gg: #1 Solana Casino\ud83c\udf40\ud83c\udf40\ud83c\udf40.flip\ud83c\udf40gg.sol\n\t0.000005018"
+          },
+          {
+            "tab": "Transactions",
+            "page": 5,
+            "timestamp_utc": "2026-03-23T14:11:04+00:00",
+            "timestamp_local": "2026-03-23T15:11:04+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "cBXHoNQReraPWGuGAMebjSMCYT1LEgshJiw8WiqqZA1XUoUxQzcWi9rBwqo9MEy7sZxiwJzGiQDzYcBBKSjgx7M\n\t14:11:04 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.1968\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 5,
+            "timestamp_utc": "2026-03-23T14:11:04+00:00",
+            "timestamp_local": "2026-03-23T15:11:04+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "3RG7DmA1iiU8Bm1GNVcDQW1gDoCsr22B4ZEpZbQsA55fvASdieRhiBqA83xKFM7N3fd2gEvVucP5ZMbdS3iZ6nFc\n\t14:11:04 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.3876\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 5,
+            "timestamp_utc": "2026-03-23T14:10:37+00:00",
+            "timestamp_local": "2026-03-23T15:10:37+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "2HZiLAD9oxsjVVrEaK4wVJQdy44zkeVCiZUUrZiz7EaBgCiAyaYWcwqpCbHNCVGkdm6ST2Nb4CQ2yWQ1w7eJDcxH\n\t14:10:37 Mar 23, 2026\n\tTransfer\n\t48qUd4z2Wo...5pWQZoMJbQ\n\t0.002079\n\t+1"
+          },
+          {
+            "tab": "Transactions",
+            "page": 6,
+            "timestamp_utc": "2026-03-23T14:09:56+00:00",
+            "timestamp_local": "2026-03-23T15:09:56+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "63pEYhKWD4s7B9CtCLuNA6LBu1rZv6VmdpbDtE5ZjwjJFatfLkTsWBPnSzFFrWvvJye4DZvsyQRkKqLJwbgL8Aom\n\t14:09:56 Mar 23, 2026\n\tTransfer\n\t48qUd4z2Wo...5pWQZoMJbQ\n\t1.8"
+          },
+          {
+            "tab": "Transactions",
+            "page": 6,
+            "timestamp_utc": "2026-03-23T14:09:35+00:00",
+            "timestamp_local": "2026-03-23T15:09:35+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "u6x1GPjP9qX2VhqcoKuYkotHtghvdauW6xtsURCgJKNvidCbjAwyXQ2LEzkGbfpc7pt3su1eaRvu3XbPXqJTXPu\n\t14:09:35 Mar 23, 2026\n\tTransfer\n\tTg\ud83d\udc49Sol Reapbot\ud83d\udc48| Up to 5x Return \u2705 \u9ad8\u8fbe5x\u56de\u62a5\u5957\u5229\u673a\u5668\u4eba \u7535\u62a5\ud83d\udc49Sol Reapbot\ud83d\udc48.mind-the-store.sol\n\t0.00000502"
+          },
+          {
+            "tab": "Transactions",
+            "page": 6,
+            "timestamp_utc": "2026-03-23T14:07:54+00:00",
+            "timestamp_local": "2026-03-23T15:07:54+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "24cxDKGva7tDQh4zmvqBDjib4CFFmgW24b2HJAzjjUY7qUvCAa4C12Wef2MKoYyqG6z9mTaUrRQJL2AxL4dpxUqL\n\t14:07:54 Mar 23, 2026\n\tTransfer\n\tEGfYPj1AT4...rCt726SJzZ\n\t2.46"
+          },
+          {
+            "tab": "Transactions",
+            "page": 6,
+            "timestamp_utc": "2026-03-23T14:07:39+00:00",
+            "timestamp_local": "2026-03-23T15:07:39+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "2gNne7LW1kGNry8UeYxqkw2C9gSeLrXcPFu9MY92A4sc6a8Db8bq8Fc5eY7bHoZgCz7dQ2VgBnCrGoQp4DgfRwwq\n\t14:07:39 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.06048\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 6,
+            "timestamp_utc": "2026-03-23T14:07:38+00:00",
+            "timestamp_local": "2026-03-23T15:07:38+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "2XoQWbmjQtWDXvvn42EkrVDdbCvWQ3GUe4XYnf8wPqsMyRP1oDr7iuXpko4fLjuYEauV9iHGWiZo2fHzCg4QRUbw\n\t14:07:38 Mar 23, 2026\n\tTransfer\n\tTg\ud83d\udc49Sol Reapbot\ud83d\udc48| Up to 5x Return \u2705 \u9ad8\u8fbe5x\u56de\u62a5\u5957\u5229\u673a\u5668\u4eba \u7535\u62a5\ud83d\udc49Sol Reapbot\ud83d\udc48.mind-the-store.sol\n\t0.00000502"
+          },
+          {
+            "tab": "Transactions",
+            "page": 6,
+            "timestamp_utc": "2026-03-23T14:06:54+00:00",
+            "timestamp_local": "2026-03-23T15:06:54+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "3cAR8RA4dNuiqvUKeP2wfRno8xMxg6if8VANC4x34PNf11aG7Yf7SHTSWUVfNKiABRvCxbt5Q3wKgBUJXqyZNg6Z\n\t14:06:54 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.4247\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 6,
+            "timestamp_utc": "2026-03-23T14:05:52+00:00",
+            "timestamp_local": "2026-03-23T15:05:52+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "3CB2cJxDvXhgQ4gJaa4Yg6QHi7U3FVLiofhX8FGzLTZJLSM6ZNmQC2NWJ7YkUEMBCjL2Z33h4uUB3RTNLaFJfqkJ\n\t14:05:52 Mar 23, 2026\n\tAMM: Buy\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.5196\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 6,
+            "timestamp_utc": "2026-03-23T14:04:53+00:00",
+            "timestamp_local": "2026-03-23T15:04:53+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "2zEymuLunMbRBJsgJQXeF4SENM7Qz1QyjojLZP6ULksUwuV7Fs7Jpy1TrTJd6knEyXyY7haDcXCkYtBNo96CUmfw\n\t14:04:53 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.3191\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 6,
+            "timestamp_utc": "2026-03-23T14:04:46+00:00",
+            "timestamp_local": "2026-03-23T15:04:46+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "2bsKiichsBncf4ZWJ3CFmqfhT7ha4z5fubCRSFgaPfQMEigVyv3QfMYwc2h7AXedP6F3Pw3Qc77FzWNTRAnCPKqc\n\t14:04:46 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.03787\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 6,
+            "timestamp_utc": "2026-03-23T14:04:23+00:00",
+            "timestamp_local": "2026-03-23T15:04:23+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "4Y3rtoZTfK3Lms2ZUKGX1j7r3J5W961kXWg5DkuCuVPtPtXvbBvZNef4g29XVvc57kVdFkdCdtFja4qfvZmkmhNJ\n\t14:04:23 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.4347\n\tPF\n+4"
+          }
+        ],
+        "rows_in_range": [
+          {
+            "tab": "Transactions",
+            "page": 4,
+            "timestamp_utc": "2026-03-23T14:14:42+00:00",
+            "timestamp_local": "2026-03-23T15:14:42+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "2t8MtmiaZopXTSSRhNJEqHy9EZZXfxMFKTnU8skr7ix9Zi43QMZL5WXo47SmvEPEHwVKcwv5wtigkXK1LKJhDh2f\n\t14:14:42 Mar 23, 2026\n\tTransfer\n\tFgJN1ucbeP...7bYzD9z5ax\n\t0.000015"
+          },
+          {
+            "tab": "Transactions",
+            "page": 4,
+            "timestamp_utc": "2026-03-23T14:14:31+00:00",
+            "timestamp_local": "2026-03-23T15:14:31+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "24eZeJ66jhuZxjgP6uEoq9u6fmvB8ZRgg55sRML9UDoLXmade8bUtuQa6sRgarAULUmPqUhTdmwTSdNzejet6yTk\n\t14:14:31 Mar 23, 2026\n\tTransfer\n\tEGfYPj1AT4...rCt726SJzZ\n\t106.98"
+          },
+          {
+            "tab": "Transactions",
+            "page": 4,
+            "timestamp_utc": "2026-03-23T14:14:13+00:00",
+            "timestamp_local": "2026-03-23T15:14:13+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "4P4F2YifK2MVJkfCBxLHfFzmqZZUeuSoCGHxiEVQQfVkFUisSbzeFMabsQxVSRJLfQpPUzYS4PFLvL5AqBNkNk2g\n\t14:14:13 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.5953\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 4,
+            "timestamp_utc": "2026-03-23T14:13:50+00:00",
+            "timestamp_local": "2026-03-23T15:13:50+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "375QStcC9oUHXSifvPkPVHvYz6BaX6bzDyCFABpMKfG6gttcU8dZ5xGeVev9R6w3j5n3jxfdiviVdkhN8sB4mJwQ\n\t14:13:50 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.5766\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 4,
+            "timestamp_utc": "2026-03-23T14:13:46+00:00",
+            "timestamp_local": "2026-03-23T15:13:46+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "4RdTVnLrCn9wwNm4LTZRKKRyeQwFxxdLK4XZMD3sJAihpHGEjpREbneXMYHGFLYJvKheNHQxHrys5U81NCRpTmCU\n\t14:13:46 Mar 23, 2026\n\tAMM: Buy\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.08249\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 4,
+            "timestamp_utc": "2026-03-23T14:13:00+00:00",
+            "timestamp_local": "2026-03-23T15:13:00+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "3HW9w8LqtwTe9X7A4wMZBrCFcSHvND9aqDfbVKSi4qwRdtnPXDU1MBNJiMh1V79jnMgt3bue4nYqnCw8RM9AdEcF\n\t14:13:00 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.2327\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 4,
+            "timestamp_utc": "2026-03-23T14:11:41+00:00",
+            "timestamp_local": "2026-03-23T15:11:41+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "21PSdcNxSts54QcRybgNtNTfxuqxzSXK2ZyD5JFkzDRhh87VaR9Yuu9wfR5cppRD4eiZ18S3Qb3DpgtjQ9AxexNp\n\t14:11:41 Mar 23, 2026\n\tAMM: Buy\n+2\n\tEGfYPj1AT4...rCt726SJzZ\n\t107.9\n\tPF\n+3"
+          },
+          {
+            "tab": "Transactions",
+            "page": 4,
+            "timestamp_utc": "2026-03-23T14:11:38+00:00",
+            "timestamp_local": "2026-03-23T15:11:38+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "GoiNzdVsY76jxjPWrm3R3QWBbihTPtc2xUPa3YTER6AMnmGJ5UDnNvNwES8Sfk1oZDzUxhjtFN7iuBQumhezejV\n\t14:11:38 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.3333\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 5,
+            "timestamp_utc": "2026-03-23T14:11:35+00:00",
+            "timestamp_local": "2026-03-23T15:11:35+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "613W5J69kT7otncERb1YjP3trsthSRmkzyMF3Typ2Fh8vjWfhBZnEQ8xFxjSkxYJphQE2SoMHjRJTTNqYmJpiTuU\n\t14:11:35 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.1024\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 5,
+            "timestamp_utc": "2026-03-23T14:11:35+00:00",
+            "timestamp_local": "2026-03-23T15:11:35+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "3z7QoXAJuLnPkcvvjuipoz733CL4wJpWueXVkXJZVyTBHFUuPSbAgpqdo4FYrKdeJxk71TXMYBdopfF9PMtpVBeG\n\t14:11:35 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.1918\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 5,
+            "timestamp_utc": "2026-03-23T14:11:28+00:00",
+            "timestamp_local": "2026-03-23T15:11:28+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "Wv3Z4UYVEzbZ5UcdggE5NQWp1w2Duyyk158ZZBop4NsLanpT6vJ6YLSR1MJUtHUt5GaVDMsMFLZ4D4GKE4PVCt9\n\t14:11:28 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.1855\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 5,
+            "timestamp_utc": "2026-03-23T14:11:12+00:00",
+            "timestamp_local": "2026-03-23T15:11:12+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "5Z1qezosXL8C8ZpetCcu36K2QYKADWHaPB5VeNYz9WWQrjS4C7sxF4qb3kz2P5iLN8vQtN6vK1Feeyxae3PLSVrn\n\t14:11:12 Mar 23, 2026\n\tTransfer\n\tFlip gg: #1 Solana Casino\ud83c\udf40\ud83c\udf40\ud83c\udf40.flip\ud83c\udf40gg.sol\n\t0.000005017"
+          },
+          {
+            "tab": "Transactions",
+            "page": 5,
+            "timestamp_utc": "2026-03-23T14:11:12+00:00",
+            "timestamp_local": "2026-03-23T15:11:12+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "2vGUWosYtWg67Jqwkt8bKUDphC2BxvUpH8287yFjQLx5pheD4TZpQexNVRv9YYdEu8eWFzkufa4Jvk2GQvenjAxN\n\t14:11:12 Mar 23, 2026\n\tTransfer\n\tAFXigaYuRK...jvJRztUGb6\n\t0.000005017"
+          },
+          {
+            "tab": "Transactions",
+            "page": 5,
+            "timestamp_utc": "2026-03-23T14:11:09+00:00",
+            "timestamp_local": "2026-03-23T15:11:09+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "3AaPXN5RFMFzQnKJnG7Ha65XEPJmQaQc9WgaJqN4ijw52wkGChGhcRiTzbckQPGainhUyapXHMiKQcBvoAshMoBe\n\t14:11:09 Mar 23, 2026\n\tTransfer\n\tAFXigaYuRK...jvJRztUGb6\n\t0.000005018"
+          },
+          {
+            "tab": "Transactions",
+            "page": 5,
+            "timestamp_utc": "2026-03-23T14:11:09+00:00",
+            "timestamp_local": "2026-03-23T15:11:09+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "3CXDm7W2YjwTMT6oi97aquLdVfSPrJXjxF58hfQY7xuDtHdLF56Gda6h3pA63VWumcjZCSN4cxGWXS4mg9sqc2WM\n\t14:11:09 Mar 23, 2026\n\tTransfer\n\tFlip gg: #1 Solana Casino\ud83c\udf40\ud83c\udf40\ud83c\udf40.flip\ud83c\udf40gg.sol\n\t0.000005018"
+          },
+          {
+            "tab": "Transactions",
+            "page": 5,
+            "timestamp_utc": "2026-03-23T14:11:04+00:00",
+            "timestamp_local": "2026-03-23T15:11:04+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "cBXHoNQReraPWGuGAMebjSMCYT1LEgshJiw8WiqqZA1XUoUxQzcWi9rBwqo9MEy7sZxiwJzGiQDzYcBBKSjgx7M\n\t14:11:04 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.1968\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 5,
+            "timestamp_utc": "2026-03-23T14:11:04+00:00",
+            "timestamp_local": "2026-03-23T15:11:04+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "3RG7DmA1iiU8Bm1GNVcDQW1gDoCsr22B4ZEpZbQsA55fvASdieRhiBqA83xKFM7N3fd2gEvVucP5ZMbdS3iZ6nFc\n\t14:11:04 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.3876\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 5,
+            "timestamp_utc": "2026-03-23T14:10:37+00:00",
+            "timestamp_local": "2026-03-23T15:10:37+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "2HZiLAD9oxsjVVrEaK4wVJQdy44zkeVCiZUUrZiz7EaBgCiAyaYWcwqpCbHNCVGkdm6ST2Nb4CQ2yWQ1w7eJDcxH\n\t14:10:37 Mar 23, 2026\n\tTransfer\n\t48qUd4z2Wo...5pWQZoMJbQ\n\t0.002079\n\t+1"
+          },
+          {
+            "tab": "Transactions",
+            "page": 6,
+            "timestamp_utc": "2026-03-23T14:09:56+00:00",
+            "timestamp_local": "2026-03-23T15:09:56+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "63pEYhKWD4s7B9CtCLuNA6LBu1rZv6VmdpbDtE5ZjwjJFatfLkTsWBPnSzFFrWvvJye4DZvsyQRkKqLJwbgL8Aom\n\t14:09:56 Mar 23, 2026\n\tTransfer\n\t48qUd4z2Wo...5pWQZoMJbQ\n\t1.8"
+          },
+          {
+            "tab": "Transactions",
+            "page": 6,
+            "timestamp_utc": "2026-03-23T14:09:35+00:00",
+            "timestamp_local": "2026-03-23T15:09:35+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "u6x1GPjP9qX2VhqcoKuYkotHtghvdauW6xtsURCgJKNvidCbjAwyXQ2LEzkGbfpc7pt3su1eaRvu3XbPXqJTXPu\n\t14:09:35 Mar 23, 2026\n\tTransfer\n\tTg\ud83d\udc49Sol Reapbot\ud83d\udc48| Up to 5x Return \u2705 \u9ad8\u8fbe5x\u56de\u62a5\u5957\u5229\u673a\u5668\u4eba \u7535\u62a5\ud83d\udc49Sol Reapbot\ud83d\udc48.mind-the-store.sol\n\t0.00000502"
+          },
+          {
+            "tab": "Transactions",
+            "page": 6,
+            "timestamp_utc": "2026-03-23T14:07:54+00:00",
+            "timestamp_local": "2026-03-23T15:07:54+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "24cxDKGva7tDQh4zmvqBDjib4CFFmgW24b2HJAzjjUY7qUvCAa4C12Wef2MKoYyqG6z9mTaUrRQJL2AxL4dpxUqL\n\t14:07:54 Mar 23, 2026\n\tTransfer\n\tEGfYPj1AT4...rCt726SJzZ\n\t2.46"
+          },
+          {
+            "tab": "Transactions",
+            "page": 6,
+            "timestamp_utc": "2026-03-23T14:07:39+00:00",
+            "timestamp_local": "2026-03-23T15:07:39+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "2gNne7LW1kGNry8UeYxqkw2C9gSeLrXcPFu9MY92A4sc6a8Db8bq8Fc5eY7bHoZgCz7dQ2VgBnCrGoQp4DgfRwwq\n\t14:07:39 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.06048\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 6,
+            "timestamp_utc": "2026-03-23T14:07:38+00:00",
+            "timestamp_local": "2026-03-23T15:07:38+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "2XoQWbmjQtWDXvvn42EkrVDdbCvWQ3GUe4XYnf8wPqsMyRP1oDr7iuXpko4fLjuYEauV9iHGWiZo2fHzCg4QRUbw\n\t14:07:38 Mar 23, 2026\n\tTransfer\n\tTg\ud83d\udc49Sol Reapbot\ud83d\udc48| Up to 5x Return \u2705 \u9ad8\u8fbe5x\u56de\u62a5\u5957\u5229\u673a\u5668\u4eba \u7535\u62a5\ud83d\udc49Sol Reapbot\ud83d\udc48.mind-the-store.sol\n\t0.00000502"
+          },
+          {
+            "tab": "Transactions",
+            "page": 6,
+            "timestamp_utc": "2026-03-23T14:06:54+00:00",
+            "timestamp_local": "2026-03-23T15:06:54+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "3cAR8RA4dNuiqvUKeP2wfRno8xMxg6if8VANC4x34PNf11aG7Yf7SHTSWUVfNKiABRvCxbt5Q3wKgBUJXqyZNg6Z\n\t14:06:54 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.4247\n\tPF\n+4"
+          },
+          {
+            "tab": "Transactions",
+            "page": 6,
+            "timestamp_utc": "2026-03-23T14:05:52+00:00",
+            "timestamp_local": "2026-03-23T15:05:52+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "3CB2cJxDvXhgQ4gJaa4Yg6QHi7U3FVLiofhX8FGzLTZJLSM6ZNmQC2NWJ7YkUEMBCjL2Z33h4uUB3RTNLaFJfqkJ\n\t14:05:52 Mar 23, 2026\n\tAMM: Buy\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.5196\n\tPF\n+4"
+          }
+        ],
+        "diagnostics": {
+          "status": "ok",
+          "pagination_warning": null,
+          "rows_seen_count": 60,
+          "rows_in_range_count": 25,
+          "rows_with_parsed_timestamp_count": 60,
+          "rows_without_parsed_timestamp_count": 0,
+          "rows_with_relative_timestamp_count": 0,
+          "rows_with_absolute_timestamp_count": 60,
+          "page": {
+            "status": "ok",
+            "title": "Account EGfYPj1AT4KVLx2xFKN9WD73dvRVVU5NBXrCt726SJzZ | Solscan",
+            "url": "https://solscan.io/account/EGfYPj1AT4KVLx2xFKN9WD73dvRVVU5NBXrCt726SJzZ",
+            "body_excerpt": "$91.52 +4.78%\nAvg Fee: 0.0000841\nAnalytics \nDefi \nLeaderboard \nBlockchain \nResources \nSign in\n$91.52 +4.78%\nAvg Fee: 0.0000841\nAccount\nEGfYPj1AT4KVLx2xFKN9WD73dvRVVU5NBXrCt726SJzZTip\nBuy\nPresale\nPlay\nGaming\nSponsored:  Vega - 100FS 750% Bonus, No KYC, Instant Withdrawal, Max RTP - PLAY NOW\nAPI\nOverview\nTotal Value\n$68.39\nSOL Balance\n0.74727451\n($68.39)\nToken Balance\n227 Tokens\n9.47M BOCK\nMore info\nOwner\nSystem Program\nisOnCurve \nTrue\nStake\n0 SOL\nTags\nExtra Tags \nFunded by\n4U6ZRN...WxehK5\nMisc\nPersonal label\nSign in to add personal label\nAd\nTransactionsTransfersActivitiesBalance ChangesAnalyticsPortfolioStake AccountsCards\nShow 10/10 tx(s)\nHide Spam Txs\nHide Failed\nOldest First\n\tSignature\n\tTime\n(UTC)\n\tAction\n\tBy\n\tValue (SOL)\n\tPrograms\n\t63pEYhKWD4s7B9CtCLuNA6LBu1rZv6VmdpbDtE5ZjwjJFatfLkTsWBPnSzFFrWvvJye4DZvsyQRkKqLJwbgL8Aom\n\t14:09:56 Mar 23, 2026\n\tTransfer\n\t48qUd4z2Wo...5pWQZoMJbQ\n\t1.8\n\t\n\tu6x1GPjP9qX2VhqcoKuYkotHtghvdauW6xtsURCgJKNvidCbjAwyXQ2LEzkGbfpc7pt3su1eaRvu3XbPXqJTXPu\n\t14:09:35 Ma"
+          }
+        }
+      },
+      "Transfers": {
+        "rows_seen": [
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:10:05.306125+00:00",
+            "timestamp_local": "2026-03-23T15:10:05.306125+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "63pEYhKWD4s7B9CtCLuNA6LBu1rZv6VmdpbDtE5ZjwjJFatfLkTsWBPnSzFFrWvvJye4DZvsyQRkKqLJwbgL8Aom\n\t23 mins ago\n\tTransfer\n\t48qUd4z2Wo...5pWQZoMJbQ\n\t1.8"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:10:05.306125+00:00",
+            "timestamp_local": "2026-03-23T15:10:05.306125+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "u6x1GPjP9qX2VhqcoKuYkotHtghvdauW6xtsURCgJKNvidCbjAwyXQ2LEzkGbfpc7pt3su1eaRvu3XbPXqJTXPu\n\t23 mins ago\n\tTransfer\n\tTg\ud83d\udc49Sol Reapbot\ud83d\udc48| Up to 5x Return \u2705 \u9ad8\u8fbe5x\u56de\u62a5\u5957\u5229\u673a\u5668\u4eba \u7535\u62a5\ud83d\udc49Sol Reapbot\ud83d\udc48.mind-the-store.sol\n\t0.00000502"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:08:05.306125+00:00",
+            "timestamp_local": "2026-03-23T15:08:05.306125+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "24cxDKGva7tDQh4zmvqBDjib4CFFmgW24b2HJAzjjUY7qUvCAa4C12Wef2MKoYyqG6z9mTaUrRQJL2AxL4dpxUqL\n\t25 mins ago\n\tTransfer\n\tEGfYPj1AT4...rCt726SJzZ\n\t2.46"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:08:05.306125+00:00",
+            "timestamp_local": "2026-03-23T15:08:05.306125+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "2gNne7LW1kGNry8UeYxqkw2C9gSeLrXcPFu9MY92A4sc6a8Db8bq8Fc5eY7bHoZgCz7dQ2VgBnCrGoQp4DgfRwwq\n\t25 mins ago\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.06048\n\tPF\n+4"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:08:05.306125+00:00",
+            "timestamp_local": "2026-03-23T15:08:05.306125+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "2XoQWbmjQtWDXvvn42EkrVDdbCvWQ3GUe4XYnf8wPqsMyRP1oDr7iuXpko4fLjuYEauV9iHGWiZo2fHzCg4QRUbw\n\t25 mins ago\n\tTransfer\n\tTg\ud83d\udc49Sol Reapbot\ud83d\udc48| Up to 5x Return \u2705 \u9ad8\u8fbe5x\u56de\u62a5\u5957\u5229\u673a\u5668\u4eba \u7535\u62a5\ud83d\udc49Sol Reapbot\ud83d\udc48.mind-the-store.sol\n\t0.00000502"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:07:05.306125+00:00",
+            "timestamp_local": "2026-03-23T15:07:05.306125+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "3cAR8RA4dNuiqvUKeP2wfRno8xMxg6if8VANC4x34PNf11aG7Yf7SHTSWUVfNKiABRvCxbt5Q3wKgBUJXqyZNg6Z\n\t26 mins ago\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.4247\n\tPF\n+4"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:06:05.306125+00:00",
+            "timestamp_local": "2026-03-23T15:06:05.306125+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "3CB2cJxDvXhgQ4gJaa4Yg6QHi7U3FVLiofhX8FGzLTZJLSM6ZNmQC2NWJ7YkUEMBCjL2Z33h4uUB3RTNLaFJfqkJ\n\t27 mins ago\n\tAMM: Buy\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.5196\n\tPF\n+4"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:05:05.306125+00:00",
+            "timestamp_local": "2026-03-23T15:05:05.306125+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "2zEymuLunMbRBJsgJQXeF4SENM7Qz1QyjojLZP6ULksUwuV7Fs7Jpy1TrTJd6knEyXyY7haDcXCkYtBNo96CUmfw\n\t28 mins ago\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.3191\n\tPF\n+4"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:05:05.306125+00:00",
+            "timestamp_local": "2026-03-23T15:05:05.306125+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "2bsKiichsBncf4ZWJ3CFmqfhT7ha4z5fubCRSFgaPfQMEigVyv3QfMYwc2h7AXedP6F3Pw3Qc77FzWNTRAnCPKqc\n\t28 mins ago\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.03787\n\tPF\n+4"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:04:05.306125+00:00",
+            "timestamp_local": "2026-03-23T15:04:05.306125+01:00",
+            "timestamp_source": "relative",
+            "in_range": false,
+            "text": "4Y3rtoZTfK3Lms2ZUKGX1j7r3J5W961kXWg5DkuCuVPtPtXvbBvZNef4g29XVvc57kVdFkdCdtFja4qfvZmkmhNJ\n\t29 mins ago\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.4347\n\tPF\n+4"
+          }
+        ],
+        "rows_in_range": [
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:10:05.306125+00:00",
+            "timestamp_local": "2026-03-23T15:10:05.306125+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "63pEYhKWD4s7B9CtCLuNA6LBu1rZv6VmdpbDtE5ZjwjJFatfLkTsWBPnSzFFrWvvJye4DZvsyQRkKqLJwbgL8Aom\n\t23 mins ago\n\tTransfer\n\t48qUd4z2Wo...5pWQZoMJbQ\n\t1.8"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:10:05.306125+00:00",
+            "timestamp_local": "2026-03-23T15:10:05.306125+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "u6x1GPjP9qX2VhqcoKuYkotHtghvdauW6xtsURCgJKNvidCbjAwyXQ2LEzkGbfpc7pt3su1eaRvu3XbPXqJTXPu\n\t23 mins ago\n\tTransfer\n\tTg\ud83d\udc49Sol Reapbot\ud83d\udc48| Up to 5x Return \u2705 \u9ad8\u8fbe5x\u56de\u62a5\u5957\u5229\u673a\u5668\u4eba \u7535\u62a5\ud83d\udc49Sol Reapbot\ud83d\udc48.mind-the-store.sol\n\t0.00000502"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:08:05.306125+00:00",
+            "timestamp_local": "2026-03-23T15:08:05.306125+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "24cxDKGva7tDQh4zmvqBDjib4CFFmgW24b2HJAzjjUY7qUvCAa4C12Wef2MKoYyqG6z9mTaUrRQJL2AxL4dpxUqL\n\t25 mins ago\n\tTransfer\n\tEGfYPj1AT4...rCt726SJzZ\n\t2.46"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:08:05.306125+00:00",
+            "timestamp_local": "2026-03-23T15:08:05.306125+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "2gNne7LW1kGNry8UeYxqkw2C9gSeLrXcPFu9MY92A4sc6a8Db8bq8Fc5eY7bHoZgCz7dQ2VgBnCrGoQp4DgfRwwq\n\t25 mins ago\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.06048\n\tPF\n+4"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:08:05.306125+00:00",
+            "timestamp_local": "2026-03-23T15:08:05.306125+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "2XoQWbmjQtWDXvvn42EkrVDdbCvWQ3GUe4XYnf8wPqsMyRP1oDr7iuXpko4fLjuYEauV9iHGWiZo2fHzCg4QRUbw\n\t25 mins ago\n\tTransfer\n\tTg\ud83d\udc49Sol Reapbot\ud83d\udc48| Up to 5x Return \u2705 \u9ad8\u8fbe5x\u56de\u62a5\u5957\u5229\u673a\u5668\u4eba \u7535\u62a5\ud83d\udc49Sol Reapbot\ud83d\udc48.mind-the-store.sol\n\t0.00000502"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:07:05.306125+00:00",
+            "timestamp_local": "2026-03-23T15:07:05.306125+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "3cAR8RA4dNuiqvUKeP2wfRno8xMxg6if8VANC4x34PNf11aG7Yf7SHTSWUVfNKiABRvCxbt5Q3wKgBUJXqyZNg6Z\n\t26 mins ago\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.4247\n\tPF\n+4"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:06:05.306125+00:00",
+            "timestamp_local": "2026-03-23T15:06:05.306125+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "3CB2cJxDvXhgQ4gJaa4Yg6QHi7U3FVLiofhX8FGzLTZJLSM6ZNmQC2NWJ7YkUEMBCjL2Z33h4uUB3RTNLaFJfqkJ\n\t27 mins ago\n\tAMM: Buy\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.5196\n\tPF\n+4"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:05:05.306125+00:00",
+            "timestamp_local": "2026-03-23T15:05:05.306125+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "2zEymuLunMbRBJsgJQXeF4SENM7Qz1QyjojLZP6ULksUwuV7Fs7Jpy1TrTJd6knEyXyY7haDcXCkYtBNo96CUmfw\n\t28 mins ago\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.3191\n\tPF\n+4"
+          },
+          {
+            "tab": "Transfers",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:05:05.306125+00:00",
+            "timestamp_local": "2026-03-23T15:05:05.306125+01:00",
+            "timestamp_source": "relative",
+            "in_range": true,
+            "text": "2bsKiichsBncf4ZWJ3CFmqfhT7ha4z5fubCRSFgaPfQMEigVyv3QfMYwc2h7AXedP6F3Pw3Qc77FzWNTRAnCPKqc\n\t28 mins ago\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.03787\n\tPF\n+4"
+          }
+        ],
+        "diagnostics": {
+          "status": "ok",
+          "pagination_warning": null,
+          "rows_seen_count": 10,
+          "rows_in_range_count": 9,
+          "rows_with_parsed_timestamp_count": 10,
+          "rows_without_parsed_timestamp_count": 0,
+          "rows_with_relative_timestamp_count": 10,
+          "rows_with_absolute_timestamp_count": 0,
+          "page": {
+            "status": "ok",
+            "title": "Account EGfYPj1AT4KVLx2xFKN9WD73dvRVVU5NBXrCt726SJzZ | Solscan",
+            "url": "https://solscan.io/account/EGfYPj1AT4KVLx2xFKN9WD73dvRVVU5NBXrCt726SJzZ",
+            "body_excerpt": "$91.52 +4.78%\nAvg Fee: 0.0000841\nAnalytics \nDefi \nLeaderboard \nBlockchain \nResources \nSign in\n$91.52 +4.78%\nAvg Fee: 0.0000841\nAccount\nEGfYPj1AT4KVLx2xFKN9WD73dvRVVU5NBXrCt726SJzZTip\nBuy\nPresale\nPlay\nGaming\nSponsored:  Vega - 100FS 750% Bonus, No KYC, Instant Withdrawal, Max RTP - PLAY NOW\nAPI\nOverview\nTotal Value\n$68.39\nSOL Balance\n0.74727451\n($68.39)\nToken Balance\n227 Tokens\n9.47M BOCK\nMore info\nOwner\nSystem Program\nisOnCurve \nTrue\nStake\n0 SOL\nTags\nExtra Tags \nFunded by\n4U6ZRN...WxehK5\nMisc\nPersonal label\nSign in to add personal label\nAd\nTransactionsTransfersActivitiesBalance ChangesAnalyticsPortfolioStake AccountsCards\nShow 10/10 tx(s)\nHide Spam Txs\nHide Failed\nOldest First\n\tSignature\n\tTime\n\tAction\n\tBy\n\tValue (SOL)\n\tPrograms\n\t63pEYhKWD4s7B9CtCLuNA6LBu1rZv6VmdpbDtE5ZjwjJFatfLkTsWBPnSzFFrWvvJye4DZvsyQRkKqLJwbgL8Aom\n\t23 mins ago\n\tTransfer\n\t48qUd4z2Wo...5pWQZoMJbQ\n\t1.8\n\t\n\tu6x1GPjP9qX2VhqcoKuYkotHtghvdauW6xtsURCgJKNvidCbjAwyXQ2LEzkGbfpc7pt3su1eaRvu3XbPXqJTXPu\n\t23 mins ago\n\tTransfer\n\tTg\ud83d\udc49S"
+          }
+        }
+      },
+      "Activities": {
+        "rows_seen": [
+          {
+            "tab": "Activities",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:09:56+00:00",
+            "timestamp_local": "2026-03-23T15:09:56+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "63pEYhKWD4s7B9CtCLuNA6LBu1rZv6VmdpbDtE5ZjwjJFatfLkTsWBPnSzFFrWvvJye4DZvsyQRkKqLJwbgL8Aom\n\t14:09:56 Mar 23, 2026\n\tTransfer\n\t48qUd4z2Wo...5pWQZoMJbQ\n\t1.8"
+          },
+          {
+            "tab": "Activities",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:09:35+00:00",
+            "timestamp_local": "2026-03-23T15:09:35+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "u6x1GPjP9qX2VhqcoKuYkotHtghvdauW6xtsURCgJKNvidCbjAwyXQ2LEzkGbfpc7pt3su1eaRvu3XbPXqJTXPu\n\t14:09:35 Mar 23, 2026\n\tTransfer\n\tTg\ud83d\udc49Sol Reapbot\ud83d\udc48| Up to 5x Return \u2705 \u9ad8\u8fbe5x\u56de\u62a5\u5957\u5229\u673a\u5668\u4eba \u7535\u62a5\ud83d\udc49Sol Reapbot\ud83d\udc48.mind-the-store.sol\n\t0.00000502"
+          },
+          {
+            "tab": "Activities",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:07:54+00:00",
+            "timestamp_local": "2026-03-23T15:07:54+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "24cxDKGva7tDQh4zmvqBDjib4CFFmgW24b2HJAzjjUY7qUvCAa4C12Wef2MKoYyqG6z9mTaUrRQJL2AxL4dpxUqL\n\t14:07:54 Mar 23, 2026\n\tTransfer\n\tEGfYPj1AT4...rCt726SJzZ\n\t2.46"
+          },
+          {
+            "tab": "Activities",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:07:39+00:00",
+            "timestamp_local": "2026-03-23T15:07:39+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "2gNne7LW1kGNry8UeYxqkw2C9gSeLrXcPFu9MY92A4sc6a8Db8bq8Fc5eY7bHoZgCz7dQ2VgBnCrGoQp4DgfRwwq\n\t14:07:39 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.06048\n\tPF\n+4"
+          },
+          {
+            "tab": "Activities",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:07:38+00:00",
+            "timestamp_local": "2026-03-23T15:07:38+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "2XoQWbmjQtWDXvvn42EkrVDdbCvWQ3GUe4XYnf8wPqsMyRP1oDr7iuXpko4fLjuYEauV9iHGWiZo2fHzCg4QRUbw\n\t14:07:38 Mar 23, 2026\n\tTransfer\n\tTg\ud83d\udc49Sol Reapbot\ud83d\udc48| Up to 5x Return \u2705 \u9ad8\u8fbe5x\u56de\u62a5\u5957\u5229\u673a\u5668\u4eba \u7535\u62a5\ud83d\udc49Sol Reapbot\ud83d\udc48.mind-the-store.sol\n\t0.00000502"
+          },
+          {
+            "tab": "Activities",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:06:54+00:00",
+            "timestamp_local": "2026-03-23T15:06:54+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "3cAR8RA4dNuiqvUKeP2wfRno8xMxg6if8VANC4x34PNf11aG7Yf7SHTSWUVfNKiABRvCxbt5Q3wKgBUJXqyZNg6Z\n\t14:06:54 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.4247\n\tPF\n+4"
+          },
+          {
+            "tab": "Activities",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:05:52+00:00",
+            "timestamp_local": "2026-03-23T15:05:52+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "3CB2cJxDvXhgQ4gJaa4Yg6QHi7U3FVLiofhX8FGzLTZJLSM6ZNmQC2NWJ7YkUEMBCjL2Z33h4uUB3RTNLaFJfqkJ\n\t14:05:52 Mar 23, 2026\n\tAMM: Buy\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.5196\n\tPF\n+4"
+          },
+          {
+            "tab": "Activities",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:04:53+00:00",
+            "timestamp_local": "2026-03-23T15:04:53+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "2zEymuLunMbRBJsgJQXeF4SENM7Qz1QyjojLZP6ULksUwuV7Fs7Jpy1TrTJd6knEyXyY7haDcXCkYtBNo96CUmfw\n\t14:04:53 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.3191\n\tPF\n+4"
+          },
+          {
+            "tab": "Activities",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:04:46+00:00",
+            "timestamp_local": "2026-03-23T15:04:46+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "2bsKiichsBncf4ZWJ3CFmqfhT7ha4z5fubCRSFgaPfQMEigVyv3QfMYwc2h7AXedP6F3Pw3Qc77FzWNTRAnCPKqc\n\t14:04:46 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.03787\n\tPF\n+4"
+          },
+          {
+            "tab": "Activities",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:04:23+00:00",
+            "timestamp_local": "2026-03-23T15:04:23+01:00",
+            "timestamp_source": "absolute",
+            "in_range": false,
+            "text": "4Y3rtoZTfK3Lms2ZUKGX1j7r3J5W961kXWg5DkuCuVPtPtXvbBvZNef4g29XVvc57kVdFkdCdtFja4qfvZmkmhNJ\n\t14:04:23 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.4347\n\tPF\n+4"
+          }
+        ],
+        "rows_in_range": [
+          {
+            "tab": "Activities",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:09:56+00:00",
+            "timestamp_local": "2026-03-23T15:09:56+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "63pEYhKWD4s7B9CtCLuNA6LBu1rZv6VmdpbDtE5ZjwjJFatfLkTsWBPnSzFFrWvvJye4DZvsyQRkKqLJwbgL8Aom\n\t14:09:56 Mar 23, 2026\n\tTransfer\n\t48qUd4z2Wo...5pWQZoMJbQ\n\t1.8"
+          },
+          {
+            "tab": "Activities",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:09:35+00:00",
+            "timestamp_local": "2026-03-23T15:09:35+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "u6x1GPjP9qX2VhqcoKuYkotHtghvdauW6xtsURCgJKNvidCbjAwyXQ2LEzkGbfpc7pt3su1eaRvu3XbPXqJTXPu\n\t14:09:35 Mar 23, 2026\n\tTransfer\n\tTg\ud83d\udc49Sol Reapbot\ud83d\udc48| Up to 5x Return \u2705 \u9ad8\u8fbe5x\u56de\u62a5\u5957\u5229\u673a\u5668\u4eba \u7535\u62a5\ud83d\udc49Sol Reapbot\ud83d\udc48.mind-the-store.sol\n\t0.00000502"
+          },
+          {
+            "tab": "Activities",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:07:54+00:00",
+            "timestamp_local": "2026-03-23T15:07:54+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "24cxDKGva7tDQh4zmvqBDjib4CFFmgW24b2HJAzjjUY7qUvCAa4C12Wef2MKoYyqG6z9mTaUrRQJL2AxL4dpxUqL\n\t14:07:54 Mar 23, 2026\n\tTransfer\n\tEGfYPj1AT4...rCt726SJzZ\n\t2.46"
+          },
+          {
+            "tab": "Activities",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:07:39+00:00",
+            "timestamp_local": "2026-03-23T15:07:39+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "2gNne7LW1kGNry8UeYxqkw2C9gSeLrXcPFu9MY92A4sc6a8Db8bq8Fc5eY7bHoZgCz7dQ2VgBnCrGoQp4DgfRwwq\n\t14:07:39 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.06048\n\tPF\n+4"
+          },
+          {
+            "tab": "Activities",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:07:38+00:00",
+            "timestamp_local": "2026-03-23T15:07:38+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "2XoQWbmjQtWDXvvn42EkrVDdbCvWQ3GUe4XYnf8wPqsMyRP1oDr7iuXpko4fLjuYEauV9iHGWiZo2fHzCg4QRUbw\n\t14:07:38 Mar 23, 2026\n\tTransfer\n\tTg\ud83d\udc49Sol Reapbot\ud83d\udc48| Up to 5x Return \u2705 \u9ad8\u8fbe5x\u56de\u62a5\u5957\u5229\u673a\u5668\u4eba \u7535\u62a5\ud83d\udc49Sol Reapbot\ud83d\udc48.mind-the-store.sol\n\t0.00000502"
+          },
+          {
+            "tab": "Activities",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:06:54+00:00",
+            "timestamp_local": "2026-03-23T15:06:54+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "3cAR8RA4dNuiqvUKeP2wfRno8xMxg6if8VANC4x34PNf11aG7Yf7SHTSWUVfNKiABRvCxbt5Q3wKgBUJXqyZNg6Z\n\t14:06:54 Mar 23, 2026\n\tAMM: Sell\n+1\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.4247\n\tPF\n+4"
+          },
+          {
+            "tab": "Activities",
+            "page": 1,
+            "timestamp_utc": "2026-03-23T14:05:52+00:00",
+            "timestamp_local": "2026-03-23T15:05:52+01:00",
+            "timestamp_source": "absolute",
+            "in_range": true,
+            "text": "3CB2cJxDvXhgQ4gJaa4Yg6QHi7U3FVLiofhX8FGzLTZJLSM6ZNmQC2NWJ7YkUEMBCjL2Z33h4uUB3RTNLaFJfqkJ\n\t14:05:52 Mar 23, 2026\n\tAMM: Buy\n\tEGfYPj1AT4...rCt726SJzZ\n\t0.5196\n\tPF\n+4"
+          }
+        ],
+        "diagnostics": {
+          "status": "ok",
+          "pagination_warning": null,
+          "rows_seen_count": 10,
+          "rows_in_range_count": 7,
+          "rows_with_parsed_timestamp_count": 10,
+          "rows_without_parsed_timestamp_count": 0,
+          "rows_with_relative_timestamp_count": 0,
+          "rows_with_absolute_timestamp_count": 10,
+          "page": {
+            "status": "ok",
+            "title": "Account EGfYPj1AT4KVLx2xFKN9WD73dvRVVU5NBXrCt726SJzZ | Solscan",
+            "url": "https://solscan.io/account/EGfYPj1AT4KVLx2xFKN9WD73dvRVVU5NBXrCt726SJzZ",
+            "body_excerpt": "$91.52 +4.78%\nAvg Fee: 0.0000841\nAnalytics \nDefi \nLeaderboard \nBlockchain \nResources \nSign in\n$91.52 +4.78%\nAvg Fee: 0.0000841\nAccount\nEGfYPj1AT4KVLx2xFKN9WD73dvRVVU5NBXrCt726SJzZTip\nBuy\nPresale\nPlay\nGaming\nSponsored:  Vega - 100FS 750% Bonus, No KYC, Instant Withdrawal, Max RTP - PLAY NOW\nAPI\nOverview\nTotal Value\n$68.39\nSOL Balance\n0.74727451\n($68.39)\nToken Balance\n227 Tokens\n9.47M BOCK\nMore info\nOwner\nSystem Program\nisOnCurve \nTrue\nStake\n0 SOL\nTags\nExtra Tags \nFunded by\n4U6ZRN...WxehK5\nMisc\nPersonal label\nSign in to add personal label\nAd\nTransactionsTransfersActivitiesBalance ChangesAnalyticsPortfolioStake AccountsCards\nShow 10/10 tx(s)\nHide Spam Txs\nHide Failed\nOldest First\n\tSignature\n\tTime\n(UTC)\n\tAction\n\tBy\n\tValue (SOL)\n\tPrograms\n\t63pEYhKWD4s7B9CtCLuNA6LBu1rZv6VmdpbDtE5ZjwjJFatfLkTsWBPnSzFFrWvvJye4DZvsyQRkKqLJwbgL8Aom\n\t14:09:56 Mar 23, 2026\n\tTransfer\n\t48qUd4z2Wo...5pWQZoMJbQ\n\t1.8\n\t\n\tu6x1GPjP9qX2VhqcoKuYkotHtghvdauW6xtsURCgJKNvidCbjAwyXQ2LEzkGbfpc7pt3su1eaRvu3XbPXqJTXPu\n\t14:09:35 Ma"
+          }
+        }
+      }
+    }
+  },
+  "warnings": [],
+  "partial": false,
+  "progress": {
+    "stage": "completed"
+  },
+  "updated_at_utc": "2026-03-23T14:33:08.845714+00:00"
+}
