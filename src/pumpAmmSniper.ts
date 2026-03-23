@@ -507,6 +507,8 @@ async function handleNewPool(connection: Connection, signature: string) {
             const rapidMinD = CONFIG.CREATOR_RISK_RAPID_DISPERSAL_MIN_DESTINATIONS;
             const rapidSol = Number(crObs.rapidDispersalTotalSol || 0);
             const rapidMinSol = CONFIG.CREATOR_RISK_RAPID_DISPERSAL_MIN_TOTAL_SOL;
+            const rapidWin = Number(crObs.rapidDispersalWindowSec ?? Number.POSITIVE_INFINITY);
+            const rapidMaxWin = CONFIG.CREATOR_RISK_RAPID_DISPERSAL_MAX_WINDOW_SEC;
             const burnOut = Number(crObs.solOutTransfers || 0);
             const burnMin = CONFIG.CREATOR_RISK_BURNER_MIN_OUT_SOL;
             const setupC = Number(crObs.setupBurstCreates || 0);
@@ -517,6 +519,8 @@ async function handleNewPool(connection: Connection, signature: string) {
             const lookupMinC = CONFIG.CREATOR_RISK_LOOKUP_TABLE_NEAR_CREATE_MIN_CREATES;
             const lookupL = Number(crObs.setupBurstLookupTables || 0);
             const lookupMinL = CONFIG.CREATOR_RISK_LOOKUP_TABLE_NEAR_CREATE_MIN_LOOKUPS;
+            const lookupWin = Number(crObs.setupBurstWindowSec ?? Number.POSITIVE_INFINITY);
+            const lookupMaxWin = CONFIG.CREATOR_RISK_LOOKUP_TABLE_NEAR_CREATE_MAX_WINDOW_SEC;
             const preT = Number(crObs.precreateBurstTransfers || 0);
             const preMinT = CONFIG.CREATOR_RISK_PRECREATE_BURST_MIN_TRANSFERS;
             const preD = Number(crObs.precreateDispersalSetupDestinations || 0);
@@ -630,13 +634,22 @@ async function handleNewPool(connection: Connection, signature: string) {
                         observedTransfers: rapidT,
                         observedDestinations: rapidD,
                         observedTotalSol: Number(rapidSol.toFixed(6)),
+                        observedWindowSec: Number.isFinite(rapidWin) ? rapidWin : null,
                         thresholdTransfers: rapidMinT,
                         thresholdDestinations: rapidMinD,
                         thresholdTotalSol: rapidMinSol,
+                        thresholdWindowSec: rapidMaxWin,
                         signTransfers: ">=",
                         signDestinations: ">=",
                         signTotalSol: ">=",
-                        pass: rapidT >= rapidMinT && rapidD >= rapidMinD && rapidSol >= rapidMinSol,
+                        signWindowSec: "<=",
+                        pass: !(
+                            CONFIG.CREATOR_RISK_RAPID_DISPERSAL_BLOCK_ENABLED &&
+                            rapidT >= rapidMinT &&
+                            rapidD >= rapidMinD &&
+                            rapidSol >= rapidMinSol &&
+                            rapidWin <= rapidMaxWin
+                        ),
                     },
                     cr_burnerProfile: {
                         enabled: CONFIG.CREATOR_RISK_CHECK_ENABLED,
@@ -659,11 +672,19 @@ async function handleNewPool(connection: Connection, signature: string) {
                         enabled: CONFIG.CREATOR_RISK_LOOKUP_TABLE_NEAR_CREATE_BLOCK_ENABLED,
                         observedCreates: lookupC,
                         observedLookups: lookupL,
+                        observedWindowSec: Number.isFinite(lookupWin) ? lookupWin : null,
                         thresholdCreates: lookupMinC,
                         thresholdLookups: lookupMinL,
+                        thresholdWindowSec: lookupMaxWin,
                         signCreates: ">=",
                         signLookups: ">=",
-                        pass: lookupC <= lookupMinC,
+                        signWindowSec: "<=",
+                        pass: !(
+                            CONFIG.CREATOR_RISK_LOOKUP_TABLE_NEAR_CREATE_BLOCK_ENABLED &&
+                            lookupL >= lookupMinL &&
+                            lookupC >= lookupMinC &&
+                            lookupWin <= lookupMaxWin
+                        ),
                     },
                     cr_precreateBurst: {
                         enabled: CONFIG.CREATOR_RISK_PRECREATE_BURST_BLOCK_ENABLED,

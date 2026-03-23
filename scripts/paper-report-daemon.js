@@ -300,21 +300,24 @@ function parseLine(logPath, line) {
     }
 
     if (stage === 'BUY_SPOT') {
-      ev = ev || ensureCurrentEvent(logPath, ts);
+      ev = ev || getCurrentEvent(logPath);
+      if (!ev) return;
       ev.buyAt = ts || ev.buyAt;
       ev.buySpotSolPerToken = parseCompactSol(message.replace(/^\~/, '').replace(/\/token$/i, '').trim());
       return;
     }
 
     if (stage === 'SELL_SPOT') {
-      ev = ev || ensureCurrentEvent(logPath, ts);
+      ev = ev || getCurrentEvent(logPath);
+      if (!ev) return;
       ev.sellAt = ts || ev.sellAt;
       ev.sellSpotSolPerToken = parseCompactSol(message.replace(/^\~/, '').replace(/\/token$/i, '').trim());
       return;
     }
 
     if (stage === 'PNL') {
-      ev = ev || ensureCurrentEvent(logPath, ts);
+      ev = ev || getCurrentEvent(logPath);
+      if (!ev) return;
       const m = message.match(/^([+-]?)(.+)\s+\(([-0-9.]+)%\)$/);
       if (m) {
         ev.pnlAt = ts || ev.pnlAt;
@@ -328,7 +331,8 @@ function parseLine(logPath, line) {
     }
 
     if (stage === 'CRISK') {
-      ev = ev || ensureCurrentEvent(logPath, ts);
+      ev = ev || getCurrentEvent(logPath);
+      if (!ev) return;
       const funder = (message.match(/funder=([^\s]+)/) || [])[1] || null;
       const refund = Number((message.match(/refund=([0-9.]+)/) || [])[1] || '0');
       const micro = (message.match(/micro=(\d+)\/(\d+)/) || []);
@@ -340,7 +344,8 @@ function parseLine(logPath, line) {
     }
 
     if (stage === 'RRELAY') {
-      ev = ev || ensureCurrentEvent(logPath, ts);
+      ev = ev || getCurrentEvent(logPath);
+      if (!ev) return;
       const root = (message.match(/root=([^\s]+)/) || [])[1] || null;
       const funder = (message.match(/funder=([^\s]+)/) || [])[1] || null;
       const inbound = Number((message.match(/in=([0-9.]+)/) || [])[1] || '0');
@@ -356,7 +361,8 @@ function parseLine(logPath, line) {
     }
 
     if (stage === 'CCASH') {
-      ev = ev || ensureCurrentEvent(logPath, ts);
+      ev = ev || getCurrentEvent(logPath);
+      if (!ev) return;
       const total = Number((message.match(/total=([0-9.]+)/) || [])[1] || '0');
       const max = Number((message.match(/max=([0-9.]+)/) || [])[1] || '0');
       const rel = Number((message.match(/rel=([0-9.]+)/) || [])[1] || '0');
@@ -371,7 +377,8 @@ function parseLine(logPath, line) {
     }
 
     if (stage === 'FILTERS') {
-      ev = ev || ensureCurrentEvent(logPath, ts);
+      ev = ev || getCurrentEvent(logPath);
+      if (!ev) return;
       const parsed = safeJsonParse(message);
       if (parsed && typeof parsed === 'object') {
         ev.entryFilters = parsed;
@@ -380,7 +387,8 @@ function parseLine(logPath, line) {
     }
 
     if (stage === 'PREGUARD') {
-      ev = ev || ensureCurrentEvent(logPath, ts);
+      ev = ev || getCurrentEvent(logPath);
+      if (!ev) return;
       const liqDropMax = Number((message.match(/liq_drop_max=([-0-9.]+)%/) || [])[1]);
       const quoteDropMax = Number((message.match(/quote_drop_max=([-0-9.]+)%/) || [])[1]);
       const maxLiq = Number((message.match(/max_liq=([-0-9.]+)%/) || [])[1]);
@@ -399,7 +407,8 @@ function parseLine(logPath, line) {
     }
 
     if (stage === 'HOLDLOG') {
-      ev = ev || ensureCurrentEvent(logPath, ts);
+      ev = ev || getCurrentEvent(logPath);
+      if (!ev) return;
       const parsed = safeJsonParse(message);
       if (parsed && typeof parsed === 'object') {
         ev.holdLog = parsed;
@@ -408,7 +417,8 @@ function parseLine(logPath, line) {
     }
 
     if (stage === 'CHECKS' && message === 'passed') {
-      ev = ev || ensureCurrentEvent(logPath, ts);
+      ev = ev || getCurrentEvent(logPath);
+      if (!ev) return;
       ev.checksPassed = true;
       return;
     }

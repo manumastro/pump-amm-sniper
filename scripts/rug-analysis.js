@@ -29,6 +29,11 @@ function boolIcon(val) {
     return val ? '✅' : '❌';
 }
 
+function filterOutcome(check) {
+    if (!check || check.enabled === false || check.pass === undefined) return '-';
+    return check.pass ? 'PASS' : 'BLOCK';
+}
+
 function printDivider(colWidths) {
     console.log(colWidths.map(w => '-'.repeat(w)).join('+'));
 }
@@ -74,7 +79,7 @@ function main() {
 
         for (const check of allChecks) {
             const c = ef[`cr_${check}`];
-            row.push(c && c.enabled !== false ? boolIcon(c.pass) : '-');
+            row.push(filterOutcome(c));
         }
 
         row.push(boolIcon(ef.cr_allPassed));
@@ -128,7 +133,7 @@ function main() {
         console.log('  ALL CHECKS:');
         for (const [name, c] of Object.entries(cr)) {
             if (!c || c.pass === undefined) continue;
-            const icon = boolIcon(c.pass);
+            const outcome = filterOutcome(c);
             const details = [];
             if (c.observed !== undefined) details.push(`obs=${c.observed}`);
             if (c.threshold !== undefined) details.push(`thr=${c.threshold}`);
@@ -142,7 +147,7 @@ function main() {
             if (c.triggered !== undefined) details.push(`triggered=${c.triggered}`);
             if (c.deepChecksComplete !== undefined) details.push(`deep=${c.deepChecksComplete}`);
             if (c.enabled === false) continue; // skip disabled
-            console.log(`    ${icon} ${name.padEnd(20)} ${details.join(' ')}`);
+            console.log(`    ${outcome.padEnd(5)} ${name.padEnd(20)} ${details.join(' ')}`);
         }
         console.log('');
     }

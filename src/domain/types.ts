@@ -54,6 +54,7 @@ export type CreatorRiskResult = {
     rapidDispersalTransfers?: number;
     rapidDispersalDestinations?: number;
     rapidDispersalTotalSol?: number;
+    rapidDispersalPctOfEntryLiquidity?: number;
     rapidDispersalWindowSec?: number | null;
     microInboundTransfers?: number;
     microInboundSources?: number;

@@ -26,6 +26,7 @@ export function createSupervisorRuntime(options: {
     let lastLogAtMs = Date.now();
     let healthcheckInterval: NodeJS.Timeout | null = null;
     const seenSignatures = new Map<string, number>();
+    const activeSignatures = new Set<string>();
     const pendingSignatures: string[] = [];
     const pendingSignatureSet = new Set<string>();
     const workerSlots: WorkerSlotState[] = Array.from(
@@ -47,7 +48,7 @@ export function createSupervisorRuntime(options: {
     }
 
     function enqueuePendingSignature(signature: string) {
-        if (pendingSignatureSet.has(signature)) return;
+        if (pendingSignatureSet.has(signature) || activeSignatures.has(signature)) return;
 
         const maxPending = Math.max(1, options.queueMaxPendingSignatures);
         if (pendingSignatures.length >= maxPending) {
@@ -64,6 +65,10 @@ export function createSupervisorRuntime(options: {
     }
 
     function dispatchPoolToWorker(signature: string): boolean {
+        if (activeSignatures.has(signature)) {
+            return true;
+        }
+
         const slot = findIdleWorkerSlot();
         if (!slot) {
             return false;
@@ -77,6 +82,7 @@ export function createSupervisorRuntime(options: {
 
         slot.busy = true;
         slot.signature = signature;
+        activeSignatures.add(signature);
         console.log(`DISPATCH     | worker-${slot.slot} ${options.shortSig(signature)}`);
 
         const workerEntry = options.getWorkerEntryCommand();
@@ -100,6 +106,7 @@ export function createSupervisorRuntime(options: {
             slot.busy = false;
             slot.signature = null;
             slot.child = null;
+            activeSignatures.delete(signature);
             drainPendingQueue();
         });
 
@@ -108,6 +115,7 @@ export function createSupervisorRuntime(options: {
             slot.busy = false;
             slot.signature = null;
             slot.child = null;
+            activeSignatures.delete(signature);
             drainPendingQueue();
         });
 
@@ -117,6 +125,11 @@ export function createSupervisorRuntime(options: {
     function drainPendingQueue() {
         while (pendingSignatures.length > 0) {
             const signature = pendingSignatures[0];
+            if (activeSignatures.has(signature)) {
+                pendingSignatures.shift();
+                pendingSignatureSet.delete(signature);
+                continue;
+            }
             if (!dispatchPoolToWorker(signature)) {
                 return;
             }

@@ -1671,13 +1671,21 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                 }));
             }
 
-            if (deepChecksComplete && creatorCashout.totalSol > 0 && rapidDispersal.detected) {
+            const rapidDispersalPctOfEntryLiquidity =
+                options.entrySolLiquidity && options.entrySolLiquidity > 0
+                    ? (rapidDispersal.totalSol / options.entrySolLiquidity) * 100
+                    : 0;
+            const rapidDispersalSevere =
+                rapidDispersal.detected &&
+                rapidDispersalPctOfEntryLiquidity >= CONFIG.CREATOR_RISK_RAPID_DISPERSAL_MIN_PCT_OF_ENTRY_LIQ;
+
+            if (deepChecksComplete && rapidDispersal.detected && (creatorCashout.totalSol > 0 || rapidDispersalSevere)) {
                 return cacheAndReturn(enrichBaseResult({
                     ok: false,
                     reason:
                         `rapid creator dispersal ${rapidDispersal.transfers} transfers ` +
                         `to ${rapidDispersal.destinations} destinations ` +
-                        `(${rapidDispersal.totalSol.toFixed(3)} SOL)`,
+                        `(${rapidDispersal.totalSol.toFixed(3)} SOL, ${rapidDispersalPctOfEntryLiquidity.toFixed(2)}% liq)`,
                     funder,
                     uniqueCounterparties,
                     compressedWindowSec,
@@ -1689,6 +1697,7 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                     rapidDispersalTransfers: rapidDispersal.transfers,
                     rapidDispersalDestinations: rapidDispersal.destinations,
                     rapidDispersalTotalSol: rapidDispersal.totalSol,
+                    rapidDispersalPctOfEntryLiquidity,
                     rapidDispersalWindowSec: rapidDispersal.windowSec,
                     deepChecksComplete: true,
                     deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
@@ -1877,6 +1886,10 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                 rapidDispersalTransfers: rapidDispersal.transfers,
                 rapidDispersalDestinations: rapidDispersal.destinations,
                 rapidDispersalTotalSol: rapidDispersal.totalSol,
+                rapidDispersalPctOfEntryLiquidity:
+                    options.entrySolLiquidity && options.entrySolLiquidity > 0
+                        ? (rapidDispersal.totalSol / options.entrySolLiquidity) * 100
+                        : 0,
                 rapidDispersalWindowSec: rapidDispersal.windowSec,
                 repeatedCreateRemoveCreates: repeatCreateRemovePattern.creates,
                 repeatedCreateRemoveRemoves: repeatCreateRemovePattern.removes,
