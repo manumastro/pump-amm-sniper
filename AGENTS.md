@@ -15,6 +15,7 @@ Questo file e volutamente minimale: usa i documenti sotto solo quando servono.
 - **DOPO OGNI MODIFICA A `src/**`:** `npm run build` → stop servizi → reset log/report → start servizi. Senza build, il bot esegue il codice vecchio in `dist/`.
 - Sequenza deploy runtime: build -> stop servizi -> reset log/report -> start/restart servizi.
 - File da resettare dopo modifiche importanti: `paper.log`, `logs/paper-report.json`, `logs/paper-report.txt`, `logs/paper-report-daemon.log`, tutti i `logs/paper-worker-*.log`.
+- **PRIMA di resettare il report:** fare sempre backup: `cp logs/paper-report.json logs/paper-report-YYYY-MM-DD.json` per preservare lo storico trade/wins/rug.
 - Nuovi controlli non in `src/pumpAmmSniper.ts`: usare i moduli target (`src/services/creator-risk/`, `src/services/paper-trade/`, ecc.) secondo `docs/architecture.md`.
 - Solscan parser solo per debug investigativo manuale, mai nel path decisionale realtime del bot.
 
