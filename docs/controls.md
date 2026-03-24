@@ -558,6 +558,7 @@ Puo uscire in due modi:
 Regole importanti recenti:
 - token CP=1 hanno TP piu alto
 - token CP=0 hanno trailing piu stretto per proteggersi da slow rug
+- check winner piu frequente (`HOLD_WINNER_CHECK_INTERVAL_MS = 300ms`) per ridurre slippage tra picco e uscita
 
 ### 8.5 Sell quote collapse
 
@@ -567,6 +568,9 @@ Esce se:
 
 Exit reason:
 - `sell quote collapse`
+
+Soglia attuale:
+- `HOLD_SELL_QUOTE_COLLAPSE_DROP_PCT = 35`
 
 ### 8.11 Single swap shock
 
@@ -578,6 +582,23 @@ Scopo:
 
 Exit reason:
 - `single swap shock`
+
+Soglia attuale:
+- `HOLD_SINGLE_SWAP_SHOCK_DROP_PCT = 35`
+
+### 8.12 Hard stop loss
+
+Esce se:
+- il PnL stimato in hold scende sotto una perdita massima assoluta
+
+Scopo:
+- imporre un limite hard alla perdita intra-trade anche quando gli altri trigger arrivano in ritardo
+
+Exit reason:
+- `hard stop loss`
+
+Soglia attuale:
+- `HOLD_HARD_STOP_LOSS_PCT = 25`
 
 ### 8.6 Pool churn
 
@@ -656,6 +677,9 @@ Negli ultimi giorni sono cambiate soprattutto queste cose:
 - introdotta guardia pre-buy ultra-short anti rug rapido
 - `rapidDispersal` irrigidito: ora puo bloccare anche senza cashout se la dispersal e alta rispetto alla liquidita entry
 - winner management differenziato per classi CP
+- hard stop loss intra-hold introdotto (`hard stop loss`)
+- soglie anti dump irrigidite (`single swap shock` e `sell quote collapse` a 35%)
+- frequenza check winner aumentata (300ms)
 - reporting dei filtri e analisi rug resi piu coerenti con la logica reale
 - fix runtime e report per evitare eventi duplicati o fantasma
 
@@ -748,6 +772,7 @@ Se vuoi capire un caso velocemente:
 | Creator risk recheck | hold | ON | exit | `creator risk: ...` |
 | Winner take profit | hold | ON | exit | `winner take profit` |
 | Winner trailing stop | hold | ON | exit | `winner trailing stop` |
+| Hard stop loss | hold | ON | exit | `hard stop loss` |
 | Sell quote collapse | hold | ON | exit | `sell quote collapse` |
 | Single swap shock | hold | ON | exit | `single swap shock` |
 | Pool churn | hold | ON | exit | `pool churn` |

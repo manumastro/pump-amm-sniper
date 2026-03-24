@@ -75,6 +75,12 @@ function classifyOutcome(change, liq) {
     return '🌙 moon';
 }
 
+function shortMint(mint) {
+    if (!mint) return '-';
+    if (mint.length <= 12) return mint;
+    return `${mint.slice(0, 6)}...${mint.slice(-6)}`;
+}
+
 async function main() {
     const data = loadReport();
     const ops = data.operations || [];
@@ -106,10 +112,10 @@ async function main() {
     
     const totalTokens = Object.values(cpTokenArrays).reduce((a, b) => a + b.length, 0);
     
-    console.log(`\n📊 CP ANALYSIS`);
+    console.log(`\n📊 CC ANALYSIS`);
     console.log(`Report: ${data.generatedAt}`);
-    console.log(`Total low CP tokens: ${totalTokens}`);
-    console.log(`CP values: ${Object.keys(cpTokenArrays).sort((a, b) => a - b).join(', ')}\n`);
+    console.log(`Total CC tokens: ${totalTokens}`);
+    console.log(`CC values: ${Object.keys(cpTokenArrays).sort((a, b) => a - b).join(', ')}\n`);
     
     // Fetch prices for all tokens
     const allTokens = Object.values(cpTokenArrays).flat();
@@ -117,7 +123,7 @@ async function main() {
     const prices = await fetchPrices(allTokens);
     console.log(`Found ${Object.keys(prices).length} prices\n`);
     
-    // Analyze each CP value
+    // Analyze each CC value
     const cpStats = {};
     
     for (const [cp, tokens] of Object.entries(cpTokenArrays)) {
@@ -126,6 +132,7 @@ async function main() {
         let noData = 0;
         const goodTokens = [];
         const badTokens = [];
+        const tokenRows = [];
         
         for (const token of tokens) {
             const p = prices[token];
@@ -138,6 +145,17 @@ async function main() {
             const change = p.change24h ? `${p.change24h > 0 ? '+' : ''}${parseFloat(p.change24h).toFixed(0)}%` : '?';
             const mcap = p.marketCap ? `$${(Number(p.marketCap) / 1000).toFixed(0)}K` : '-';
             const entry = `${p.symbol} (${change}, ${mcap})`;
+            const liq = p.liquidityUsd ? `$${(Number(p.liquidityUsd) / 1000).toFixed(0)}K` : '-';
+
+            tokenRows.push({
+                token,
+                symbol: p.symbol || '?',
+                outcome,
+                changeNum: Number.parseFloat(p.change24h) || 0,
+                change,
+                mcap,
+                liq,
+            });
             
             if (outcome.includes('gain') || outcome.includes('moon')) {
                 good++;
@@ -150,12 +168,13 @@ async function main() {
             }
         }
         
-        cpStats[cp] = { good, bad, noData, total: tokens.length, goodTokens, badTokens };
+        tokenRows.sort((a, b) => b.changeNum - a.changeNum);
+        cpStats[cp] = { good, bad, noData, total: tokens.length, goodTokens, badTokens, tokenRows };
     }
     
     // Print summary table
-    console.log('═══ CP vs GOOD/BAD SUMMARY ═══\n');
-    console.log('CP  | Total | ✅ Good | 🔴 Bad | ❓ NoData | %Good | Risultato');
+    console.log('═══ CC vs GOOD/BAD SUMMARY ═══\n');
+    console.log('CC  | Total | ✅ Good | 🔴 Bad | ❓ NoData | %Good | Risultato');
     console.log('----+-------+---------+--------+-----------+-------+----------');
     
     for (const cp of Object.keys(cpStats).sort((a, b) => a - b)) {
@@ -169,12 +188,20 @@ async function main() {
         );
     }
     
-    // Detailed breakdown for each CP
-    console.log('\n═══ DETTAGLIO PER CP ═══');
+    // Detailed breakdown for each CC with token lists
+    console.log('\n═══ DETTAGLIO PER CC (TOKEN) ═══');
     
     for (const cp of Object.keys(cpStats).sort((a, b) => a - b)) {
         const s = cpStats[cp];
-        console.log(`\nCP=${cp} (${s.total} token, ${s.good} good, ${s.bad} bad):`);
+        console.log(`\nCC=${cp} (${s.total} token, ${s.good} good, ${s.bad} bad, ${s.noData} nodata):`);
+
+        if (s.tokenRows.length > 0) {
+            for (const row of s.tokenRows) {
+                console.log(
+                    `  - ${row.symbol.padEnd(10)} ${shortMint(row.token)} | ${row.change.padStart(7)} | liq ${row.liq.padStart(6)} | mcap ${row.mcap.padStart(6)} | ${row.outcome}`
+                );
+            }
+        }
         
         if (s.goodTokens.length > 0) {
             console.log(`  ✅ Buoni: ${s.goodTokens.join(' | ')}`);
@@ -199,17 +226,17 @@ async function main() {
         
         const pctGood = s.good / withData * 100;
         if (pctGood >= 50) {
-            passable.push(`CP=${cp} (${pctGood.toFixed(0)}% good)`);
+            passable.push(`CC=${cp} (${pctGood.toFixed(0)}% good)`);
         } else {
-            risky.push(`CP=${cp} (${pctGood.toFixed(0)}% good)`);
+            risky.push(`CC=${cp} (${pctGood.toFixed(0)}% good)`);
         }
     }
     
     if (passable.length > 0) {
-        console.log(`✅ CP che CONVIENE far passare: ${passable.join(', ')}`);
+        console.log(`✅ CC che CONVIENE far passare: ${passable.join(', ')}`);
     }
     if (risky.length > 0) {
-        console.log(`❌ CP che conviene BLOCCARE: ${risky.join(', ')}`);
+        console.log(`❌ CC che conviene BLOCCARE: ${risky.join(', ')}`);
     }
     
     console.log('\n✅ Done');

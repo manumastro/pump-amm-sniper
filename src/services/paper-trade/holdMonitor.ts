@@ -121,6 +121,7 @@ export async function waitForExitStateWithLiquidityStop(
     let lastPoolChurnWarnAtMs = 0;
     let lastSellQuoteCollapseCheckAtMs = 0;
     let lastSingleSwapShockCheckAtMs = 0;
+    let lastHardStopLossCheckAtMs = 0;
     let lastWinnerCheckAtMs = 0;
     const seenPoolSignatures = new Set<string>();
     const seenCreatorSignatures = new Set<string>();
@@ -160,6 +161,7 @@ export async function waitForExitStateWithLiquidityStop(
                 winnerManagement: { enabled: activeWinnerProfile.enabled, armPct: activeWinnerProfile.armPnlPct, trailingPct: activeWinnerProfile.trailingDropPct, hardTpPct: activeWinnerProfile.hardTakeProfitPct, minHoldMs: activeWinnerProfile.minHoldMs },
                 sellQuoteCollapse: { enabled: CONFIG.HOLD_SELL_QUOTE_COLLAPSE_EXIT_ENABLED, minHoldMs: CONFIG.HOLD_SELL_QUOTE_COLLAPSE_MIN_HOLD_MS, dropPct: CONFIG.HOLD_SELL_QUOTE_COLLAPSE_DROP_PCT },
                 singleSwapShock: { enabled: CONFIG.HOLD_SINGLE_SWAP_SHOCK_EXIT_ENABLED, minHoldMs: CONFIG.HOLD_SINGLE_SWAP_SHOCK_MIN_HOLD_MS, dropPct: CONFIG.HOLD_SINGLE_SWAP_SHOCK_DROP_PCT },
+                hardStopLoss: { enabled: CONFIG.HOLD_HARD_STOP_LOSS_EXIT_ENABLED, minHoldMs: CONFIG.HOLD_HARD_STOP_LOSS_MIN_HOLD_MS, lossPct: CONFIG.HOLD_HARD_STOP_LOSS_PCT },
                 poolChurn: { enabled: CONFIG.HOLD_POOL_CHURN_DETECT_ENABLED },
                 creatorOutbound: { enabled: CONFIG.HOLD_CREATOR_OUTBOUND_EXIT_ENABLED },
                 creatorCloseAccount: { enabled: CONFIG.HOLD_CREATOR_CLOSE_ACCOUNT_BURST_EXIT_ENABLED },
@@ -192,7 +194,7 @@ export async function waitForExitStateWithLiquidityStop(
         suppressCreatorRiskRecheck
             ? Math.min(1, Math.max(0.1, CONFIG.HOLD_PROBATION_INTERVAL_MULTIPLIER))
             : 1;
-    const scaledInterval = (baseMs: number) => Math.max(500, Math.round(baseMs * holdIntervalScale));
+    const scaledInterval = (baseMs: number) => Math.max(250, Math.round(baseMs * holdIntervalScale));
 
     while (Date.now() < deadlineMs) {
         const s = await fetchStateWithRetry();
@@ -264,6 +266,31 @@ export async function waitForExitStateWithLiquidityStop(
                     console.log(`⚠️ CREATOR RISK EXIT: ${creatorRisk.reason}`);
                     logHoldSummary(`creator risk: ${creatorRisk.reason || "unknown"}`);
                     return { state: s, exitReason: `creator risk: ${creatorRisk.reason || "unknown"}` };
+                }
+            }
+
+            if (
+                CONFIG.HOLD_HARD_STOP_LOSS_EXIT_ENABLED &&
+                elapsedBeforeStartMs + (Date.now() - startedAtMs) >= Math.max(0, CONFIG.HOLD_HARD_STOP_LOSS_MIN_HOLD_MS) &&
+                Date.now() - lastHardStopLossCheckAtMs >= scaledInterval(CONFIG.HOLD_HARD_STOP_LOSS_CHECK_INTERVAL_MS)
+            ) {
+                lastHardStopLossCheckAtMs = Date.now();
+                const currentExitQuoteSol = getExitQuoteSolFromState(s, tokenMint, tokenOutAtomic);
+                if (currentExitQuoteSol !== null && currentExitQuoteSol > 0) {
+                    const currentPnlPct = ((currentExitQuoteSol - CONFIG.TRADE_AMOUNT_SOL) / CONFIG.TRADE_AMOUNT_SOL) * 100;
+                    const hardStopLossPct = Math.abs(CONFIG.HOLD_HARD_STOP_LOSS_PCT);
+                    if (currentPnlPct <= -hardStopLossPct) {
+                        recordTrigger(
+                            "hardStopLoss",
+                            true,
+                            `${currentExitQuoteSol.toFixed(6)}SOL(${currentPnlPct.toFixed(2)}%) <= -${hardStopLossPct.toFixed(2)}%`
+                        );
+                        console.log(
+                            `⚠️ HARD STOP LOSS EXIT: ${currentExitQuoteSol.toFixed(6)} SOL (${currentPnlPct.toFixed(2)}%) <= -${hardStopLossPct.toFixed(2)}%`
+                        );
+                        logHoldSummary("hard stop loss");
+                        return { state: s, exitReason: "hard stop loss" };
+                    }
                 }
             }
 
