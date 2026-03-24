@@ -533,6 +533,12 @@ Controlli principali:
 - `PRE_BUY_NO_WSOL_RECHECK_ENABLED`
 - `PRE_BUY_NO_WSOL_RECHECK_MAX_ATTEMPTS`
 - `PRE_BUY_NO_WSOL_RECHECK_INTERVAL_MS`
+- `PRE_BUY_NO_WSOL_RECHECK_BACKOFF_MULTIPLIER`
+- `PRE_BUY_NO_WSOL_RECHECK_MAX_INTERVAL_MS`
+
+Tuning attuale:
+- finestra retry estesa (tentativi default aumentati a 10)
+- delay con backoff progressivo (base 350ms, cap 1200ms)
 
 Metriche report dedicate (`paper-report.json` / `paper-report.txt`):
 - `noWsolSkipCount`

@@ -310,6 +310,8 @@ async function handleNewPool(connection: Connection, signature: string) {
             ? Math.max(1, CONFIG.PRE_BUY_NO_WSOL_RECHECK_MAX_ATTEMPTS)
             : 1;
         const noWsolRetryIntervalMs = Math.max(100, CONFIG.PRE_BUY_NO_WSOL_RECHECK_INTERVAL_MS);
+        const noWsolRetryBackoffMultiplier = Math.max(1, CONFIG.PRE_BUY_NO_WSOL_RECHECK_BACKOFF_MULTIPLIER);
+        const noWsolRetryMaxIntervalMs = Math.max(noWsolRetryIntervalMs, CONFIG.PRE_BUY_NO_WSOL_RECHECK_MAX_INTERVAL_MS);
         const stateAttempts = Math.max(6, noWsolMaxAttempts);
         let noWsolRetryCount = 0;
 
@@ -322,12 +324,16 @@ async function handleNewPool(connection: Connection, signature: string) {
                     noWsolRetryCount += 1;
                     const canRetryNoWsol = noWsolRecheckEnabled && noWsolRetryCount < noWsolMaxAttempts;
                     if (canRetryNoWsol) {
+                        const retryDelayMs = Math.min(
+                            noWsolRetryMaxIntervalMs,
+                            Math.round(noWsolRetryIntervalMs * Math.pow(noWsolRetryBackoffMultiplier, Math.max(0, noWsolRetryCount - 1))),
+                        );
                         stageLog(
                             ctx,
                             "NOWSOL",
-                            `missing WSOL side, retry ${noWsolRetryCount}/${noWsolMaxAttempts} (${mintInfo})`,
+                            `missing WSOL side, retry ${noWsolRetryCount}/${noWsolMaxAttempts} after ${retryDelayMs}ms (${mintInfo})`,
                         );
-                        await new Promise((r) => setTimeout(r, noWsolRetryIntervalMs));
+                        await new Promise((r) => setTimeout(r, retryDelayMs));
                         continue;
                     }
 

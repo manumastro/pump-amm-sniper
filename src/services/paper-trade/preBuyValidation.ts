@@ -99,6 +99,8 @@ async function resolveEntryQuoteWithNoWsolRetry(
         ? Math.max(1, CONFIG.PRE_BUY_NO_WSOL_RECHECK_MAX_ATTEMPTS)
         : 1;
     const noWsolIntervalMs = Math.max(100, CONFIG.PRE_BUY_NO_WSOL_RECHECK_INTERVAL_MS);
+    const noWsolBackoffMultiplier = Math.max(1, CONFIG.PRE_BUY_NO_WSOL_RECHECK_BACKOFF_MULTIPLIER);
+    const noWsolMaxIntervalMs = Math.max(noWsolIntervalMs, CONFIG.PRE_BUY_NO_WSOL_RECHECK_MAX_INTERVAL_MS);
 
     let noWsolRetryCount = 0;
     for (let attempt = 1; attempt <= noWsolMaxAttempts; attempt++) {
@@ -119,12 +121,16 @@ async function resolveEntryQuoteWithNoWsolRetry(
         const mintInfo = describePoolMints(state, tokenMint);
         const canRetry = noWsolRecheckEnabled && attempt < noWsolMaxAttempts;
         if (canRetry) {
+            const retryDelayMs = Math.min(
+                noWsolMaxIntervalMs,
+                Math.round(noWsolIntervalMs * Math.pow(noWsolBackoffMultiplier, Math.max(0, noWsolRetryCount - 1))),
+            );
             stageLog(
                 ctx,
                 "NOWSOL",
-                `missing WSOL side, retry ${noWsolRetryCount}/${noWsolMaxAttempts} (${mintInfo})`,
+                `missing WSOL side, retry ${noWsolRetryCount}/${noWsolMaxAttempts} after ${retryDelayMs}ms (${mintInfo})`,
             );
-            await new Promise((r) => setTimeout(r, noWsolIntervalMs));
+            await new Promise((r) => setTimeout(r, retryDelayMs));
             continue;
         }
 
