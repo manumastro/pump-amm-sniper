@@ -519,6 +519,28 @@ Scopo:
 Motivo tipico:
 - `quote sanity ...x spot`
 
+### 7.7 No-WSOL grace recheck
+
+Scopo:
+- evitare skip immediati quando il lato WSOL del pool non e ancora visibile nei primissimi istanti
+
+Comportamento:
+- se manca il lato WSOL, il bot fa retry breve prima dello skip definitivo
+- se il lato WSOL riappare entro la finestra, continua il flusso pre-buy
+- se resta assente, mantiene `SKIP: no WSOL side`
+
+Controlli principali:
+- `PRE_BUY_NO_WSOL_RECHECK_ENABLED`
+- `PRE_BUY_NO_WSOL_RECHECK_MAX_ATTEMPTS`
+- `PRE_BUY_NO_WSOL_RECHECK_INTERVAL_MS`
+
+Metriche report dedicate (`paper-report.json` / `paper-report.txt`):
+- `noWsolSkipCount`
+- `noWsolRetryEvents`
+- `noWsolRetryRecoveredCount`
+- `noWsolRetryExhaustedCount`
+- `noWsolRetryAttemptsTotal`
+
 ## 8. Controlli durante l'hold
 
 Una volta entrato, il bot continua a difendersi.
@@ -680,6 +702,7 @@ Negli ultimi giorni sono cambiate soprattutto queste cose:
 - hard stop loss intra-hold introdotto (`hard stop loss`)
 - soglie anti dump irrigidite (`single swap shock` e `sell quote collapse` a 35%)
 - frequenza check winner aumentata (300ms)
+- introdotto retry breve no-WSOL pre-entry con metriche dedicate nel report
 - reporting dei filtri e analisi rug resi piu coerenti con la logica reale
 - fix runtime e report per evitare eventi duplicati o fantasma
 
@@ -723,6 +746,7 @@ Se vuoi capire un caso velocemente:
 | Liquidity revalidation | pre-buy finale | ON | skip | `liquidity ... below revalidation threshold` |
 | Ultra-short rug guard | pre-buy finale | ON | skip | `ultra-short rug guard ...` |
 | Quote sanity | pre-buy finale | ON | skip | `quote sanity ...x spot` |
+| No-WSOL grace recheck | pre-buy finale | ON | retry->skip | `pool has no WSOL side (...)` |
 | Top10 concentration | pre-entry finale | ON | skip | `top10 concentration ...` |
 | Top1 external holder concentration | pre-entry finale | ON | skip | `top1 external holder concentration ...` |
 | Dev holdings | post-resolve / gate | ON | skip | `Dev holds too much ...` |

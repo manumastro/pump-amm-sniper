@@ -145,6 +145,9 @@ function getEvent(id) {
       creatorCashoutRelPct: null,
       creatorCashoutScore: null,
       creatorCashoutDest: null,
+      noWsolRetryCount: 0,
+      noWsolRetryRecovered: false,
+      noWsolRetryExhausted: false,
       entryFilters: null,
       preBuyUltraGuard: null,
       holdLog: null,
@@ -407,6 +410,26 @@ function parseLine(logPath, line) {
       return;
     }
 
+    if (stage === 'NOWSOL') {
+      ev = ev || getCurrentEvent(logPath);
+      if (!ev) return;
+      const retryMatch = message.match(/retry\s+(\d+)\/(\d+)/i);
+      if (retryMatch) {
+        const retryCount = Number(retryMatch[1]);
+        ev.noWsolRetryCount = Math.max(ev.noWsolRetryCount || 0, Number.isFinite(retryCount) ? retryCount : 0);
+      }
+      const recoveredMatch = message.match(/recovered WSOL side after\s+(\d+)\s+retries/i);
+      if (recoveredMatch) {
+        const retryCount = Number(recoveredMatch[1]);
+        ev.noWsolRetryRecovered = true;
+        ev.noWsolRetryCount = Math.max(ev.noWsolRetryCount || 0, Number.isFinite(retryCount) ? retryCount : 0);
+      }
+      if (/retry exhausted/i.test(message)) {
+        ev.noWsolRetryExhausted = true;
+      }
+      return;
+    }
+
     if (stage === 'HOLDLOG') {
       ev = ev || getCurrentEvent(logPath);
       if (!ev) return;
@@ -546,6 +569,14 @@ function summarize() {
   const losses = validPnl.filter(e => e.effectivePnlSol < 0).length;
   const checksPassed = finished.filter(e => e.checksPassed).length;
   const skipped = finished.filter(e => e.skipReason || (e.endStatus && e.endStatus.startsWith('SKIP'))).length;
+  const noWsolSkipCount = finished.filter(e => {
+    const s = `${e.skipReason || ''} ${e.endStatus || ''}`.toLowerCase();
+    return s.includes('no wsol side');
+  }).length;
+  const noWsolRetryEvents = finished.filter(e => (e.noWsolRetryCount || 0) > 0).length;
+  const noWsolRetryRecoveredCount = finished.filter(e => e.noWsolRetryRecovered).length;
+  const noWsolRetryExhaustedCount = finished.filter(e => e.noWsolRetryExhausted).length;
+  const noWsolRetryAttemptsTotal = finished.reduce((acc, e) => acc + (Number(e.noWsolRetryCount) || 0), 0);
   const isRugLikeSignal = (e) => {
     const s = `${e.skipReason || ''} ${e.endStatus || ''}`.toLowerCase();
     return isRugLossEvent(e) ||
@@ -588,6 +619,9 @@ function summarize() {
       entryFilters: e.entryFilters,
       preBuyUltraGuard: e.preBuyUltraGuard,
       holdLog: e.holdLog,
+      noWsolRetryCount: e.noWsolRetryCount || 0,
+      noWsolRetryRecovered: !!e.noWsolRetryRecovered,
+      noWsolRetryExhausted: !!e.noWsolRetryExhausted,
     }));
 
   return {
@@ -596,6 +630,11 @@ function summarize() {
     finishedEvents: finished.length,
     checksPassed,
     skipped,
+    noWsolSkipCount,
+    noWsolRetryEvents,
+    noWsolRetryRecoveredCount,
+    noWsolRetryExhaustedCount,
+    noWsolRetryAttemptsTotal,
     hostileSkipCount: hostileSkips.length,
     avoidedRugLikeCount: rugLikeAvoided.length,
     rugLossCount: rugLosses.length,
@@ -648,6 +687,9 @@ function summarize() {
       entryFilters: e.entryFilters,
       preBuyUltraGuard: e.preBuyUltraGuard,
       holdLog: e.holdLog,
+      noWsolRetryCount: e.noWsolRetryCount || 0,
+      noWsolRetryRecovered: !!e.noWsolRetryRecovered,
+      noWsolRetryExhausted: !!e.noWsolRetryExhausted,
     })),
     outcomeOperations,
     rugPullEvents: rugLosses.slice(-20).map(e => ({
@@ -690,6 +732,11 @@ function writeReports(force = false) {
     `finished: ${report.finishedEvents}`,
     `checks passed: ${report.checksPassed}`,
     `skipped: ${report.skipped}`,
+    `no WSOL skips: ${report.noWsolSkipCount}`,
+    `no WSOL retry events: ${report.noWsolRetryEvents}`,
+    `no WSOL retry recovered: ${report.noWsolRetryRecoveredCount}`,
+    `no WSOL retry exhausted: ${report.noWsolRetryExhaustedCount}`,
+    `no WSOL retry attempts total: ${report.noWsolRetryAttemptsTotal}`,
     `hostile skips: ${report.hostileSkipCount}`,
     `rug-like avoided: ${report.avoidedRugLikeCount}`,
     `rug losses (-100%): ${report.rugLossCount}`,

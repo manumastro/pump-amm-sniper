@@ -87,6 +87,58 @@ function quoteTokenOutFromState(
     return { tokenOutAtomic, tokenOutUi, orientation };
 }
 
+async function resolveEntryQuoteWithNoWsolRetry(
+    fetchStateWithRetry: () => Promise<any | null>,
+    tokenMint: string,
+    tokenDecimals: number,
+    buyAmountLamports: BN,
+    ctx: string,
+): Promise<{ entryState: any; entryQuote: { tokenOutAtomic: BN; tokenOutUi: number; orientation: { solIsBase: boolean; tokenIsBase: boolean; hasWsol: boolean } } } | { error: string }> {
+    const noWsolRecheckEnabled = CONFIG.PRE_BUY_NO_WSOL_RECHECK_ENABLED;
+    const noWsolMaxAttempts = noWsolRecheckEnabled
+        ? Math.max(1, CONFIG.PRE_BUY_NO_WSOL_RECHECK_MAX_ATTEMPTS)
+        : 1;
+    const noWsolIntervalMs = Math.max(100, CONFIG.PRE_BUY_NO_WSOL_RECHECK_INTERVAL_MS);
+
+    let noWsolRetryCount = 0;
+    for (let attempt = 1; attempt <= noWsolMaxAttempts; attempt++) {
+        const state = await fetchStateWithRetry();
+        if (!state) {
+            return { error: "entry state unavailable" };
+        }
+
+        const quote = quoteTokenOutFromState(state, tokenMint, buyAmountLamports, tokenDecimals);
+        if (quote) {
+            if (noWsolRetryCount > 0) {
+                stageLog(ctx, "NOWSOL", `recovered WSOL side after ${noWsolRetryCount} retries`);
+            }
+            return { entryState: state, entryQuote: quote };
+        }
+
+        noWsolRetryCount += 1;
+        const mintInfo = describePoolMints(state, tokenMint);
+        const canRetry = noWsolRecheckEnabled && attempt < noWsolMaxAttempts;
+        if (canRetry) {
+            stageLog(
+                ctx,
+                "NOWSOL",
+                `missing WSOL side, retry ${noWsolRetryCount}/${noWsolMaxAttempts} (${mintInfo})`,
+            );
+            await new Promise((r) => setTimeout(r, noWsolIntervalMs));
+            continue;
+        }
+
+        stageLog(
+            ctx,
+            "NOWSOL",
+            `retry exhausted ${noWsolRetryCount}/${noWsolMaxAttempts} (${mintInfo})`,
+        );
+        return { error: `pool has no WSOL side (${mintInfo})` };
+    }
+
+    return { error: "entry state unavailable" };
+}
+
 export async function validatePreBuyEntryState(
     deps: ValidatePreBuyDeps,
     connection: Connection,
@@ -165,15 +217,19 @@ export async function validatePreBuyEntryState(
         }
     }
 
-    const entryState = await fetchStateWithRetry();
-    if (!entryState) {
-        return { ok: false, reason: "entry state unavailable" };
+    const entryResolution = await resolveEntryQuoteWithNoWsolRetry(
+        fetchStateWithRetry,
+        tokenMint,
+        tokenDecimals,
+        buyAmountLamports,
+        ctx,
+    );
+    if ("error" in entryResolution) {
+        return { ok: false, reason: entryResolution.error };
     }
 
-    const entryQuote = quoteTokenOutFromState(entryState, tokenMint, buyAmountLamports, tokenDecimals);
-    if (!entryQuote) {
-        return { ok: false, reason: `pool has no WSOL side (${describePoolMints(entryState, tokenMint)})` };
-    }
+    const entryState = entryResolution.entryState;
+    const entryQuote = entryResolution.entryQuote;
 
     let effectiveEntryState = entryState;
     let effectiveEntryQuote = entryQuote;

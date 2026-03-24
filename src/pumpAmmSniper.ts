@@ -305,17 +305,51 @@ async function handleNewPool(connection: Connection, signature: string) {
         let liquiditySOL = 0;
         const observerUser = walletKeypair?.publicKey ?? Keypair.generate().publicKey;
         const poolKey = new PublicKey(poolAddress);
-        for (let i = 0; i < 6; i++) {
+        const noWsolRecheckEnabled = CONFIG.PRE_BUY_NO_WSOL_RECHECK_ENABLED;
+        const noWsolMaxAttempts = noWsolRecheckEnabled
+            ? Math.max(1, CONFIG.PRE_BUY_NO_WSOL_RECHECK_MAX_ATTEMPTS)
+            : 1;
+        const noWsolRetryIntervalMs = Math.max(100, CONFIG.PRE_BUY_NO_WSOL_RECHECK_INTERVAL_MS);
+        const stateAttempts = Math.max(6, noWsolMaxAttempts);
+        let noWsolRetryCount = 0;
+
+        for (let i = 0; i < stateAttempts; i++) {
             try {
                 const poolState = await onlineSdk.swapSolanaState(poolKey, observerUser);
                 const orientation = getPoolOrientation(poolState, tokenMint);
                 if (!orientation.hasWsol) {
                     const mintInfo = describePoolMints(poolState, tokenMint);
+                    noWsolRetryCount += 1;
+                    const canRetryNoWsol = noWsolRecheckEnabled && noWsolRetryCount < noWsolMaxAttempts;
+                    if (canRetryNoWsol) {
+                        stageLog(
+                            ctx,
+                            "NOWSOL",
+                            `missing WSOL side, retry ${noWsolRetryCount}/${noWsolMaxAttempts} (${mintInfo})`,
+                        );
+                        await new Promise((r) => setTimeout(r, noWsolRetryIntervalMs));
+                        continue;
+                    }
+
+                    stageLog(
+                        ctx,
+                        "NOWSOL",
+                        `retry exhausted ${noWsolRetryCount}/${noWsolMaxAttempts} (${mintInfo})`,
+                    );
                     stageLog(ctx, "LIQ", `pool has no WSOL side (${mintInfo})`);
                     console.log(`🛑 SKIP: pool has no WSOL side (${mintInfo})`);
                     finalStatus = "SKIP: no WSOL side";
                     return;
                 }
+
+                if (noWsolRetryCount > 0) {
+                    stageLog(
+                        ctx,
+                        "NOWSOL",
+                        `recovered WSOL side after ${noWsolRetryCount} retries`,
+                    );
+                }
+
                 const liq = getSolLiquidityFromState(poolState, tokenMint);
                 if (liq !== null && liq > 0) {
                     liquiditySOL = liq;
