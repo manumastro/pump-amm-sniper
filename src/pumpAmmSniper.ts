@@ -70,6 +70,9 @@ const PAPER_REPORT_JSON_PATH = path.join(ROOT_DIR, "logs", "paper-report.json");
 const LOW_LIQUIDITY_STATE_PATH = path.join(ROOT_DIR, "logs", "low-liquidity-pools.json");
 const DEFERRED_NO_WSOL_QUEUE_DIR = path.join(ROOT_DIR, "logs", "no-wsol-deferred-queue");
 const DEFERRED_NO_WSOL_LOG_PATH = path.join(ROOT_DIR, "logs", "no-wsol-deferred.log");
+const CC_SHADOW_ROOT_DIR = path.join(ROOT_DIR, "logs", "cc-shadow");
+const CC_SHADOW_QUEUE_DIR = path.join(CC_SHADOW_ROOT_DIR, "queue");
+const CC_SHADOW_LOG_PATH = path.join(CC_SHADOW_ROOT_DIR, "manager.log");
 const BLACKLISTS_DIR = path.join(ROOT_DIR, "blacklists");
 const BLACKLIST_CREATORS_PATH = path.join(BLACKLISTS_DIR, "creators.txt");
 const BLACKLIST_FUNDERS_PATH = path.join(BLACKLISTS_DIR, "funders.txt");
@@ -178,6 +181,33 @@ function enqueueDeferredNoWsolCandidate(payload: {
         appendDeferredNoWsolLog(
             `ERROR enqueue sig=${shortSig(payload.signature)} token=${payload.tokenMint} message=${error?.message || "unknown"}`,
         );
+    }
+}
+
+function enqueueCcShadowCandidate(payload: {
+    eventId: string;
+    signature: string;
+    tokenMint: string;
+    poolAddress: string;
+    creatorAddress?: string | null;
+    cc: number;
+    startedAt?: string;
+    createPoolBlockTime?: number | null;
+    skipReason?: string;
+}) {
+    if (!CONFIG.CC_SHADOW_ENABLED) return;
+    if (!Number.isFinite(payload.cc) || payload.cc < CONFIG.CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES) return;
+
+    try {
+        fs.mkdirSync(CC_SHADOW_QUEUE_DIR, { recursive: true });
+        const randomSuffix = Math.floor(Math.random() * 1_000_000).toString().padStart(6, "0");
+        const baseName = `${Date.now()}-${payload.eventId}-${randomSuffix}`;
+        const tmpPath = path.join(CC_SHADOW_QUEUE_DIR, `${baseName}.tmp`);
+        const outPath = path.join(CC_SHADOW_QUEUE_DIR, `${baseName}.json`);
+        fs.writeFileSync(tmpPath, JSON.stringify(payload));
+        fs.renameSync(tmpPath, outPath);
+    } catch (error) {
+        console.error(`CCSHADOW    | enqueue failed ${payload.eventId}: ${(error as Error)?.message || "unknown"}`);
     }
 }
 
@@ -588,6 +618,17 @@ async function handleNewPool(connection: Connection, signature: string) {
                     );
                 }
                 console.log(`🛑 SKIP: creator risk (${creatorRisk.reason})`);
+                enqueueCcShadowCandidate({
+                    eventId: signature,
+                    signature,
+                    tokenMint,
+                    poolAddress,
+                    creatorAddress: creatorAddress || null,
+                    cc: Number(creatorRisk.uniqueCounterparties || 0),
+                    startedAt: new Date().toISOString(),
+                    createPoolBlockTime: tx.blockTime || null,
+                    skipReason: `creator risk (${creatorRisk.reason})`,
+                });
                 finalStatus = "SKIP: creator risk";
                 return;
             }
@@ -2915,6 +2956,95 @@ async function checkDexScreenerWsolPair(tokenMint: string, poolAddress?: string)
     }
 }
 
+async function getDexScreenerSnapshot(tokenMint: string, poolAddress?: string): Promise<Record<string, any>> {
+    try {
+        const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${tokenMint}`, {
+            headers: { Accept: "application/json" },
+            signal: AbortSignal.timeout(8000),
+        });
+        if (!res.ok) {
+            return { ok: false, error: `http_${res.status}` };
+        }
+        const json: any = await res.json();
+        const pairs = Array.isArray(json?.pairs) ? json.pairs : [];
+        const wsolPairs = pairs.filter((pair: any) => pair?.baseToken?.address === WSOL || pair?.quoteToken?.address === WSOL);
+        const sorted = [...(wsolPairs.length > 0 ? wsolPairs : pairs)].sort(
+            (a: any, b: any) => Number(b?.liquidity?.usd || 0) - Number(a?.liquidity?.usd || 0),
+        );
+        let best = sorted[0] || null;
+        if (poolAddress) {
+            const exact = sorted.find((pair: any) => typeof pair?.pairAddress === "string" && pair.pairAddress.toLowerCase() === poolAddress.toLowerCase());
+            if (exact) best = exact;
+        }
+        if (!best) return { ok: true, pairCount: pairs.length, wsolPairCount: wsolPairs.length, pair: null };
+        return {
+            ok: true,
+            pairCount: pairs.length,
+            wsolPairCount: wsolPairs.length,
+            pair: {
+                pairAddress: best?.pairAddress || null,
+                dexId: best?.dexId || null,
+                url: best?.url || null,
+                liquidityUsd: Number(best?.liquidity?.usd || 0),
+                volume24h: Number(best?.volume?.h24 || 0),
+                volume5m: Number(best?.volume?.m5 || 0),
+                priceUsd: Number(best?.priceUsd || 0),
+                priceNative: Number(best?.priceNative || 0),
+                priceChange5m: Number(best?.priceChange?.m5 || 0),
+                priceChange1h: Number(best?.priceChange?.h1 || 0),
+                priceChange24h: Number(best?.priceChange?.h24 || 0),
+                fdv: Number(best?.fdv ?? 0),
+                marketCap: Number(best?.marketCap ?? 0),
+            },
+        };
+    } catch (error: any) {
+        return { ok: false, error: error?.message || "fetch_error" };
+    }
+}
+
+function quoteTokenOutFromStateForShadow(
+    state: any,
+    tokenMint: string,
+    buyAmountLamports: BN,
+): { tokenOutAtomic: BN } | null {
+    const orientation = getPoolOrientation(state, tokenMint);
+    if (!orientation.hasWsol) return null;
+
+    try {
+        if (orientation.solIsBase) {
+            const entry = sellBaseInput({
+                base: buyAmountLamports,
+                slippage: CONFIG.SLIPPAGE_PERCENT,
+                baseReserve: state.poolBaseAmount,
+                quoteReserve: state.poolQuoteAmount,
+                baseMintAccount: state.baseMintAccount,
+                baseMint: state.baseMint,
+                coinCreator: state.pool.coinCreator,
+                creator: state.pool.creator,
+                feeConfig: state.feeConfig,
+                globalConfig: state.globalConfig,
+            });
+            return entry.uiQuote.lte(new BN(0)) ? null : { tokenOutAtomic: entry.uiQuote };
+        }
+
+        const entry = buyQuoteInput({
+            quote: buyAmountLamports,
+            slippage: CONFIG.SLIPPAGE_PERCENT,
+            baseReserve: state.poolBaseAmount,
+            quoteReserve: state.poolQuoteAmount,
+            baseMintAccount: state.baseMintAccount,
+            baseMint: state.baseMint,
+            coinCreator: state.pool.coinCreator,
+            creator: state.pool.creator,
+            feeConfig: state.feeConfig,
+            globalConfig: state.globalConfig,
+        });
+        return entry.base.lte(new BN(0)) ? null : { tokenOutAtomic: entry.base };
+    } catch {
+        return null;
+    }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // EXECUTE BUY
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -3083,6 +3213,164 @@ async function executeSell(connection: Connection, poolAddress: string, tokenMin
     }
 }
 
+async function sampleCcShadowCandidate(candidate: {
+    eventId: string;
+    signature: string;
+    tokenMint: string;
+    poolAddress: string;
+    creatorAddress?: string | null;
+    cc: number;
+    sampleIndex: number;
+    elapsedMs: number;
+    createPoolBlockTime?: number | null;
+    state: Record<string, any>;
+}): Promise<{ snapshot: Record<string, any>; nextState?: Record<string, any> }> {
+    const observerUser = walletKeypair?.publicKey ?? Keypair.generate().publicKey;
+    const poolKey = new PublicKey(candidate.poolAddress);
+    const nextState: Record<string, any> = { ...candidate.state };
+    const sampleAtMs = Date.now();
+    const buyAmountLamports = new BN(Math.floor(CONFIG.TRADE_AMOUNT_SOL * 1e9));
+    const dexEvery = Math.max(1, CONFIG.CC_SHADOW_DEX_EVERY_N_SNAPSHOTS);
+
+    let poolState: any | null = null;
+    let poolError: string | null = null;
+    try {
+        poolState = await onlineSdk.swapSolanaState(poolKey, observerUser);
+    } catch (error: any) {
+        poolError = error?.message || "state_unavailable";
+    }
+
+    const tokenDecimals = Number.isFinite(Number(nextState.tokenDecimals))
+        ? Number(nextState.tokenDecimals)
+        : await getMintInfoRobust(createRuntimeConnection(), new PublicKey(candidate.tokenMint)).then((m) => m.decimals).catch(() => 6);
+    nextState.tokenDecimals = tokenDecimals;
+
+    let removeLiquidityDetected = false;
+    let removeLiquidityDetails: Record<string, any> | null = null;
+    if (candidate.creatorAddress) {
+        const seenSignatures = new Set<string>(Array.isArray(nextState.seenPoolSignatures) ? nextState.seenPoolSignatures : []);
+        const removeLiq = await detectRemoveLiquiditySince(
+            createRuntimeConnection(),
+            candidate.poolAddress,
+            candidate.creatorAddress,
+            candidate.tokenMint,
+            seenSignatures,
+            candidate.signature,
+            candidate.createPoolBlockTime,
+        );
+        nextState.seenPoolSignatures = [...seenSignatures];
+        removeLiquidityDetected = !!removeLiq.detected;
+        removeLiquidityDetails = removeLiq;
+    }
+
+    let dexSnapshot: Record<string, any> | null = nextState.lastDexSnapshot || null;
+    if (candidate.sampleIndex === 0 || candidate.sampleIndex % dexEvery === 0) {
+        dexSnapshot = await getDexScreenerSnapshot(candidate.tokenMint, candidate.poolAddress);
+        nextState.lastDexSnapshot = dexSnapshot;
+    }
+
+    const orientation = poolState ? getPoolOrientation(poolState, candidate.tokenMint) : { solIsBase: false, tokenIsBase: false, hasWsol: false };
+    const liquiditySol = poolState ? getSolLiquidityFromState(poolState, candidate.tokenMint) : null;
+    const spotSolPerToken = poolState ? getSpotSolPerTokenFromState(poolState, candidate.tokenMint, tokenDecimals) : null;
+
+    let baselineTokenOutAtomic = nextState.baselineTokenOutAtomic ? new BN(String(nextState.baselineTokenOutAtomic)) : null;
+    if (!baselineTokenOutAtomic && poolState) {
+        const quote = quoteTokenOutFromStateForShadow(poolState, candidate.tokenMint, buyAmountLamports);
+        if (quote?.tokenOutAtomic) {
+            baselineTokenOutAtomic = quote.tokenOutAtomic;
+            nextState.baselineTokenOutAtomic = quote.tokenOutAtomic.toString();
+        }
+    }
+
+    const currentExitQuoteSol = poolState && baselineTokenOutAtomic
+        ? getExitQuoteSolFromState(poolState, candidate.tokenMint, baselineTokenOutAtomic)
+        : null;
+    const baselineExitQuoteSol = Number.isFinite(Number(nextState.baselineExitQuoteSol))
+        ? Number(nextState.baselineExitQuoteSol)
+        : currentExitQuoteSol;
+    if (Number.isFinite(Number(baselineExitQuoteSol))) {
+        nextState.baselineExitQuoteSol = baselineExitQuoteSol;
+    }
+
+    const currentPnlPct = baselineExitQuoteSol && currentExitQuoteSol
+        ? ((currentExitQuoteSol - CONFIG.TRADE_AMOUNT_SOL) / CONFIG.TRADE_AMOUNT_SOL) * 100
+        : null;
+    const previousExitQuoteSol = Number.isFinite(Number(nextState.previousExitQuoteSol)) ? Number(nextState.previousExitQuoteSol) : null;
+    const previousPnlPct = Number.isFinite(Number(nextState.previousPnlPct)) ? Number(nextState.previousPnlPct) : null;
+    const deltaFromPrevPct = previousExitQuoteSol && currentExitQuoteSol
+        ? ((currentExitQuoteSol - previousExitQuoteSol) / previousExitQuoteSol) * 100
+        : null;
+    const deltaFromBaselinePct = baselineExitQuoteSol && currentExitQuoteSol
+        ? ((currentExitQuoteSol - baselineExitQuoteSol) / baselineExitQuoteSol) * 100
+        : null;
+
+    const peakExitQuoteSol = Math.max(Number(nextState.peakExitQuoteSol || 0), Number(currentExitQuoteSol || 0));
+    nextState.peakExitQuoteSol = peakExitQuoteSol;
+    const peakPnlPct = peakExitQuoteSol > 0 ? ((peakExitQuoteSol - CONFIG.TRADE_AMOUNT_SOL) / CONFIG.TRADE_AMOUNT_SOL) * 100 : null;
+
+    const hardStopTriggered = typeof currentPnlPct === "number" && currentPnlPct <= -CONFIG.HOLD_HARD_STOP_LOSS_PCT;
+    const singleSwapShockTriggered = typeof deltaFromPrevPct === "number" && deltaFromPrevPct <= -CONFIG.HOLD_SINGLE_SWAP_SHOCK_DROP_PCT;
+    const sellQuoteCollapseTriggered = typeof deltaFromBaselinePct === "number" && deltaFromBaselinePct <= -CONFIG.HOLD_SELL_QUOTE_COLLAPSE_DROP_PCT;
+    const winnerArmed = typeof peakPnlPct === "number" && peakPnlPct >= CONFIG.HOLD_WINNER_ARM_PNL_PCT;
+    const winnerTakeProfitTriggered = typeof currentPnlPct === "number" && currentPnlPct >= CONFIG.HOLD_WINNER_HARD_TAKE_PROFIT_PCT;
+    const winnerTrailingTriggered =
+        winnerArmed && typeof peakPnlPct === "number" && typeof currentPnlPct === "number"
+            ? peakPnlPct - currentPnlPct >= CONFIG.HOLD_WINNER_TRAILING_DROP_PCT
+            : false;
+
+    const wouldExitReason = removeLiquidityDetected
+        ? "remove liquidity"
+        : singleSwapShockTriggered
+            ? "single swap shock"
+            : hardStopTriggered
+                ? "hard stop loss"
+                : sellQuoteCollapseTriggered
+                    ? "sell quote collapse"
+                    : winnerTakeProfitTriggered
+                        ? "winner take profit"
+                        : winnerTrailingTriggered
+                            ? "winner trailing stop"
+                            : null;
+
+    nextState.previousExitQuoteSol = currentExitQuoteSol;
+    nextState.previousPnlPct = currentPnlPct;
+
+    return {
+        snapshot: {
+            sampleAt: new Date(sampleAtMs).toISOString(),
+            sampleAtMs,
+            sampleIndex: candidate.sampleIndex,
+            ageMs: candidate.elapsedMs,
+            phase: candidate.elapsedMs <= CONFIG.CC_SHADOW_FAST_PHASE_MS ? "fast" : "slow",
+            hasWsol: orientation.hasWsol,
+            poolStateError: poolError,
+            solLiquidity: liquiditySol,
+            spotSolPerToken,
+            baselineExitQuoteSol,
+            currentExitQuoteSol,
+            currentPnlPct,
+            previousPnlPct,
+            deltaFromPrevPct,
+            deltaFromBaselinePct,
+            peakExitQuoteSol,
+            peakPnlPct,
+            dex: dexSnapshot,
+            removeLiquidityDetected,
+            removeLiquidityDetails,
+            hypothetical: {
+                hardStopTriggered,
+                singleSwapShockTriggered,
+                sellQuoteCollapseTriggered,
+                winnerArmed,
+                winnerTakeProfitTriggered,
+                winnerTrailingTriggered,
+            },
+            wouldExitReason,
+        },
+        nextState,
+    };
+}
+
 const supervisorRuntime = createSupervisorRuntime({
     rootDir: ROOT_DIR,
     workerLogDir: WORKER_LOG_DIR,
@@ -3098,6 +3386,16 @@ const supervisorRuntime = createSupervisorRuntime({
     deferredNoWsolBackoffMultiplier: CONFIG.DEFERRED_NO_WSOL_BACKOFF_MULTIPLIER,
     deferredNoWsolMaxIntervalMs: CONFIG.DEFERRED_NO_WSOL_MAX_INTERVAL_MS,
     deferredNoWsolMaxAgeMs: CONFIG.DEFERRED_NO_WSOL_MAX_AGE_MS,
+    ccShadowEnabled: CONFIG.CC_SHADOW_ENABLED,
+    ccShadowQueueDir: CC_SHADOW_QUEUE_DIR,
+    ccShadowRootDir: CC_SHADOW_ROOT_DIR,
+    ccShadowLogPath: CC_SHADOW_LOG_PATH,
+    ccShadowQueueMaxJobs: CONFIG.CC_SHADOW_QUEUE_MAX_JOBS,
+    ccShadowFastIntervalMs: CONFIG.CC_SHADOW_FAST_INTERVAL_MS,
+    ccShadowFastPhaseMs: CONFIG.CC_SHADOW_FAST_PHASE_MS,
+    ccShadowSlowIntervalMs: CONFIG.CC_SHADOW_SLOW_INTERVAL_MS,
+    ccShadowDexEveryNSnapshots: CONFIG.CC_SHADOW_DEX_EVERY_N_SNAPSHOTS,
+    ccShadowHoldTtlMs: CONFIG.AUTO_SELL_DELAY_MS,
     signatureCacheTtlMs: CONFIG.SIGNATURE_CACHE_TTL_MS,
     signatureCacheMaxSize: CONFIG.SIGNATURE_CACHE_MAX_SIZE,
     logStaleResubscribeMs: CONFIG.LOG_STALE_RESUBSCRIBE_MS,
@@ -3138,6 +3436,7 @@ const supervisorRuntime = createSupervisorRuntime({
             };
         }
     },
+    sampleCcShadowCandidate,
     shortSig,
     getWorkerEntryCommand,
     stageLog,
