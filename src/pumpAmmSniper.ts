@@ -68,6 +68,8 @@ const ROOT_DIR = process.cwd();
 const PAPER_LOG_PATH = path.join(ROOT_DIR, "paper.log");
 const PAPER_REPORT_JSON_PATH = path.join(ROOT_DIR, "logs", "paper-report.json");
 const LOW_LIQUIDITY_STATE_PATH = path.join(ROOT_DIR, "logs", "low-liquidity-pools.json");
+const DEFERRED_NO_WSOL_QUEUE_DIR = path.join(ROOT_DIR, "logs", "no-wsol-deferred-queue");
+const DEFERRED_NO_WSOL_LOG_PATH = path.join(ROOT_DIR, "logs", "no-wsol-deferred.log");
 const BLACKLISTS_DIR = path.join(ROOT_DIR, "blacklists");
 const BLACKLIST_CREATORS_PATH = path.join(BLACKLISTS_DIR, "creators.txt");
 const BLACKLIST_FUNDERS_PATH = path.join(BLACKLISTS_DIR, "funders.txt");
@@ -120,6 +122,63 @@ function getWorkerEntryCommand(): { cmd: string; args: string[] } {
         return { cmd: process.execPath, args: [distEntry] };
     }
     return { cmd: "npx", args: ["ts-node", "src/pumpAmmSniper.ts"] };
+}
+
+function appendDeferredNoWsolLog(message: string) {
+    try {
+        fs.mkdirSync(path.dirname(DEFERRED_NO_WSOL_LOG_PATH), { recursive: true });
+        fs.appendFileSync(DEFERRED_NO_WSOL_LOG_PATH, `[${new Date().toISOString()}] ${message}\n`);
+    } catch {
+        // best-effort only
+    }
+}
+
+function enqueueDeferredNoWsolCandidate(payload: {
+    signature: string;
+    tokenMint: string;
+    poolAddress: string;
+    reason: string;
+    noWsolRetryCount: number;
+    source: string;
+}) {
+    if (!CONFIG.DEFERRED_NO_WSOL_QUEUE_ENABLED) return;
+    if (process.env.DEFERRED_NO_WSOL_REPLAY === "1") {
+        appendDeferredNoWsolLog(
+            `SKIP enqueue replay sig=${shortSig(payload.signature)} token=${payload.tokenMint}`,
+        );
+        return;
+    }
+
+    try {
+        fs.mkdirSync(DEFERRED_NO_WSOL_QUEUE_DIR, { recursive: true });
+        const nowIso = new Date().toISOString();
+        const randomSuffix = Math.floor(Math.random() * 1_000_000).toString().padStart(6, "0");
+        const baseName = `${Date.now()}-${payload.signature.slice(0, 16)}-${randomSuffix}`;
+        const tmpPath = path.join(DEFERRED_NO_WSOL_QUEUE_DIR, `${baseName}.tmp`);
+        const outPath = path.join(DEFERRED_NO_WSOL_QUEUE_DIR, `${baseName}.json`);
+        const serialized = JSON.stringify(
+            {
+                signature: payload.signature,
+                tokenMint: payload.tokenMint,
+                poolAddress: payload.poolAddress,
+                createdAt: nowIso,
+                reason: payload.reason,
+                noWsolRetryCount: payload.noWsolRetryCount,
+                source: payload.source,
+            },
+            null,
+            0,
+        );
+        fs.writeFileSync(tmpPath, serialized);
+        fs.renameSync(tmpPath, outPath);
+        appendDeferredNoWsolLog(
+            `ENQUEUE candidate sig=${shortSig(payload.signature)} token=${payload.tokenMint} inlineRetries=${payload.noWsolRetryCount}`,
+        );
+    } catch (error: any) {
+        appendDeferredNoWsolLog(
+            `ERROR enqueue sig=${shortSig(payload.signature)} token=${payload.tokenMint} message=${error?.message || "unknown"}`,
+        );
+    }
 }
 
 function isRateLimitedMessage(message?: string): boolean {
@@ -303,6 +362,7 @@ async function handleNewPool(connection: Connection, signature: string) {
         stageLog(ctx, "STEP 3/7", "liquidity check");
         // Check liquidity from on-chain pool state (preferred) with retries, then tx fallback.
         let liquiditySOL = 0;
+        let forceEntryNoWsolBypass = false;
         const observerUser = walletKeypair?.publicKey ?? Keypair.generate().publicKey;
         const poolKey = new PublicKey(poolAddress);
         const noWsolRecheckEnabled = CONFIG.PRE_BUY_NO_WSOL_RECHECK_ENABLED;
@@ -312,7 +372,9 @@ async function handleNewPool(connection: Connection, signature: string) {
         const noWsolRetryIntervalMs = Math.max(100, CONFIG.PRE_BUY_NO_WSOL_RECHECK_INTERVAL_MS);
         const noWsolRetryBackoffMultiplier = Math.max(1, CONFIG.PRE_BUY_NO_WSOL_RECHECK_BACKOFF_MULTIPLIER);
         const noWsolRetryMaxIntervalMs = Math.max(noWsolRetryIntervalMs, CONFIG.PRE_BUY_NO_WSOL_RECHECK_MAX_INTERVAL_MS);
-        const stateAttempts = Math.max(6, noWsolMaxAttempts);
+        const deferredReplayMode = process.env.DEFERRED_NO_WSOL_REPLAY === "1";
+        const deferredReplayExtraAttempts = deferredReplayMode ? 8 : 0;
+        const stateAttempts = Math.max(6, noWsolMaxAttempts) + deferredReplayExtraAttempts;
         let noWsolRetryCount = 0;
 
         for (let i = 0; i < stateAttempts; i++) {
@@ -322,7 +384,8 @@ async function handleNewPool(connection: Connection, signature: string) {
                 if (!orientation.hasWsol) {
                     const mintInfo = describePoolMints(poolState, tokenMint);
                     noWsolRetryCount += 1;
-                    const canRetryNoWsol = noWsolRecheckEnabled && noWsolRetryCount < noWsolMaxAttempts;
+                    const retryBudget = deferredReplayMode ? stateAttempts : noWsolMaxAttempts;
+                    const canRetryNoWsol = noWsolRecheckEnabled && noWsolRetryCount < retryBudget;
                     if (canRetryNoWsol) {
                         const retryDelayMs = Math.min(
                             noWsolRetryMaxIntervalMs,
@@ -331,19 +394,60 @@ async function handleNewPool(connection: Connection, signature: string) {
                         stageLog(
                             ctx,
                             "NOWSOL",
-                            `missing WSOL side, retry ${noWsolRetryCount}/${noWsolMaxAttempts} after ${retryDelayMs}ms (${mintInfo})`,
+                            `missing WSOL side, retry ${noWsolRetryCount}/${retryBudget} after ${retryDelayMs}ms (${mintInfo})`,
                         );
                         await new Promise((r) => setTimeout(r, retryDelayMs));
                         continue;
                     }
 
+                    if (deferredReplayMode) {
+                        const dexFallback = await checkDexScreenerWsolPair(tokenMint, poolAddress);
+                        if (dexFallback.hasWsol) {
+                            stageLog(
+                                ctx,
+                                "NOWSOL",
+                                `deferred replay fallback unlocked (${dexFallback.details})`,
+                            );
+                            if (dexFallback.liquidityUsd > 0) {
+                                const solPrice = await getSolPriceUsd();
+                                if (solPrice && solPrice > 0) {
+                                    liquiditySOL = dexFallback.liquidityUsd / solPrice;
+                                    stageLog(
+                                        ctx,
+                                        "NOWSOL",
+                                        `using Dex fallback liq ${liquiditySOL.toFixed(4)} SOL from ${dexFallback.liquidityUsd.toFixed(2)} USD`,
+                                    );
+                                }
+                            }
+                            break;
+                        }
+                    }
+
+                    if (CONFIG.FORCE_ENTRY_ON_NO_WSOL_SIDE) {
+                        stageLog(
+                            ctx,
+                            "NOWSOL",
+                            `force-entry enabled: bypass no-WSOL skip after ${noWsolRetryCount} retries (${mintInfo})`,
+                        );
+                        forceEntryNoWsolBypass = true;
+                        break;
+                    }
+
                     stageLog(
                         ctx,
                         "NOWSOL",
-                        `retry exhausted ${noWsolRetryCount}/${noWsolMaxAttempts} (${mintInfo})`,
+                        `retry exhausted ${noWsolRetryCount}/${deferredReplayMode ? stateAttempts : noWsolMaxAttempts} (${mintInfo})`,
                     );
                     stageLog(ctx, "LIQ", `pool has no WSOL side (${mintInfo})`);
                     console.log(`🛑 SKIP: pool has no WSOL side (${mintInfo})`);
+                    enqueueDeferredNoWsolCandidate({
+                        signature,
+                        tokenMint,
+                        poolAddress,
+                        reason: `pool has no WSOL side (${mintInfo})`,
+                        noWsolRetryCount,
+                        source: process.env.DEFERRED_NO_WSOL_REPLAY === "1" ? "deferred-replay" : "realtime",
+                    });
                     finalStatus = "SKIP: no WSOL side";
                     return;
                 }
@@ -491,7 +595,7 @@ async function handleNewPool(connection: Connection, signature: string) {
 
         if (MONITOR_ONLY) {
             let preEntryCurrentLiquiditySol: number | null = null;
-            if (CONFIG.PRE_BUY_WAIT_MS > 0) {
+            if (CONFIG.PRE_BUY_WAIT_MS > 0 && !(forceEntryNoWsolBypass && CONFIG.FORCE_ENTRY_ON_NO_WSOL_SIDE)) {
                 const preEntry = await preEntryWaitAndCheck(
                     connection,
                     signature,
@@ -508,6 +612,8 @@ async function handleNewPool(connection: Connection, signature: string) {
                 }
                 liquiditySOL = preEntry.currentLiquiditySol;
                 preEntryCurrentLiquiditySol = preEntry.currentLiquiditySol;
+            } else if (forceEntryNoWsolBypass && CONFIG.FORCE_ENTRY_ON_NO_WSOL_SIDE) {
+                stageLog(ctx, "WAIT", "force-entry no-WSOL bypass: skipping pre-entry guard");
             }
             const top10 = await top10Service.runCheck(connection, tokenMint, poolAddress, ctx);
             if (!top10.ok) {
@@ -803,6 +909,9 @@ async function handleNewPool(connection: Connection, signature: string) {
                 })
             );
 
+            if (forceEntryNoWsolBypass && CONFIG.FORCE_ENTRY_ON_NO_WSOL_SIDE) {
+                stageLog(ctx, "PAPER", "force-entry no-WSOL bypass active, running paper simulation anyway");
+            }
             stageLog(ctx, "STEP 6/7", "paper simulation");
             const paper = await paperTradeService.runSimulation(
                 connection,
@@ -855,7 +964,7 @@ async function handleNewPool(connection: Connection, signature: string) {
             stageLog(ctx, "DEV", "skipped (creator unresolved + fail-open)");
         }
 
-        if (CONFIG.PRE_BUY_WAIT_MS > 0) {
+        if (CONFIG.PRE_BUY_WAIT_MS > 0 && !(forceEntryNoWsolBypass && CONFIG.FORCE_ENTRY_ON_NO_WSOL_SIDE)) {
             const preEntry = await preEntryWaitAndCheck(
                 connection,
                 signature,
@@ -870,6 +979,8 @@ async function handleNewPool(connection: Connection, signature: string) {
                 finalStatus = "SKIP: pre-entry guard";
                 return;
             }
+        } else if (forceEntryNoWsolBypass && CONFIG.FORCE_ENTRY_ON_NO_WSOL_SIDE) {
+            stageLog(ctx, "WAIT", "force-entry no-WSOL bypass: skipping pre-entry guard");
         }
         const top10 = await top10Service.runCheck(connection, tokenMint, poolAddress, ctx);
         if (!top10.ok) {
@@ -878,7 +989,7 @@ async function handleNewPool(connection: Connection, signature: string) {
             return;
         }
 
-        if (CONFIG.PRE_BUY_REVALIDATION_ENABLED) {
+        if (CONFIG.PRE_BUY_REVALIDATION_ENABLED && !(forceEntryNoWsolBypass && CONFIG.FORCE_ENTRY_ON_NO_WSOL_SIDE)) {
             let tokenDecimals = 6;
             try {
                 tokenDecimals = (await getMintInfoRobust(connection, new PublicKey(tokenMint))).decimals;
@@ -918,6 +1029,8 @@ async function handleNewPool(connection: Connection, signature: string) {
                 finalStatus = "SKIP: pre-buy revalidation";
                 return;
             }
+        } else if (forceEntryNoWsolBypass && CONFIG.FORCE_ENTRY_ON_NO_WSOL_SIDE) {
+            stageLog(ctx, "PREBUY", "force-entry no-WSOL bypass: skipping pre-buy revalidation");
         }
 
         stageLog(ctx, "CHECKS", "passed");
@@ -1022,6 +1135,14 @@ async function waitForPreEntryFlowSignal(
         const state = await onlineSdk.swapSolanaState(poolKey, observerUser);
         const orientation = getPoolOrientation(state, tokenMint);
         if (!orientation.hasWsol) {
+            if (CONFIG.FORCE_ENTRY_ON_NO_WSOL_SIDE) {
+                stageLog(
+                    ctx,
+                    "WAIT",
+                    `force-entry: bypass pre-entry flow WSOL gate (${describePoolMints(state, tokenMint)})`,
+                );
+                return { ok: true };
+            }
             return {
                 ok: false,
                 reason: `pool has no WSOL side on pre-entry flow gate (${describePoolMints(state, tokenMint)})`,
@@ -1128,6 +1249,19 @@ async function preEntryWaitAndCheck(
             const state = await onlineSdk.swapSolanaState(new PublicKey(poolAddress), observerUser);
             const liq = getSolLiquidityFromState(state, tokenMint);
             if (liq === null || !Number.isFinite(liq) || liq <= 0) {
+                if (CONFIG.FORCE_ENTRY_ON_NO_WSOL_SIDE) {
+                    stageLog(
+                        ctx,
+                        "WAIT",
+                        `force-entry: bypass pre-entry WSOL/liquidity sample (${describePoolMints(state, tokenMint)})`,
+                    );
+                    latest = baselineLiquiditySol;
+                    observed.push(latest > 0 ? latest : CONFIG.MIN_POOL_LIQUIDITY_SOL);
+                    if (i < samples - 1 && intervalMs > 0) {
+                        await new Promise(r => setTimeout(r, intervalMs));
+                    }
+                    continue;
+                }
                 return {
                     ok: false,
                     reason: `pool has no WSOL side on pre-entry check (${describePoolMints(state, tokenMint)})`,
@@ -2719,6 +2853,68 @@ async function getSolPriceUsd(): Promise<number | null> {
     return null;
 }
 
+async function checkDexScreenerWsolPair(tokenMint: string, poolAddress?: string): Promise<{
+    hasWsol: boolean;
+    details: string;
+    matchedPool: boolean;
+    liquidityUsd: number;
+}> {
+    try {
+        const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${tokenMint}`, {
+            headers: { Accept: "application/json" },
+            signal: AbortSignal.timeout(8000),
+        });
+        if (!res.ok) {
+            return { hasWsol: false, details: `dexscreener http ${res.status}`, matchedPool: false, liquidityUsd: 0 };
+        }
+
+        const json: any = await res.json();
+        const pairs = Array.isArray(json?.pairs) ? json.pairs : [];
+        const wsolPairs = pairs.filter((pair: any) =>
+            pair?.baseToken?.address === WSOL || pair?.quoteToken?.address === WSOL,
+        );
+        if (wsolPairs.length === 0) {
+            return { hasWsol: false, details: "dexscreener no wsol pairs", matchedPool: false, liquidityUsd: 0 };
+        }
+
+        if (poolAddress) {
+            const exact = wsolPairs.find(
+                (pair: any) =>
+                    typeof pair?.pairAddress === "string" && pair.pairAddress.toLowerCase() === poolAddress.toLowerCase(),
+            );
+            if (exact) {
+                const liq = Number(exact?.liquidity?.usd || 0);
+                return {
+                    hasWsol: true,
+                    details: `dexscreener pair=${exact.pairAddress} liqUsd=${Number.isFinite(liq) ? liq.toFixed(2) : "0.00"}`,
+                    matchedPool: true,
+                    liquidityUsd: Number.isFinite(liq) ? liq : 0,
+                };
+            }
+        }
+
+        const best = wsolPairs
+            .slice()
+            .sort((a: any, b: any) => Number(b?.liquidity?.usd || 0) - Number(a?.liquidity?.usd || 0))[0];
+        const liq = Number(best?.liquidity?.usd || 0);
+        return {
+            hasWsol: true,
+            details: `dexscreener bestPair=${best?.pairAddress || "-"} liqUsd=${Number.isFinite(liq) ? liq.toFixed(2) : "0.00"}`,
+            matchedPool: typeof poolAddress === "string" && typeof best?.pairAddress === "string"
+                ? best.pairAddress.toLowerCase() === poolAddress.toLowerCase()
+                : false,
+            liquidityUsd: Number.isFinite(liq) ? liq : 0,
+        };
+    } catch (error: any) {
+        return {
+            hasWsol: false,
+            details: `dexscreener error (${error?.message || "unknown"})`,
+            matchedPool: false,
+            liquidityUsd: 0,
+        };
+    }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // EXECUTE BUY
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -2892,6 +3088,16 @@ const supervisorRuntime = createSupervisorRuntime({
     workerLogDir: WORKER_LOG_DIR,
     maxConcurrentOperations: CONFIG.MAX_CONCURRENT_OPERATIONS,
     queueMaxPendingSignatures: CONFIG.QUEUE_MAX_PENDING_SIGNATURES,
+    deferredNoWsolQueueEnabled: CONFIG.DEFERRED_NO_WSOL_QUEUE_ENABLED,
+    deferredNoWsolQueueDir: DEFERRED_NO_WSOL_QUEUE_DIR,
+    deferredNoWsolLogPath: DEFERRED_NO_WSOL_LOG_PATH,
+    deferredNoWsolQueueMaxJobs: CONFIG.DEFERRED_NO_WSOL_QUEUE_MAX_JOBS,
+    deferredNoWsolInitialDelayMs: CONFIG.DEFERRED_NO_WSOL_INITIAL_DELAY_MS,
+    deferredNoWsolMaxAttempts: CONFIG.DEFERRED_NO_WSOL_MAX_ATTEMPTS,
+    deferredNoWsolBaseIntervalMs: CONFIG.DEFERRED_NO_WSOL_BASE_INTERVAL_MS,
+    deferredNoWsolBackoffMultiplier: CONFIG.DEFERRED_NO_WSOL_BACKOFF_MULTIPLIER,
+    deferredNoWsolMaxIntervalMs: CONFIG.DEFERRED_NO_WSOL_MAX_INTERVAL_MS,
+    deferredNoWsolMaxAgeMs: CONFIG.DEFERRED_NO_WSOL_MAX_AGE_MS,
     signatureCacheTtlMs: CONFIG.SIGNATURE_CACHE_TTL_MS,
     signatureCacheMaxSize: CONFIG.SIGNATURE_CACHE_MAX_SIZE,
     logStaleResubscribeMs: CONFIG.LOG_STALE_RESUBSCRIBE_MS,
@@ -2900,6 +3106,38 @@ const supervisorRuntime = createSupervisorRuntime({
     createConnection: createRuntimeConnection,
     initSdks,
     handleNewPool,
+    checkDeferredNoWsolCandidate: async ({ tokenMint, poolAddress }) => {
+        const observerUser = walletKeypair?.publicKey ?? Keypair.generate().publicKey;
+        try {
+            const poolState = await onlineSdk.swapSolanaState(new PublicKey(poolAddress), observerUser);
+            const orientation = getPoolOrientation(poolState, tokenMint);
+            if (!orientation.hasWsol) {
+                const dexFallback = await checkDexScreenerWsolPair(tokenMint, poolAddress);
+                if (dexFallback.hasWsol) {
+                    return {
+                        hasWsol: true,
+                        details: `${describePoolMints(poolState, tokenMint)} | ${dexFallback.details}`,
+                    };
+                }
+            }
+            return {
+                hasWsol: orientation.hasWsol,
+                details: describePoolMints(poolState, tokenMint),
+            };
+        } catch (error: any) {
+            const dexFallback = await checkDexScreenerWsolPair(tokenMint, poolAddress);
+            if (dexFallback.hasWsol) {
+                return {
+                    hasWsol: true,
+                    details: `state unavailable (${error?.message || "unknown"}) | ${dexFallback.details}`,
+                };
+            }
+            return {
+                hasWsol: false,
+                details: `state unavailable (${error?.message || "unknown"}) | ${dexFallback.details}`,
+            };
+        }
+    },
     shortSig,
     getWorkerEntryCommand,
     stageLog,

@@ -527,7 +527,9 @@ Scopo:
 Comportamento:
 - se manca il lato WSOL, il bot fa retry breve prima dello skip definitivo
 - se il lato WSOL riappare entro la finestra, continua il flusso pre-buy
-- se resta assente, mantiene `SKIP: no WSOL side`
+- se resta assente e `FORCE_ENTRY_ON_NO_WSOL_SIDE=true`, prosegue in fail-open (best effort entry)
+- se resta assente e `FORCE_ENTRY_ON_NO_WSOL_SIDE=false`, mantiene `SKIP: no WSOL side`
+- in `MONITOR_ONLY`, anche in fail-open no-WSOL viene comunque eseguita la paper simulation
 
 Controlli principali:
 - `PRE_BUY_NO_WSOL_RECHECK_ENABLED`
@@ -535,10 +537,44 @@ Controlli principali:
 - `PRE_BUY_NO_WSOL_RECHECK_INTERVAL_MS`
 - `PRE_BUY_NO_WSOL_RECHECK_BACKOFF_MULTIPLIER`
 - `PRE_BUY_NO_WSOL_RECHECK_MAX_INTERVAL_MS`
+- `FORCE_ENTRY_ON_NO_WSOL_SIDE`
 
 Tuning attuale:
 - finestra retry estesa (tentativi default aumentati a 10)
 - delay con backoff progressivo (base 350ms, cap 1200ms)
+
+### 7.8 Deferred no-WSOL queue (postuma)
+
+Scopo:
+- recuperare pool che al primo passaggio non espongono ancora il lato WSOL, ma lo mostrano poco dopo
+
+Stato attuale:
+- disattivata (`DEFERRED_NO_WSOL_QUEUE_ENABLED=false`)
+
+Comportamento:
+- quando un evento chiude con `SKIP: no WSOL side`, viene scritto un candidato in coda postuma
+- il supervisor process legge la coda, rifa check WSOL con retry temporizzato
+- se il check on-chain resta negativo ma DexScreener mostra pair WSOL (stesso pool o best pair), puo sbloccare il redispatch
+- se WSOL compare entro finestra, redispatcha la stessa signature a un worker libero
+- il replay non bypassa i controlli: rifanno il flusso standard pre-entry (token security, creator risk, liquidity, pre-buy)
+
+Config runtime dedicata:
+- `DEFERRED_NO_WSOL_QUEUE_ENABLED`
+- `DEFERRED_NO_WSOL_QUEUE_MAX_JOBS`
+- `DEFERRED_NO_WSOL_INITIAL_DELAY_MS`
+- `DEFERRED_NO_WSOL_MAX_ATTEMPTS`
+- `DEFERRED_NO_WSOL_BASE_INTERVAL_MS`
+- `DEFERRED_NO_WSOL_BACKOFF_MULTIPLIER`
+- `DEFERRED_NO_WSOL_MAX_INTERVAL_MS`
+- `DEFERRED_NO_WSOL_MAX_AGE_MS`
+
+Tuning attuale:
+- finestra postuma estesa: fino a ~5 minuti (`MAX_AGE_MS=300000`)
+- retry postumi aumentati (`MAX_ATTEMPTS=14`) con backoff e cap a 30s
+
+File operativi:
+- coda candidati: `logs/no-wsol-deferred-queue/*.json`
+- log manager/queue: `logs/no-wsol-deferred.log`
 
 Metriche report dedicate (`paper-report.json` / `paper-report.txt`):
 - `noWsolSkipCount`
@@ -752,7 +788,8 @@ Se vuoi capire un caso velocemente:
 | Liquidity revalidation | pre-buy finale | ON | skip | `liquidity ... below revalidation threshold` |
 | Ultra-short rug guard | pre-buy finale | ON | skip | `ultra-short rug guard ...` |
 | Quote sanity | pre-buy finale | ON | skip | `quote sanity ...x spot` |
-| No-WSOL grace recheck | pre-buy finale | ON | retry->skip | `pool has no WSOL side (...)` |
+| No-WSOL grace recheck | pre-buy finale | ON | retry->fail-open/skip | `pool has no WSOL side (...)` |
+| Deferred no-WSOL queue | post-skip runtime | OFF | recheck->redispatch/expire | `SKIP: no WSOL side` -> queue |
 | Top10 concentration | pre-entry finale | ON | skip | `top10 concentration ...` |
 | Top1 external holder concentration | pre-entry finale | ON | skip | `top1 external holder concentration ...` |
 | Dev holdings | post-resolve / gate | ON | skip | `Dev holds too much ...` |
