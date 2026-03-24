@@ -107,7 +107,17 @@ export async function waitForExitStateWithLiquidityStop(
 ): Promise<{ state: any | null; exitReason?: string } | null> {
     const startedAtMs = Date.now();
     const deadlineMs = startedAtMs + Math.max(1000, holdMs);
-    const pollIntervalMs = Math.max(250, Math.min(CONFIG.HOLD_REMOVE_LIQ_CHECK_INTERVAL_MS, 1500));
+    const pollIntervalMs = Math.max(
+        200,
+        Math.min(
+            CONFIG.HOLD_WINNER_CHECK_INTERVAL_MS,
+            CONFIG.HOLD_HARD_STOP_LOSS_CHECK_INTERVAL_MS,
+            CONFIG.HOLD_SINGLE_SWAP_SHOCK_CHECK_INTERVAL_MS,
+            CONFIG.HOLD_SELL_QUOTE_COLLAPSE_CHECK_INTERVAL_MS,
+            CONFIG.HOLD_REMOVE_LIQ_CHECK_INTERVAL_MS,
+            1000,
+        ),
+    );
     const removeLiqCheckIntervalMs = Math.max(500, CONFIG.HOLD_REMOVE_LIQ_CHECK_INTERVAL_MS);
     const entrySolLiquidity = getSolLiquidityFromState(entryState, tokenMint) || 0;
     let latestState: any | null = entryState;

@@ -622,7 +622,8 @@ Puo uscire in due modi:
 Regole importanti recenti:
 - token CP=1 hanno TP piu alto
 - token CP=0 hanno trailing piu stretto per proteggersi da slow rug
-- check winner piu frequente (`HOLD_WINNER_CHECK_INTERVAL_MS = 300ms`) per ridurre slippage tra picco e uscita
+- check winner piu frequente (`HOLD_WINNER_CHECK_INTERVAL_MS = 250ms`) per ridurre slippage tra picco e uscita
+- ciclo hold piu frequente (poll interno allineato ai check veloci) per intercettare prima i dump rapidi
 
 ### 8.5 Sell quote collapse
 
@@ -649,6 +650,7 @@ Exit reason:
 
 Soglia attuale:
 - `HOLD_SINGLE_SWAP_SHOCK_DROP_PCT = 35`
+- `HOLD_SINGLE_SWAP_SHOCK_CHECK_INTERVAL_MS = 300ms`
 
 ### 8.12 Hard stop loss
 
@@ -657,6 +659,9 @@ Esce se:
 
 Scopo:
 - imporre un limite hard alla perdita intra-trade anche quando gli altri trigger arrivano in ritardo
+
+Controllo frequenza:
+- `HOLD_HARD_STOP_LOSS_CHECK_INTERVAL_MS = 250ms`
 
 Exit reason:
 - `hard stop loss`
