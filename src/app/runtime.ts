@@ -332,6 +332,7 @@ export function createSupervisorRuntime(options: {
     }
 
     function dispatchPoolToWorker(signature: string, extraEnv?: Record<string, string>): boolean {
+        // Atomic check-and-set: prevent double dispatch for same signature
         if (activeSignatures.has(signature)) {
             return true;
         }
@@ -341,6 +342,14 @@ export function createSupervisorRuntime(options: {
             return false;
         }
 
+        // CRITICAL: Add to activeSignatures BEFORE any async operations
+        // This prevents concurrent dispatchPoolToWorker calls from both passing the check above
+        if (activeSignatures.has(signature)) {
+            // Double-check in case another dispatch won the race
+            return true;
+        }
+        activeSignatures.add(signature);
+
         fs.mkdirSync(options.workerLogDir, { recursive: true });
         const workerLogPath = getWorkerLogPath(slot.slot);
         if (!fs.existsSync(workerLogPath)) {
@@ -349,7 +358,6 @@ export function createSupervisorRuntime(options: {
 
         slot.busy = true;
         slot.signature = signature;
-        activeSignatures.add(signature);
         console.log(`DISPATCH     | worker-${slot.slot} ${options.shortSig(signature)}`);
 
         const workerEntry = options.getWorkerEntryCommand();

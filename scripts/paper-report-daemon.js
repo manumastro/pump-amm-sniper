@@ -97,6 +97,7 @@ const carries = new Map();
 let lastWriteAt = 0;
 let eventSeq = 0;
 const currentEventIds = new Map();
+const lastSignaturesPerLog = new Map();  // Track last signature per logPath to detect re-processing
 
 function discoverLogPaths() {
   const workerLogs = fs.existsSync(LOG_DIR)
@@ -246,8 +247,20 @@ function parseLine(logPath, line) {
 
     let ev = null;
     if (maybeId && maybeId.includes('...')) {
-      ev = getEvent(maybeId);
-      currentEventIds.set(logPath, maybeId);
+      // This is a signature shorthand (e.g., "pnj2eK...cJPwTj")
+      // Check if current event matches this shorthand
+      const currentEv = getCurrentEvent(logPath);
+      let isSameSig = false;
+      if (currentEv && currentEv.signature && maybeId.includes('...')) {
+        const parts = maybeId.split('...');
+        isSameSig = currentEv.signature.startsWith(parts[0]) && currentEv.signature.endsWith(parts[1]);
+      }
+      if (isSameSig) {
+        ev = currentEv;
+      } else {
+        // No match - will use getCurrentEvent later or create new
+        ev = getCurrentEvent(logPath);
+      }
     } else {
       ev = getCurrentEvent(logPath);
     }
@@ -265,10 +278,53 @@ function parseLine(logPath, line) {
     if (stage === 'WORKER') {
       const startMatch = message.match(/^slot\s+\d+\s+start\s+([A-Za-z0-9.]+)$/);
       if (startMatch) {
-        const id = `evt-${String(++eventSeq).padStart(6, '0')}`;
-        ev = getEvent(id);
-        ev.startedAt = ev.startedAt || ts;
-        currentEventIds.set(logPath, ev.id);
+        const sigShort = startMatch[1];
+        const currentEv = getCurrentEvent(logPath);
+        
+        // Check if we already have an event for this exact signature in this logpath
+        // Signature shorthand format: "ABC...XYZ" (first 6 + ... + last 5 chars)
+        let isSameSig = false;
+        if (currentEv && currentEv.signature && sigShort.includes('...')) {
+          const parts = sigShort.split('...');
+          isSameSig = currentEv.signature.startsWith(parts[0]) && currentEv.signature.endsWith(parts[1]);
+        }
+        
+        if (isSameSig) {
+          // Duplicate start for the same signature - reuse existing event
+          ev = currentEv;
+          ev.startedAt = ev.startedAt || ts;
+        } else {
+          // Different signature - FIRST finalize the previous event if it doesn't have endStatus yet
+          if (currentEv && !currentEv.endStatus) {
+            currentEv.endStatus = 'MONITOR_ONLY (no explicit END marker)';
+            currentEv.endedAt = ts || nowIso();
+          }
+          // NOW create a new event for the new signature
+          const newId = `evt-${String(++eventSeq).padStart(6, '0')}`;
+          ev = getEvent(newId);
+          ev.startedAt = ev.startedAt || ts;
+          currentEventIds.set(logPath, newId);
+        }
+      } else {
+        // Check for "slot X done" - just mark that worker is done, but DON'T clear currentEventId
+        // because more log lines for this event may arrive after "done" (like PNL line at 08:57:30.193)
+        const doneMatch = message.match(/^slot\s+\d+\s+done\s+([A-Za-z0-9.]+)$/);
+        if (doneMatch) {
+          const sigShort = doneMatch[1];
+          const currentEv = getCurrentEvent(logPath);
+          
+          // If current event matches this signature and doesn't have endStatus yet, finalize it
+          if (currentEv && currentEv.signature && sigShort.includes('...')) {
+            const parts = sigShort.split('...');
+            const isSameSig = currentEv.signature.startsWith(parts[0]) && currentEv.signature.endsWith(parts[1]);
+            if (isSameSig && !currentEv.endStatus) {
+              // Auto-finalize with "MONITOR_ONLY" status (since this is a paper trade only)
+              currentEv.endStatus = 'MONITOR_ONLY (no explicit END marker)';
+              currentEv.endedAt = ts || nowIso();
+              // DO NOT delete from currentEventIds - PNL line may still come after done
+            }
+          }
+        }
       }
       return;
     }
@@ -330,6 +386,11 @@ function parseLine(logPath, line) {
         const abs = parseCompactSol(m[2].trim());
         ev.pnlSol = abs == null ? null : sign * abs;
         ev.pnlPct = pct;
+        // If PNL comes after the recorded end time, update endedAt to match
+        // (This can happen when "WORKER done" precedes the PNL line)
+        if (ts && ev.endedAt && ts > ev.endedAt) {
+          ev.endedAt = ts;
+        }
       }
       return;
     }
