@@ -1347,14 +1347,17 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
             }
 
             if (uniqueCounterparties >= CONFIG.CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES) {
-                return returnEarlyDecision({
-                    ok: false,
-                    reason: `unique counterparties ${uniqueCounterparties} >= ${CONFIG.CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES}`,
-                    funder,
-                    uniqueCounterparties,
-                    compressedWindowSec,
-                    burner,
-                });
+                const whitelistedCcs = CONFIG.CREATOR_RISK_WHITELISTED_CC_VALUES || [];
+                if (!whitelistedCcs.includes(uniqueCounterparties)) {
+                    return returnEarlyDecision({
+                        ok: false,
+                        reason: `unique counterparties ${uniqueCounterparties} >= ${CONFIG.CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES}`,
+                        funder,
+                        uniqueCounterparties,
+                        compressedWindowSec,
+                        burner,
+                    });
+                }
             }
 
             if (
