@@ -953,24 +953,25 @@ async function handleNewPool(connection: Connection, signature: string) {
             if (forceEntryNoWsolBypass && CONFIG.FORCE_ENTRY_ON_NO_WSOL_SIDE) {
                 stageLog(ctx, "PAPER", "force-entry no-WSOL bypass active, running paper simulation anyway");
             }
-            stageLog(ctx, "STEP 6/7", "paper simulation");
-            const paper = await paperTradeService.runSimulation(
-                connection,
-                poolAddress,
-                tokenMint,
-                liquiditySOL,
-                ctx,
-                creatorAddress || undefined,
-                signature,
-                tx.blockTime || null,
-                creatorRisk,
-                creatorRiskProbation
-                    ? {
-                        forceHoldMs: creatorRiskProbationHoldMs,
-                        suppressCreatorRiskRecheck: true,
-                    }
-                    : undefined,
-            );
+             stageLog(ctx, "STEP 6/7", "paper simulation");
+             const paper = await paperTradeService.runSimulation(
+                 connection,
+                 poolAddress,
+                 tokenMint,
+                 liquiditySOL,
+                 ctx,
+                 creatorAddress || undefined,
+                 signature,
+                 tx.blockTime || null,
+                 creatorRisk,
+                 creatorRiskProbation
+                     ? {
+                         forceHoldMs: creatorRiskProbationHoldMs,
+                         suppressCreatorRiskRecheck: true,
+                     }
+                     : undefined,
+                 forceEntryNoWsolBypass,
+             );
             if (!paper.ok) {
                 if (paper.finalStatus) {
                     console.log(`⚠️ PAPER_TRADE: ${paper.reason}`);

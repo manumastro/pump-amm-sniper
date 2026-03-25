@@ -66,6 +66,7 @@ export function createPaperTradeService(deps: PaperTradeDeps) {
         createPoolBlockTime?: number | null,
         initialCreatorRisk?: CreatorRiskResult,
         options?: PaperSimulationOptions,
+        forceEntryNoWsolBypass: boolean = false,
     ) {
         return validatePreBuyEntryState(
             {
@@ -86,6 +87,7 @@ export function createPaperTradeService(deps: PaperTradeDeps) {
             createPoolBlockTime,
             initialCreatorRisk,
             options,
+            forceEntryNoWsolBypass,
         );
     }
 
@@ -100,6 +102,7 @@ export function createPaperTradeService(deps: PaperTradeDeps) {
         createPoolBlockTime?: number | null,
         initialCreatorRisk?: CreatorRiskResult,
         options?: PaperSimulationOptions,
+        forceEntryNoWsolBypass: boolean = false,
     ): Promise<PaperTradeResult> {
         if (!CONFIG.PAPER_TRADE_ENABLED) return { ok: true };
 
@@ -126,21 +129,22 @@ export function createPaperTradeService(deps: PaperTradeDeps) {
                 // fallback to common pump token decimals
             }
 
-            const preBuy = await validatePreBuy(
-                connection,
-                fetchStateWithRetry,
-                tokenMint,
-                tokenDecimals,
-                buyAmountLamports,
-                baselineLiquiditySol,
-                ctx,
-                creatorAddress,
-                poolAddress,
-                createPoolSignature,
-                createPoolBlockTime,
-                initialCreatorRisk,
-                options,
-            );
+             const preBuy = await validatePreBuy(
+                 connection,
+                 fetchStateWithRetry,
+                 tokenMint,
+                 tokenDecimals,
+                 buyAmountLamports,
+                 baselineLiquiditySol,
+                 ctx,
+                 creatorAddress,
+                 poolAddress,
+                 createPoolSignature,
+                 createPoolBlockTime,
+                 initialCreatorRisk,
+                 options,
+                 forceEntryNoWsolBypass,
+             );
             if (!preBuy.ok || !preBuy.entryState || !preBuy.tokenOutAtomic || !preBuy.tokenOutUi) {
                 return { ok: false, reason: preBuy.reason || "pre-buy validation failed" };
             }

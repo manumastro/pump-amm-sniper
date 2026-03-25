@@ -334,11 +334,13 @@ export function createSupervisorRuntime(options: {
     function dispatchPoolToWorker(signature: string, extraEnv?: Record<string, string>): boolean {
         // Atomic check-and-set: prevent double dispatch for same signature
         if (activeSignatures.has(signature)) {
+            console.log(`DISPATCH     | SKIP (already active) ${options.shortSig(signature)}`);
             return true;
         }
 
         const slot = findIdleWorkerSlot();
         if (!slot) {
+            console.log(`DISPATCH     | SKIP (no idle slot) ${options.shortSig(signature)}`);
             return false;
         }
 
@@ -346,6 +348,7 @@ export function createSupervisorRuntime(options: {
         // This prevents concurrent dispatchPoolToWorker calls from both passing the check above
         if (activeSignatures.has(signature)) {
             // Double-check in case another dispatch won the race
+            console.log(`DISPATCH     | SKIP (race won by other) ${options.shortSig(signature)}`);
             return true;
         }
         activeSignatures.add(signature);

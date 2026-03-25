@@ -93,6 +93,7 @@ async function resolveEntryQuoteWithNoWsolRetry(
     tokenDecimals: number,
     buyAmountLamports: BN,
     ctx: string,
+    forceEntryNoWsolBypass: boolean = false,
 ): Promise<{ entryState: any; entryQuote: { tokenOutAtomic: BN; tokenOutUi: number; orientation: { solIsBase: boolean; tokenIsBase: boolean; hasWsol: boolean } } } | { error: string }> {
     const noWsolRecheckEnabled = CONFIG.PRE_BUY_NO_WSOL_RECHECK_ENABLED;
     const noWsolMaxAttempts = noWsolRecheckEnabled
@@ -115,6 +116,22 @@ async function resolveEntryQuoteWithNoWsolRetry(
                 stageLog(ctx, "NOWSOL", `recovered WSOL side after ${noWsolRetryCount} retries`);
             }
             return { entryState: state, entryQuote: quote };
+        }
+
+        // If force-entry bypass is active, accept the state even without WSOL side
+        if (forceEntryNoWsolBypass && CONFIG.FORCE_ENTRY_ON_NO_WSOL_SIDE) {
+            const mintInfo = describePoolMints(state, tokenMint);
+            stageLog(ctx, "NOWSOL", `force-entry bypass: proceeding without WSOL side (${mintInfo})`);
+            // Create a synthetic quote with the base/quote amounts as-is
+            // This allows the paper simulation to proceed even without proper WSOL pairing
+            return {
+                entryState: state,
+                entryQuote: {
+                    tokenOutAtomic: new BN(0), // placeholder - will use state directly
+                    tokenOutUi: 0,
+                    orientation: { solIsBase: false, tokenIsBase: false, hasWsol: false },
+                },
+            };
         }
 
         noWsolRetryCount += 1;
@@ -160,6 +177,7 @@ export async function validatePreBuyEntryState(
     createPoolBlockTime?: number | null,
     initialCreatorRisk?: CreatorRiskResult,
     options?: PaperSimulationOptions,
+    forceEntryNoWsolBypass: boolean = false,
 ): Promise<PreBuyEntryValidationResult> {
     if (
         creatorAddress &&
@@ -223,13 +241,14 @@ export async function validatePreBuyEntryState(
         }
     }
 
-    const entryResolution = await resolveEntryQuoteWithNoWsolRetry(
-        fetchStateWithRetry,
-        tokenMint,
-        tokenDecimals,
-        buyAmountLamports,
-        ctx,
-    );
+     const entryResolution = await resolveEntryQuoteWithNoWsolRetry(
+         fetchStateWithRetry,
+         tokenMint,
+         tokenDecimals,
+         buyAmountLamports,
+         ctx,
+         forceEntryNoWsolBypass,
+     );
     if ("error" in entryResolution) {
         return { ok: false, reason: entryResolution.error };
     }
