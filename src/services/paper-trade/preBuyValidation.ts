@@ -95,71 +95,33 @@ async function resolveEntryQuoteWithNoWsolRetry(
     ctx: string,
     forceEntryNoWsolBypass: boolean = false,
 ): Promise<{ entryState: any; entryQuote: { tokenOutAtomic: BN; tokenOutUi: number; orientation: { solIsBase: boolean; tokenIsBase: boolean; hasWsol: boolean } } } | { error: string }> {
-    const noWsolRecheckEnabled = CONFIG.PRE_BUY_NO_WSOL_RECHECK_ENABLED;
-    const noWsolMaxAttempts = noWsolRecheckEnabled
-        ? Math.max(1, CONFIG.PRE_BUY_NO_WSOL_RECHECK_MAX_ATTEMPTS)
-        : 1;
-    const noWsolIntervalMs = Math.max(100, CONFIG.PRE_BUY_NO_WSOL_RECHECK_INTERVAL_MS);
-    const noWsolBackoffMultiplier = Math.max(1, CONFIG.PRE_BUY_NO_WSOL_RECHECK_BACKOFF_MULTIPLIER);
-    const noWsolMaxIntervalMs = Math.max(noWsolIntervalMs, CONFIG.PRE_BUY_NO_WSOL_RECHECK_MAX_INTERVAL_MS);
-
-    let noWsolRetryCount = 0;
-    for (let attempt = 1; attempt <= noWsolMaxAttempts; attempt++) {
-        const state = await fetchStateWithRetry();
-        if (!state) {
-            return { error: "entry state unavailable" };
-        }
-
-        const quote = quoteTokenOutFromState(state, tokenMint, buyAmountLamports, tokenDecimals);
-        if (quote) {
-            if (noWsolRetryCount > 0) {
-                stageLog(ctx, "NOWSOL", `recovered WSOL side after ${noWsolRetryCount} retries`);
-            }
-            return { entryState: state, entryQuote: quote };
-        }
-
-        // If force-entry bypass is active, accept the state even without WSOL side
-        if (forceEntryNoWsolBypass && CONFIG.FORCE_ENTRY_ON_NO_WSOL_SIDE) {
-            const mintInfo = describePoolMints(state, tokenMint);
-            stageLog(ctx, "NOWSOL", `force-entry bypass: proceeding without WSOL side (${mintInfo})`);
-            // Create a synthetic quote with the base/quote amounts as-is
-            // This allows the paper simulation to proceed even without proper WSOL pairing
-            return {
-                entryState: state,
-                entryQuote: {
-                    tokenOutAtomic: new BN(0), // placeholder - will use state directly
-                    tokenOutUi: 0,
-                    orientation: { solIsBase: false, tokenIsBase: false, hasWsol: false },
-                },
-            };
-        }
-
-        noWsolRetryCount += 1;
-        const mintInfo = describePoolMints(state, tokenMint);
-        const canRetry = noWsolRecheckEnabled && attempt < noWsolMaxAttempts;
-        if (canRetry) {
-            const retryDelayMs = Math.min(
-                noWsolMaxIntervalMs,
-                Math.round(noWsolIntervalMs * Math.pow(noWsolBackoffMultiplier, Math.max(0, noWsolRetryCount - 1))),
-            );
-            stageLog(
-                ctx,
-                "NOWSOL",
-                `missing WSOL side, retry ${noWsolRetryCount}/${noWsolMaxAttempts} after ${retryDelayMs}ms (${mintInfo})`,
-            );
-            await new Promise((r) => setTimeout(r, retryDelayMs));
-            continue;
-        }
-
-        stageLog(
-            ctx,
-            "NOWSOL",
-            `retry exhausted ${noWsolRetryCount}/${noWsolMaxAttempts} (${mintInfo})`,
-        );
-        return { error: `pool has no WSOL side (${mintInfo})` };
+    const state = await fetchStateWithRetry();
+    if (!state) {
+        return { error: "entry state unavailable" };
     }
 
-    return { error: "entry state unavailable" };
+    const quote = quoteTokenOutFromState(state, tokenMint, buyAmountLamports, tokenDecimals);
+    if (quote) {
+        return { entryState: state, entryQuote: quote };
+    }
+
+    // If force-entry bypass is active, accept the state even without WSOL side
+    if (forceEntryNoWsolBypass && CONFIG.FORCE_ENTRY_ON_NO_WSOL_SIDE) {
+        const mintInfo = describePoolMints(state, tokenMint);
+        stageLog(ctx, "NOWSOL", `force-entry bypass: proceeding without WSOL side (${mintInfo})`);
+        return {
+            entryState: state,
+            entryQuote: {
+                tokenOutAtomic: new BN(0),
+                tokenOutUi: 0,
+                orientation: { solIsBase: false, tokenIsBase: false, hasWsol: false },
+            },
+        };
+    }
+
+    const mintInfo = describePoolMints(state, tokenMint);
+    stageLog(ctx, "NOWSOL", `missing WSOL side, skipping (${mintInfo})`);
+    return { error: `pool has no WSOL side (${mintInfo})` };
 }
 
 export async function validatePreBuyEntryState(

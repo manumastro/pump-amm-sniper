@@ -519,29 +519,17 @@ Scopo:
 Motivo tipico:
 - `quote sanity ...x spot`
 
-### 7.7 No-WSOL grace recheck
+### 7.7 No-WSOL guard (semplificata)
 
 Scopo:
-- evitare skip immediati quando il lato WSOL del pool non e ancora visibile nei primissimi istanti
+- evitare ingressi su pool senza lato WSOL
 
 Comportamento:
-- se manca il lato WSOL, il bot fa retry breve prima dello skip definitivo
-- se il lato WSOL riappare entro la finestra, continua il flusso pre-buy
-- se resta assente e `FORCE_ENTRY_ON_NO_WSOL_SIDE=true`, prosegue in fail-open (best effort entry)
-- se resta assente e `FORCE_ENTRY_ON_NO_WSOL_SIDE=false`, mantiene `SKIP: no WSOL side`
-- in `MONITOR_ONLY`, anche in fail-open no-WSOL viene comunque eseguita la paper simulation
+- se manca WSOL → **SKIP immediato** (niente retry)
+- se `FORCE_ENTRY_ON_NO_WSOL_SIDE=true` (oggi `false`) può bypassare in best-effort
 
-Controlli principali:
-- `PRE_BUY_NO_WSOL_RECHECK_ENABLED`
-- `PRE_BUY_NO_WSOL_RECHECK_MAX_ATTEMPTS`
-- `PRE_BUY_NO_WSOL_RECHECK_INTERVAL_MS`
-- `PRE_BUY_NO_WSOL_RECHECK_BACKOFF_MULTIPLIER`
-- `PRE_BUY_NO_WSOL_RECHECK_MAX_INTERVAL_MS`
+Controlli rilevanti:
 - `FORCE_ENTRY_ON_NO_WSOL_SIDE`
-
-Tuning attuale:
-- finestra retry estesa (tentativi default aumentati a 10)
-- delay con backoff progressivo (base 350ms, cap 1200ms)
 
 ### 7.8 Deferred no-WSOL queue (postuma)
 
