@@ -293,14 +293,14 @@ Motivo tipico:
 ### 6.15 Unique counterparties
 
 Blocca se:
-- `uniqueCounterparties >= CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES`
+- `uniqueCounterparties NOT IN CREATOR_RISK_WHITELISTED_CC_VALUES`
 
 Stato pratico attuale:
-- soglia molto stretta: `2`
-- quindi e uno dei filtri piu severi oggi
+- whitelist: `0,1,2,4,47`
+- blocca tutto tranne i valori in whitelist
 
 Motivo tipico:
-- `unique counterparties X >= 2`
+- `unique counterparties X not in whitelist`
 
 ### 6.16 Compressed activity
 
@@ -667,7 +667,7 @@ Exit reason:
 - `hard stop loss`
 
 Soglia attuale:
-- `HOLD_HARD_STOP_LOSS_PCT = 25`
+- `HOLD_HARD_STOP_LOSS_PCT = 15`
 
 ### 8.6 Pool churn
 
@@ -818,7 +818,7 @@ Se vuoi capire un caso velocemente:
 | Funder cluster | ON | si | `funder cluster historical ...` / `recent ...` |
 | Linked to rug creator | ON | si | `linked to historical rug creator ...` |
 | Creator refunded funder | ON | si | `creator refunded funder ...` |
-| Unique counterparties | ON | si | `unique counterparties X >= 2` |
+| Unique counterparties | ON | si | `unique counterparties X not in whitelist` |
 | Compressed activity | ON | si | `compressed activity ...` |
 | Burner profile | ON | si | `burner profile ...` |
 | Precreate burst | ON | si | `precreate uniform outbound burst ...` |

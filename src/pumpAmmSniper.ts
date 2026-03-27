@@ -766,13 +766,18 @@ async function handleNewPool(connection: Connection, signature: string) {
                         thresholdLiqDropPct: CONFIG.PRE_BUY_ULTRA_SHORT_RUG_GUARD_MAX_LIQ_DROP_PCT,
                         thresholdQuoteDropPct: CONFIG.PRE_BUY_ULTRA_SHORT_RUG_GUARD_MAX_QUOTE_DROP_PCT,
                     },
-                    cr_uniqueCounterparties: {
-                        enabled: true,
-                        observed: cp,
-                        maxThreshold: cpMax,
-                        aboveMax: cp >= cpMax,
-                        pass: cp < cpMax,
-                    },
+                    cr_uniqueCounterparties: (() => {
+                        const whitelist = (CONFIG.CREATOR_RISK_WHITELISTED_CC_VALUES || []).map(v => Number(v));
+                        const cpNum = Number(cp);
+                        const pass = whitelist.includes(cpNum) || cpNum < cpMax;
+                        return {
+                            enabled: true,
+                            observed: cp,
+                            maxThreshold: cpMax,
+                            aboveMax: cp >= cpMax,
+                            pass,
+                        };
+                    })(),
                     cr_compressedActivity: {
                         enabled: CONFIG.CREATOR_RISK_CHECK_ENABLED,
                         observedCp: compCp,
