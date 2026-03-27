@@ -413,61 +413,14 @@ async function handleNewPool(connection: Connection, signature: string) {
                 const orientation = getPoolOrientation(poolState, tokenMint);
                 if (!orientation.hasWsol) {
                     const mintInfo = describePoolMints(poolState, tokenMint);
-                    noWsolRetryCount += 1;
-                    const retryBudget = deferredReplayMode ? stateAttempts : noWsolMaxAttempts;
-                    const canRetryNoWsol = noWsolRecheckEnabled && noWsolRetryCount < retryBudget;
-                    if (canRetryNoWsol) {
-                        const retryDelayMs = Math.min(
-                            noWsolRetryMaxIntervalMs,
-                            Math.round(noWsolRetryIntervalMs * Math.pow(noWsolRetryBackoffMultiplier, Math.max(0, noWsolRetryCount - 1))),
-                        );
-                        stageLog(
-                            ctx,
-                            "NOWSOL",
-                            `missing WSOL side, retry ${noWsolRetryCount}/${retryBudget} after ${retryDelayMs}ms (${mintInfo})`,
-                        );
-                        await new Promise((r) => setTimeout(r, retryDelayMs));
-                        continue;
-                    }
-
-                    if (deferredReplayMode) {
-                        const dexFallback = await checkDexScreenerWsolPair(tokenMint, poolAddress);
-                        if (dexFallback.hasWsol) {
-                            stageLog(
-                                ctx,
-                                "NOWSOL",
-                                `deferred replay fallback unlocked (${dexFallback.details})`,
-                            );
-                            if (dexFallback.liquidityUsd > 0) {
-                                const solPrice = await getSolPriceUsd();
-                                if (solPrice && solPrice > 0) {
-                                    liquiditySOL = dexFallback.liquidityUsd / solPrice;
-                                    stageLog(
-                                        ctx,
-                                        "NOWSOL",
-                                        `using Dex fallback liq ${liquiditySOL.toFixed(4)} SOL from ${dexFallback.liquidityUsd.toFixed(2)} USD`,
-                                    );
-                                }
-                            }
-                            break;
-                        }
-                    }
 
                     if (CONFIG.FORCE_ENTRY_ON_NO_WSOL_SIDE) {
-                        stageLog(
-                            ctx,
-                            "NOWSOL",
-                            `force-entry enabled: bypass no-WSOL skip after ${noWsolRetryCount} retries (${mintInfo})`,
-                        );
+                        stageLog(ctx, "NOWSOL", `force-entry enabled: bypass no-WSOL skip (${mintInfo})`);
                         forceEntryNoWsolBypass = true;
                         break;
                     }
 
-                    stageLog(
-                        ctx,
-                        "NOWSOL",
-                        `retry exhausted ${noWsolRetryCount}/${deferredReplayMode ? stateAttempts : noWsolMaxAttempts} (${mintInfo})`,
-                    );
+                    stageLog(ctx, "NOWSOL", `missing WSOL side, skipping (${mintInfo})`);
                     stageLog(ctx, "LIQ", `pool has no WSOL side (${mintInfo})`);
                     console.log(`🛑 SKIP: pool has no WSOL side (${mintInfo})`);
                     enqueueDeferredNoWsolCandidate({
@@ -475,7 +428,7 @@ async function handleNewPool(connection: Connection, signature: string) {
                         tokenMint,
                         poolAddress,
                         reason: `pool has no WSOL side (${mintInfo})`,
-                        noWsolRetryCount,
+                        noWsolRetryCount: 0,
                         source: process.env.DEFERRED_NO_WSOL_REPLAY === "1" ? "deferred-replay" : "realtime",
                     });
                     finalStatus = "SKIP: no WSOL side";
