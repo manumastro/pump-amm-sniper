@@ -117,7 +117,7 @@ export const CONFIG = {
     CREATOR_RISK_PARSED_TX_LIMIT: Number(50),
     CREATOR_RISK_CACHE_TTL_MS: Number(15 * 60 * 1000),
     CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES: Number(3),
-    CREATOR_RISK_WHITELISTED_CC_VALUES: (process.env.CREATOR_RISK_WHITELISTED_CC_VALUES || "0,1,2,4,47")
+    CREATOR_RISK_WHITELISTED_CC_VALUES: (process.env.CREATOR_RISK_WHITELISTED_CC_VALUES || "0,2,4,47")
         .split(",")
         .map((v) => Number(v.trim()))
         .filter((v) => Number.isFinite(v) && v >= 0),
@@ -378,7 +378,7 @@ export const CONFIG = {
     DEFERRED_NO_WSOL_BACKOFF_MULTIPLIER: Number(1.5),
     DEFERRED_NO_WSOL_MAX_INTERVAL_MS: Number(30000),
     DEFERRED_NO_WSOL_MAX_AGE_MS: Number(300000),
-    CC_SHADOW_ENABLED: false,
+    CC_SHADOW_ENABLED: true,
     CC_SHADOW_QUEUE_MAX_JOBS: Number(2000),
     CC_SHADOW_FAST_INTERVAL_MS: Number(5000),
     CC_SHADOW_FAST_PHASE_MS: Number(180000),

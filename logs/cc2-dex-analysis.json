@@ -1,0 +1,1379 @@
+{
+  "summary": {
+    "generatedAt": "2026-03-24T17:20:45.034Z",
+    "reportGeneratedAt": "2026-03-24T17:20:39.516Z",
+    "cc": 2,
+    "totalTokens": 44,
+    "withAnyPairs": 44,
+    "withWsolPairs": 44,
+    "withWsolLiq1k": 1,
+    "withWsolLiq10k": 1,
+    "fetchErrors": []
+  },
+  "tokens": [
+    {
+      "token": "GHk618WE19eGY9BiUHjXsgeQ5SeU9zd2DLwp4NzW6xhh",
+      "gmgn": "https://gmgn.ai/sol/token/GHk618WE19eGY9BiUHjXsgeQ5SeU9zd2DLwp4NzW6xhh",
+      "occurrences": 1,
+      "firstEventId": "evt-001950",
+      "firstStartedAt": "18:05:27.272",
+      "lastEventId": "evt-001950",
+      "lastStartedAt": "18:05:27.272",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "2ZV4EvcQY1k8wcPAZXJmQpkUN8nJpXjqEJUiR9AAVTnB",
+          "dexId": "pumpswap",
+          "liquidityUsd": 33487.03,
+          "priceChange24h": 38985,
+          "fdv": 91160291,
+          "url": "https://dexscreener.com/solana/2zv4evcqy1k8wcpazxjmqpkun8njpxjqejuir9aavtnb"
+        },
+        "bestWsolPair": {
+          "pairAddress": "2ZV4EvcQY1k8wcPAZXJmQpkUN8nJpXjqEJUiR9AAVTnB",
+          "dexId": "pumpswap",
+          "liquidityUsd": 33487.03,
+          "priceChange24h": 38985,
+          "fdv": 91160291,
+          "url": "https://dexscreener.com/solana/2zv4evcqy1k8wcpazxjmqpkun8njpxjqejuir9aavtnb"
+        },
+        "classification": "moon"
+      }
+    },
+    {
+      "token": "9dDkA7rFKMvMbASfZa7iVQWhqiNWuwnc8ZSotnFhSXPL",
+      "gmgn": "https://gmgn.ai/sol/token/9dDkA7rFKMvMbASfZa7iVQWhqiNWuwnc8ZSotnFhSXPL",
+      "occurrences": 1,
+      "firstEventId": "evt-000618",
+      "firstStartedAt": "02:17:35.926",
+      "lastEventId": "evt-000618",
+      "lastStartedAt": "02:17:35.926",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 2,
+        "wsolPairCount": 2,
+        "bestPair": {
+          "pairAddress": "4xAivnwPRUbZNrLu2sS1An18aG6EowyND9GwubPpzpck",
+          "dexId": "meteora",
+          "liquidityUsd": 1.81,
+          "priceChange24h": -68.28,
+          "fdv": 23070,
+          "url": "https://dexscreener.com/solana/4xaivnwprubznrlu2ss1an18ag6eowynd9gwubppzpck"
+        },
+        "bestWsolPair": {
+          "pairAddress": "4xAivnwPRUbZNrLu2sS1An18aG6EowyND9GwubPpzpck",
+          "dexId": "meteora",
+          "liquidityUsd": 1.81,
+          "priceChange24h": -68.28,
+          "fdv": 23070,
+          "url": "https://dexscreener.com/solana/4xaivnwprubznrlu2ss1an18ag6eowynd9gwubppzpck"
+        },
+        "classification": "dead"
+      }
+    },
+    {
+      "token": "44wgtMqqdmoCqR5ct2prWTvKW4NdEBURCAqA61JYiU95",
+      "gmgn": "https://gmgn.ai/sol/token/44wgtMqqdmoCqR5ct2prWTvKW4NdEBURCAqA61JYiU95",
+      "occurrences": 1,
+      "firstEventId": "evt-000121",
+      "firstStartedAt": "20:56:26.194",
+      "lastEventId": "evt-000121",
+      "lastStartedAt": "20:56:26.194",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "5G821TZkcw6K99gem9nW6K9G7nhGvYntLPdmmZmUGUgb",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 22.96,
+          "fdv": 9615,
+          "url": "https://dexscreener.com/solana/5g821tzkcw6k99gem9nw6k9g7nhgvyntlpdmmzmugugb"
+        },
+        "bestWsolPair": {
+          "pairAddress": "5G821TZkcw6K99gem9nW6K9G7nhGvYntLPdmmZmUGUgb",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 22.96,
+          "fdv": 9615,
+          "url": "https://dexscreener.com/solana/5g821tzkcw6k99gem9nw6k9g7nhgvyntlpdmmzmugugb"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "FV7T1KCvGLHks4bY31dUjnZNk8SQsatLzKFxStHiCHUj",
+      "gmgn": "https://gmgn.ai/sol/token/FV7T1KCvGLHks4bY31dUjnZNk8SQsatLzKFxStHiCHUj",
+      "occurrences": 1,
+      "firstEventId": "evt-000146",
+      "firstStartedAt": "21:09:17.191",
+      "lastEventId": "evt-000146",
+      "lastStartedAt": "21:09:17.191",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "Dwvmy8928mWaCMHdQefPr42hAFm3Ftc8MFApuL3nwdUX",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 24.12,
+          "fdv": 9744,
+          "url": "https://dexscreener.com/solana/dwvmy8928mwacmhdqefpr42hafm3ftc8mfapul3nwdux"
+        },
+        "bestWsolPair": {
+          "pairAddress": "Dwvmy8928mWaCMHdQefPr42hAFm3Ftc8MFApuL3nwdUX",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 24.12,
+          "fdv": 9744,
+          "url": "https://dexscreener.com/solana/dwvmy8928mwacmhdqefpr42hafm3ftc8mfapul3nwdux"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "CkJ7wNuuBWAYAev65gGcXoAFWdh9NY27ZMgGc3Vcd6xj",
+      "gmgn": "https://gmgn.ai/sol/token/CkJ7wNuuBWAYAev65gGcXoAFWdh9NY27ZMgGc3Vcd6xj",
+      "occurrences": 1,
+      "firstEventId": "evt-000171",
+      "firstStartedAt": "21:22:29.677",
+      "lastEventId": "evt-000171",
+      "lastStartedAt": "21:22:29.677",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "2W1cGP7AhN7jDfJZgpHxLJamFz7CqjW9bq3ZgWhHx2cy",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 9.74,
+          "fdv": 8625,
+          "url": "https://dexscreener.com/solana/2w1cgp7ahn7jdfjzgphxljamfz7cqjw9bq3zgwhhx2cy"
+        },
+        "bestWsolPair": {
+          "pairAddress": "2W1cGP7AhN7jDfJZgpHxLJamFz7CqjW9bq3ZgWhHx2cy",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 9.74,
+          "fdv": 8625,
+          "url": "https://dexscreener.com/solana/2w1cgp7ahn7jdfjzgphxljamfz7cqjw9bq3zgwhhx2cy"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "9EF9BTNmHLfrP4gi9q8JuCVAM9s5J8qx3qn7NxgCXnKD",
+      "gmgn": "https://gmgn.ai/sol/token/9EF9BTNmHLfrP4gi9q8JuCVAM9s5J8qx3qn7NxgCXnKD",
+      "occurrences": 1,
+      "firstEventId": "evt-000231",
+      "firstStartedAt": "21:49:13.692",
+      "lastEventId": "evt-000231",
+      "lastStartedAt": "21:49:13.692",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "BXkfXTK5nGJAovfmi6AjWt3tKSNhw4nuy4V3gyHTfZvR",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 22.48,
+          "fdv": 9655,
+          "url": "https://dexscreener.com/solana/bxkfxtk5ngjaovfmi6ajwt3tksnhw4nuy4v3gyhtfzvr"
+        },
+        "bestWsolPair": {
+          "pairAddress": "BXkfXTK5nGJAovfmi6AjWt3tKSNhw4nuy4V3gyHTfZvR",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 22.48,
+          "fdv": 9655,
+          "url": "https://dexscreener.com/solana/bxkfxtk5ngjaovfmi6ajwt3tksnhw4nuy4v3gyhtfzvr"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "2AoZbVB7ao7njtT6qdB3rKK3f3xPJh7wiq4GkhobTsUX",
+      "gmgn": "https://gmgn.ai/sol/token/2AoZbVB7ao7njtT6qdB3rKK3f3xPJh7wiq4GkhobTsUX",
+      "occurrences": 1,
+      "firstEventId": "evt-000267",
+      "firstStartedAt": "22:03:18.867",
+      "lastEventId": "evt-000267",
+      "lastStartedAt": "22:03:18.867",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "FcV51PiwhjPRKxfBLLGxScye7redggJTGSyATz1ns4Hu",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 23.9,
+          "fdv": 9726,
+          "url": "https://dexscreener.com/solana/fcv51piwhjprkxfbllgxscye7redggjtgsyatz1ns4hu"
+        },
+        "bestWsolPair": {
+          "pairAddress": "FcV51PiwhjPRKxfBLLGxScye7redggJTGSyATz1ns4Hu",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 23.9,
+          "fdv": 9726,
+          "url": "https://dexscreener.com/solana/fcv51piwhjprkxfbllgxscye7redggjtgsyatz1ns4hu"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "B8Fr1nDVy5mZN1i6KukVvWMCJsVAKqdFQDgXDk7vPEaq",
+      "gmgn": "https://gmgn.ai/sol/token/B8Fr1nDVy5mZN1i6KukVvWMCJsVAKqdFQDgXDk7vPEaq",
+      "occurrences": 1,
+      "firstEventId": "evt-000323",
+      "firstStartedAt": "22:41:06.659",
+      "lastEventId": "evt-000323",
+      "lastStartedAt": "22:41:06.659",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "48nssLNqxjzBt4qqfLpoxfxV98YbQ1fWkhbdrw4o6hJv",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": -48.6,
+          "fdv": 28491,
+          "url": "https://dexscreener.com/solana/48nsslnqxjzbt4qqflpoxfxv98ybq1fwkhbdrw4o6hjv"
+        },
+        "bestWsolPair": {
+          "pairAddress": "48nssLNqxjzBt4qqfLpoxfxV98YbQ1fWkhbdrw4o6hJv",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": -48.6,
+          "fdv": 28491,
+          "url": "https://dexscreener.com/solana/48nsslnqxjzbt4qqflpoxfxv98ybq1fwkhbdrw4o6hjv"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "Fdu3UdbuFx83q3th2hhNy6Tohmn7hXyqMCtymr3iWV44",
+      "gmgn": "https://gmgn.ai/sol/token/Fdu3UdbuFx83q3th2hhNy6Tohmn7hXyqMCtymr3iWV44",
+      "occurrences": 1,
+      "firstEventId": "evt-000452",
+      "firstStartedAt": "23:59:20.143",
+      "lastEventId": "evt-000452",
+      "lastStartedAt": "23:59:20.143",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "F2d7BwHzhgZmFbZW9BmKhdnn4pu1nbknLTqjJLa5bHTL",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 22.97,
+          "fdv": 9664,
+          "url": "https://dexscreener.com/solana/f2d7bwhzhgzmfbzw9bmkhdnn4pu1nbknltqjjla5bhtl"
+        },
+        "bestWsolPair": {
+          "pairAddress": "F2d7BwHzhgZmFbZW9BmKhdnn4pu1nbknLTqjJLa5bHTL",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 22.97,
+          "fdv": 9664,
+          "url": "https://dexscreener.com/solana/f2d7bwhzhgzmfbzw9bmkhdnn4pu1nbknltqjjla5bhtl"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "1nFe65vmBCbMbgZkXjqDZBBiR4xXJHW9n6khH8GfdAk",
+      "gmgn": "https://gmgn.ai/sol/token/1nFe65vmBCbMbgZkXjqDZBBiR4xXJHW9n6khH8GfdAk",
+      "occurrences": 1,
+      "firstEventId": "evt-000464",
+      "firstStartedAt": "00:06:32.742",
+      "lastEventId": "evt-000464",
+      "lastStartedAt": "00:06:32.742",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "Gevgyj3ubryDztY31pEZjm6rf6FGuk376FmD3BzAbVKp",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 25446,
+          "fdv": 60975352,
+          "url": "https://dexscreener.com/solana/gevgyj3ubrydzty31pezjm6rf6fguk376fmd3bzabvkp"
+        },
+        "bestWsolPair": {
+          "pairAddress": "Gevgyj3ubryDztY31pEZjm6rf6FGuk376FmD3BzAbVKp",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 25446,
+          "fdv": 60975352,
+          "url": "https://dexscreener.com/solana/gevgyj3ubrydzty31pezjm6rf6fguk376fmd3bzabvkp"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "CGZMYBPixXSqQ269wojtfZ1CJq3rPQL2WM52yzoQfzBh",
+      "gmgn": "https://gmgn.ai/sol/token/CGZMYBPixXSqQ269wojtfZ1CJq3rPQL2WM52yzoQfzBh",
+      "occurrences": 1,
+      "firstEventId": "evt-000702",
+      "firstStartedAt": "03:07:24.972",
+      "lastEventId": "evt-000702",
+      "lastStartedAt": "03:07:24.972",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "AzrMZmCtUGsPk3UgExE4JW7CmxFiK3TAridJCwUh6PUE",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 158,
+          "fdv": 140381,
+          "url": "https://dexscreener.com/solana/azrmzmctugspk3ugexe4jw7cmxfik3taridjcwuh6pue"
+        },
+        "bestWsolPair": {
+          "pairAddress": "AzrMZmCtUGsPk3UgExE4JW7CmxFiK3TAridJCwUh6PUE",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 158,
+          "fdv": 140381,
+          "url": "https://dexscreener.com/solana/azrmzmctugspk3ugexe4jw7cmxfik3taridjcwuh6pue"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "9CbYrDPgbREcfudiUhDwKVqKSMdRKM7ypkCX5VgNpEnj",
+      "gmgn": "https://gmgn.ai/sol/token/9CbYrDPgbREcfudiUhDwKVqKSMdRKM7ypkCX5VgNpEnj",
+      "occurrences": 1,
+      "firstEventId": "evt-000764",
+      "firstStartedAt": "03:35:16.838",
+      "lastEventId": "evt-000764",
+      "lastStartedAt": "03:35:16.838",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "7fdsZW5YoKxF4F8R7dPjaRMrh5LXKkwuYLgGaBagA3C5",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": -99.99,
+          "fdv": 5,
+          "url": "https://dexscreener.com/solana/7fdszw5yokxf4f8r7dpjarmrh5lxkkwuylggabaga3c5"
+        },
+        "bestWsolPair": {
+          "pairAddress": "7fdsZW5YoKxF4F8R7dPjaRMrh5LXKkwuYLgGaBagA3C5",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": -99.99,
+          "fdv": 5,
+          "url": "https://dexscreener.com/solana/7fdszw5yokxf4f8r7dpjarmrh5lxkkwuylggabaga3c5"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "7xGbdBJbx4jW7L4UwAEy7qh7QtMz9mvE6wphwPMFbetV",
+      "gmgn": "https://gmgn.ai/sol/token/7xGbdBJbx4jW7L4UwAEy7qh7QtMz9mvE6wphwPMFbetV",
+      "occurrences": 1,
+      "firstEventId": "evt-000894",
+      "firstStartedAt": "05:03:44.640",
+      "lastEventId": "evt-000894",
+      "lastStartedAt": "05:03:44.640",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "3PaaMMJPVRiJuwpA6Xogp1rn1fxEQ9igxTkqmjmEC61L",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 448,
+          "fdv": 223978,
+          "url": "https://dexscreener.com/solana/3paammjpvrijuwpa6xogp1rn1fxeq9igxtkqmjmec61l"
+        },
+        "bestWsolPair": {
+          "pairAddress": "3PaaMMJPVRiJuwpA6Xogp1rn1fxEQ9igxTkqmjmEC61L",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 448,
+          "fdv": 223978,
+          "url": "https://dexscreener.com/solana/3paammjpvrijuwpa6xogp1rn1fxeq9igxtkqmjmec61l"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "7GDhbJJALf4MS6qFauxMjJcyBWagfQpNPCNewhwBgxTL",
+      "gmgn": "https://gmgn.ai/sol/token/7GDhbJJALf4MS6qFauxMjJcyBWagfQpNPCNewhwBgxTL",
+      "occurrences": 1,
+      "firstEventId": "evt-000920",
+      "firstStartedAt": "05:17:05.501",
+      "lastEventId": "evt-000920",
+      "lastStartedAt": "05:17:05.501",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "7B3FFwPbA1g1cVGG4BTjWar2AJqFt3NrvYofFamC71kS",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": -99.87,
+          "fdv": 72,
+          "url": "https://dexscreener.com/solana/7b3ffwpba1g1cvgg4btjwar2ajqft3nrvyoffamc71ks"
+        },
+        "bestWsolPair": {
+          "pairAddress": "7B3FFwPbA1g1cVGG4BTjWar2AJqFt3NrvYofFamC71kS",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": -99.87,
+          "fdv": 72,
+          "url": "https://dexscreener.com/solana/7b3ffwpba1g1cvgg4btjwar2ajqft3nrvyoffamc71ks"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "HCpZ2U8gqDpBz6sVihpyV2AWcyave5izrxt2WvCv7sur",
+      "gmgn": "https://gmgn.ai/sol/token/HCpZ2U8gqDpBz6sVihpyV2AWcyave5izrxt2WvCv7sur",
+      "occurrences": 1,
+      "firstEventId": "evt-001006",
+      "firstStartedAt": "06:00:58.389",
+      "lastEventId": "evt-001006",
+      "lastStartedAt": "06:00:58.389",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "AGLst4ofc5qy8AY1p11hQFkhn7ktPKc53qsJrzZGmGRM",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": -52.75,
+          "fdv": 25738,
+          "url": "https://dexscreener.com/solana/aglst4ofc5qy8ay1p11hqfkhn7ktpkc53qsjrzzgmgrm"
+        },
+        "bestWsolPair": {
+          "pairAddress": "AGLst4ofc5qy8AY1p11hQFkhn7ktPKc53qsJrzZGmGRM",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": -52.75,
+          "fdv": 25738,
+          "url": "https://dexscreener.com/solana/aglst4ofc5qy8ay1p11hqfkhn7ktpkc53qsjrzzgmgrm"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "DFBrYm1xJ8Yqfj65VFEszRuYZXLrqDzPEu6aunNAqTMV",
+      "gmgn": "https://gmgn.ai/sol/token/DFBrYm1xJ8Yqfj65VFEszRuYZXLrqDzPEu6aunNAqTMV",
+      "occurrences": 1,
+      "firstEventId": "evt-001104",
+      "firstStartedAt": "06:56:46.274",
+      "lastEventId": "evt-001104",
+      "lastStartedAt": "06:56:46.274",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "EowZCcpgfpaTn9py6dxnSxnZ65jrhCEx739dhQnfgFTM",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": -78.61,
+          "fdv": 11635,
+          "url": "https://dexscreener.com/solana/eowzccpgfpatn9py6dxnsxnz65jrhcex739dhqnfgftm"
+        },
+        "bestWsolPair": {
+          "pairAddress": "EowZCcpgfpaTn9py6dxnSxnZ65jrhCEx739dhQnfgFTM",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": -78.61,
+          "fdv": 11635,
+          "url": "https://dexscreener.com/solana/eowzccpgfpatn9py6dxnsxnz65jrhcex739dhqnfgftm"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "CvjVLue5cycC8JXoKFwPyF9SWxb9Rtw2er8j1pvttsLn",
+      "gmgn": "https://gmgn.ai/sol/token/CvjVLue5cycC8JXoKFwPyF9SWxb9Rtw2er8j1pvttsLn",
+      "occurrences": 1,
+      "firstEventId": "evt-001185",
+      "firstStartedAt": "07:56:12.530",
+      "lastEventId": "evt-001185",
+      "lastStartedAt": "07:56:12.530",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "Hjuvf847AZtDvqacERMiH6YfDZNfayRtGiCiNMKCJ1oc",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": -50.43,
+          "fdv": 26970,
+          "url": "https://dexscreener.com/solana/hjuvf847aztdvqacermih6yfdznfayrtgicinmkcj1oc"
+        },
+        "bestWsolPair": {
+          "pairAddress": "Hjuvf847AZtDvqacERMiH6YfDZNfayRtGiCiNMKCJ1oc",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": -50.43,
+          "fdv": 26970,
+          "url": "https://dexscreener.com/solana/hjuvf847aztdvqacermih6yfdznfayrtgicinmkcj1oc"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "4aDR1e1g1aCnXaEiyvXwv9sXS3zG2M9TbgXVVgtmk12S",
+      "gmgn": "https://gmgn.ai/sol/token/4aDR1e1g1aCnXaEiyvXwv9sXS3zG2M9TbgXVVgtmk12S",
+      "occurrences": 1,
+      "firstEventId": "evt-001228",
+      "firstStartedAt": "08:25:01.429",
+      "lastEventId": "evt-001228",
+      "lastStartedAt": "08:25:01.429",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "55EzESNCiHzesHCcSJCibCCdP1b9sSiA6FZokh9ho56E",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 23.71,
+          "fdv": 9680,
+          "url": "https://dexscreener.com/solana/55ezesncihzeshccsjcibccdp1b9ssia6fzokh9ho56e"
+        },
+        "bestWsolPair": {
+          "pairAddress": "55EzESNCiHzesHCcSJCibCCdP1b9sSiA6FZokh9ho56E",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 23.71,
+          "fdv": 9680,
+          "url": "https://dexscreener.com/solana/55ezesncihzeshccsjcibccdp1b9ssia6fzokh9ho56e"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "3jN3xkMBBxRRexMEUwxdJK2SzXJi1SqPBTyiHbnnoebC",
+      "gmgn": "https://gmgn.ai/sol/token/3jN3xkMBBxRRexMEUwxdJK2SzXJi1SqPBTyiHbnnoebC",
+      "occurrences": 1,
+      "firstEventId": "evt-001262",
+      "firstStartedAt": "09:02:07.135",
+      "lastEventId": "evt-001262",
+      "lastStartedAt": "09:02:07.135",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "4oFPwFUkuSgZopTj77wDDVm95QRnA48Khqp6Uqa4y2oD",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": -69.78,
+          "fdv": 16541,
+          "url": "https://dexscreener.com/solana/4ofpwfukusgzoptj77wddvm95qrna48khqp6uqa4y2od"
+        },
+        "bestWsolPair": {
+          "pairAddress": "4oFPwFUkuSgZopTj77wDDVm95QRnA48Khqp6Uqa4y2oD",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": -69.78,
+          "fdv": 16541,
+          "url": "https://dexscreener.com/solana/4ofpwfukusgzoptj77wddvm95qrna48khqp6uqa4y2od"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "2M9Ay59YaR39HK85cj5APt7oQD4oCLiY89Gn5EyiV8Rq",
+      "gmgn": "https://gmgn.ai/sol/token/2M9Ay59YaR39HK85cj5APt7oQD4oCLiY89Gn5EyiV8Rq",
+      "occurrences": 1,
+      "firstEventId": "evt-001274",
+      "firstStartedAt": "09:13:24.352",
+      "lastEventId": "evt-001274",
+      "lastStartedAt": "09:13:24.352",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "ASxhPBTMoe5NAMSf9pmhQX4WxM348mrthn3aYv8xSZwr",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": -75.74,
+          "fdv": 13310,
+          "url": "https://dexscreener.com/solana/asxhpbtmoe5namsf9pmhqx4wxm348mrthn3ayv8xszwr"
+        },
+        "bestWsolPair": {
+          "pairAddress": "ASxhPBTMoe5NAMSf9pmhQX4WxM348mrthn3aYv8xSZwr",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": -75.74,
+          "fdv": 13310,
+          "url": "https://dexscreener.com/solana/asxhpbtmoe5namsf9pmhqx4wxm348mrthn3ayv8xszwr"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "CX2smNYnReNXL58DWDnZKgbXt5ieirBZ9vhS8sBdH5JP",
+      "gmgn": "https://gmgn.ai/sol/token/CX2smNYnReNXL58DWDnZKgbXt5ieirBZ9vhS8sBdH5JP",
+      "occurrences": 1,
+      "firstEventId": "evt-001307",
+      "firstStartedAt": "09:39:44.125",
+      "lastEventId": "evt-001307",
+      "lastStartedAt": "09:39:44.125",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "CefXkqyQkt12ma9dEgnTroAJzMeVrK1TwUYWUhKBhWaC",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 10176,
+          "fdv": 22797929,
+          "url": "https://dexscreener.com/solana/cefxkqyqkt12ma9degntroajzmevrk1twuywuhkbhwac"
+        },
+        "bestWsolPair": {
+          "pairAddress": "CefXkqyQkt12ma9dEgnTroAJzMeVrK1TwUYWUhKBhWaC",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 10176,
+          "fdv": 22797929,
+          "url": "https://dexscreener.com/solana/cefxkqyqkt12ma9degntroajzmevrk1twuywuhkbhwac"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "CjvJ2XhJLhTQKKSSTxfSwHxTDoAJm4qR2jhW8zSrksKc",
+      "gmgn": "https://gmgn.ai/sol/token/CjvJ2XhJLhTQKKSSTxfSwHxTDoAJm4qR2jhW8zSrksKc",
+      "occurrences": 1,
+      "firstEventId": "evt-001356",
+      "firstStartedAt": "10:27:14.554",
+      "lastEventId": "evt-001356",
+      "lastStartedAt": "10:27:14.554",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "F46oJqosvdV9V5fHFduP1ZeHok9d8pkHKwQBQxp8QzzF",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 23512,
+          "fdv": 56785653,
+          "url": "https://dexscreener.com/solana/f46ojqosvdv9v5fhfdup1zehok9d8pkhkwqbqxp8qzzf"
+        },
+        "bestWsolPair": {
+          "pairAddress": "F46oJqosvdV9V5fHFduP1ZeHok9d8pkHKwQBQxp8QzzF",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 23512,
+          "fdv": 56785653,
+          "url": "https://dexscreener.com/solana/f46ojqosvdv9v5fhfdup1zehok9d8pkhkwqbqxp8qzzf"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "8uvbwy2eNfX1JFWRpmaGoro3oxMvTSyAxJ2LxQWwxx5u",
+      "gmgn": "https://gmgn.ai/sol/token/8uvbwy2eNfX1JFWRpmaGoro3oxMvTSyAxJ2LxQWwxx5u",
+      "occurrences": 1,
+      "firstEventId": "evt-001364",
+      "firstStartedAt": "10:32:23.877",
+      "lastEventId": "evt-001364",
+      "lastStartedAt": "10:32:23.877",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "5Dws46Kt3jMx2s1kFb2ZuLZA1iPMuTqo2RqEGWo4S8ca",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": -71.95,
+          "fdv": 15782,
+          "url": "https://dexscreener.com/solana/5dws46kt3jmx2s1kfb2zulza1ipmutqo2rqegwo4s8ca"
+        },
+        "bestWsolPair": {
+          "pairAddress": "5Dws46Kt3jMx2s1kFb2ZuLZA1iPMuTqo2RqEGWo4S8ca",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": -71.95,
+          "fdv": 15782,
+          "url": "https://dexscreener.com/solana/5dws46kt3jmx2s1kfb2zulza1ipmutqo2rqegwo4s8ca"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "7UDmPXhW8br7c71pFTKwSBxf5Pv8H3R6r4UmHmyTXByb",
+      "gmgn": "https://gmgn.ai/sol/token/7UDmPXhW8br7c71pFTKwSBxf5Pv8H3R6r4UmHmyTXByb",
+      "occurrences": 1,
+      "firstEventId": "evt-001383",
+      "firstStartedAt": "10:42:39.388",
+      "lastEventId": "evt-001383",
+      "lastStartedAt": "10:42:39.388",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "AnLv9ywRwzzetbwMGbpy7AUs5iwfxszGJFNMKeE1zjBm",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 126,
+          "fdv": 125130,
+          "url": "https://dexscreener.com/solana/anlv9ywrwzzetbwmgbpy7aus5iwfxszgjfnmkee1zjbm"
+        },
+        "bestWsolPair": {
+          "pairAddress": "AnLv9ywRwzzetbwMGbpy7AUs5iwfxszGJFNMKeE1zjBm",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 126,
+          "fdv": 125130,
+          "url": "https://dexscreener.com/solana/anlv9ywrwzzetbwmgbpy7aus5iwfxszgjfnmkee1zjbm"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "2nty7mZizPERKUktS9xrF9KqdANETBEVZpJJAk3qucoQ",
+      "gmgn": "https://gmgn.ai/sol/token/2nty7mZizPERKUktS9xrF9KqdANETBEVZpJJAk3qucoQ",
+      "occurrences": 1,
+      "firstEventId": "evt-001446",
+      "firstStartedAt": "11:34:07.116",
+      "lastEventId": "evt-001446",
+      "lastStartedAt": "11:34:07.116",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "DaoCRRkmtrrCh9bsoCCY876vAsgVQzbjpz8BPQ7jAY7A",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 9437,
+          "fdv": 21199340,
+          "url": "https://dexscreener.com/solana/daocrrkmtrrch9bsoccy876vasgvqzbjpz8bpq7jay7a"
+        },
+        "bestWsolPair": {
+          "pairAddress": "DaoCRRkmtrrCh9bsoCCY876vAsgVQzbjpz8BPQ7jAY7A",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 9437,
+          "fdv": 21199340,
+          "url": "https://dexscreener.com/solana/daocrrkmtrrch9bsoccy876vasgvqzbjpz8bpq7jay7a"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "DuCCJnLrhmmDRhniUnuTWppejS39MFqhEu7jsY26yo24",
+      "gmgn": "https://gmgn.ai/sol/token/DuCCJnLrhmmDRhniUnuTWppejS39MFqhEu7jsY26yo24",
+      "occurrences": 1,
+      "firstEventId": "evt-001522",
+      "firstStartedAt": "12:34:17.608",
+      "lastEventId": "evt-001522",
+      "lastStartedAt": "12:34:17.608",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "9AFjrjjh2AC2WBQjLhg6RbFHNtTMAX8dVgRx6ax8rehp",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": -49.39,
+          "fdv": 27911,
+          "url": "https://dexscreener.com/solana/9afjrjjh2ac2wbqjlhg6rbfhnttmax8dvgrx6ax8rehp"
+        },
+        "bestWsolPair": {
+          "pairAddress": "9AFjrjjh2AC2WBQjLhg6RbFHNtTMAX8dVgRx6ax8rehp",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": -49.39,
+          "fdv": 27911,
+          "url": "https://dexscreener.com/solana/9afjrjjh2ac2wbqjlhg6rbfhnttmax8dvgrx6ax8rehp"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "5GBAvCfEviZbHBMddMCsNBq2jL8eCKnYPjer5K2P2qF5",
+      "gmgn": "https://gmgn.ai/sol/token/5GBAvCfEviZbHBMddMCsNBq2jL8eCKnYPjer5K2P2qF5",
+      "occurrences": 1,
+      "firstEventId": "evt-001602",
+      "firstStartedAt": "13:23:09.342",
+      "lastEventId": "evt-001602",
+      "lastStartedAt": "13:23:09.342",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "5sdUxpwLMxgL9RMLwzhUiyktg8Lo64TDWSRffpUgovrq",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 20067,
+          "fdv": 48484767,
+          "url": "https://dexscreener.com/solana/5sduxpwlmxgl9rmlwzhuiyktg8lo64tdwsrffpugovrq"
+        },
+        "bestWsolPair": {
+          "pairAddress": "5sdUxpwLMxgL9RMLwzhUiyktg8Lo64TDWSRffpUgovrq",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 20067,
+          "fdv": 48484767,
+          "url": "https://dexscreener.com/solana/5sduxpwlmxgl9rmlwzhuiyktg8lo64tdwsrffpugovrq"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "6ushY6KJHsWCQ5qDous7tduKP3483xLmpnvRh37oESPB",
+      "gmgn": "https://gmgn.ai/sol/token/6ushY6KJHsWCQ5qDous7tduKP3483xLmpnvRh37oESPB",
+      "occurrences": 1,
+      "firstEventId": "evt-001621",
+      "firstStartedAt": "13:40:49.998",
+      "lastEventId": "evt-001621",
+      "lastStartedAt": "13:40:49.998",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "4du2K1SurySQY1SQPih4JvXHNMcAqh7BF6Hd2JZTgT2i",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 2.86,
+          "fdv": 8074,
+          "url": "https://dexscreener.com/solana/4du2k1surysqy1sqpih4jvxhnmcaqh7bf6hd2jztgt2i"
+        },
+        "bestWsolPair": {
+          "pairAddress": "4du2K1SurySQY1SQPih4JvXHNMcAqh7BF6Hd2JZTgT2i",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 2.86,
+          "fdv": 8074,
+          "url": "https://dexscreener.com/solana/4du2k1surysqy1sqpih4jvxhnmcaqh7bf6hd2jztgt2i"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "J8cGVE6LGhWKmLNr5xMaouiFkv8b1nQdve4ANvXuFWB7",
+      "gmgn": "https://gmgn.ai/sol/token/J8cGVE6LGhWKmLNr5xMaouiFkv8b1nQdve4ANvXuFWB7",
+      "occurrences": 1,
+      "firstEventId": "evt-001643",
+      "firstStartedAt": "13:55:50.799",
+      "lastEventId": "evt-001643",
+      "lastStartedAt": "13:55:50.799",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "AHqu4rj3dLgzH7hrBHgGE5aqt2nSFugRQh9eLCUPd8UH",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": -58.24,
+          "fdv": 23025,
+          "url": "https://dexscreener.com/solana/ahqu4rj3dlgzh7hrbhgge5aqt2nsfugrqh9elcupd8uh"
+        },
+        "bestWsolPair": {
+          "pairAddress": "AHqu4rj3dLgzH7hrBHgGE5aqt2nSFugRQh9eLCUPd8UH",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": -58.24,
+          "fdv": 23025,
+          "url": "https://dexscreener.com/solana/ahqu4rj3dlgzh7hrbhgge5aqt2nsfugrqh9elcupd8uh"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "2jpJQUrhfHfiFdkVt6djRpoV8aQRzxQy83jECJFd4mzD",
+      "gmgn": "https://gmgn.ai/sol/token/2jpJQUrhfHfiFdkVt6djRpoV8aQRzxQy83jECJFd4mzD",
+      "occurrences": 1,
+      "firstEventId": "evt-001680",
+      "firstStartedAt": "14:26:24.526",
+      "lastEventId": "evt-001680",
+      "lastStartedAt": "14:26:24.526",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "2c1e7Jmh1wehGd9LdVg6SLMrF7kDSpneBKg9EnohzBc4",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 3851,
+          "fdv": 9438266,
+          "url": "https://dexscreener.com/solana/2c1e7jmh1wehgd9ldvg6slmrf7kdspnebkg9enohzbc4"
+        },
+        "bestWsolPair": {
+          "pairAddress": "2c1e7Jmh1wehGd9LdVg6SLMrF7kDSpneBKg9EnohzBc4",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 3851,
+          "fdv": 9438266,
+          "url": "https://dexscreener.com/solana/2c1e7jmh1wehgd9ldvg6slmrf7kdspnebkg9enohzbc4"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "DshAjhxFvicECAri8bW19gY64dtqWxkDFhqu78fZRJrY",
+      "gmgn": "https://gmgn.ai/sol/token/DshAjhxFvicECAri8bW19gY64dtqWxkDFhqu78fZRJrY",
+      "occurrences": 1,
+      "firstEventId": "evt-001687",
+      "firstStartedAt": "14:29:18.001",
+      "lastEventId": "evt-001687",
+      "lastStartedAt": "14:29:18.001",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "695EbbpFVwZG7bfuwrFLaP8ofqP3ntUNtdR2Jcpo2Hwi",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": -52.33,
+          "fdv": 26151,
+          "url": "https://dexscreener.com/solana/695ebbpfvwzg7bfuwrflap8ofqp3ntuntdr2jcpo2hwi"
+        },
+        "bestWsolPair": {
+          "pairAddress": "695EbbpFVwZG7bfuwrFLaP8ofqP3ntUNtdR2Jcpo2Hwi",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": -52.33,
+          "fdv": 26151,
+          "url": "https://dexscreener.com/solana/695ebbpfvwzg7bfuwrflap8ofqp3ntuntdr2jcpo2hwi"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "9HVHWacrdaafkrp9WVHeJUkCNfMxVmDHZGYaWEvGA5mg",
+      "gmgn": "https://gmgn.ai/sol/token/9HVHWacrdaafkrp9WVHeJUkCNfMxVmDHZGYaWEvGA5mg",
+      "occurrences": 1,
+      "firstEventId": "evt-001754",
+      "firstStartedAt": "15:31:35.118",
+      "lastEventId": "evt-001754",
+      "lastStartedAt": "15:31:35.118",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "4BVdVWxwLsU4ahyDLm3SXWYmXJixDJ8m6FKybSj8A7Ur",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 24957,
+          "fdv": 58869313,
+          "url": "https://dexscreener.com/solana/4bvdvwxwlsu4ahydlm3sxwymxjixdj8m6fkybsj8a7ur"
+        },
+        "bestWsolPair": {
+          "pairAddress": "4BVdVWxwLsU4ahyDLm3SXWYmXJixDJ8m6FKybSj8A7Ur",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 24957,
+          "fdv": 58869313,
+          "url": "https://dexscreener.com/solana/4bvdvwxwlsu4ahydlm3sxwymxjixdj8m6fkybsj8a7ur"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "7oh4gd2Fkf6ENehxfhVHvefFS79qgHth8NsKdE8FMawK",
+      "gmgn": "https://gmgn.ai/sol/token/7oh4gd2Fkf6ENehxfhVHvefFS79qgHth8NsKdE8FMawK",
+      "occurrences": 1,
+      "firstEventId": "evt-001760",
+      "firstStartedAt": "15:36:06.010",
+      "lastEventId": "evt-001760",
+      "lastStartedAt": "15:36:06.010",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "A7wqCA1wCSeQMJLbHkRzsZtn95HAQx7wF6APW9irpwEM",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": -49.8,
+          "fdv": 27150,
+          "url": "https://dexscreener.com/solana/a7wqca1wcseqmjlbhkrzsztn95haqx7wf6apw9irpwem"
+        },
+        "bestWsolPair": {
+          "pairAddress": "A7wqCA1wCSeQMJLbHkRzsZtn95HAQx7wF6APW9irpwEM",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": -49.8,
+          "fdv": 27150,
+          "url": "https://dexscreener.com/solana/a7wqca1wcseqmjlbhkrzsztn95haqx7wf6apw9irpwem"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "DrF1FeyePcxTQQQKvisLcKxB6w1wuQiuva5qevXGKYCc",
+      "gmgn": "https://gmgn.ai/sol/token/DrF1FeyePcxTQQQKvisLcKxB6w1wuQiuva5qevXGKYCc",
+      "occurrences": 1,
+      "firstEventId": "evt-001788",
+      "firstStartedAt": "16:06:59.239",
+      "lastEventId": "evt-001788",
+      "lastStartedAt": "16:06:59.239",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "As9GqS2c6eXphD96o3VhoCe8sY9jFwMoHTaGNph7BYms",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 5211,
+          "fdv": 12480963,
+          "url": "https://dexscreener.com/solana/as9gqs2c6exphd96o3vhoce8sy9jfwmohtagnph7byms"
+        },
+        "bestWsolPair": {
+          "pairAddress": "As9GqS2c6eXphD96o3VhoCe8sY9jFwMoHTaGNph7BYms",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 5211,
+          "fdv": 12480963,
+          "url": "https://dexscreener.com/solana/as9gqs2c6exphd96o3vhoce8sy9jfwmohtagnph7byms"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "9Eg97teLkQz6QLwTqsF6ngCyRRUdpTNQ5qTPySRBQDdy",
+      "gmgn": "https://gmgn.ai/sol/token/9Eg97teLkQz6QLwTqsF6ngCyRRUdpTNQ5qTPySRBQDdy",
+      "occurrences": 1,
+      "firstEventId": "evt-001816",
+      "firstStartedAt": "16:39:39.292",
+      "lastEventId": "evt-001816",
+      "lastStartedAt": "16:39:39.292",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "5ZRUhehp7yfWpPvaCyJKAzKLyHcm778Z5my2hVUVHLE",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 23.03,
+          "fdv": 9482,
+          "url": "https://dexscreener.com/solana/5zruhehp7yfwppvacyjkazklyhcm778z5my2hvuvhle"
+        },
+        "bestWsolPair": {
+          "pairAddress": "5ZRUhehp7yfWpPvaCyJKAzKLyHcm778Z5my2hVUVHLE",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 23.03,
+          "fdv": 9482,
+          "url": "https://dexscreener.com/solana/5zruhehp7yfwppvacyjkazklyhcm778z5my2hvuvhle"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "5BqGZ37FmiJRbNa2XSavsf1FLfk1HZdJykvmGr9aArUk",
+      "gmgn": "https://gmgn.ai/sol/token/5BqGZ37FmiJRbNa2XSavsf1FLfk1HZdJykvmGr9aArUk",
+      "occurrences": 1,
+      "firstEventId": "evt-001834",
+      "firstStartedAt": "16:53:14.178",
+      "lastEventId": "evt-001834",
+      "lastStartedAt": "16:53:14.178",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "4yyY3QgRyjJ1QZTsrkXzoAVA4NFhvkYaPtt5SuJnsKDW",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 25.51,
+          "fdv": 9677,
+          "url": "https://dexscreener.com/solana/4yyy3qgryjj1qztsrkxzoava4nfhvkyaptt5sujnskdw"
+        },
+        "bestWsolPair": {
+          "pairAddress": "4yyY3QgRyjJ1QZTsrkXzoAVA4NFhvkYaPtt5SuJnsKDW",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 25.51,
+          "fdv": 9677,
+          "url": "https://dexscreener.com/solana/4yyy3qgryjj1qztsrkxzoava4nfhvkyaptt5sujnskdw"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "FPyE8NC6LRMkjBjCR1ceXhZnhDhEw75EEdaaip5F9HkX",
+      "gmgn": "https://gmgn.ai/sol/token/FPyE8NC6LRMkjBjCR1ceXhZnhDhEw75EEdaaip5F9HkX",
+      "occurrences": 1,
+      "firstEventId": "evt-002004",
+      "firstStartedAt": "21:56:27.493",
+      "lastEventId": "evt-002004",
+      "lastStartedAt": "21:56:27.493",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "8TV3Un7dKyTa3r8ExVgEBoeWNH9j6XbKn9GFHVGgpY6F",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 24.08,
+          "fdv": 9753,
+          "url": "https://dexscreener.com/solana/8tv3un7dkyta3r8exvgeboewnh9j6xbkn9gfhvggpy6f"
+        },
+        "bestWsolPair": {
+          "pairAddress": "8TV3Un7dKyTa3r8ExVgEBoeWNH9j6XbKn9GFHVGgpY6F",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 24.08,
+          "fdv": 9753,
+          "url": "https://dexscreener.com/solana/8tv3un7dkyta3r8exvgeboewnh9j6xbkn9gfhvggpy6f"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "4yfdjz35HYSy5HyksxB5QAVghtK6vQg2qMkmnLZq4bxB",
+      "gmgn": "https://gmgn.ai/sol/token/4yfdjz35HYSy5HyksxB5QAVghtK6vQg2qMkmnLZq4bxB",
+      "occurrences": 1,
+      "firstEventId": "evt-002011",
+      "firstStartedAt": "22:00:52.059",
+      "lastEventId": "evt-002011",
+      "lastStartedAt": "22:00:52.059",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "HPSwTEPC7G7dCU8zChpNCXQ1Yn1LzDqch5LSNtB77BrR",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 23.78,
+          "fdv": 9759,
+          "url": "https://dexscreener.com/solana/hpswtepc7g7dcu8zchpncxq1yn1lzdqch5lsntb77brr"
+        },
+        "bestWsolPair": {
+          "pairAddress": "HPSwTEPC7G7dCU8zChpNCXQ1Yn1LzDqch5LSNtB77BrR",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 23.78,
+          "fdv": 9759,
+          "url": "https://dexscreener.com/solana/hpswtepc7g7dcu8zchpncxq1yn1lzdqch5lsntb77brr"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "9XT2GhztC8oZa6NBNdvEgqg8JAdaH52q83qGMnPR2M5",
+      "gmgn": "https://gmgn.ai/sol/token/9XT2GhztC8oZa6NBNdvEgqg8JAdaH52q83qGMnPR2M5",
+      "occurrences": 1,
+      "firstEventId": "evt-002238",
+      "firstStartedAt": "04:56:07.643",
+      "lastEventId": "evt-002238",
+      "lastStartedAt": "04:56:07.643",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "4vEaeQFaQoWUKbdGn1ikjoHjFVphnGD9dFSgpi8PE7wM",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": -93.32,
+          "fdv": 2716,
+          "url": "https://dexscreener.com/solana/4veaeqfaqowukbdgn1ikjohjfvphngd9dfsgpi8pe7wm"
+        },
+        "bestWsolPair": {
+          "pairAddress": "4vEaeQFaQoWUKbdGn1ikjoHjFVphnGD9dFSgpi8PE7wM",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": -93.32,
+          "fdv": 2716,
+          "url": "https://dexscreener.com/solana/4veaeqfaqowukbdgn1ikjohjfvphngd9dfsgpi8pe7wm"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "4eypGy3jR5whCRm7YVXM65WSdKycTxPNfTCP7Si8gwGw",
+      "gmgn": "https://gmgn.ai/sol/token/4eypGy3jR5whCRm7YVXM65WSdKycTxPNfTCP7Si8gwGw",
+      "occurrences": 1,
+      "firstEventId": "evt-002309",
+      "firstStartedAt": "09:24:26.752",
+      "lastEventId": "evt-002309",
+      "lastStartedAt": "09:24:26.752",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "JE738AGs3AcVp2L9G75vMJa2jfLcGjgfTL2e24DH8WBy",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": -100,
+          "fdv": null,
+          "url": "https://dexscreener.com/solana/je738ags3acvp2l9g75vmja2jflcgjgftl2e24dh8wby"
+        },
+        "bestWsolPair": {
+          "pairAddress": "JE738AGs3AcVp2L9G75vMJa2jfLcGjgfTL2e24DH8WBy",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": -100,
+          "fdv": null,
+          "url": "https://dexscreener.com/solana/je738ags3acvp2l9g75vmja2jflcgjgftl2e24dh8wby"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "22T2e6LAZMDuTXv74uskrQS6q3EqeaGV3M89zN8jqiWK",
+      "gmgn": "https://gmgn.ai/sol/token/22T2e6LAZMDuTXv74uskrQS6q3EqeaGV3M89zN8jqiWK",
+      "occurrences": 1,
+      "firstEventId": "evt-002376",
+      "firstStartedAt": "12:52:20.177",
+      "lastEventId": "evt-002376",
+      "lastStartedAt": "12:52:20.177",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "FCySCQqUmCZQduvF3PmZPf9UebqhiL7VqMkQacByStnY",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 9683,
+          "fdv": 21724611,
+          "url": "https://dexscreener.com/solana/fcyscqqumczqduvf3pmzpf9uebqhil7vqmkqacbystny"
+        },
+        "bestWsolPair": {
+          "pairAddress": "FCySCQqUmCZQduvF3PmZPf9UebqhiL7VqMkQacByStnY",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 9683,
+          "fdv": 21724611,
+          "url": "https://dexscreener.com/solana/fcyscqqumczqduvf3pmzpf9uebqhil7vqmkqacbystny"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "68KQPdXkfUoUnYprBj6rbbvoFxw7tBbrMQZ8WDPpump",
+      "gmgn": "https://gmgn.ai/sol/token/68KQPdXkfUoUnYprBj6rbbvoFxw7tBbrMQZ8WDPpump",
+      "occurrences": 1,
+      "firstEventId": "evt-002483",
+      "firstStartedAt": "16:20:58.384",
+      "lastEventId": "evt-002483",
+      "lastStartedAt": "16:20:58.384",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "9foGN9sxtaiMaR35Ks1q5HBX55ir9FzvCACM2Cn33pbL",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 115,
+          "fdv": 8122,
+          "url": "https://dexscreener.com/solana/9fogn9sxtaimar35ks1q5hbx55ir9fzvcacm2cn33pbl"
+        },
+        "bestWsolPair": {
+          "pairAddress": "9foGN9sxtaiMaR35Ks1q5HBX55ir9FzvCACM2Cn33pbL",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 115,
+          "fdv": 8122,
+          "url": "https://dexscreener.com/solana/9fogn9sxtaimar35ks1q5hbx55ir9fzvcacm2cn33pbl"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "AazSbTzn9PtnsPhjf9V4fFUpL5uKztj83PBXy6xj5awP",
+      "gmgn": "https://gmgn.ai/sol/token/AazSbTzn9PtnsPhjf9V4fFUpL5uKztj83PBXy6xj5awP",
+      "occurrences": 1,
+      "firstEventId": "evt-002487",
+      "firstStartedAt": "16:35:21.015",
+      "lastEventId": "evt-002487",
+      "lastStartedAt": "16:35:21.015",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "HQ2zsWxhFsqRJPoAWbYwwPVf1M1wv6zSshZtRKaReSyT",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 24.13,
+          "fdv": 9608,
+          "url": "https://dexscreener.com/solana/hq2zswxhfsqrjpoawbywwpvf1m1wv6zsshztrkaresyt"
+        },
+        "bestWsolPair": {
+          "pairAddress": "HQ2zsWxhFsqRJPoAWbYwwPVf1M1wv6zSshZtRKaReSyT",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 24.13,
+          "fdv": 9608,
+          "url": "https://dexscreener.com/solana/hq2zswxhfsqrjpoawbywwpvf1m1wv6zsshztrkaresyt"
+        },
+        "classification": "no_liquidity"
+      }
+    },
+    {
+      "token": "6vxukPiwVvnEpC9m8wa9tvywLmPePJCwFDm7CstwFvpg",
+      "gmgn": "https://gmgn.ai/sol/token/6vxukPiwVvnEpC9m8wa9tvywLmPePJCwFDm7CstwFvpg",
+      "occurrences": 1,
+      "firstEventId": "evt-002502",
+      "firstStartedAt": "16:40:08.844",
+      "lastEventId": "evt-002502",
+      "lastStartedAt": "16:40:08.844",
+      "sampleReason": "creator risk (unique counterparties 2 >= 2)",
+      "dex": {
+        "pairCount": 1,
+        "wsolPairCount": 1,
+        "bestPair": {
+          "pairAddress": "C3aeXUfWmZfVxTo81fJCdGE9sRN8BMfZCRjPPiCv3nsZ",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 24.5,
+          "fdv": 9634,
+          "url": "https://dexscreener.com/solana/c3aexufwmzfvxto81fjcdge9srn8bmfzcrjppicv3nsz"
+        },
+        "bestWsolPair": {
+          "pairAddress": "C3aeXUfWmZfVxTo81fJCdGE9sRN8BMfZCRjPPiCv3nsZ",
+          "dexId": "pumpswap",
+          "liquidityUsd": 0,
+          "priceChange24h": 24.5,
+          "fdv": 9634,
+          "url": "https://dexscreener.com/solana/c3aexufwmzfvxto81fjcdge9srn8bmfzcrjppicv3nsz"
+        },
+        "classification": "no_liquidity"
+      }
+    }
+  ]
+}

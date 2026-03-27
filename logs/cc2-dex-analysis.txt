@@ -1,0 +1,54 @@
+generatedAt=2026-03-24T17:20:45.034Z
+reportGeneratedAt=2026-03-24T17:20:39.516Z
+cc=2
+totalTokens=44
+withAnyPairs=44
+withWsolPairs=44
+withWsolLiq1k=1
+withWsolLiq10k=1
+
+token | occurrences | wsolPairs | bestWsolLiqUsd | change24h | class | gmgn
+GHk618WE19eGY9BiUHjXsgeQ5SeU9zd2DLwp4NzW6xhh | 1 | 1 | 33487.03 | 38985 | moon | https://gmgn.ai/sol/token/GHk618WE19eGY9BiUHjXsgeQ5SeU9zd2DLwp4NzW6xhh
+9dDkA7rFKMvMbASfZa7iVQWhqiNWuwnc8ZSotnFhSXPL | 1 | 2 | 1.81 | -68.28 | dead | https://gmgn.ai/sol/token/9dDkA7rFKMvMbASfZa7iVQWhqiNWuwnc8ZSotnFhSXPL
+44wgtMqqdmoCqR5ct2prWTvKW4NdEBURCAqA61JYiU95 | 1 | 1 | 0 | 22.96 | no_liquidity | https://gmgn.ai/sol/token/44wgtMqqdmoCqR5ct2prWTvKW4NdEBURCAqA61JYiU95
+FV7T1KCvGLHks4bY31dUjnZNk8SQsatLzKFxStHiCHUj | 1 | 1 | 0 | 24.12 | no_liquidity | https://gmgn.ai/sol/token/FV7T1KCvGLHks4bY31dUjnZNk8SQsatLzKFxStHiCHUj
+CkJ7wNuuBWAYAev65gGcXoAFWdh9NY27ZMgGc3Vcd6xj | 1 | 1 | 0 | 9.74 | no_liquidity | https://gmgn.ai/sol/token/CkJ7wNuuBWAYAev65gGcXoAFWdh9NY27ZMgGc3Vcd6xj
+9EF9BTNmHLfrP4gi9q8JuCVAM9s5J8qx3qn7NxgCXnKD | 1 | 1 | 0 | 22.48 | no_liquidity | https://gmgn.ai/sol/token/9EF9BTNmHLfrP4gi9q8JuCVAM9s5J8qx3qn7NxgCXnKD
+2AoZbVB7ao7njtT6qdB3rKK3f3xPJh7wiq4GkhobTsUX | 1 | 1 | 0 | 23.9 | no_liquidity | https://gmgn.ai/sol/token/2AoZbVB7ao7njtT6qdB3rKK3f3xPJh7wiq4GkhobTsUX
+B8Fr1nDVy5mZN1i6KukVvWMCJsVAKqdFQDgXDk7vPEaq | 1 | 1 | 0 | -48.6 | no_liquidity | https://gmgn.ai/sol/token/B8Fr1nDVy5mZN1i6KukVvWMCJsVAKqdFQDgXDk7vPEaq
+Fdu3UdbuFx83q3th2hhNy6Tohmn7hXyqMCtymr3iWV44 | 1 | 1 | 0 | 22.97 | no_liquidity | https://gmgn.ai/sol/token/Fdu3UdbuFx83q3th2hhNy6Tohmn7hXyqMCtymr3iWV44
+1nFe65vmBCbMbgZkXjqDZBBiR4xXJHW9n6khH8GfdAk | 1 | 1 | 0 | 25446 | no_liquidity | https://gmgn.ai/sol/token/1nFe65vmBCbMbgZkXjqDZBBiR4xXJHW9n6khH8GfdAk
+CGZMYBPixXSqQ269wojtfZ1CJq3rPQL2WM52yzoQfzBh | 1 | 1 | 0 | 158 | no_liquidity | https://gmgn.ai/sol/token/CGZMYBPixXSqQ269wojtfZ1CJq3rPQL2WM52yzoQfzBh
+9CbYrDPgbREcfudiUhDwKVqKSMdRKM7ypkCX5VgNpEnj | 1 | 1 | 0 | -99.99 | no_liquidity | https://gmgn.ai/sol/token/9CbYrDPgbREcfudiUhDwKVqKSMdRKM7ypkCX5VgNpEnj
+7xGbdBJbx4jW7L4UwAEy7qh7QtMz9mvE6wphwPMFbetV | 1 | 1 | 0 | 448 | no_liquidity | https://gmgn.ai/sol/token/7xGbdBJbx4jW7L4UwAEy7qh7QtMz9mvE6wphwPMFbetV
+7GDhbJJALf4MS6qFauxMjJcyBWagfQpNPCNewhwBgxTL | 1 | 1 | 0 | -99.87 | no_liquidity | https://gmgn.ai/sol/token/7GDhbJJALf4MS6qFauxMjJcyBWagfQpNPCNewhwBgxTL
+HCpZ2U8gqDpBz6sVihpyV2AWcyave5izrxt2WvCv7sur | 1 | 1 | 0 | -52.75 | no_liquidity | https://gmgn.ai/sol/token/HCpZ2U8gqDpBz6sVihpyV2AWcyave5izrxt2WvCv7sur
+DFBrYm1xJ8Yqfj65VFEszRuYZXLrqDzPEu6aunNAqTMV | 1 | 1 | 0 | -78.61 | no_liquidity | https://gmgn.ai/sol/token/DFBrYm1xJ8Yqfj65VFEszRuYZXLrqDzPEu6aunNAqTMV
+CvjVLue5cycC8JXoKFwPyF9SWxb9Rtw2er8j1pvttsLn | 1 | 1 | 0 | -50.43 | no_liquidity | https://gmgn.ai/sol/token/CvjVLue5cycC8JXoKFwPyF9SWxb9Rtw2er8j1pvttsLn
+4aDR1e1g1aCnXaEiyvXwv9sXS3zG2M9TbgXVVgtmk12S | 1 | 1 | 0 | 23.71 | no_liquidity | https://gmgn.ai/sol/token/4aDR1e1g1aCnXaEiyvXwv9sXS3zG2M9TbgXVVgtmk12S
+3jN3xkMBBxRRexMEUwxdJK2SzXJi1SqPBTyiHbnnoebC | 1 | 1 | 0 | -69.78 | no_liquidity | https://gmgn.ai/sol/token/3jN3xkMBBxRRexMEUwxdJK2SzXJi1SqPBTyiHbnnoebC
+2M9Ay59YaR39HK85cj5APt7oQD4oCLiY89Gn5EyiV8Rq | 1 | 1 | 0 | -75.74 | no_liquidity | https://gmgn.ai/sol/token/2M9Ay59YaR39HK85cj5APt7oQD4oCLiY89Gn5EyiV8Rq
+CX2smNYnReNXL58DWDnZKgbXt5ieirBZ9vhS8sBdH5JP | 1 | 1 | 0 | 10176 | no_liquidity | https://gmgn.ai/sol/token/CX2smNYnReNXL58DWDnZKgbXt5ieirBZ9vhS8sBdH5JP
+CjvJ2XhJLhTQKKSSTxfSwHxTDoAJm4qR2jhW8zSrksKc | 1 | 1 | 0 | 23512 | no_liquidity | https://gmgn.ai/sol/token/CjvJ2XhJLhTQKKSSTxfSwHxTDoAJm4qR2jhW8zSrksKc
+8uvbwy2eNfX1JFWRpmaGoro3oxMvTSyAxJ2LxQWwxx5u | 1 | 1 | 0 | -71.95 | no_liquidity | https://gmgn.ai/sol/token/8uvbwy2eNfX1JFWRpmaGoro3oxMvTSyAxJ2LxQWwxx5u
+7UDmPXhW8br7c71pFTKwSBxf5Pv8H3R6r4UmHmyTXByb | 1 | 1 | 0 | 126 | no_liquidity | https://gmgn.ai/sol/token/7UDmPXhW8br7c71pFTKwSBxf5Pv8H3R6r4UmHmyTXByb
+2nty7mZizPERKUktS9xrF9KqdANETBEVZpJJAk3qucoQ | 1 | 1 | 0 | 9437 | no_liquidity | https://gmgn.ai/sol/token/2nty7mZizPERKUktS9xrF9KqdANETBEVZpJJAk3qucoQ
+DuCCJnLrhmmDRhniUnuTWppejS39MFqhEu7jsY26yo24 | 1 | 1 | 0 | -49.39 | no_liquidity | https://gmgn.ai/sol/token/DuCCJnLrhmmDRhniUnuTWppejS39MFqhEu7jsY26yo24
+5GBAvCfEviZbHBMddMCsNBq2jL8eCKnYPjer5K2P2qF5 | 1 | 1 | 0 | 20067 | no_liquidity | https://gmgn.ai/sol/token/5GBAvCfEviZbHBMddMCsNBq2jL8eCKnYPjer5K2P2qF5
+6ushY6KJHsWCQ5qDous7tduKP3483xLmpnvRh37oESPB | 1 | 1 | 0 | 2.86 | no_liquidity | https://gmgn.ai/sol/token/6ushY6KJHsWCQ5qDous7tduKP3483xLmpnvRh37oESPB
+J8cGVE6LGhWKmLNr5xMaouiFkv8b1nQdve4ANvXuFWB7 | 1 | 1 | 0 | -58.24 | no_liquidity | https://gmgn.ai/sol/token/J8cGVE6LGhWKmLNr5xMaouiFkv8b1nQdve4ANvXuFWB7
+2jpJQUrhfHfiFdkVt6djRpoV8aQRzxQy83jECJFd4mzD | 1 | 1 | 0 | 3851 | no_liquidity | https://gmgn.ai/sol/token/2jpJQUrhfHfiFdkVt6djRpoV8aQRzxQy83jECJFd4mzD
+DshAjhxFvicECAri8bW19gY64dtqWxkDFhqu78fZRJrY | 1 | 1 | 0 | -52.33 | no_liquidity | https://gmgn.ai/sol/token/DshAjhxFvicECAri8bW19gY64dtqWxkDFhqu78fZRJrY
+9HVHWacrdaafkrp9WVHeJUkCNfMxVmDHZGYaWEvGA5mg | 1 | 1 | 0 | 24957 | no_liquidity | https://gmgn.ai/sol/token/9HVHWacrdaafkrp9WVHeJUkCNfMxVmDHZGYaWEvGA5mg
+7oh4gd2Fkf6ENehxfhVHvefFS79qgHth8NsKdE8FMawK | 1 | 1 | 0 | -49.8 | no_liquidity | https://gmgn.ai/sol/token/7oh4gd2Fkf6ENehxfhVHvefFS79qgHth8NsKdE8FMawK
+DrF1FeyePcxTQQQKvisLcKxB6w1wuQiuva5qevXGKYCc | 1 | 1 | 0 | 5211 | no_liquidity | https://gmgn.ai/sol/token/DrF1FeyePcxTQQQKvisLcKxB6w1wuQiuva5qevXGKYCc
+9Eg97teLkQz6QLwTqsF6ngCyRRUdpTNQ5qTPySRBQDdy | 1 | 1 | 0 | 23.03 | no_liquidity | https://gmgn.ai/sol/token/9Eg97teLkQz6QLwTqsF6ngCyRRUdpTNQ5qTPySRBQDdy
+5BqGZ37FmiJRbNa2XSavsf1FLfk1HZdJykvmGr9aArUk | 1 | 1 | 0 | 25.51 | no_liquidity | https://gmgn.ai/sol/token/5BqGZ37FmiJRbNa2XSavsf1FLfk1HZdJykvmGr9aArUk
+FPyE8NC6LRMkjBjCR1ceXhZnhDhEw75EEdaaip5F9HkX | 1 | 1 | 0 | 24.08 | no_liquidity | https://gmgn.ai/sol/token/FPyE8NC6LRMkjBjCR1ceXhZnhDhEw75EEdaaip5F9HkX
+4yfdjz35HYSy5HyksxB5QAVghtK6vQg2qMkmnLZq4bxB | 1 | 1 | 0 | 23.78 | no_liquidity | https://gmgn.ai/sol/token/4yfdjz35HYSy5HyksxB5QAVghtK6vQg2qMkmnLZq4bxB
+9XT2GhztC8oZa6NBNdvEgqg8JAdaH52q83qGMnPR2M5 | 1 | 1 | 0 | -93.32 | no_liquidity | https://gmgn.ai/sol/token/9XT2GhztC8oZa6NBNdvEgqg8JAdaH52q83qGMnPR2M5
+4eypGy3jR5whCRm7YVXM65WSdKycTxPNfTCP7Si8gwGw | 1 | 1 | 0 | -100 | no_liquidity | https://gmgn.ai/sol/token/4eypGy3jR5whCRm7YVXM65WSdKycTxPNfTCP7Si8gwGw
+22T2e6LAZMDuTXv74uskrQS6q3EqeaGV3M89zN8jqiWK | 1 | 1 | 0 | 9683 | no_liquidity | https://gmgn.ai/sol/token/22T2e6LAZMDuTXv74uskrQS6q3EqeaGV3M89zN8jqiWK
+68KQPdXkfUoUnYprBj6rbbvoFxw7tBbrMQZ8WDPpump | 1 | 1 | 0 | 115 | no_liquidity | https://gmgn.ai/sol/token/68KQPdXkfUoUnYprBj6rbbvoFxw7tBbrMQZ8WDPpump
+AazSbTzn9PtnsPhjf9V4fFUpL5uKztj83PBXy6xj5awP | 1 | 1 | 0 | 24.13 | no_liquidity | https://gmgn.ai/sol/token/AazSbTzn9PtnsPhjf9V4fFUpL5uKztj83PBXy6xj5awP
+6vxukPiwVvnEpC9m8wa9tvywLmPePJCwFDm7CstwFvpg | 1 | 1 | 0 | 24.5 | no_liquidity | https://gmgn.ai/sol/token/6vxukPiwVvnEpC9m8wa9tvywLmPePJCwFDm7CstwFvpg

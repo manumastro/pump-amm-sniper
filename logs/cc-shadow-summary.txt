@@ -1,0 +1,1275 @@
+=== CC Shadow Tracker Summary ===
+Generated: 2026-03-25T05:40:40.926Z
+Total CC values tracked: 101
+
+Overall: 605 tokens tracked, 221 active, 212 rugged, 119 winners
+
+CC | Tokens | Active | Rugged | Winner | Avg Peak | Max Peak | Rugged Rate | Winner Rate
+--- | ------ | ------ | ------ | ------ | -------- | -------- | ----------- | -----------
+CC-2 | 26 | 13 | 13 | 4 | 42.4% | 777.3% | 50.0% | 15.4%
+CC-3 | 50 | 27 | 27 | 16 | 37.4% | 195.2% | 54.0% | 32.0%
+CC-4 | 124 | 8 | 5 | 2 | 15.0% | 112.0% | 4.0% | 1.6%
+CC-5 | 121 | 63 | 60 | 34 | 25.9% | 221.5% | 49.6% | 28.1%
+CC-6 | 53 | 20 | 19 | 6 | 13.2% | 104.6% | 35.8% | 11.3%
+CC-7 | 28 | 19 | 19 | 5 | -31.0% | 71.2% | 67.9% | 17.9%
+CC-8 | 7 | 2 | 2 | 0 | 9.9% | 24.6% | 28.6% | 0.0%
+CC-9 | 1 | 0 | 0 | 0 | 21.2% | 21.2% | 0.0% | 0.0%
+CC-11 | 1 | 1 | 1 | 0 | 0.0% | 0.0% | 100.0% | 0.0%
+CC-13 | 1 | 0 | 0 | 0 | -0.6% | -0.6% | 0.0% | 0.0%
+CC-14 | 2 | 2 | 2 | 1 | 69.1% | 138.9% | 100.0% | 50.0%
+CC-16 | 2 | 0 | 0 | 0 | 19.5% | 34.4% | 0.0% | 0.0%
+CC-18 | 1 | 1 | 1 | 0 | -0.6% | -0.6% | 100.0% | 0.0%
+CC-20 | 1 | 1 | 1 | 1 | 97.7% | 97.7% | 100.0% | 100.0%
+CC-21 | 1 | 1 | 0 | 1 | 47.6% | 47.6% | 0.0% | 100.0%
+CC-22 | 2 | 0 | 0 | 0 | 27.7% | 49.1% | 0.0% | 0.0%
+CC-23 | 1 | 1 | 1 | 0 | 39.5% | 39.5% | 100.0% | 0.0%
+CC-24 | 2 | 1 | 1 | 0 | 14.6% | 29.2% | 50.0% | 0.0%
+CC-25 | 1 | 0 | 0 | 1 | 43.4% | 43.4% | 0.0% | 100.0%
+CC-26 | 2 | 2 | 2 | 1 | 42.1% | 84.2% | 100.0% | 50.0%
+CC-27 | 2 | 0 | 0 | 1 | 265.7% | 520.0% | 0.0% | 50.0%
+CC-28 | 1 | 1 | 0 | 0 | 3.8% | 3.8% | 0.0% | 0.0%
+CC-29 | 11 | 3 | 3 | 3 | 24.9% | 85.0% | 27.3% | 27.3%
+CC-30 | 2 | 1 | 1 | 1 | 22.1% | 44.7% | 50.0% | 50.0%
+CC-31 | 3 | 1 | 1 | 2 | 62.7% | 134.0% | 33.3% | 66.7%
+CC-33 | 1 | 1 | 1 | 0 | -100.0% | -100.0% | 100.0% | 0.0%
+CC-34 | 6 | 1 | 1 | 0 | 24.0% | 39.7% | 16.7% | 0.0%
+CC-35 | 4 | 2 | 2 | 2 | 316.5% | 1191.2% | 50.0% | 50.0%
+CC-36 | 5 | 4 | 4 | 0 | -16.5% | 18.2% | 80.0% | 0.0%
+CC-37 | 1 | 0 | 0 | 0 | 13.0% | 13.0% | 0.0% | 0.0%
+CC-38 | 3 | 1 | 1 | 1 | -1.0% | 75.8% | 33.3% | 33.3%
+CC-39 | 4 | 3 | 3 | 2 | 27.0% | 56.0% | 75.0% | 50.0%
+CC-40 | 2 | 2 | 2 | 0 | 21.3% | 34.5% | 100.0% | 0.0%
+CC-41 | 3 | 3 | 3 | 0 | -20.2% | 30.9% | 100.0% | 0.0%
+CC-43 | 1 | 0 | 0 | 0 | 15.5% | 15.5% | 0.0% | 0.0%
+CC-44 | 2 | 1 | 1 | 0 | 10.3% | 20.7% | 50.0% | 0.0%
+CC-46 | 3 | 0 | 0 | 1 | 40.9% | 107.0% | 0.0% | 33.3%
+CC-47 | 5 | 0 | 0 | 5 | 354.5% | 1032.6% | 0.0% | 100.0%
+CC-48 | 5 | 3 | 3 | 2 | 18.6% | 50.7% | 60.0% | 40.0%
+CC-49 | 3 | 2 | 2 | 0 | -99.9% | -99.9% | 66.7% | 0.0%
+CC-50 | 10 | 6 | 6 | 4 | 91.4% | 570.6% | 60.0% | 40.0%
+CC-51 | 2 | 2 | 2 | 1 | 90.5% | 153.5% | 100.0% | 50.0%
+CC-55 | 1 | 1 | 1 | 0 | -100.0% | -100.0% | 100.0% | 0.0%
+CC-57 | 4 | 0 | 0 | 0 | -15.2% | 24.9% | 0.0% | 0.0%
+CC-58 | 2 | 0 | 0 | 0 | 16.0% | 23.0% | 0.0% | 0.0%
+CC-59 | 1 | 0 | 0 | 1 | 51.8% | 51.8% | 0.0% | 100.0%
+CC-60 | 1 | 0 | 0 | 0 | 17.8% | 17.8% | 0.0% | 0.0%
+CC-62 | 1 | 0 | 0 | 0 | 18.7% | 18.7% | 0.0% | 0.0%
+CC-65 | 1 | 0 | 0 | 0 | 5.3% | 5.3% | 0.0% | 0.0%
+CC-66 | 1 | 0 | 0 | 0 | 4.6% | 4.6% | 0.0% | 0.0%
+CC-71 | 1 | 1 | 1 | 0 | 36.3% | 36.3% | 100.0% | 0.0%
+CC-76 | 2 | 1 | 1 | 0 | -34.1% | 31.8% | 50.0% | 0.0%
+CC-79 | 2 | 1 | 1 | 1 | 15.2% | 130.4% | 50.0% | 50.0%
+CC-82 | 1 | 0 | 0 | 0 | 23.6% | 23.6% | 0.0% | 0.0%
+CC-86 | 1 | 0 | 0 | 0 | -0.6% | -0.6% | 0.0% | 0.0%
+CC-87 | 2 | 1 | 1 | 0 | -39.1% | 21.6% | 50.0% | 0.0%
+CC-88 | 3 | 1 | 1 | 1 | 39.4% | 82.0% | 33.3% | 33.3%
+CC-93 | 1 | 0 | 0 | 0 | N/A | N/A | 0.0% | 0.0%
+CC-101 | 1 | 0 | 0 | 0 | 24.9% | 24.9% | 0.0% | 0.0%
+CC-102 | 1 | 0 | 0 | 1 | 51.9% | 51.9% | 0.0% | 100.0%
+CC-105 | 1 | 0 | 0 | 0 | 21.3% | 21.3% | 0.0% | 0.0%
+CC-106 | 1 | 0 | 0 | 1 | 66.8% | 66.8% | 0.0% | 100.0%
+CC-107 | 1 | 0 | 0 | 1 | 43.1% | 43.1% | 0.0% | 100.0%
+CC-110 | 1 | 0 | 0 | 0 | 24.6% | 24.6% | 0.0% | 0.0%
+CC-113 | 1 | 0 | 0 | 0 | -0.6% | -0.6% | 0.0% | 0.0%
+CC-116 | 1 | 0 | 0 | 0 | N/A | N/A | 0.0% | 0.0%
+CC-121 | 2 | 1 | 1 | 0 | 12.1% | 16.1% | 50.0% | 0.0%
+CC-123 | 3 | 1 | 1 | 2 | 43.7% | 83.4% | 33.3% | 66.7%
+CC-124 | 1 | 1 | 1 | 0 | -0.6% | -0.6% | 100.0% | 0.0%
+CC-125 | 4 | 2 | 2 | 1 | -39.8% | 40.7% | 50.0% | 25.0%
+CC-126 | 2 | 1 | 1 | 1 | 37.1% | 47.1% | 50.0% | 50.0%
+CC-127 | 2 | 0 | 0 | 0 | 11.7% | 12.4% | 0.0% | 0.0%
+CC-129 | 1 | 0 | 0 | 0 | 11.9% | 11.9% | 0.0% | 0.0%
+CC-130 | 5 | 2 | 2 | 3 | 29.1% | 45.8% | 40.0% | 60.0%
+CC-132 | 1 | 0 | 0 | 0 | 21.7% | 21.7% | 0.0% | 0.0%
+CC-133 | 3 | 0 | 0 | 1 | 27.2% | 52.5% | 0.0% | 33.3%
+CC-134 | 5 | 2 | 2 | 1 | 15.3% | 66.3% | 40.0% | 20.0%
+CC-136 | 1 | 0 | 0 | 0 | 34.5% | 34.5% | 0.0% | 0.0%
+CC-137 | 2 | 0 | 0 | 0 | 22.5% | 24.9% | 0.0% | 0.0%
+CC-138 | 3 | 0 | 0 | 1 | 24.2% | 64.0% | 0.0% | 33.3%
+CC-145 | 2 | 1 | 1 | 0 | 15.5% | 22.4% | 50.0% | 0.0%
+CC-147 | 2 | 0 | 0 | 1 | 44.8% | 59.8% | 0.0% | 50.0%
+CC-149 | 2 | 1 | 1 | 1 | 51.9% | 56.9% | 50.0% | 50.0%
+CC-164 | 1 | 0 | 0 | 0 | 21.3% | 21.3% | 0.0% | 0.0%
+CC-168 | 1 | 0 | 0 | 0 | 28.4% | 28.4% | 0.0% | 0.0%
+CC-171 | 1 | 1 | 1 | 0 | -99.9% | -99.9% | 100.0% | 0.0%
+CC-173 | 1 | 0 | 0 | 0 | -0.6% | -0.6% | 0.0% | 0.0%
+CC-181 | 1 | 0 | 0 | 0 | 8.9% | 8.9% | 0.0% | 0.0%
+CC-184 | 1 | 0 | 0 | 1 | 44.7% | 44.7% | 0.0% | 100.0%
+CC-202 | 6 | 1 | 1 | 0 | 17.4% | 38.4% | 16.7% | 0.0%
+CC-203 | 1 | 1 | 1 | 0 | 5.1% | 5.1% | 100.0% | 0.0%
+CC-208 | 1 | 0 | 0 | 0 | 4.0% | 4.0% | 0.0% | 0.0%
+CC-234 | 2 | 0 | 0 | 1 | 45.8% | 65.0% | 0.0% | 50.0%
+CC-238 | 1 | 1 | 1 | 0 | -99.9% | -99.9% | 100.0% | 0.0%
+CC-282 | 1 | 0 | 0 | 0 | 12.9% | 12.9% | 0.0% | 0.0%
+CC-301 | 1 | 0 | 0 | 0 | 20.4% | 20.4% | 0.0% | 0.0%
+CC-334 | 1 | 0 | 0 | 0 | 12.2% | 12.2% | 0.0% | 0.0%
+CC-344 | 1 | 0 | 0 | 0 | 8.1% | 8.1% | 0.0% | 0.0%
+CC-838 | 1 | 0 | 0 | 0 | 32.0% | 32.0% | 0.0% | 0.0%
+CC-864 | 1 | 0 | 0 | 1 | 148.2% | 148.2% | 0.0% | 100.0%
+CC-918 | 2 | 0 | 0 | 1 | 29.6% | 44.2% | 0.0% | 50.0%
+
+--- CC-2 Detailed ---
+  Tokens: 26 (active: 13, completed: 13)
+  Rugged: 13 (50.0%)
+  Winners (hit take profit): 4 (15.4%)
+    Winners rugged after trigger: 0 (0.0%)
+  Peak PnL: avg 42.36% median 6.40% max 777.26%
+  Max adverse PnL: avg -23.08% min -100.00%
+  Lifetime: avg 12.5m median 10.6m max 19.7m
+  Peak distribution: >=10% 10, >=25% 8, >=50% 2, >=100% 2, negative 1
+  First trigger counts: {"remove liquidity":12,"single swap shock":2,"none":8,"winner take profit":4}
+  Final reasons: {"ttl":13}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-3 Detailed ---
+  Tokens: 50 (active: 27, completed: 23)
+  Rugged: 27 (54.0%)
+  Winners (hit take profit): 16 (32.0%)
+    Winners rugged after trigger: 2 (12.5%)
+  Peak PnL: avg 37.40% median 3.12% max 195.19%
+  Max adverse PnL: avg -4.91% min -100.00%
+  Lifetime: avg 11.7m median 11.3m max 18.2m
+  Peak distribution: >=10% 24, >=25% 23, >=50% 16, >=100% 5, negative 4
+  First trigger counts: {"remove liquidity":25,"winner take profit":16,"none":8,"single swap shock":1}
+  Final reasons: {"ttl":23}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-4 Detailed ---
+  Tokens: 124 (active: 8, completed: 116)
+  Rugged: 5 (4.0%)
+  Winners (hit take profit): 2 (1.6%)
+    Winners rugged after trigger: 0 (0.0%)
+  Peak PnL: avg 15.04% median 14.97% max 112.02%
+  Max adverse PnL: avg -4.67% min -100.00%
+  Lifetime: avg 11.0m median 10.7m max 18.9m
+  Peak distribution: >=10% 87, >=25% 8, >=50% 2, >=100% 1, negative 7
+  First trigger counts: {"none":114,"remove liquidity":5,"single swap shock":2,"winner take profit":2,"hard stop loss":1}
+  Final reasons: {"ttl":116}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-5 Detailed ---
+  Tokens: 121 (active: 63, completed: 58)
+  Rugged: 60 (49.6%)
+  Winners (hit take profit): 34 (28.1%)
+    Winners rugged after trigger: 10 (29.4%)
+  Peak PnL: avg 25.93% median 19.50% max 221.49%
+  Max adverse PnL: avg -5.80% min -100.00%
+  Lifetime: avg 11.3m median 10.6m max 22.3m
+  Peak distribution: >=10% 73, >=25% 49, >=50% 24, >=100% 7, negative 19
+  First trigger counts: {"none":35,"winner take profit":34,"remove liquidity":49,"winner trailing stop":2,"hard stop loss":1}
+  Final reasons: {"ttl":58}
+  Liquidity at rug: avg 2.23 SOL, min 0.00 SOL
+
+--- CC-6 Detailed ---
+  Tokens: 53 (active: 20, completed: 33)
+  Rugged: 19 (35.8%)
+  Winners (hit take profit): 6 (11.3%)
+    Winners rugged after trigger: 1 (16.7%)
+  Peak PnL: avg 13.20% median 15.09% max 104.59%
+  Max adverse PnL: avg -24.12% min -100.00%
+  Lifetime: avg 11.0m median 10.6m max 15.7m
+  Peak distribution: >=10% 32, >=25% 14, >=50% 2, >=100% 1, negative 5
+  First trigger counts: {"none":28,"remove liquidity":18,"winner trailing stop":1,"winner take profit":6}
+  Final reasons: {"ttl":33}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-7 Detailed ---
+  Tokens: 28 (active: 19, completed: 9)
+  Rugged: 19 (67.9%)
+  Winners (hit take profit): 5 (17.9%)
+    Winners rugged after trigger: 4 (80.0%)
+  Peak PnL: avg -30.95% median 6.89% max 71.19%
+  Max adverse PnL: avg -57.60% min -100.00%
+  Lifetime: avg 12.6m median 11.3m max 20.0m
+  Peak distribution: >=10% 11, >=25% 6, >=50% 4, >=100% 0, negative 13
+  First trigger counts: {"remove liquidity":15,"none":7,"hard stop loss":1,"winner take profit":5}
+  Final reasons: {"ttl":9}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-8 Detailed ---
+  Tokens: 7 (active: 2, completed: 5)
+  Rugged: 2 (28.6%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 9.86% median 12.00% max 24.59%
+  Max adverse PnL: avg -17.55% min -100.00%
+  Lifetime: avg 11.1m median 11.0m max 13.2m
+  Peak distribution: >=10% 4, >=25% 0, >=50% 0, >=100% 0, negative 2
+  First trigger counts: {"remove liquidity":2,"none":5}
+  Final reasons: {"ttl":5}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-9 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 21.17% median 21.17% max 21.17%
+  Max adverse PnL: avg -0.61% min -0.61%
+  Lifetime: avg 10.1m median 10.1m max 10.1m
+  Peak distribution: >=10% 1, >=25% 0, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"none":1}
+  Final reasons: {"ttl":1}
+
+--- CC-11 Detailed ---
+  Tokens: 1 (active: 1, completed: 0)
+  Rugged: 1 (100.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 0.00% median 0.00% max 0.00%
+  Max adverse PnL: avg 0.00% min 0.00%
+  Peak distribution: >=10% 0, >=25% 0, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"remove liquidity":1}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-13 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg -0.60% median -0.60% max -0.60%
+  Max adverse PnL: avg -0.60% min -0.60%
+  Lifetime: avg 21.8m median 21.8m max 21.8m
+  Peak distribution: >=10% 0, >=25% 0, >=50% 0, >=100% 0, negative 1
+  First trigger counts: {"none":1}
+  Final reasons: {"ttl":1}
+
+--- CC-14 Detailed ---
+  Tokens: 2 (active: 2, completed: 0)
+  Rugged: 2 (100.0%)
+  Winners (hit take profit): 1 (50.0%)
+    Winners rugged after trigger: 1 (100.0%)
+  Peak PnL: avg 69.14% median 138.90% max 138.90%
+  Max adverse PnL: avg -100.00% min -100.00%
+  Peak distribution: >=10% 1, >=25% 1, >=50% 1, >=100% 1, negative 1
+  First trigger counts: {"winner take profit":1,"hard stop loss":1}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-16 Detailed ---
+  Tokens: 2 (active: 0, completed: 2)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 19.48% median 34.36% max 34.36%
+  Max adverse PnL: avg -2.39% min -4.16%
+  Lifetime: avg 10.6m median 11.1m max 11.1m
+  Peak distribution: >=10% 1, >=25% 1, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"none":2}
+  Final reasons: {"ttl":2}
+
+--- CC-18 Detailed ---
+  Tokens: 1 (active: 1, completed: 0)
+  Rugged: 1 (100.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg -0.61% median -0.61% max -0.61%
+  Max adverse PnL: avg -100.00% min -100.00%
+  Peak distribution: >=10% 0, >=25% 0, >=50% 0, >=100% 0, negative 1
+  First trigger counts: {"remove liquidity":1}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-20 Detailed ---
+  Tokens: 1 (active: 1, completed: 0)
+  Rugged: 1 (100.0%)
+  Winners (hit take profit): 1 (100.0%)
+    Winners rugged after trigger: 1 (100.0%)
+  Peak PnL: avg 97.65% median 97.65% max 97.65%
+  Max adverse PnL: avg -0.62% min -0.62%
+  Peak distribution: >=10% 1, >=25% 1, >=50% 1, >=100% 0, negative 0
+  First trigger counts: {"winner take profit":1}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-21 Detailed ---
+  Tokens: 1 (active: 1, completed: 0)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 1 (100.0%)
+    Winners rugged after trigger: 0 (0.0%)
+  Peak PnL: avg 47.55% median 47.55% max 47.55%
+  Max adverse PnL: avg -0.62% min -0.62%
+  Peak distribution: >=10% 1, >=25% 1, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"winner take profit":1}
+
+--- CC-22 Detailed ---
+  Tokens: 2 (active: 0, completed: 2)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 27.75% median 49.05% max 49.05%
+  Max adverse PnL: avg -1.99% min -3.38%
+  Lifetime: avg 10.3m median 10.4m max 10.4m
+  Peak distribution: >=10% 1, >=25% 1, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"none":1,"winner trailing stop":1}
+  Final reasons: {"ttl":2}
+
+--- CC-23 Detailed ---
+  Tokens: 1 (active: 1, completed: 0)
+  Rugged: 1 (100.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 39.53% median 39.53% max 39.53%
+  Max adverse PnL: avg -0.62% min -0.62%
+  Peak distribution: >=10% 1, >=25% 1, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"remove liquidity":1}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-24 Detailed ---
+  Tokens: 2 (active: 1, completed: 1)
+  Rugged: 1 (50.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 14.62% median 29.25% max 29.25%
+  Max adverse PnL: avg -1.23% min -2.47%
+  Lifetime: avg 11.3m median 11.3m max 11.3m
+  Peak distribution: >=10% 1, >=25% 1, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"remove liquidity":1,"none":1}
+  Final reasons: {"ttl":1}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-25 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 1 (100.0%)
+    Winners rugged after trigger: 0 (0.0%)
+  Peak PnL: avg 43.38% median 43.38% max 43.38%
+  Max adverse PnL: avg -0.62% min -0.62%
+  Lifetime: avg 19.1m median 19.1m max 19.1m
+  Peak distribution: >=10% 1, >=25% 1, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"winner take profit":1}
+  Final reasons: {"ttl":1}
+
+--- CC-26 Detailed ---
+  Tokens: 2 (active: 2, completed: 0)
+  Rugged: 2 (100.0%)
+  Winners (hit take profit): 1 (50.0%)
+    Winners rugged after trigger: 1 (100.0%)
+  Peak PnL: avg 42.11% median 84.22% max 84.22%
+  Max adverse PnL: avg -50.00% min -100.00%
+  Peak distribution: >=10% 1, >=25% 1, >=50% 1, >=100% 0, negative 0
+  First trigger counts: {"winner take profit":1,"remove liquidity":1}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-27 Detailed ---
+  Tokens: 2 (active: 0, completed: 2)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 1 (50.0%)
+    Winners rugged after trigger: 0 (0.0%)
+  Peak PnL: avg 265.66% median 520.04% max 520.04%
+  Max adverse PnL: avg -0.62% min -0.64%
+  Lifetime: avg 10.1m median 10.2m max 10.2m
+  Peak distribution: >=10% 2, >=25% 1, >=50% 1, >=100% 1, negative 0
+  First trigger counts: {"none":1,"winner take profit":1}
+  Final reasons: {"ttl":2}
+
+--- CC-28 Detailed ---
+  Tokens: 1 (active: 1, completed: 0)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 3.78% median 3.78% max 3.78%
+  Max adverse PnL: avg -0.61% min -0.61%
+  Peak distribution: >=10% 0, >=25% 0, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"none":1}
+
+--- CC-29 Detailed ---
+  Tokens: 11 (active: 3, completed: 8)
+  Rugged: 3 (27.3%)
+  Winners (hit take profit): 3 (27.3%)
+    Winners rugged after trigger: 0 (0.0%)
+  Peak PnL: avg 24.89% median 14.51% max 85.04%
+  Max adverse PnL: avg -18.88% min -100.00%
+  Lifetime: avg 10.9m median 10.7m max 12.1m
+  Peak distribution: >=10% 9, >=25% 4, >=50% 1, >=100% 0, negative 0
+  First trigger counts: {"winner take profit":3,"none":5,"remove liquidity":3}
+  Final reasons: {"ttl":8}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-30 Detailed ---
+  Tokens: 2 (active: 1, completed: 1)
+  Rugged: 1 (50.0%)
+  Winners (hit take profit): 1 (50.0%)
+    Winners rugged after trigger: 0 (0.0%)
+  Peak PnL: avg 22.05% median 44.72% max 44.72%
+  Max adverse PnL: avg -50.18% min -99.75%
+  Lifetime: avg 10.8m median 10.8m max 10.8m
+  Peak distribution: >=10% 1, >=25% 1, >=50% 0, >=100% 0, negative 1
+  First trigger counts: {"winner take profit":1,"remove liquidity":1}
+  Final reasons: {"ttl":1}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-31 Detailed ---
+  Tokens: 3 (active: 1, completed: 2)
+  Rugged: 1 (33.3%)
+  Winners (hit take profit): 2 (66.7%)
+    Winners rugged after trigger: 0 (0.0%)
+  Peak PnL: avg 62.70% median 40.21% max 134.01%
+  Max adverse PnL: avg -33.74% min -100.00%
+  Lifetime: avg 15.0m median 19.1m max 19.1m
+  Peak distribution: >=10% 3, >=25% 2, >=50% 1, >=100% 1, negative 0
+  First trigger counts: {"winner take profit":2,"remove liquidity":1}
+  Final reasons: {"ttl":2}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-33 Detailed ---
+  Tokens: 1 (active: 1, completed: 0)
+  Rugged: 1 (100.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg -100.00% median -100.00% max -100.00%
+  Max adverse PnL: avg -100.00% min -100.00%
+  Peak distribution: >=10% 0, >=25% 0, >=50% 0, >=100% 0, negative 1
+  First trigger counts: {"remove liquidity":1}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-34 Detailed ---
+  Tokens: 6 (active: 1, completed: 5)
+  Rugged: 1 (16.7%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 24.02% median 39.35% max 39.73%
+  Max adverse PnL: avg -20.44% min -99.75%
+  Lifetime: avg 13.5m median 11.7m max 21.5m
+  Peak distribution: >=10% 3, >=25% 3, >=50% 0, >=100% 0, negative 1
+  First trigger counts: {"none":5,"remove liquidity":1}
+  Final reasons: {"ttl":5}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-35 Detailed ---
+  Tokens: 4 (active: 2, completed: 2)
+  Rugged: 2 (50.0%)
+  Winners (hit take profit): 2 (50.0%)
+    Winners rugged after trigger: 1 (50.0%)
+  Peak PnL: avg 316.53% median 45.23% max 1191.21%
+  Max adverse PnL: avg -25.31% min -100.00%
+  Lifetime: avg 10.8m median 11.4m max 11.4m
+  Peak distribution: >=10% 3, >=25% 3, >=50% 1, >=100% 1, negative 0
+  First trigger counts: {"remove liquidity":1,"winner take profit":2,"none":1}
+  Final reasons: {"ttl":2}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-36 Detailed ---
+  Tokens: 5 (active: 4, completed: 1)
+  Rugged: 4 (80.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg -16.46% median 0.00% max 18.19%
+  Max adverse PnL: avg -20.22% min -99.88%
+  Lifetime: avg 10.1m median 10.1m max 10.1m
+  Peak distribution: >=10% 1, >=25% 0, >=50% 0, >=100% 0, negative 2
+  First trigger counts: {"remove liquidity":4,"none":1}
+  Final reasons: {"ttl":1}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-37 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 12.99% median 12.99% max 12.99%
+  Max adverse PnL: avg -0.61% min -0.61%
+  Lifetime: avg 10.5m median 10.5m max 10.5m
+  Peak distribution: >=10% 1, >=25% 0, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"none":1}
+  Final reasons: {"ttl":1}
+
+--- CC-38 Detailed ---
+  Tokens: 3 (active: 1, completed: 2)
+  Rugged: 1 (33.3%)
+  Winners (hit take profit): 1 (33.3%)
+    Winners rugged after trigger: 0 (0.0%)
+  Peak PnL: avg -0.96% median 21.17% max 75.83%
+  Max adverse PnL: avg -34.48% min -99.88%
+  Lifetime: avg 10.4m median 10.7m max 10.7m
+  Peak distribution: >=10% 2, >=25% 1, >=50% 1, >=100% 0, negative 1
+  First trigger counts: {"none":1,"winner take profit":1,"remove liquidity":1}
+  Final reasons: {"ttl":2}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-39 Detailed ---
+  Tokens: 4 (active: 3, completed: 1)
+  Rugged: 3 (75.0%)
+  Winners (hit take profit): 2 (50.0%)
+    Winners rugged after trigger: 1 (50.0%)
+  Peak PnL: avg 27.00% median 44.31% max 56.00%
+  Max adverse PnL: avg -75.15% min -100.00%
+  Lifetime: avg 16.4m median 16.4m max 16.4m
+  Peak distribution: >=10% 2, >=25% 2, >=50% 1, >=100% 0, negative 1
+  First trigger counts: {"remove liquidity":2,"winner take profit":2}
+  Final reasons: {"ttl":1}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-40 Detailed ---
+  Tokens: 2 (active: 2, completed: 0)
+  Rugged: 2 (100.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 21.34% median 34.51% max 34.51%
+  Max adverse PnL: avg -100.00% min -100.00%
+  Peak distribution: >=10% 1, >=25% 1, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"remove liquidity":2}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-41 Detailed ---
+  Tokens: 3 (active: 3, completed: 0)
+  Rugged: 3 (100.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg -20.19% median 8.41% max 30.90%
+  Max adverse PnL: avg -66.83% min -100.00%
+  Peak distribution: >=10% 1, >=25% 1, >=50% 0, >=100% 0, negative 1
+  First trigger counts: {"remove liquidity":3}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-43 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 15.51% median 15.51% max 15.51%
+  Max adverse PnL: avg -4.01% min -4.01%
+  Lifetime: avg 14.6m median 14.6m max 14.6m
+  Peak distribution: >=10% 1, >=25% 0, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"none":1}
+  Final reasons: {"ttl":1}
+
+--- CC-44 Detailed ---
+  Tokens: 2 (active: 1, completed: 1)
+  Rugged: 1 (50.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 10.33% median 20.67% max 20.67%
+  Max adverse PnL: avg -0.31% min -0.61%
+  Lifetime: avg 10.6m median 10.6m max 10.6m
+  Peak distribution: >=10% 1, >=25% 0, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"remove liquidity":1,"none":1}
+  Final reasons: {"ttl":1}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-46 Detailed ---
+  Tokens: 3 (active: 0, completed: 3)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 1 (33.3%)
+    Winners rugged after trigger: 0 (0.0%)
+  Peak PnL: avg 40.95% median 11.57% max 107.04%
+  Max adverse PnL: avg -0.61% min -0.62%
+  Lifetime: avg 11.1m median 11.0m max 11.6m
+  Peak distribution: >=10% 2, >=25% 1, >=50% 1, >=100% 1, negative 0
+  First trigger counts: {"none":2,"winner take profit":1}
+  Final reasons: {"ttl":3}
+
+--- CC-47 Detailed ---
+  Tokens: 5 (active: 0, completed: 5)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 5 (100.0%)
+    Winners rugged after trigger: 0 (0.0%)
+  Peak PnL: avg 354.54% median 72.69% max 1032.60%
+  Max adverse PnL: avg -0.62% min -0.64%
+  Lifetime: avg 10.5m median 10.4m max 11.0m
+  Peak distribution: >=10% 5, >=25% 5, >=50% 5, >=100% 2, negative 0
+  First trigger counts: {"winner take profit":5}
+  Final reasons: {"ttl":5}
+
+--- CC-48 Detailed ---
+  Tokens: 5 (active: 3, completed: 2)
+  Rugged: 3 (60.0%)
+  Winners (hit take profit): 2 (40.0%)
+    Winners rugged after trigger: 1 (50.0%)
+  Peak PnL: avg 18.64% median 0.00% max 50.73%
+  Max adverse PnL: avg -0.37% min -0.62%
+  Lifetime: avg 10.7m median 11.0m max 11.0m
+  Peak distribution: >=10% 2, >=25% 2, >=50% 1, >=100% 0, negative 1
+  First trigger counts: {"winner take profit":2,"remove liquidity":2,"none":1}
+  Final reasons: {"ttl":2}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-49 Detailed ---
+  Tokens: 3 (active: 2, completed: 1)
+  Rugged: 2 (66.7%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg -99.94% median -99.88% max -99.88%
+  Max adverse PnL: avg -99.94% min -100.00%
+  Lifetime: avg 10.8m median 10.8m max 10.8m
+  Peak distribution: >=10% 0, >=25% 0, >=50% 0, >=100% 0, negative 2
+  First trigger counts: {"remove liquidity":2,"none":1}
+  Final reasons: {"ttl":1}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-50 Detailed ---
+  Tokens: 10 (active: 6, completed: 4)
+  Rugged: 6 (60.0%)
+  Winners (hit take profit): 4 (40.0%)
+    Winners rugged after trigger: 2 (50.0%)
+  Peak PnL: avg 91.41% median 18.78% max 570.65%
+  Max adverse PnL: avg -30.30% min -100.00%
+  Lifetime: avg 12.2m median 11.3m max 16.4m
+  Peak distribution: >=10% 7, >=25% 4, >=50% 4, >=100% 3, negative 1
+  First trigger counts: {"winner take profit":4,"remove liquidity":4,"none":1,"single swap shock":1}
+  Final reasons: {"ttl":4}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-51 Detailed ---
+  Tokens: 2 (active: 2, completed: 0)
+  Rugged: 2 (100.0%)
+  Winners (hit take profit): 1 (50.0%)
+    Winners rugged after trigger: 1 (100.0%)
+  Peak PnL: avg 90.46% median 153.49% max 153.49%
+  Max adverse PnL: avg -100.00% min -100.00%
+  Peak distribution: >=10% 2, >=25% 2, >=50% 1, >=100% 1, negative 0
+  First trigger counts: {"remove liquidity":1,"winner take profit":1}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-55 Detailed ---
+  Tokens: 1 (active: 1, completed: 0)
+  Rugged: 1 (100.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg -100.00% median -100.00% max -100.00%
+  Max adverse PnL: avg -100.00% min -100.00%
+  Peak distribution: >=10% 0, >=25% 0, >=50% 0, >=100% 0, negative 1
+  First trigger counts: {"remove liquidity":1}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-57 Detailed ---
+  Tokens: 4 (active: 0, completed: 4)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg -15.23% median 14.65% max 24.91%
+  Max adverse PnL: avg -25.45% min -100.00%
+  Lifetime: avg 13.1m median 12.6m max 17.8m
+  Peak distribution: >=10% 2, >=25% 0, >=50% 0, >=100% 0, negative 2
+  First trigger counts: {"hard stop loss":1,"none":3}
+  Final reasons: {"ttl":4}
+
+--- CC-58 Detailed ---
+  Tokens: 2 (active: 0, completed: 2)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 15.98% median 23.01% max 23.01%
+  Max adverse PnL: avg -0.60% min -0.60%
+  Lifetime: avg 10.5m median 10.7m max 10.7m
+  Peak distribution: >=10% 1, >=25% 0, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"none":2}
+  Final reasons: {"ttl":2}
+
+--- CC-59 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 1 (100.0%)
+    Winners rugged after trigger: 0 (0.0%)
+  Peak PnL: avg 51.80% median 51.80% max 51.80%
+  Max adverse PnL: avg -0.61% min -0.61%
+  Lifetime: avg 10.9m median 10.9m max 10.9m
+  Peak distribution: >=10% 1, >=25% 1, >=50% 1, >=100% 0, negative 0
+  First trigger counts: {"winner take profit":1}
+  Final reasons: {"ttl":1}
+
+--- CC-60 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 17.79% median 17.79% max 17.79%
+  Max adverse PnL: avg -3.62% min -3.62%
+  Lifetime: avg 10.5m median 10.5m max 10.5m
+  Peak distribution: >=10% 1, >=25% 0, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"none":1}
+  Final reasons: {"ttl":1}
+
+--- CC-62 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 18.67% median 18.67% max 18.67%
+  Max adverse PnL: avg -0.60% min -0.60%
+  Lifetime: avg 11.9m median 11.9m max 11.9m
+  Peak distribution: >=10% 1, >=25% 0, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"none":1}
+  Final reasons: {"ttl":1}
+
+--- CC-65 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 5.29% median 5.29% max 5.29%
+  Max adverse PnL: avg -4.54% min -4.54%
+  Lifetime: avg 11.2m median 11.2m max 11.2m
+  Peak distribution: >=10% 0, >=25% 0, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"none":1}
+  Final reasons: {"ttl":1}
+
+--- CC-66 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 4.64% median 4.64% max 4.64%
+  Max adverse PnL: avg -0.61% min -0.61%
+  Lifetime: avg 13.1m median 13.1m max 13.1m
+  Peak distribution: >=10% 0, >=25% 0, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"none":1}
+  Final reasons: {"ttl":1}
+
+--- CC-71 Detailed ---
+  Tokens: 1 (active: 1, completed: 0)
+  Rugged: 1 (100.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 36.30% median 36.30% max 36.30%
+  Max adverse PnL: avg -100.00% min -100.00%
+  Peak distribution: >=10% 1, >=25% 1, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"remove liquidity":1}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-76 Detailed ---
+  Tokens: 2 (active: 1, completed: 1)
+  Rugged: 1 (50.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg -34.06% median 31.76% max 31.76%
+  Max adverse PnL: avg -51.63% min -99.88%
+  Lifetime: avg 11.1m median 11.1m max 11.1m
+  Peak distribution: >=10% 1, >=25% 1, >=50% 0, >=100% 0, negative 1
+  First trigger counts: {"none":1,"remove liquidity":1}
+  Final reasons: {"ttl":1}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-79 Detailed ---
+  Tokens: 2 (active: 1, completed: 1)
+  Rugged: 1 (50.0%)
+  Winners (hit take profit): 1 (50.0%)
+    Winners rugged after trigger: 0 (0.0%)
+  Peak PnL: avg 15.22% median 130.41% max 130.41%
+  Max adverse PnL: avg -50.29% min -99.97%
+  Lifetime: avg 10.9m median 10.9m max 10.9m
+  Peak distribution: >=10% 1, >=25% 1, >=50% 1, >=100% 1, negative 1
+  First trigger counts: {"remove liquidity":1,"winner take profit":1}
+  Final reasons: {"ttl":1}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-82 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 23.61% median 23.61% max 23.61%
+  Max adverse PnL: avg -0.60% min -0.60%
+  Lifetime: avg 10.7m median 10.7m max 10.7m
+  Peak distribution: >=10% 1, >=25% 0, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"none":1}
+  Final reasons: {"ttl":1}
+
+--- CC-86 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg -0.61% median -0.61% max -0.61%
+  Max adverse PnL: avg -0.61% min -0.61%
+  Lifetime: avg 16.8m median 16.8m max 16.8m
+  Peak distribution: >=10% 0, >=25% 0, >=50% 0, >=100% 0, negative 1
+  First trigger counts: {"none":1}
+  Final reasons: {"ttl":1}
+
+--- CC-87 Detailed ---
+  Tokens: 2 (active: 1, completed: 1)
+  Rugged: 1 (50.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg -39.13% median 21.61% max 21.61%
+  Max adverse PnL: avg -50.24% min -99.88%
+  Lifetime: avg 10.5m median 10.5m max 10.5m
+  Peak distribution: >=10% 1, >=25% 0, >=50% 0, >=100% 0, negative 1
+  First trigger counts: {"none":1,"remove liquidity":1}
+  Final reasons: {"ttl":1}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-88 Detailed ---
+  Tokens: 3 (active: 1, completed: 2)
+  Rugged: 1 (33.3%)
+  Winners (hit take profit): 1 (33.3%)
+    Winners rugged after trigger: 0 (0.0%)
+  Peak PnL: avg 39.42% median 28.64% max 82.02%
+  Max adverse PnL: avg -33.73% min -99.95%
+  Lifetime: avg 11.3m median 11.5m max 11.5m
+  Peak distribution: >=10% 2, >=25% 2, >=50% 1, >=100% 0, negative 0
+  First trigger counts: {"none":1,"winner take profit":1,"remove liquidity":1}
+  Final reasons: {"ttl":2}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-93 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg N/A median N/A max N/A
+  Max adverse PnL: avg N/A min N/A
+  Lifetime: avg 14.6m median 14.6m max 14.6m
+  Peak distribution: >=10% 0, >=25% 0, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"none":1}
+  Final reasons: {"ttl":1}
+
+--- CC-101 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 24.93% median 24.93% max 24.93%
+  Max adverse PnL: avg -0.61% min -0.61%
+  Lifetime: avg 10.3m median 10.3m max 10.3m
+  Peak distribution: >=10% 1, >=25% 0, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"none":1}
+  Final reasons: {"ttl":1}
+
+--- CC-102 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 1 (100.0%)
+    Winners rugged after trigger: 0 (0.0%)
+  Peak PnL: avg 51.94% median 51.94% max 51.94%
+  Max adverse PnL: avg -0.61% min -0.61%
+  Lifetime: avg 11.3m median 11.3m max 11.3m
+  Peak distribution: >=10% 1, >=25% 1, >=50% 1, >=100% 0, negative 0
+  First trigger counts: {"winner take profit":1}
+  Final reasons: {"ttl":1}
+
+--- CC-105 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 21.35% median 21.35% max 21.35%
+  Max adverse PnL: avg -3.67% min -3.67%
+  Lifetime: avg 10.4m median 10.4m max 10.4m
+  Peak distribution: >=10% 1, >=25% 0, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"none":1}
+  Final reasons: {"ttl":1}
+
+--- CC-106 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 1 (100.0%)
+    Winners rugged after trigger: 0 (0.0%)
+  Peak PnL: avg 66.84% median 66.84% max 66.84%
+  Max adverse PnL: avg -0.61% min -0.61%
+  Lifetime: avg 10.4m median 10.4m max 10.4m
+  Peak distribution: >=10% 1, >=25% 1, >=50% 1, >=100% 0, negative 0
+  First trigger counts: {"winner take profit":1}
+  Final reasons: {"ttl":1}
+
+--- CC-107 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 1 (100.0%)
+    Winners rugged after trigger: 0 (0.0%)
+  Peak PnL: avg 43.12% median 43.12% max 43.12%
+  Max adverse PnL: avg -3.84% min -3.84%
+  Lifetime: avg 10.3m median 10.3m max 10.3m
+  Peak distribution: >=10% 1, >=25% 1, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"winner take profit":1}
+  Final reasons: {"ttl":1}
+
+--- CC-110 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 24.60% median 24.60% max 24.60%
+  Max adverse PnL: avg -0.61% min -0.61%
+  Lifetime: avg 10.7m median 10.7m max 10.7m
+  Peak distribution: >=10% 1, >=25% 0, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"none":1}
+  Final reasons: {"ttl":1}
+
+--- CC-113 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg -0.60% median -0.60% max -0.60%
+  Max adverse PnL: avg -0.60% min -0.60%
+  Lifetime: avg 10.4m median 10.4m max 10.4m
+  Peak distribution: >=10% 0, >=25% 0, >=50% 0, >=100% 0, negative 1
+  First trigger counts: {"none":1}
+  Final reasons: {"ttl":1}
+
+--- CC-116 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg N/A median N/A max N/A
+  Max adverse PnL: avg N/A min N/A
+  Lifetime: avg 10.3m median 10.3m max 10.3m
+  Peak distribution: >=10% 0, >=25% 0, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"none":1}
+  Final reasons: {"ttl":1}
+
+--- CC-121 Detailed ---
+  Tokens: 2 (active: 1, completed: 1)
+  Rugged: 1 (50.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 12.07% median 16.15% max 16.15%
+  Max adverse PnL: avg -50.30% min -100.00%
+  Lifetime: avg 11.0m median 11.0m max 11.0m
+  Peak distribution: >=10% 1, >=25% 0, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"remove liquidity":1,"none":1}
+  Final reasons: {"ttl":1}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-123 Detailed ---
+  Tokens: 3 (active: 1, completed: 2)
+  Rugged: 1 (33.3%)
+  Winners (hit take profit): 2 (66.7%)
+    Winners rugged after trigger: 0 (0.0%)
+  Peak PnL: avg 43.65% median 47.54% max 83.42%
+  Max adverse PnL: avg -0.40% min -0.61%
+  Lifetime: avg 10.7m median 11.0m max 11.0m
+  Peak distribution: >=10% 2, >=25% 2, >=50% 1, >=100% 0, negative 0
+  First trigger counts: {"winner take profit":2,"remove liquidity":1}
+  Final reasons: {"ttl":2}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-124 Detailed ---
+  Tokens: 1 (active: 1, completed: 0)
+  Rugged: 1 (100.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg -0.60% median -0.60% max -0.60%
+  Max adverse PnL: avg -99.75% min -99.75%
+  Peak distribution: >=10% 0, >=25% 0, >=50% 0, >=100% 0, negative 1
+  First trigger counts: {"remove liquidity":1}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-125 Detailed ---
+  Tokens: 4 (active: 2, completed: 2)
+  Rugged: 2 (50.0%)
+  Winners (hit take profit): 1 (25.0%)
+    Winners rugged after trigger: 0 (0.0%)
+  Peak PnL: avg -39.78% median 0.00% max 40.65%
+  Max adverse PnL: avg -50.69% min -99.90%
+  Lifetime: avg 11.5m median 12.9m max 12.9m
+  Peak distribution: >=10% 1, >=25% 1, >=50% 0, >=100% 0, negative 2
+  First trigger counts: {"hard stop loss":1,"winner take profit":1,"remove liquidity":2}
+  Final reasons: {"ttl":2}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-126 Detailed ---
+  Tokens: 2 (active: 1, completed: 1)
+  Rugged: 1 (50.0%)
+  Winners (hit take profit): 1 (50.0%)
+    Winners rugged after trigger: 0 (0.0%)
+  Peak PnL: avg 37.15% median 47.05% max 47.05%
+  Max adverse PnL: avg -50.20% min -99.80%
+  Lifetime: avg 10.2m median 10.2m max 10.2m
+  Peak distribution: >=10% 2, >=25% 2, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"winner take profit":1,"remove liquidity":1}
+  Final reasons: {"ttl":1}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-127 Detailed ---
+  Tokens: 2 (active: 0, completed: 2)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 11.72% median 12.43% max 12.43%
+  Max adverse PnL: avg -0.61% min -0.61%
+  Lifetime: avg 10.8m median 11.4m max 11.4m
+  Peak distribution: >=10% 2, >=25% 0, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"none":2}
+  Final reasons: {"ttl":2}
+
+--- CC-129 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 11.94% median 11.94% max 11.94%
+  Max adverse PnL: avg -2.60% min -2.60%
+  Lifetime: avg 10.5m median 10.5m max 10.5m
+  Peak distribution: >=10% 1, >=25% 0, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"none":1}
+  Final reasons: {"ttl":1}
+
+--- CC-130 Detailed ---
+  Tokens: 5 (active: 2, completed: 3)
+  Rugged: 2 (40.0%)
+  Winners (hit take profit): 3 (60.0%)
+    Winners rugged after trigger: 1 (33.3%)
+  Peak PnL: avg 29.06% median 41.94% max 45.78%
+  Max adverse PnL: avg -40.99% min -100.00%
+  Lifetime: avg 12.7m median 10.4m max 17.6m
+  Peak distribution: >=10% 4, >=25% 3, >=50% 0, >=100% 0, negative 1
+  First trigger counts: {"winner take profit":3,"remove liquidity":1,"none":1}
+  Final reasons: {"ttl":3}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-132 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 21.73% median 21.73% max 21.73%
+  Max adverse PnL: avg -0.60% min -0.60%
+  Lifetime: avg 10.1m median 10.1m max 10.1m
+  Peak distribution: >=10% 1, >=25% 0, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"none":1}
+  Final reasons: {"ttl":1}
+
+--- CC-133 Detailed ---
+  Tokens: 3 (active: 0, completed: 3)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 1 (33.3%)
+    Winners rugged after trigger: 0 (0.0%)
+  Peak PnL: avg 27.23% median 24.74% max 52.51%
+  Max adverse PnL: avg -0.89% min -1.48%
+  Lifetime: avg 11.3m median 11.5m max 11.8m
+  Peak distribution: >=10% 2, >=25% 1, >=50% 1, >=100% 0, negative 0
+  First trigger counts: {"none":2,"winner take profit":1}
+  Final reasons: {"ttl":3}
+
+--- CC-134 Detailed ---
+  Tokens: 5 (active: 2, completed: 3)
+  Rugged: 2 (40.0%)
+  Winners (hit take profit): 1 (20.0%)
+    Winners rugged after trigger: 0 (0.0%)
+  Peak PnL: avg 15.30% median 36.36% max 66.31%
+  Max adverse PnL: avg -40.36% min -100.00%
+  Lifetime: avg 10.9m median 10.9m max 11.6m
+  Peak distribution: >=10% 4, >=25% 4, >=50% 1, >=100% 0, negative 1
+  First trigger counts: {"remove liquidity":1,"none":2,"winner trailing stop":1,"winner take profit":1}
+  Final reasons: {"ttl":3}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-136 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 34.47% median 34.47% max 34.47%
+  Max adverse PnL: avg -0.60% min -0.60%
+  Lifetime: avg 11.2m median 11.2m max 11.2m
+  Peak distribution: >=10% 1, >=25% 1, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"none":1}
+  Final reasons: {"ttl":1}
+
+--- CC-137 Detailed ---
+  Tokens: 2 (active: 0, completed: 2)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 22.49% median 24.91% max 24.91%
+  Max adverse PnL: avg -0.71% min -0.82%
+  Lifetime: avg 11.8m median 12.8m max 12.8m
+  Peak distribution: >=10% 2, >=25% 0, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"none":2}
+  Final reasons: {"ttl":2}
+
+--- CC-138 Detailed ---
+  Tokens: 3 (active: 0, completed: 3)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 1 (33.3%)
+    Winners rugged after trigger: 0 (0.0%)
+  Peak PnL: avg 24.21% median 9.30% max 63.96%
+  Max adverse PnL: avg -5.87% min -16.37%
+  Lifetime: avg 11.1m median 10.8m max 12.5m
+  Peak distribution: >=10% 1, >=25% 1, >=50% 1, >=100% 0, negative 1
+  First trigger counts: {"none":2,"winner take profit":1}
+  Final reasons: {"ttl":3}
+
+--- CC-145 Detailed ---
+  Tokens: 2 (active: 1, completed: 1)
+  Rugged: 1 (50.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 15.50% median 22.43% max 22.43%
+  Max adverse PnL: avg -50.30% min -100.00%
+  Lifetime: avg 11.4m median 11.4m max 11.4m
+  Peak distribution: >=10% 1, >=25% 0, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"none":1,"remove liquidity":1}
+  Final reasons: {"ttl":1}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-147 Detailed ---
+  Tokens: 2 (active: 0, completed: 2)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 1 (50.0%)
+    Winners rugged after trigger: 0 (0.0%)
+  Peak PnL: avg 44.77% median 59.82% max 59.82%
+  Max adverse PnL: avg -0.60% min -0.60%
+  Lifetime: avg 10.6m median 11.2m max 11.2m
+  Peak distribution: >=10% 2, >=25% 2, >=50% 1, >=100% 0, negative 0
+  First trigger counts: {"winner take profit":1,"none":1}
+  Final reasons: {"ttl":2}
+
+--- CC-149 Detailed ---
+  Tokens: 2 (active: 1, completed: 1)
+  Rugged: 1 (50.0%)
+  Winners (hit take profit): 1 (50.0%)
+    Winners rugged after trigger: 0 (0.0%)
+  Peak PnL: avg 51.89% median 56.94% max 56.94%
+  Max adverse PnL: avg -50.30% min -100.00%
+  Lifetime: avg 10.5m median 10.5m max 10.5m
+  Peak distribution: >=10% 2, >=25% 2, >=50% 1, >=100% 0, negative 0
+  First trigger counts: {"winner trailing stop":1,"winner take profit":1}
+  Final reasons: {"ttl":1}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-164 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 21.28% median 21.28% max 21.28%
+  Max adverse PnL: avg -1.76% min -1.76%
+  Lifetime: avg 10.6m median 10.6m max 10.6m
+  Peak distribution: >=10% 1, >=25% 0, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"none":1}
+  Final reasons: {"ttl":1}
+
+--- CC-168 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 28.44% median 28.44% max 28.44%
+  Max adverse PnL: avg -0.61% min -0.61%
+  Lifetime: avg 11.2m median 11.2m max 11.2m
+  Peak distribution: >=10% 1, >=25% 1, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"none":1}
+  Final reasons: {"ttl":1}
+
+--- CC-171 Detailed ---
+  Tokens: 1 (active: 1, completed: 0)
+  Rugged: 1 (100.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg -99.88% median -99.88% max -99.88%
+  Max adverse PnL: avg -99.88% min -99.88%
+  Peak distribution: >=10% 0, >=25% 0, >=50% 0, >=100% 0, negative 1
+  First trigger counts: {"remove liquidity":1}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-173 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg -0.60% median -0.60% max -0.60%
+  Max adverse PnL: avg -5.38% min -5.38%
+  Lifetime: avg 10.9m median 10.9m max 10.9m
+  Peak distribution: >=10% 0, >=25% 0, >=50% 0, >=100% 0, negative 1
+  First trigger counts: {"none":1}
+  Final reasons: {"ttl":1}
+
+--- CC-181 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 8.91% median 8.91% max 8.91%
+  Max adverse PnL: avg -0.61% min -0.61%
+  Lifetime: avg 11.7m median 11.7m max 11.7m
+  Peak distribution: >=10% 0, >=25% 0, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"none":1}
+  Final reasons: {"ttl":1}
+
+--- CC-184 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 1 (100.0%)
+    Winners rugged after trigger: 0 (0.0%)
+  Peak PnL: avg 44.72% median 44.72% max 44.72%
+  Max adverse PnL: avg -0.60% min -0.60%
+  Lifetime: avg 10.1m median 10.1m max 10.1m
+  Peak distribution: >=10% 1, >=25% 1, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"winner take profit":1}
+  Final reasons: {"ttl":1}
+
+--- CC-202 Detailed ---
+  Tokens: 6 (active: 1, completed: 5)
+  Rugged: 1 (16.7%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 17.36% median 18.23% max 38.42%
+  Max adverse PnL: avg -17.23% min -99.95%
+  Lifetime: avg 10.5m median 10.5m max 10.8m
+  Peak distribution: >=10% 4, >=25% 1, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"none":4,"single swap shock":1,"remove liquidity":1}
+  Final reasons: {"ttl":5}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-203 Detailed ---
+  Tokens: 1 (active: 1, completed: 0)
+  Rugged: 1 (100.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 5.13% median 5.13% max 5.13%
+  Max adverse PnL: avg -100.00% min -100.00%
+  Peak distribution: >=10% 0, >=25% 0, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"remove liquidity":1}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-208 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 4.04% median 4.04% max 4.04%
+  Max adverse PnL: avg -0.60% min -0.60%
+  Lifetime: avg 10.9m median 10.9m max 10.9m
+  Peak distribution: >=10% 0, >=25% 0, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"none":1}
+  Final reasons: {"ttl":1}
+
+--- CC-234 Detailed ---
+  Tokens: 2 (active: 0, completed: 2)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 1 (50.0%)
+    Winners rugged after trigger: 0 (0.0%)
+  Peak PnL: avg 45.80% median 64.99% max 64.99%
+  Max adverse PnL: avg -0.60% min -0.60%
+  Lifetime: avg 10.4m median 10.6m max 10.6m
+  Peak distribution: >=10% 2, >=25% 2, >=50% 1, >=100% 0, negative 0
+  First trigger counts: {"none":1,"winner take profit":1}
+  Final reasons: {"ttl":2}
+
+--- CC-238 Detailed ---
+  Tokens: 1 (active: 1, completed: 0)
+  Rugged: 1 (100.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg -99.88% median -99.88% max -99.88%
+  Max adverse PnL: avg -99.88% min -99.88%
+  Peak distribution: >=10% 0, >=25% 0, >=50% 0, >=100% 0, negative 1
+  First trigger counts: {"remove liquidity":1}
+  Liquidity at rug: avg 0.00 SOL, min 0.00 SOL
+
+--- CC-282 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 12.90% median 12.90% max 12.90%
+  Max adverse PnL: avg -0.60% min -0.60%
+  Lifetime: avg 10.7m median 10.7m max 10.7m
+  Peak distribution: >=10% 1, >=25% 0, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"none":1}
+  Final reasons: {"ttl":1}
+
+--- CC-301 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 20.37% median 20.37% max 20.37%
+  Max adverse PnL: avg -3.44% min -3.44%
+  Lifetime: avg 10.8m median 10.8m max 10.8m
+  Peak distribution: >=10% 1, >=25% 0, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"none":1}
+  Final reasons: {"ttl":1}
+
+--- CC-334 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 12.19% median 12.19% max 12.19%
+  Max adverse PnL: avg -0.64% min -0.64%
+  Lifetime: avg 10.2m median 10.2m max 10.2m
+  Peak distribution: >=10% 1, >=25% 0, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"none":1}
+  Final reasons: {"ttl":1}
+
+--- CC-344 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 8.11% median 8.11% max 8.11%
+  Max adverse PnL: avg -0.61% min -0.61%
+  Lifetime: avg 10.4m median 10.4m max 10.4m
+  Peak distribution: >=10% 0, >=25% 0, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"none":1}
+  Final reasons: {"ttl":1}
+
+--- CC-838 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 0 (0.0%)
+  Peak PnL: avg 31.98% median 31.98% max 31.98%
+  Max adverse PnL: avg -0.60% min -0.60%
+  Lifetime: avg 10.5m median 10.5m max 10.5m
+  Peak distribution: >=10% 1, >=25% 1, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"none":1}
+  Final reasons: {"ttl":1}
+
+--- CC-864 Detailed ---
+  Tokens: 1 (active: 0, completed: 1)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 1 (100.0%)
+    Winners rugged after trigger: 0 (0.0%)
+  Peak PnL: avg 148.20% median 148.20% max 148.20%
+  Max adverse PnL: avg -0.60% min -0.60%
+  Lifetime: avg 11.1m median 11.1m max 11.1m
+  Peak distribution: >=10% 1, >=25% 1, >=50% 1, >=100% 1, negative 0
+  First trigger counts: {"winner take profit":1}
+  Final reasons: {"ttl":1}
+
+--- CC-918 Detailed ---
+  Tokens: 2 (active: 0, completed: 2)
+  Rugged: 0 (0.0%)
+  Winners (hit take profit): 1 (50.0%)
+    Winners rugged after trigger: 0 (0.0%)
+  Peak PnL: avg 29.63% median 44.22% max 44.22%
+  Max adverse PnL: avg -50.27% min -99.94%
+  Lifetime: avg 10.8m median 11.1m max 11.1m
+  Peak distribution: >=10% 2, >=25% 1, >=50% 0, >=100% 0, negative 0
+  First trigger counts: {"hard stop loss":1,"winner take profit":1}
+  Final reasons: {"ttl":2}

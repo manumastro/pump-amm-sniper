@@ -1,0 +1,48 @@
+generatedAt=2026-03-27T06:12:11.204Z
+winsCount=44
+
+id | startedAt | buyAt | sellAt | pnlAt | endedAt | pnlPct | pnlSol | cc | exitReason | gmgn
+evt-000083 | 20:49:01.758 | 20:49:31.549 | 20:50:20.039 | 20:50:20.040 | 20:50:20.635 | 36.55 | 0.003655 | 1 | remove liquidity | https://gmgn.ai/sol/token/J5g5vCDMaUSpzyGtyeA94CkfwfjMtZxtgkRfJo8tv2QG
+evt-000108 | 21:05:03.085 | - | 21:05:10.983 | 21:05:10.983 | 21:05:11.581 | 18.33 | 0.001833 | - | hold timeout | https://gmgn.ai/sol/token/Aipff6vjxZkNs1cWPMJocubozx2yHByTkn88MqorQ5L4
+evt-000205 | 21:32:42.216 | 21:33:19.769 | 21:46:08.696 | 21:46:08.697 | 21:46:09.269 | 16.62 | 0.001662 | 1 | hold timeout | https://gmgn.ai/sol/token/8UNR7VKYrw6CbFfPYikyB25Ymf23Hb4SqabX7az13JTH
+evt-000260 | 21:49:21.581 | 21:50:08.299 | 21:53:06.400 | 21:53:06.401 | 21:53:06.998 | 13.89 | 0.001389 | 0 | winner trailing stop | https://gmgn.ai/sol/token/6Msxga7Ssh1ERJUsfZKDU59X4k4JmPfEEsH6EsnCL6Vj
+evt-000284 | 22:04:10.406 | - | 22:04:13.378 | 22:04:13.378 | 22:04:13.451 | 124.54 | 0.012454 | - | winner take profit | -
+evt-000314 | 22:08:12.002 | 22:09:25.162 | 22:11:54.705 | 22:11:54.705 | 22:11:55.303 | 104.85 | 0.010485 | 1 | winner take profit | https://gmgn.ai/sol/token/Ac6ayv6HGTxfvW7nXFWCoRFU1jdFmQ1s6Gxh9ab51mfx
+evt-000352 | 22:23:42.521 | - | 22:24:29.063 | 22:24:29.064 | 22:24:30.223 | 19.82 | 0.001982 | - | hold timeout | -
+evt-000361 | 22:25:49.416 | - | 22:26:43.083 | 22:26:43.084 | 22:26:44.200 | 100.71 | 0.010071 | 4 | winner take profit | https://gmgn.ai/sol/token/AqhhqU5cbBxGrJYjuVYGeJM4cAFsTv56Sj3TG3riLv56
+evt-000363 | 22:26:06.929 | 22:26:56.112 | 22:30:31.755 | 22:30:31.756 | 22:30:39.502 | 20.08 | 0.002008 | 0 | winner trailing stop | https://gmgn.ai/sol/token/8mzxbiVWS6uShr8DhWWVQxbVubPxyghsEnK4MgqPsdTm
+evt-000470 | 23:05:41.264 | 23:06:33.033 | 23:11:03.378 | 23:11:03.378 | 23:11:04.037 | 5.7 | 0.00057 | 1 | hold timeout | https://gmgn.ai/sol/token/5tenVkGg78QnnxD1L7r83xQ8C5apmDGYyZvEcdLSQFGz
+evt-000474 | 23:06:54.889 | 23:08:00.916 | 23:14:32.387 | 23:14:32.387 | 23:14:32.944 | 1.54 | 0.000154 | 0 | hold timeout | https://gmgn.ai/sol/token/FUqxfkNghgM2vxtxw8aCJPEYasgw1av9NRiHdRfzzKLW
+evt-000533 | 23:22:11.404 | 23:22:50.420 | 23:36:25.042 | 23:36:25.043 | 23:36:34.166 | 16.42 | 0.001642 | 1 | hold timeout | https://gmgn.ai/sol/token/47GFrdi9TjFvfVhuRpEAuX4kSLFJheETek32ujtpaFng
+evt-000718 | 00:35:35.452 | 00:36:27.404 | 00:41:24.060 | 00:41:24.061 | 00:41:25.213 | 13.57 | 0.001357 | 2 | hold timeout | https://gmgn.ai/sol/token/39buje2gcU4Gc6yMsqmCNRG5N7zTmyZL4jzvmJH3mDkL
+evt-000780 | 00:47:48.744 | 00:48:38.401 | 00:52:15.003 | 00:52:15.003 | 00:52:16.123 | 17.04 | 0.001704 | 1 | hold timeout | https://gmgn.ai/sol/token/GuYhJPowM6kYW5hrk38bMLcGCjnuor3oWrtCS5q5Lovh
+evt-000783 | 00:52:52.906 | 00:53:42.080 | 00:57:57.412 | 00:57:57.412 | 00:57:58.022 | 105.54 | 0.010554 | 2 | winner take profit | https://gmgn.ai/sol/token/7cBrYczNyE6FQVPx4wrfbu61zjZzMjWRistogYcrkHqg
+evt-000798 | 01:01:48.797 | 01:03:04.373 | 01:05:19.999 | 01:05:19.999 | 01:05:21.636 | 9.9 | 0.00099 | 0 | winner trailing stop | https://gmgn.ai/sol/token/7cBrYczNyE6FQVPx4wrfbu61zjZzMjWRistogYcrkHqg
+evt-000809 | 01:05:22.604 | - | 01:05:26.405 | 01:05:26.405 | 01:05:26.985 | 24.56 | 0.002456 | - | winner trailing stop | -
+evt-001001 | 02:05:28.750 | 02:06:30.981 | 02:10:45.196 | 02:10:45.196 | 02:10:46.887 | 21.63 | 0.002163 | 1 | winner trailing stop | https://gmgn.ai/sol/token/HWwrj5CkZGsS9rQteCqnmHCoKM6Bpfe7YA3iHBuN8kE2
+evt-001002 | 02:05:30.580 | 02:06:26.281 | 02:07:13.879 | 02:07:13.879 | 02:07:14.453 | 15.16 | 0.001516 | 0 | hold timeout | https://gmgn.ai/sol/token/HWwrj5CkZGsS9rQteCqnmHCoKM6Bpfe7YA3iHBuN8kE2
+evt-001019 | 02:11:08.951 | 02:12:19.973 | 02:13:29.528 | 02:13:29.528 | 02:13:30.090 | 3.8 | 0.00038 | 1 | hold timeout | https://gmgn.ai/sol/token/2xrkJGpK1XCeNiap1ZuTYwYSwWmNCpwQj1oFnMz6LDH1
+evt-001036 | 02:13:11.666 | 02:14:18.397 | 02:22:13.812 | 02:22:13.812 | 02:22:14.947 | 104.06 | 0.010406 | 2 | winner take profit | https://gmgn.ai/sol/token/2xrkJGpK1XCeNiap1ZuTYwYSwWmNCpwQj1oFnMz6LDH1
+evt-001038 | 02:13:38.030 | 02:14:39.168 | 02:19:36.815 | 02:19:36.815 | 02:19:37.392 | 108.78 | 0.010878 | 2 | winner take profit | https://gmgn.ai/sol/token/8ZvXKCtizRaUwdRh2QTdAfjQ73jgFyriTgnZD4tF76N1
+evt-001055 | 02:25:21.342 | - | 02:25:33.231 | 02:25:33.231 | 02:25:33.787 | 16.18 | 0.001618 | - | hold timeout | https://gmgn.ai/sol/token/9tmJizbojR75GS73ufyq4HSMi6ooJtNRSziuXXKcpump
+evt-001132 | 02:42:13.491 | - | 02:42:19.200 | 02:42:19.200 | 02:42:19.790 | 7.82 | 0.000782 | - | hold timeout | https://gmgn.ai/sol/token/6NCV4vEPT5yexkbZdzTSGvsabRBiYoaSj1stY1api5C9
+evt-001189 | 02:56:21.058 | 02:57:19.294 | 03:02:31.556 | 03:02:31.557 | 03:02:32.123 | 109.22 | 0.010922 | 1 | winner take profit | https://gmgn.ai/sol/token/2t32TCrEeUKwqNSPup7gW15DuyVM7apZUZ6aAYCS2wox
+evt-001213 | 03:10:03.085 | - | 03:10:04.339 | 03:10:04.339 | 03:10:04.907 | 2.56 | 0.000256 | - | hold timeout | https://gmgn.ai/sol/token/GikDMku4Hvfc4GzxdWvdthFuqXoGaCKA9ZuxYEW1WQdj
+evt-001239 | 03:14:52.752 | 03:16:06.264 | 03:24:25.247 | 03:24:25.248 | 03:24:25.842 | 16.9 | 0.00169 | 1 | hold timeout | https://gmgn.ai/sol/token/4BfSkYkiNDixvwSrJz31nXF7iiaz4SZbtYmrpGQ9BwHL
+evt-001316 | 03:32:20.378 | 03:33:32.379 | 03:38:25.768 | 03:38:25.768 | 03:38:27.888 | 28.76 | 0.002876 | 2 | winner trailing stop | https://gmgn.ai/sol/token/9fQUcSzpjL4B6D8wd7EkuVodeU2NuYR6LdPqvXoTzQ9x
+evt-001327 | 03:42:53.393 | - | 03:43:39.464 | 03:43:39.464 | 03:43:40.014 | 8.47 | 0.000847 | 1 | hold timeout | https://gmgn.ai/sol/token/6A2A5kba4EypUjWYv4ZNYV66pnxgc2an7zEJy4emnYGH
+evt-001339 | 03:45:01.530 | 03:45:41.264 | 03:58:49.682 | 03:58:49.682 | 03:58:50.243 | 7.12 | 0.000712 | 1 | hold timeout | https://gmgn.ai/sol/token/6A2A5kba4EypUjWYv4ZNYV66pnxgc2an7zEJy4emnYGH
+evt-001397 | 03:52:48.329 | 03:53:43.184 | 03:55:28.371 | 03:55:28.371 | 03:55:28.943 | 21.55 | 0.002155 | 2 | winner trailing stop | https://gmgn.ai/sol/token/7U1sAgrmv23ybqYrviQuRD23snsAo31s5SNZhobciPqu
+evt-001403 | 03:58:51.597 | 03:59:42.243 | 04:00:58.414 | 04:00:58.414 | 04:00:58.972 | 2.38 | 0.000238 | 1 | hold timeout | https://gmgn.ai/sol/token/8DskAALkTt3cb3MXVRRWFzJ5yNnxTZ8raYSckavvbUtH
+evt-001429 | 04:05:45.380 | 04:06:36.858 | 04:09:02.214 | 04:09:02.215 | 04:09:04.369 | 9.62 | 0.000962 | 2 | hold timeout | https://gmgn.ai/sol/token/7xjUck9VYFHUE36hpAAGF99DiMuJkEoTCzBT3YPYGsYQ
+evt-001463 | 04:16:55.227 | 04:17:31.950 | 04:25:48.060 | 04:25:48.060 | 04:25:49.167 | 24.73 | 0.002473 | 4 | hold timeout | https://gmgn.ai/sol/token/J5SMYY5b1793rsaxjUhWTjXE9NkFVHoLUuLFctZfY1fz
+evt-001464 | 04:21:56.343 | - | 04:22:05.054 | 04:22:05.054 | 04:22:05.622 | 19.65 | 0.001965 | - | hold timeout | https://gmgn.ai/sol/token/DiKJWA2FQS9Q1Quf7gRkHY66E6TVHCQBPaWSaKC8EwLx
+evt-001484 | 04:28:34.844 | 04:29:11.956 | 04:32:35.973 | 04:32:35.973 | 04:32:37.114 | 7.27 | 0.000727 | 1 | hold timeout | https://gmgn.ai/sol/token/Aa3fiTdj1z6jo5MZLpQiu3DP8wLzhK96A8gn9HwB1DGZ
+evt-001671 | 05:17:42.391 | 05:18:35.352 | 05:21:45.197 | 05:21:45.198 | 05:21:46.306 | 6.82 | 0.000682 | 2 | hold timeout | https://gmgn.ai/sol/token/DC4SCPAZzaRSibUbgsyv6AoxztiufmfB9hDojuKgH8Zr
+evt-001677 | 05:20:04.373 | 05:20:44.396 | 05:21:47.220 | 05:21:47.221 | 05:21:56.378 | 6.82 | 0.000682 | 1 | hold timeout | https://gmgn.ai/sol/token/G9QjjUugkJyMPcZhriSfmCQ17ZFpWMsGDQrefHYRhuCp
+evt-001700 | 05:35:18.182 | 05:35:53.289 | 05:50:50.056 | 05:50:50.056 | 05:50:52.203 | 13.97 | 0.001397 | 4 | hold timeout | https://gmgn.ai/sol/token/CBAJoS5npshMZbNbRQVi7MFNK42GrnjckBa9aseiX5z3
+evt-001717 | 05:47:27.812 | 05:48:19.039 | 05:53:16.209 | 05:53:16.209 | 05:53:20.366 | 41.12 | 0.004112 | 4 | creator outbound spray | https://gmgn.ai/sol/token/81XwdSY4DGeifuhaTw4GSPE5ogejGyf7TZ29fCsPft3m
+evt-001725 | 05:53:21.035 | 05:54:10.970 | 05:55:01.220 | 05:55:01.221 | 05:55:02.317 | 0.5 | 0.00005 | 1 | hold timeout | https://gmgn.ai/sol/token/9oSTDNeKYeCT7NRYupyxCgtzoXoBQNrczJTAaRmnRqBo
+evt-001743 | 05:56:32.001 | 05:57:30.447 | 06:07:14.984 | 06:07:14.984 | 06:07:15.559 | 16.23 | 0.001623 | 1 | hold timeout | https://gmgn.ai/sol/token/Fp8aCEGm85WnvJcpN9yB3eqkiaw4iQ3STVA3SemWj66F
+evt-001936 | 06:48:19.933 | - | 06:48:26.184 | 06:48:26.184 | 06:48:26.241 | 101 | 0.0101 | - | winner take profit | -
+evt-001951 | 06:58:04.324 | - | 06:58:07.086 | 06:58:07.086 | 06:58:07.669 | 19.12 | 0.001912 | - | hold timeout | https://gmgn.ai/sol/token/4wmN6YtGPic1Hjj2fVMVhyAm4Y4kE66rCrx5Ev9bmoon
