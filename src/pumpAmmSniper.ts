@@ -955,6 +955,14 @@ async function handleNewPool(connection: Connection, signature: string) {
                 })
             );
 
+            // Final check: ensure all pre‑buy checks passed
+            const allChecksPassed = (creatorRisk.ok || creatorRiskProbation) && top10.ok && liquiditySOL >= CONFIG.MIN_POOL_LIQUIDITY_SOL;
+            if (!allChecksPassed) {
+                console.log(`🛑 SKIP: pre‑buy checks failed (creatorRisk.ok=${creatorRisk.ok}, top10.ok=${top10.ok}, liquidity=${liquiditySOL.toFixed(2)} SOL)`);
+                finalStatus = "SKIP: pre‑buy checks failed";
+                return;
+            }
+
             if (forceEntryNoWsolBypass && CONFIG.FORCE_ENTRY_ON_NO_WSOL_SIDE) {
                 stageLog(ctx, "PAPER", "force-entry no-WSOL bypass active, running paper simulation anyway");
             }

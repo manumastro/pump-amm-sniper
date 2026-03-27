@@ -611,6 +611,8 @@ Esce se:
 Exit reason:
 - `creator risk: ...`
 
+Nota: il recheck è ora attivo (`HOLD_CREATOR_RISK_RECHECK_ENABLED: true`). Le rug loss senza `entryFilters` nel report sono dovute a un bug di logging (il bot supera i controlli ma il log "✅ Checks passed" non viene catturato). È stato aggiunto un controllo esplicito per bloccare l'ingresso se i controlli falliscono.
+
 ### 8.4 Winner management
 
 Serve a proteggere i winner e i pump rapidi.
