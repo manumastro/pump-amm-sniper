@@ -1,14 +1,14 @@
-Paper Trade Report @ 2026-03-28T21:05:11.086Z
-events seen: 0
-finished: 0
+Paper Trade Report @ 2026-03-28T21:06:09.147Z
+events seen: 3
+finished: 3
 checks passed: 0
-skipped: 0
-no WSOL skips: 0
+skipped: 3
+no WSOL skips: 1
 no WSOL retry events: 0
 no WSOL retry recovered: 0
 no WSOL retry exhausted: 0
 no WSOL retry attempts total: 0
-hostile skips: 0
+hostile skips: 2
 rug-like avoided: 0
 rug losses (-100%): 0
 invalid pnl excluded: 0
@@ -18,6 +18,9 @@ wins/losses: 0/0
 win rate: 0%
 
 All operations:
+0001. evt-000001 HyYoWEDJUJyicgAP5guFcPRvsRxWUeK8eNjeeRQn1aed start=22:05:56.652 buy_ts=- sell_ts=- end=22:05:59.380 buy_spot=n/a sell_spot=n/a pnl=n/a (n/a%) pnl_valid=YES class=hostile status=SKIP: creator risk skip=creator risk (unique counterparties 6 not in whitelist) rug_like=NO rug_loss=NO rug_reason=- gmgn=https://gmgn.ai/sol/token/HyYoWEDJUJyicgAP5guFcPRvsRxWUeK8eNjeeRQn1aed pnl_issue=-
+0002. evt-000002 9aTzEKwMVv3fobqHAsLzUNk7aSbHNBsWzudCcSNnpump start=22:06:05.500 buy_ts=- sell_ts=- end=22:06:06.513 buy_spot=n/a sell_spot=n/a pnl=n/a (n/a%) pnl_valid=YES class=clean status=SKIP: no WSOL side skip=pool has no WSOL side (base=9aTzEKwMVv3fobqHAsLzUNk7aSbHNBsWzudCcSNnpump quote=- token=9aTzEKwMVv3fobqHAsLzUNk7aSbHNBsWzudCcSNnpump) rug_like=NO rug_loss=NO rug_reason=- gmgn=https://gmgn.ai/sol/token/9aTzEKwMVv3fobqHAsLzUNk7aSbHNBsWzudCcSNnpump pnl_issue=-
+0003. evt-000003 9YAig3reSWzzDt8KqV5qS7mXWNuLP2ougH4ZZfUNaaVi start=22:06:07.000 buy_ts=- sell_ts=- end=22:06:08.463 buy_spot=n/a sell_spot=n/a pnl=n/a (n/a%) pnl_valid=YES class=hostile status=SKIP: creator risk skip=creator risk (unique counterparties 5 not in whitelist) rug_like=NO rug_loss=NO rug_reason=- gmgn=https://gmgn.ai/sol/token/9YAig3reSWzzDt8KqV5qS7mXWNuLP2ougH4ZZfUNaaVi pnl_issue=-
 
 Rug loss events (-100%):
 (none)

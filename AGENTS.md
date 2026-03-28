@@ -5,7 +5,8 @@
 - Runbook deploy/systemd: `docs/systemd-runbook.md`
 - Architettura e ownership moduli: `docs/architecture.md`
 - Roadmap tuning profit: `docs/profit-roadmap.md`
-- Worklog ultimo ciclo: `docs/worklog-2026-03-21.md`
+- Worklog ultimo ciclo: `docs/worklog-2026-03-28.md`
+- Worklog ciclo precedente: `docs/worklog-2026-03-21.md`
 - Analisi creator/dev: `idea/creator-tx-analysis.md`
 - **Analisi rug:** `node scripts/rug-analysis.js` — mostra tabella completa pre-entry (tutti i 18+ controlli) e post-entry (triggers, guards, exit reason) per ogni rug loss.
 
