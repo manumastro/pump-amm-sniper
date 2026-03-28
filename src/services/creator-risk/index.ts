@@ -1347,7 +1347,7 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
             }
 
             const whitelistedCcs = CONFIG.CREATOR_RISK_WHITELISTED_CC_VALUES || [];
-            if (!whitelistedCcs.includes(uniqueCounterparties)) {
+            if (!options.skipUniqueCounterparties && !whitelistedCcs.includes(uniqueCounterparties)) {
                 return returnEarlyDecision({
                     ok: false,
                     reason: `unique counterparties ${uniqueCounterparties} not in whitelist`,

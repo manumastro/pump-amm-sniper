@@ -614,7 +614,7 @@ Il recheck riesegue lo stesso `runCheck` del pre-entry. Il sub-trigger piu frequ
 
 Dato chiave: non abbiamo controffattuale diretto (le loss avevano recheck OFF), ma i dati suggeriscono che il trigger UC nel recheck taglia soprattutto win legittimi. Gli altri trigger recheck (spray, close-account, outbound, cashout) sono quelli che proteggono davvero dai rug.
 
-**Decisione in sospeso:** valutare se disabilitare solo il sub-trigger UC nel recheck, oppure allargare la whitelist CC per ridurre i falsi positivi mantenendo la protezione.
+**Decisione applicata (2026-03-28):** disabilitato il sub-trigger UC **solo nel recheck** tramite `skipUniqueCounterparties: true` passato come opzione al `runCheckWithRetry`. Il check UC resta attivo al pre-entry. Tutti gli altri sub-trigger recheck (spray, close-account, outbound, cashout, compressed, burner, ecc.) restano attivi durante l'hold.
 
 ### 8.4 Winner management
 
@@ -889,8 +889,9 @@ Test fallito (commit 255a51d): RECHECK disabilitato completamente -> 11/15 trade
 
 Conclusione: RECHECK essenziale per protezione rug, ma il sub-trigger "unique counterparties" e il principale responsabile delle uscite premature sui win. Gli altri sub-trigger (spray, close-account, outbound, cashout) proteggono davvero.
 
-### Decisioni in sospeso
+### Decisioni applicate
 
-- Valutare disabilitazione selettiva del sub-trigger UC nel recheck (richiede modifica codice)
-- Oppure allargare whitelist CC values per ridurre falsi positivi
-- Raccolta dati in corso con nuovo config per validare impatto modifiche winner management
+- Sub-trigger UC disabilitato nel recheck tramite `skipUniqueCounterparties: true` (modifica codice in `src/domain/types.ts`, `src/services/creator-risk/index.ts`, `src/pumpAmmSniper.ts`)
+- UC resta attivo al pre-entry: continua a bloccare creator sospetti prima del buy
+- Tutti gli altri sub-trigger recheck restano attivi: spray, close-account, outbound, cashout, compressed, burner, ecc.
+- Raccolta dati in corso con nuovo config per validare impatto complessivo

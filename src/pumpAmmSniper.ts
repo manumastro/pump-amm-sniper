@@ -2789,6 +2789,7 @@ const paperTradeService = createPaperTradeService({
             allowReuseIfNoNewActivity: true,
             allowFastPathOnDeepTimeout: true,
             deepCheckBudgetMs: CONFIG.CREATOR_RISK_RECHECK_DEEP_CHECK_BUDGET_MS,
+            skipUniqueCounterparties: true,
         });
     },
     shouldEscalateProbationCreatorRisk: creatorRiskService.shouldEscalateProbationCreatorRisk,

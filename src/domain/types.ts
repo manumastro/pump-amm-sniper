@@ -84,6 +84,7 @@ export type CreatorRiskCheckOptions = {
     allowReuseIfNoNewActivity?: boolean;
     allowFastPathOnDeepTimeout?: boolean;
     deepCheckBudgetMs?: number;
+    skipUniqueCounterparties?: boolean;
 };
 
 export type RugHistory = {
