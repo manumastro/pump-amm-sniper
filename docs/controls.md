@@ -601,6 +601,21 @@ Exit reason:
 
 Nota: il recheck è ora attivo (`HOLD_CREATOR_RISK_RECHECK_ENABLED: true`). Le rug loss senza `entryFilters` nel report sono dovute a un bug di logging (il bot supera i controlli ma il log "✅ Checks passed" non viene catturato). È stato aggiunto un controllo esplicito per bloccare l'ingresso se i controlli falliscono.
 
+Intervallo recheck: `HOLD_CREATOR_RISK_RECHECK_INTERVAL_MS = 1500ms` (era 5000ms, ridotto 2026-03-28 per rilevare rug 3.3x piu veloce).
+
+**Analisi sub-trigger "unique counterparties" nel recheck (2026-03-28):**
+
+Il recheck riesegue lo stesso `runCheck` del pre-entry. Il sub-trigger piu frequente e "unique counterparties N not in whitelist". Dall'analisi di 120 win + 11 loss:
+
+- 95/120 win (79%) escono per `unique counterparties` nel recheck, con median PnL 1.89%
+- 0/11 loss escono per `unique counterparties` (tutte le loss avevano recheck disabilitato)
+- I win che NON escono per UC hanno median PnL 43.34% (22x meglio)
+- Pattern dominante: entry cc=4 (ok) -> recheck cc=1 (non in whitelist) -> exit forzato
+
+Dato chiave: non abbiamo controffattuale diretto (le loss avevano recheck OFF), ma i dati suggeriscono che il trigger UC nel recheck taglia soprattutto win legittimi. Gli altri trigger recheck (spray, close-account, outbound, cashout) sono quelli che proteggono davvero dai rug.
+
+**Decisione in sospeso:** valutare se disabilitare solo il sub-trigger UC nel recheck, oppure allargare la whitelist CC per ridurre i falsi positivi mantenendo la protezione.
+
 ### 8.4 Winner management
 
 Serve a proteggere i winner e i pump rapidi.
@@ -611,9 +626,17 @@ Puo uscire in due modi:
 
 Regole importanti recenti:
 - token CP=1 hanno TP piu alto
-- token CP=0 hanno trailing piu stretto per proteggersi da slow rug
-- check winner piu frequente (`HOLD_WINNER_CHECK_INTERVAL_MS = 250ms`) per ridurre slippage tra picco e uscita
+- token CP=0 hanno trailing allineato al trailing principale (15%) per evitare uscite premature su slow rug
+- check winner piu frequente (`HOLD_WINNER_CHECK_INTERVAL_MS = 200ms`) per ridurre slippage tra picco e uscita
 - ciclo hold piu frequente (poll interno allineato ai check veloci) per intercettare prima i dump rapidi
+
+Soglie attuali (aggiornate 2026-03-28):
+- `HOLD_WINNER_ARM_PNL_PCT = 10` (era 6, alzato per non armare il trailing su micro-profitti)
+- `HOLD_WINNER_TRAILING_DROP_PCT = 20` (era 15, allargato per dare piu spazio alla volatilita dei winner)
+- `HOLD_WINNER_TRAILING_DROP_PCT_CP0 = 15` (era 8, allineato al vecchio trailing principale)
+- `HOLD_WINNER_CHECK_INTERVAL_MS = 200` (era 250, piu reattivo)
+- `HOLD_WINNER_HARD_TAKE_PROFIT_PCT = 100`
+- `HOLD_WINNER_MIN_PEAK_SOL = 0.0104`
 
 ### 8.5 Sell quote collapse
 
@@ -843,3 +866,31 @@ Se vuoi capire un caso velocemente:
 | Creator outbound spray | hold | ON | exit | `creator outbound spray` |
 | Creator inbound spray | hold | ON | exit | `creator inbound spray` |
 | Hold timeout | hold | ON | exit | `hold timeout` |
+
+## 15. Changelog tuning 2026-03-28
+
+### Modifiche applicate
+
+| Parametro | Prima | Dopo | Motivo |
+| --- | --- | --- | --- |
+| `HOLD_WINNER_CHECK_INTERVAL_MS` | 250 | 200 | Check piu reattivi sui vincenti |
+| `HOLD_CREATOR_RISK_RECHECK_INTERVAL_MS` | 5000 | 1500 | Rug detection 3.3x piu veloce |
+| `HOLD_WINNER_TRAILING_DROP_PCT_CP0` | 8 | 15 | Allineato al vecchio trailing principale, evita uscite premature |
+| `HOLD_WINNER_ARM_PNL_PCT` | 6 | 10 | Non arma trailing su micro-profitti; lascia correre i winner |
+| `HOLD_WINNER_TRAILING_DROP_PCT` | 15 | 20 | Piu spazio per volatilita prima di uscire sui winner |
+
+### Analisi dati a supporto (228 trade baseline)
+
+Problema iniziale: median win PnL 2.45%, 75% dei win sotto 10%.
+Causa: 79% dei win tagliati dal recheck "unique counterparties" con median PnL 1.89%.
+Win che NON escono per UC: median PnL 43.34%.
+
+Test fallito (commit 255a51d): RECHECK disabilitato completamente -> 11/15 trade in loss (median -93.72%). Revertito con 649913e.
+
+Conclusione: RECHECK essenziale per protezione rug, ma il sub-trigger "unique counterparties" e il principale responsabile delle uscite premature sui win. Gli altri sub-trigger (spray, close-account, outbound, cashout) proteggono davvero.
+
+### Decisioni in sospeso
+
+- Valutare disabilitazione selettiva del sub-trigger UC nel recheck (richiede modifica codice)
+- Oppure allargare whitelist CC values per ridurre falsi positivi
+- Raccolta dati in corso con nuovo config per validare impatto modifiche winner management
