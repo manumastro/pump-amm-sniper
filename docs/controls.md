@@ -612,24 +612,8 @@ Puo uscire in due modi:
 Regole importanti recenti:
 - token CP=1 hanno TP piu alto
 - token CP=0 hanno trailing piu stretto per proteggersi da slow rug
-- check winner piu frequente (`HOLD_WINNER_CHECK_INTERVAL_MS = 200ms`) per ridurre slippage tra picco e uscita
+- check winner piu frequente (`HOLD_WINNER_CHECK_INTERVAL_MS = 250ms`) per ridurre slippage tra picco e uscita
 - ciclo hold piu frequente (poll interno allineato ai check veloci) per intercettare prima i dump rapidi
-
-**AGGIORNAMENTO 2026-03-28 - Fix winner management per evitare exit premature su micro-profitti:**
-
-Problema identificato: le impostazioni precedenti causavano uscite troppo rapide su profitti di 2-3% (mediana dataset storico = 2.45%).
-
-Configurazione ottimizzata:
-- `HOLD_WINNER_ARM_PNL_PCT`: 6% → **12%** (doppio = riduce falsi positivi su micro-movimenti)
-- `HOLD_WINNER_TRAILING_DROP_PCT`: 15% → **25%** (piu tollerante = consente ritracciamenti naturali)
-- `HOLD_WINNER_TRAILING_DROP_PCT_CP0`: 8% → **15%** (allineato al trailing principale)
-- `HOLD_WINNER_MIN_PEAK_SOL`: 0.0104 → **0.0208** (doppio = solo con profitti tangibili attiva trailing)
-- `HOLD_CREATOR_RISK_RECHECK_ENABLED`: true → **false** (il recheck forzava exit durante hold quando entravano altri trader e le "unique counterparties" cambiavano)
-
-Impatto atteso:
-- Riduci micro-exit su profitti di 2-3% (75% del dataset storico)
-- Consenti ai winners di svilupparsi fino a profitti reali (>10-15%)
-- Evita il trap della unique-counterparties che si modificava in hold
 
 ### 8.5 Sell quote collapse
 
