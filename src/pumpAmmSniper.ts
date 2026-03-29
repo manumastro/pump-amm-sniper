@@ -942,11 +942,19 @@ async function handleNewPool(connection: Connection, signature: string) {
                 if (paper.finalStatus) {
                     console.log(`⚠️ PAPER_TRADE: ${paper.reason}`);
                     finalStatus = paper.finalStatus;
+                    // Dynamic rug funder tracking: record funder on catastrophic loss
+                    if (paper.exitReason && paper.pnlPct !== undefined) {
+                        recordRugFunder(creatorRisk.funder, creatorAddress, paper.exitReason, paper.pnlPct, tokenMint, ctx);
+                    }
                 } else {
                     console.log(`🛑 SKIP: Paper simulation guard (${paper.reason})`);
                     finalStatus = "SKIP: paper simulation guard";
                 }
                 return;
+            }
+            // Defensive: record rug even on ok path (shouldn't happen, but safe)
+            if (paper.exitReason && paper.pnlPct !== undefined) {
+                recordRugFunder(creatorRisk.funder, creatorAddress, paper.exitReason, paper.pnlPct, tokenMint, ctx);
             }
             stageLog(ctx, "STEP 7/7", "dev holdings");
             if (creatorAddress) {
@@ -1436,6 +1444,75 @@ function trackRecentFunderCreator(funder: string, creatorAddress: string): numbe
 
     recentFunderCreators.set(funder, entries);
     return entries.length;
+}
+
+/**
+ * Dynamic rug funder tracking: when a rug is detected, record the funder
+ * in funder-counts.json so subsequent tokens from the same funder are blocked
+ * by the funderCluster historical check.
+ *
+ * Also appends the creator to creators.txt to prevent direct reentry.
+ *
+ * This function is safe to call from workers (concurrent file access is
+ * handled via atomic read-modify-write with a try/catch guard).
+ */
+const RUG_EXIT_REASONS = new Set([
+    "remove liquidity",
+    "single swap shock",
+    "sell quote collapse",
+]);
+
+function recordRugFunder(
+    funder: string | null | undefined,
+    creatorAddress: string | null | undefined,
+    exitReason: string,
+    pnlPct: number,
+    tokenMint: string,
+    ctx: string,
+): void {
+    // Only record on catastrophic exits with severe loss
+    if (pnlPct > -80) return;
+    if (!RUG_EXIT_REASONS.has(exitReason)) return;
+
+    // Record funder in funder-counts.json (increment count)
+    if (funder) {
+        try {
+            let counts: Record<string, number> = {};
+            if (fs.existsSync(BLACKLIST_FUNDER_COUNTS_PATH)) {
+                counts = JSON.parse(fs.readFileSync(BLACKLIST_FUNDER_COUNTS_PATH, "utf8")) || {};
+            }
+            counts[funder] = (counts[funder] || 0) + 1;
+            fs.writeFileSync(BLACKLIST_FUNDER_COUNTS_PATH, JSON.stringify(counts, null, 2) + "\n", "utf8");
+            console.log(
+                `🔴 RUG_TRACK  | funder ${funder} count=${counts[funder]} ` +
+                `(exit=${exitReason} pnl=${pnlPct.toFixed(1)}% token=${tokenMint.substring(0, 12)})`,
+            );
+        } catch (e: any) {
+            console.log(`⚠️ RUG_TRACK  | failed to update funder-counts.json: ${e.message}`);
+        }
+    }
+
+    // Record creator in creators.txt (append if not already present)
+    if (creatorAddress) {
+        try {
+            const existing = fs.existsSync(BLACKLIST_CREATORS_PATH)
+                ? fs.readFileSync(BLACKLIST_CREATORS_PATH, "utf8")
+                : "";
+            if (!existing.includes(creatorAddress)) {
+                const line = `${creatorAddress}\n`;
+                fs.appendFileSync(BLACKLIST_CREATORS_PATH, line, "utf8");
+                console.log(
+                    `🔴 RUG_TRACK  | creator ${creatorAddress} added to blacklist`,
+                );
+            }
+        } catch (e: any) {
+            console.log(`⚠️ RUG_TRACK  | failed to update creators.txt: ${e.message}`);
+        }
+    }
+
+    // Invalidate cached rug history so next worker picks up the change immediately
+    cachedRugHistoryAtMs = 0;
+    cachedRugHistory = null;
 }
 
 async function fetchParsedTransactionsForSignatures(

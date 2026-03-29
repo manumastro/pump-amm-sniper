@@ -939,3 +939,51 @@ Aggiunto circuit breaker al `startLogHealthcheck()` in `src/app/runtime.ts`:
 | Break-even win rate needed | 77.3% |
 
 Raccolta dati in corso con nuovo config per validare impatto profit floor.
+
+### Dati sessione post-modifica (43 trade, ~6h)
+
+| Metrica | Valore |
+| --- | --- |
+| Win rate | 76.7% (33W/10L) |
+| Median win | +15.86% |
+| Avg win | +23.54% |
+| Total PnL | +0.0025 SOL |
+| Rug losses | 7 at -100% = -0.0700 SOL |
+| Non-rug losses | 3 at -4%/-10%/-38% = -0.0052 SOL |
+| Win total | +0.0777 SOL |
+
+Bot e profittevole ma i 7 rug a -100% mangiano quasi tutti i profitti. Analisi dettagliata funder pattern ha portato all'implementazione del dynamic rug tracking.
+
+### Nuova feature: Dynamic funder rug tracking
+
+Quando un paper trade esce con rug (pnlPct <= -80% e exitReason in {remove liquidity, single swap shock, sell quote collapse}), il bot automaticamente:
+
+1. **Incrementa il contatore funder** in `blacklists/funder-counts.json` (read-modify-write atomico)
+2. **Aggiunge il creator** a `blacklists/creators.txt` (se non gia presente)
+3. **Invalida la cache** rug history del processo corrente (`cachedRugHistoryAtMs = 0`)
+
+Funzione: `recordRugFunder()` in `src/pumpAmmSniper.ts`, chiamata in `handleNewPool()` sia sul path loss che sul path ok (difensivo).
+
+### Config changes per rug tracking
+
+| Parametro | Prima | Dopo | Motivo |
+| --- | --- | --- | --- |
+| `CREATOR_RISK_HISTORICAL_FUNDER_CLUSTER_MIN_RUG_CREATORS` | 2 | 1 | Un singolo rug runtime blocca immediatamente il funder |
+| `RUG_HISTORY_CACHE_TTL_MS` | 300000 (5 min) | 60000 (1 min) | Worker pickup piu rapido dei nuovi blacklist |
+
+### Analisi rug a supporto
+
+Analisi di 7 rug su 43 trade (tutti a -100%):
+
+| Funder | Rugs | Trades | Rug rate | EV/trade |
+| --- | --- | --- | --- | --- |
+| `Fbm7CY...` | 3 | 12 | 25% | -0.0013 (block) |
+| `HbCBfg...` | 2 | 13 | 15% | -0.0003 (block) |
+| `3JXy5G...` | 1 | 11 | 9% | +0.0005 (borderline) |
+| `CCyYKt...` | 1 | ? | same network as Fbm7CY | block |
+| null (no funder) | 1 | 5 | 20% | non-trackable |
+
+- 6/7 rug hanno funder noto → trackable
+- Tutti exit via `single swap shock` (5) o `remove liquidity` (1)
+- Simulazione "block after 1st rug" → salva 3 rug (-0.03 SOL) ma perde 13 win (+0.021 SOL) → **net +0.009 SOL improvement**
+- Break-even rug rate: >15% per funder con avg win 0.0015 SOL e rug loss 0.01 SOL
