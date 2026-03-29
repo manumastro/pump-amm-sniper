@@ -158,6 +158,7 @@ export async function waitForExitStateWithLiquidityStop(
             exitReason: reason || "deadline",
             holdMs,
             actualDurationMs: Date.now() - startedAtMs,
+            timeToPeakMs: peakAtMs - startedAtMs,
             entryBaselineQuoteSol: baselineExitQuoteSol ? Number(baselineExitQuoteSol.toFixed(8)) : null,
             peakExitQuoteSol: Number(peakExitQuoteSol.toFixed(8)),
             peakPnlPct: Number(peakPnlPct.toFixed(4)),
@@ -184,6 +185,7 @@ export async function waitForExitStateWithLiquidityStop(
     let peakExitQuoteSol = Number.isFinite(initialPeakExitQuoteSol)
         ? Number(initialPeakExitQuoteSol)
         : (baselineExitQuoteSol || 0);
+    let peakAtMs = startedAtMs;
     let previousExitQuoteSol = baselineExitQuoteSol;
     const activeWinnerProfile: WinnerManagementProfile = winnerProfile || {
         enabled: CONFIG.HOLD_WINNER_MANAGEMENT_ENABLED,
@@ -313,7 +315,10 @@ export async function waitForExitStateWithLiquidityStop(
                 lastWinnerCheckAtMs = Date.now();
                 const currentExitQuoteSol = getExitQuoteSolFromState(s, tokenMint, tokenOutAtomic);
                 if (currentExitQuoteSol !== null && currentExitQuoteSol > 0) {
-                    peakExitQuoteSol = Math.max(peakExitQuoteSol, currentExitQuoteSol);
+                    if (currentExitQuoteSol > peakExitQuoteSol) {
+                        peakExitQuoteSol = currentExitQuoteSol;
+                        peakAtMs = Date.now();
+                    }
                     const currentPnlPct = ((currentExitQuoteSol - CONFIG.TRADE_AMOUNT_SOL) / CONFIG.TRADE_AMOUNT_SOL) * 100;
                     const peakPnlPct = ((peakExitQuoteSol - CONFIG.TRADE_AMOUNT_SOL) / CONFIG.TRADE_AMOUNT_SOL) * 100;
                     const drawdownFromPeakPct =
