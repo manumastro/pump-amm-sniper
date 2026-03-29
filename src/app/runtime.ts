@@ -116,6 +116,8 @@ export function createSupervisorRuntime(options: {
     let logSubscriptionId: number | null = null;
     let lastLogAtMs = Date.now();
     let healthcheckInterval: NodeJS.Timeout | null = null;
+    let consecutiveResubscribes = 0;
+    const MAX_CONSECUTIVE_RESUBSCRIBES = 5;
     const seenSignatures = new Map<string, number>();
     const activeSignatures = new Set<string>();
     const pendingSignatures: string[] = [];
@@ -751,6 +753,7 @@ export function createSupervisorRuntime(options: {
             async (logs) => {
                 try {
                     lastLogAtMs = Date.now();
+                    consecutiveResubscribes = 0;
                     pruneSignatureCache(lastLogAtMs);
 
                     if (alreadySeenSignature(logs.signature, lastLogAtMs)) {
@@ -783,7 +786,22 @@ export function createSupervisorRuntime(options: {
             drainPendingQueue();
             if (staleForMs < options.logStaleResubscribeMs) return;
 
-            console.warn(`⚠️ Log stream stale for ${Math.floor(staleForMs / 1000)}s. Resubscribing...`);
+            consecutiveResubscribes++;
+
+            if (consecutiveResubscribes > MAX_CONSECUTIVE_RESUBSCRIBES) {
+                console.error(
+                    `🚨 CIRCUIT BREAKER: ${consecutiveResubscribes} consecutive resubscribes without receiving logs. ` +
+                    `Stream dead for ${Math.floor(staleForMs / 1000)}s. Exiting to let systemd restart.`
+                );
+                process.exit(1);
+            }
+
+            const backoffMs = Math.min(30000, options.logStaleResubscribeMs * Math.pow(1.5, consecutiveResubscribes - 1));
+            console.warn(
+                `⚠️ Log stream stale for ${Math.floor(staleForMs / 1000)}s. ` +
+                `Resubscribe attempt ${consecutiveResubscribes}/${MAX_CONSECUTIVE_RESUBSCRIBES} (backoff ${Math.floor(backoffMs / 1000)}s)...`
+            );
+
             try {
                 if (logSubscriptionId !== null) {
                     await connection.removeOnLogsListener(logSubscriptionId);

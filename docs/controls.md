@@ -620,23 +620,26 @@ Dato chiave: non abbiamo controffattuale diretto (le loss avevano recheck OFF), 
 
 Serve a proteggere i winner e i pump rapidi.
 
-Puo uscire in due modi:
+Puo uscire in tre modi:
 - `winner take profit`
 - `winner trailing stop`
+- `winner profit floor`
 
 Regole importanti recenti:
 - token CP=1 hanno TP piu alto
 - token CP=0 hanno trailing allineato al trailing principale (15%) per evitare uscite premature su slow rug
 - check winner piu frequente (`HOLD_WINNER_CHECK_INTERVAL_MS = 200ms`) per ridurre slippage tra picco e uscita
 - ciclo hold piu frequente (poll interno allineato ai check veloci) per intercettare prima i dump rapidi
+- profit floor: una volta che il winner e armato (peakPnl >= armPnlPct), se il PnL scende sotto `HOLD_WINNER_PROFIT_FLOOR_PCT`, esce subito. Evita che un winner armato a +15% finisca a -70% per un crash istantaneo che il trailing non intercetta.
 
-Soglie attuali (aggiornate 2026-03-28):
-- `HOLD_WINNER_ARM_PNL_PCT = 10` (era 6, alzato per non armare il trailing su micro-profitti)
+Soglie attuali (aggiornate 2026-03-29):
+- `HOLD_WINNER_ARM_PNL_PCT = 8` (era 10, abbassato per armare anche winner che raggiungono solo +8-10%)
 - `HOLD_WINNER_TRAILING_DROP_PCT = 20` (era 15, allargato per dare piu spazio alla volatilita dei winner)
 - `HOLD_WINNER_TRAILING_DROP_PCT_CP0 = 15` (era 8, allineato al vecchio trailing principale)
 - `HOLD_WINNER_CHECK_INTERVAL_MS = 200` (era 250, piu reattivo)
 - `HOLD_WINNER_HARD_TAKE_PROFIT_PCT = 100`
 - `HOLD_WINNER_MIN_PEAK_SOL = 0.0104`
+- `HOLD_WINNER_PROFIT_FLOOR_PCT = 3` (nuovo: floor minimo di profitto per winner armati)
 
 ### 8.5 Sell quote collapse
 
@@ -857,6 +860,7 @@ Se vuoi capire un caso velocemente:
 | Creator risk recheck | hold | ON | exit | `creator risk: ...` |
 | Winner take profit | hold | ON | exit | `winner take profit` |
 | Winner trailing stop | hold | ON | exit | `winner trailing stop` |
+| Winner profit floor | hold | ON | exit | `winner profit floor` |
 | Hard stop loss | hold | ON | exit | `hard stop loss` |
 | Sell quote collapse | hold | ON | exit | `sell quote collapse` |
 | Single swap shock | hold | ON | exit | `single swap shock` |
@@ -895,3 +899,43 @@ Conclusione: RECHECK essenziale per protezione rug, ma il sub-trigger "unique co
 - UC resta attivo al pre-entry: continua a bloccare creator sospetti prima del buy
 - Tutti gli altri sub-trigger recheck restano attivi: spray, close-account, outbound, cashout, compressed, burner, ecc.
 - Raccolta dati in corso con nuovo config per validare impatto complessivo
+
+## 16. Changelog tuning 2026-03-29
+
+### Modifiche applicate
+
+| Parametro | Prima | Dopo | Motivo |
+| --- | --- | --- | --- |
+| `HOLD_WINNER_ARM_PNL_PCT` | 10 | 8 | Armava troppo tardi; Loss #1 peaked +9.32% senza armarsi |
+| `HOLD_WINNER_PROFIT_FLOOR_PCT` | (nuovo) | 3 | Floor di profitto per winner armati; evita crash istantanei da +15% a -70% |
+
+### Nuova feature: Winner profit floor
+
+Aggiunto un floor di profitto post-arming. Una volta che il trade e "armato" (peakPnl >= armPnlPct), se il PnL corrente scende sotto `HOLD_WINNER_PROFIT_FLOOR_PCT` (3%), esce immediatamente con reason `winner profit floor`.
+
+Motivazione: analisi degli 11 trade della sessione corrente ha mostrato che 2 dei 4 loss erano winner armati (peaked +16%, +15.9%) dove il trailing stop (20% drawdown da peak) non ha intercettato il crash perche il prezzo e crollato istantaneamente (in un singolo intervallo da 200ms) da +15% a -70%. Il trailing avrebbe dovuto uscire a ~-4% ma il crash e stato troppo veloce.
+
+Con profit floor = 3%:
+- Loss #2 (peaked +16.09%, exit -70.19%) -> sarebbe uscito a ~+3% = salvato ~73%
+- Loss #3 (peaked +15.88%, exit -29.21%) -> sarebbe uscito a ~+3% = salvato ~32%
+- Loss #1 (peaked +9.32%, exit -41.68%) -> ora si arma a 8% -> sarebbe uscito a ~+3% = salvato ~45%
+
+### Fix infrastruttura: Healthcheck circuit breaker
+
+Aggiunto circuit breaker al `startLogHealthcheck()` in `src/app/runtime.ts`:
+- Conta i resubscribe consecutivi senza ricevere log
+- Dopo 5 tentativi consecutivi: `process.exit(1)` per lasciare che systemd riavvii il processo
+- Counter resettato quando arriva un log valido
+- Previene il death spiral visto il 2026-03-28 (444 resubscribe in 10 ore, zombie state)
+
+### Dati sessione pre-modifica (11 trade, 1h40m)
+
+| Metrica | Valore |
+| --- | --- |
+| Win rate | 63.6% (7W/4L) |
+| Median win | +15.01% |
+| Avg loss | -53.34% |
+| Total PnL | -0.0104 SOL |
+| Break-even win rate needed | 77.3% |
+
+Raccolta dati in corso con nuovo config per validare impatto profit floor.

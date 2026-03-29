@@ -3285,6 +3285,10 @@ async function sampleCcShadowCandidate(candidate: {
         winnerArmed && typeof peakPnlPct === "number" && typeof currentPnlPct === "number"
             ? peakPnlPct - currentPnlPct >= CONFIG.HOLD_WINNER_TRAILING_DROP_PCT
             : false;
+    const winnerProfitFloorTriggered =
+        winnerArmed && typeof currentPnlPct === "number" && CONFIG.HOLD_WINNER_PROFIT_FLOOR_PCT > 0
+            ? currentPnlPct < CONFIG.HOLD_WINNER_PROFIT_FLOOR_PCT
+            : false;
 
     const wouldExitReason = removeLiquidityDetected
         ? "remove liquidity"
@@ -3298,7 +3302,9 @@ async function sampleCcShadowCandidate(candidate: {
                         ? "winner take profit"
                         : winnerTrailingTriggered
                             ? "winner trailing stop"
-                            : null;
+                            : winnerProfitFloorTriggered
+                                ? "winner profit floor"
+                                : null;
 
     nextState.previousExitQuoteSol = currentExitQuoteSol;
     nextState.previousPnlPct = currentPnlPct;
@@ -3332,6 +3338,7 @@ async function sampleCcShadowCandidate(candidate: {
                 winnerArmed,
                 winnerTakeProfitTriggered,
                 winnerTrailingTriggered,
+                winnerProfitFloorTriggered,
             },
             wouldExitReason,
         },

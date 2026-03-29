@@ -193,6 +193,7 @@ export async function waitForExitStateWithLiquidityStop(
         trailingDropPct: CONFIG.HOLD_WINNER_TRAILING_DROP_PCT,
         hardTakeProfitPct: CONFIG.HOLD_WINNER_HARD_TAKE_PROFIT_PCT,
         minPeakSol: CONFIG.HOLD_WINNER_MIN_PEAK_SOL,
+        profitFloorPct: CONFIG.HOLD_WINNER_PROFIT_FLOOR_PCT,
     };
     if (createPoolSignature) seenPoolSignatures.add(createPoolSignature);
     if (createPoolSignature) seenCreatorSignatures.add(createPoolSignature);
@@ -338,6 +339,17 @@ export async function waitForExitStateWithLiquidityStop(
                         console.log(`⚠️ WINNER TRAILING EXIT: peak ${peakExitQuoteSol.toFixed(6)} SOL (${peakPnlPct.toFixed(2)}%) -> ${currentExitQuoteSol.toFixed(6)} SOL (${currentPnlPct.toFixed(2)}%), drawdown ${drawdownFromPeakPct.toFixed(2)}%`);
                         logHoldSummary("winner trailing stop");
                         return { state: s, exitReason: "winner trailing stop" };
+                    }
+                    if (
+                        activeWinnerProfile.profitFloorPct > 0 &&
+                        peakExitQuoteSol >= minPeakSol &&
+                        peakPnlPct >= activeWinnerProfile.armPnlPct &&
+                        currentPnlPct < activeWinnerProfile.profitFloorPct
+                    ) {
+                        recordTrigger("winnerProfitFloor", true, `peak=${peakExitQuoteSol.toFixed(6)}SOL(${peakPnlPct.toFixed(2)}%) cur=${currentExitQuoteSol.toFixed(6)}SOL(${currentPnlPct.toFixed(2)}%) floor=${activeWinnerProfile.profitFloorPct.toFixed(2)}%`);
+                        console.log(`⚠️ WINNER PROFIT FLOOR EXIT: peak ${peakExitQuoteSol.toFixed(6)} SOL (${peakPnlPct.toFixed(2)}%) -> ${currentExitQuoteSol.toFixed(6)} SOL (${currentPnlPct.toFixed(2)}%), below floor ${activeWinnerProfile.profitFloorPct.toFixed(2)}%`);
+                        logHoldSummary("winner profit floor");
+                        return { state: s, exitReason: "winner profit floor" };
                     }
                 }
             }

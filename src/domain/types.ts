@@ -118,6 +118,7 @@ export type WinnerManagementProfile = {
     trailingDropPct: number;
     hardTakeProfitPct: number;
     minPeakSol: number;
+    profitFloorPct: number;
 };
 
 export type PaperSimulationOptions = {
