@@ -634,12 +634,22 @@ Regole importanti recenti:
 
 Soglie attuali (aggiornate 2026-03-29):
 - `HOLD_WINNER_ARM_PNL_PCT = 8` (era 10, abbassato per armare anche winner che raggiungono solo +8-10%)
-- `HOLD_WINNER_TRAILING_DROP_PCT = 20` (era 15, allargato per dare piu spazio alla volatilita dei winner)
-- `HOLD_WINNER_TRAILING_DROP_PCT_CP0 = 15` (era 8, allineato al vecchio trailing principale)
+- `HOLD_WINNER_TRAILING_DROP_PCT = 10` (era 20; con 20% il trailing era inutile sotto peak ~29% — il profit floor usciva sempre prima a +3%. Con 10% il trailing e attivo gia da peak ~14.5%)
+- `HOLD_WINNER_TRAILING_DROP_PCT_CP0 = 10` (allineato al trailing principale)
 - `HOLD_WINNER_CHECK_INTERVAL_MS = 200` (era 250, piu reattivo)
-- `HOLD_WINNER_HARD_TAKE_PROFIT_PCT = 100`
+- `HOLD_WINNER_HARD_TAKE_PROFIT_PCT = 50` (era 100; con 100% non scattava mai. 50% cattura i trade che fanno 1.5x)
+- `HOLD_WINNER_HARD_TAKE_PROFIT_PCT_CP1 = 50` (allineato)
 - `HOLD_WINNER_MIN_PEAK_SOL = 0.0104`
-- `HOLD_WINNER_PROFIT_FLOOR_PCT = 3` (nuovo: floor minimo di profitto per winner armati)
+- `HOLD_WINNER_PROFIT_FLOOR_PCT = 3` (floor minimo di profitto per winner armati)
+
+Nota: il trailing drop e RELATIVO al peak (drawdown = (peak - current) / peak), non assoluto. Con trailing 10% e peak +20%, il trailing scatta a PnL +8% (non a +10%). Tabella di riferimento:
+
+| Peak PnL | Trailing exit PnL (10%) | Trailing exit PnL (vecchio 20%) |
+| --- | --- | --- |
+| +15% | +3.5% | -8% (floor: +3%) |
+| +20% | +8% | -4% (floor: +3%) |
+| +30% | +17% | +4% |
+| +50% | +35% | +20% |
 
 ### 8.5 Sell quote collapse
 
@@ -987,3 +997,16 @@ Analisi di 7 rug su 43 trade (tutti a -100%):
 - Tutti exit via `single swap shock` (5) o `remove liquidity` (1)
 - Simulazione "block after 1st rug" → salva 3 rug (-0.03 SOL) ma perde 13 win (+0.021 SOL) → **net +0.009 SOL improvement**
 - Break-even rug rate: >15% per funder con avg win 0.0015 SOL e rug loss 0.01 SOL
+
+### Winner management tuning — trailing e take profit
+
+| Parametro | Prima | Dopo | Motivo |
+| --- | --- | --- | --- |
+| `HOLD_WINNER_TRAILING_DROP_PCT` | 20 | 10 | Con 20% il trailing era inutile sotto peak ~29% — il profit floor usciva sempre prima. Con 10% attivo da peak ~14.5% |
+| `HOLD_WINNER_TRAILING_DROP_PCT_CP0` | 15 | 10 | Allineato al trailing principale |
+| `HOLD_WINNER_HARD_TAKE_PROFIT_PCT` | 100 | 50 | Con 100% non scattava mai. 50% cattura i trade che fanno 1.5x |
+| `HOLD_WINNER_HARD_TAKE_PROFIT_PCT_CP1` | 100 | 50 | Allineato |
+
+Analisi: il trailing drop e calcolato come drawdown relativo (`(peak-current)/peak`), non come differenza assoluta di PnL. Con trailing 20%, un peak di +15% produceva trailing exit a PnL -8%, ben sotto il profit floor di +3%. Quindi per tutta la fascia di peak 8-29% (che include la mediana dei win a +15.86%), il trailing non scattava MAI — usciva sempre il profit floor a +3%, regalando l'80% del profitto di picco.
+
+Con trailing 10%, un peak di +15% produce trailing exit a PnL +3.5%, appena sopra il floor. Un peak di +20% esce a +8%, uno di +30% a +17%. Il miglioramento e sostanziale nella fascia 15-30% dove si concentra la maggior parte dei win.
