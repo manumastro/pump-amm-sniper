@@ -1470,9 +1470,14 @@ function recordRugFunder(
     tokenMint: string,
     ctx: string,
 ): void {
-    // Only record on catastrophic exits with severe loss
-    if (pnlPct > -80) return;
-    if (!RUG_EXIT_REASONS.has(exitReason)) return;
+    // Record on catastrophic loss (≤ -80%) regardless of exit reason,
+    // OR on known rug exit reasons with any negative PnL.
+    // This catches rugs that trigger "hard stop loss" instead of
+    // "single swap shock" (e.g. trade #6: -100% via hard stop loss).
+    const isCatastrophicLoss = pnlPct <= -80;
+    const isRugExitReason = RUG_EXIT_REASONS.has(exitReason);
+    if (!isCatastrophicLoss && !isRugExitReason) return;
+    if (pnlPct > 0) return; // safety: never record profitable exits
 
     // Record funder in funder-counts.json (increment count)
     if (funder) {

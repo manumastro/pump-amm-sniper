@@ -1010,3 +1010,34 @@ Analisi di 7 rug su 43 trade (tutti a -100%):
 Analisi: il trailing drop e calcolato come drawdown relativo (`(peak-current)/peak`), non come differenza assoluta di PnL. Con trailing 20%, un peak di +15% produceva trailing exit a PnL -8%, ben sotto il profit floor di +3%. Quindi per tutta la fascia di peak 8-29% (che include la mediana dei win a +15.86%), il trailing non scattava MAI — usciva sempre il profit floor a +3%, regalando l'80% del profitto di picco.
 
 Con trailing 10%, un peak di +15% produce trailing exit a PnL +3.5%, appena sopra il floor. Un peak di +20% esce a +8%, uno di +30% a +17%. Il miglioramento e sostanziale nella fascia 15-30% dove si concentra la maggior parte dei win.
+
+### Sessione 2: 7 trade (19:28-20:46) — primi risultati TP + trailing
+
+| # | Exit | PnL | Peak | Hold | Funder |
+|---|---|---|---|---|---|
+| 1 | hold timeout | +16.1% | +19.7% | 965s | `3JXy5G...` |
+| 2 | hard stop loss | -43.0% | +48.1% | 258s | `3JXy5G...` |
+| 3 | hard stop loss | -16.9% | +15.3% | 77s | `3JXy5G...` |
+| 4 | single swap shock | -100% | +3.7% | 101s | `3JXy5G...` |
+| 5 | hard stop loss | -18.6% | +33.3% | 150s | `EGfATZ...` |
+| 6 | hard stop loss | -100% | +18.9% | 831s | `Fbm7CY...` |
+| 7 | winner take profit | +51.2% | +51.2% | 552s | ? |
+
+Key findings: trade #7 first `winner take profit` exit (50% TP works). Trade #6 -100% via `hard stop loss` (rug non tracciato perche exit reason non in `RUG_EXIT_REASONS`). Trades #2/#5 crash da peak +48%/+33% a -43%/-19% in singolo polling interval — trailing stop bypassato.
+
+### Fix: rug tracking ora copre tutti gli exit reason catastrofici
+
+Modificato `recordRugFunder()` in `src/pumpAmmSniper.ts`:
+- **Prima**: richiedeva `pnlPct <= -80%` AND `exitReason` in {remove liquidity, single swap shock, sell quote collapse}
+- **Dopo**: `pnlPct <= -80%` registra il funder INDIPENDENTEMENTE dall'exit reason; gli exit reason rug registrano anche con loss moderate
+
+Motivazione: trade #6 era un rug chiaro (peak +18.9%, exit -100%) ma non e stato tracciato perche l'exit era `hard stop loss` (il prezzo e crollato cosi velocemente che il hard stop loss ha triggerato prima del single swap shock detection).
+
+### Blacklist funder pre-caricati
+
+Aggiunto alla blacklist statica (`blacklists/funders.txt` e `blacklists/funder-counts.json`) i funder noti dalla sessione 43-trade:
+- `Fbm7CYMzBrXHCU5YVijvJWVvdiy5XWhDAybup43eRqCo` (3 rug, 25% rug rate)
+- `HbCBfgBgsPCHcfrJbdPECd4te9kXF9P1MpAyezh4kVWu` (2 rug, 15% rug rate)
+- `CCyYKtPKFPLR42A8hCwSLfuFE6WD8oWqCKGUFMy5Q` (network Fbm7CY)
+
+Questi funder erano stati identificati ma mai aggiunti — la conversazione si era interrotta a meta dell'operazione.
