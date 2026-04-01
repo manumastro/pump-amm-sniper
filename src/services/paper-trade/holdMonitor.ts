@@ -293,6 +293,24 @@ export async function waitForExitStateWithLiquidityStop(
                     const currentPnlPct = ((currentExitQuoteSol - CONFIG.TRADE_AMOUNT_SOL) / CONFIG.TRADE_AMOUNT_SOL) * 100;
                     const hardStopLossPct = Math.abs(CONFIG.HOLD_HARD_STOP_LOSS_PCT);
                     if (currentPnlPct <= -hardStopLossPct) {
+                        // --- Profit floor intercept for armed winners ---
+                        // If the trade was previously armed (peak exceeded arm threshold),
+                        // exit with profit floor instead of hard stop loss.
+                        // This prevents fast crashes from bypassing the profit floor check
+                        // which runs later in the winner management block.
+                        const peakPnlPctHsl = ((peakExitQuoteSol - CONFIG.TRADE_AMOUNT_SOL) / CONFIG.TRADE_AMOUNT_SOL) * 100;
+                        const minPeakSolHsl = Math.max(0, activeWinnerProfile.minPeakSol);
+                        if (
+                            activeWinnerProfile.enabled &&
+                            activeWinnerProfile.profitFloorPct > 0 &&
+                            peakExitQuoteSol >= minPeakSolHsl &&
+                            peakPnlPctHsl >= activeWinnerProfile.armPnlPct
+                        ) {
+                            recordTrigger("winnerProfitFloor", true, `peak=${peakExitQuoteSol.toFixed(6)}SOL(${peakPnlPctHsl.toFixed(2)}%) cur=${currentExitQuoteSol.toFixed(6)}SOL(${currentPnlPct.toFixed(2)}%) floor=${activeWinnerProfile.profitFloorPct.toFixed(2)}% [intercepted from hard stop]`);
+                            console.log(`⚠️ WINNER PROFIT FLOOR EXIT (intercepted at hard stop): peak ${peakExitQuoteSol.toFixed(6)} SOL (${peakPnlPctHsl.toFixed(2)}%) -> ${currentExitQuoteSol.toFixed(6)} SOL (${currentPnlPct.toFixed(2)}%), floor ${activeWinnerProfile.profitFloorPct.toFixed(2)}%`);
+                            logHoldSummary("winner profit floor");
+                            return { state: s, exitReason: "winner profit floor" };
+                        }
                         recordTrigger(
                             "hardStopLoss",
                             true,

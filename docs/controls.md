@@ -682,6 +682,7 @@ Soglia attuale:
 
 Esce se:
 - il PnL stimato in hold scende sotto una perdita massima assoluta
+- **eccezione**: se il trade e un winner armato (peak >= armPnlPct), il profit floor intercetta prima dell'hard stop loss e l'exit reason diventa `winner profit floor` invece di `hard stop loss`
 
 Scopo:
 - imporre un limite hard alla perdita intra-trade anche quando gli altri trigger arrivano in ritardo
@@ -1041,3 +1042,23 @@ Aggiunto alla blacklist statica (`blacklists/funders.txt` e `blacklists/funder-c
 - `CCyYKtPKFPLR42A8hCwSLfuFE6WD8oWqCKGUFMy5Q` (network Fbm7CY)
 
 Questi funder erano stati identificati ma mai aggiunti — la conversazione si era interrotta a meta dell'operazione.
+
+## 17. Changelog tuning 2026-04-01
+
+### Fix: cp=1 mancante nella whitelist UC
+
+Il default in `src/app/config.ts` era `"0,2,4,47"` — mancava `1`. La documentazione (sezione 6.15) dichiarava `{0,1,2,4,47}` ma il codice non lo rispettava. Risultato: 32 token con cp=1 venivano skippati inutilmente dal filtro UC pre-entry.
+
+**Fix**: default corretto a `"0,1,2,4,47"` in `config.ts:121`.
+
+### Fix: profit floor mai attivato (intercept nell'hard stop loss)
+
+Analisi di 66 trade ha rivelato che il profit floor (`HOLD_WINNER_PROFIT_FLOOR_PCT = 3%`) aveva **zero exit** nonostante 9 armed losses (peak da +9% a +41%) che crollavano a -10%/-100%.
+
+**Root cause**: nel loop hold di `holdMonitor.ts`, l'hard stop loss (L285) viene controllato PRIMA del blocco winner management (L310). In un crash rapido, il prezzo salta da sopra +3% a sotto -15% in un singolo polling interval → l'hard stop loss cattura il trade prima che il profit floor (dentro il blocco winner, L348) abbia la possibilita di intervenire.
+
+**Fix**: dentro il blocco hard stop loss, se il trade e un winner armato (peak >= armPnlPct + minPeakSol), viene controllato il profit floor PRIMA di uscire con hard stop loss. Se le condizioni sono soddisfatte, esce con `winner profit floor` invece di `hard stop loss`. Per trade NON armati, il comportamento resta invariato.
+
+Effetto atteso: i 6/9 armed losses che uscivano via hard stop loss ora usciranno via profit floor. L'exit PnL resta lo stesso (il prezzo e gia sotto -15% al momento del check), ma la classificazione corretta permette di:
+- Tracciare correttamente quanti winner armati vengono protetti dal floor
+- Distinguere nei report tra hard stop su trade mai armati (veri loss) e crash su winner armati (floor intercept)
