@@ -296,8 +296,9 @@ Blocca se:
 - `uniqueCounterparties NOT IN CREATOR_RISK_WHITELISTED_CC_VALUES`
 
 Stato pratico attuale:
-- whitelist: `0,1,2,4,47`
+- whitelist: `0,2,4,47`
 - blocca tutto tranne i valori in whitelist
+- cp=1 RIMOSSO dalla whitelist (2026-04-02): 43.6% WR con 20 rug su 39 trade, funder=N/A non tracciabile
 
 Motivo tipico:
 - `unique counterparties X not in whitelist`
@@ -1062,3 +1063,22 @@ Analisi di 66 trade ha rivelato che il profit floor (`HOLD_WINNER_PROFIT_FLOOR_P
 Effetto atteso: i 6/9 armed losses che uscivano via hard stop loss ora usciranno via profit floor. L'exit PnL resta lo stesso (il prezzo e gia sotto -15% al momento del check), ma la classificazione corretta permette di:
 - Tracciare correttamente quanti winner armati vengono protetti dal floor
 - Distinguere nei report tra hard stop su trade mai armati (veri loss) e crash su winner armati (floor intercept)
+
+## 18. Changelog tuning 2026-04-02
+
+### Revert: cp=1 rimosso dalla whitelist UC
+
+Dopo 55 trade con cp=1 in whitelist, i dati sono catastrofici:
+
+| CP | Trades | WR | Avg PnL | Rug |
+|----|--------|-----|---------|-----|
+| cp=1 | 39 | 43.6% | -32.6% | 20 rug a -100% |
+| cp=0 | 5 | 80.0% | +20.2% | 1 rug |
+| cp=2 | 3 | 100% | +51.2% | 0 |
+| cp=4 | 8 | 62.5% | +0.03% | 2 rug |
+
+I token cp=1 hanno funder=N/A (non tracciabile), nessuna history utile, e sono prevalentemente wallet usa-e-getta per rug. Il creator risk non riesce a filtrarli.
+
+La sessione precedente (senza cp=1) aveva 72.7% WR e +0.078 SOL. Con cp=1 la sessione e andata a -0.102 SOL.
+
+**Revert**: whitelist torna a `"0,2,4,47"` (senza cp=1). La documentazione in sezione 6.15 e stata aggiornata.

@@ -118,7 +118,7 @@ export const CONFIG = {
     CREATOR_RISK_PARSED_TX_LIMIT: Number(50),
     CREATOR_RISK_CACHE_TTL_MS: Number(15 * 60 * 1000),
     CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES: Number(3),
-    CREATOR_RISK_WHITELISTED_CC_VALUES: (process.env.CREATOR_RISK_WHITELISTED_CC_VALUES || "0,1,2,4,47")
+    CREATOR_RISK_WHITELISTED_CC_VALUES: (process.env.CREATOR_RISK_WHITELISTED_CC_VALUES || "0,2,4,47")
         .split(",")
         .map((v) => Number(v.trim()))
         .filter((v) => Number.isFinite(v) && v >= 0),
