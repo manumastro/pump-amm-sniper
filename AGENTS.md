@@ -23,7 +23,9 @@ Il bot ha raggiunto una configurazione semi-ottimale:
 Siamo in attesa di raccogliere 500+ trade per validare la stabilità prima di intervenire.
 **Non modificare filtri pre-entry o soglie hold senza prima consultare l'ultima analisi in `analysis/`.**
 
-Ultima analisi: `analysis/2026-04-05-full-analysis.md` (264 trade, +0.826 SOL)
+Ultima analisi: `analysis/2026-04-06-full-analysis.md` (348+39 trade, WR 69.4%, **+0.645 SOL** reali)
+
+> Nota: l'analisi 04-05 riportava +0.826 SOL ma escludeva le rug losses. Il valore corretto era +0.566 SOL. La metodologia è stata corretta nella 04-06.
 
 ## Regole operative non negoziabili
 - **I controlli sono la parte piu importante del bot.** Prima di modificare logiche di entry, hold, creator-risk, report o analisi rug, consultare sempre `docs/controls.md`.

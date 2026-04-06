@@ -1,4 +1,6 @@
-# Analisi Completa — 2026-04-05
+# Analisi Completa — 2026-04-05 (⚠️ PnL SOVRASTIMATO)
+
+> **ERRATA:** Questa analisi riportava "+0.826 SOL net" ma quel valore **escludeva le 39 rug losses** perché i rug events hanno `checksPassed=false` e non venivano contati nel calcolo. Il PnL reale al momento era **+0.566 SOL**. Vedi `2026-04-06-full-analysis.md` per i dati corretti.
 
 **Data analisi:** 2026-04-05 09:33 UTC
 **Sessione analizzata:** 2026-04-02 09:43 → 2026-04-05 09:33 (~72h running)
