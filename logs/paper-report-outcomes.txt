@@ -1,0 +1,10 @@
+Paper Trade Outcomes @ 2026-03-28T21:06:09.147Z
+operations with pnl: 0
+invalid pnl excluded: 0
+total pnl (SOL): 0
+avg pnl (%): 0
+wins/losses: 0/0
+win rate: 0%
+
+Operations with pnl:
+(none)

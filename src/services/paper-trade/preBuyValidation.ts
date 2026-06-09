@@ -6,7 +6,7 @@ import { CreatorRiskResult, PaperSimulationOptions, PreBuyEntryValidationResult 
 import { stageLog } from "../reporting/stageLog";
 import { formatSolCompact } from "../../utils/format";
 import { shortSig } from "../../utils/pubkeys";
-import { getPoolOrientation, getSolLiquidityFromState, getSpotSolPerTokenFromState } from "./quote";
+import { describePoolMints, getPoolOrientation, getSolLiquidityFromState, getSpotSolPerTokenFromState } from "./quote";
 
 type ValidatePreBuyDeps = {
     recheckCreatorRisk: (
@@ -39,6 +39,91 @@ type ValidatePreBuyDeps = {
     }>;
 };
 
+function quoteTokenOutFromState(
+    state: any,
+    tokenMint: string,
+    buyAmountLamports: BN,
+    tokenDecimals: number,
+): { tokenOutAtomic: BN; tokenOutUi: number; orientation: { solIsBase: boolean; tokenIsBase: boolean; hasWsol: boolean } } | null {
+    const orientation = getPoolOrientation(state, tokenMint);
+    if (!orientation.hasWsol) return null;
+
+    let tokenOutAtomic: BN;
+    if (orientation.solIsBase) {
+        const entry = sellBaseInput({
+            base: buyAmountLamports,
+            slippage: CONFIG.SLIPPAGE_PERCENT,
+            baseReserve: state.poolBaseAmount,
+            quoteReserve: state.poolQuoteAmount,
+            baseMintAccount: state.baseMintAccount,
+            baseMint: state.baseMint,
+            coinCreator: state.pool.coinCreator,
+            creator: state.pool.creator,
+            feeConfig: state.feeConfig,
+            globalConfig: state.globalConfig,
+        });
+        tokenOutAtomic = entry.uiQuote;
+    } else {
+        const entry = buyQuoteInput({
+            quote: buyAmountLamports,
+            slippage: CONFIG.SLIPPAGE_PERCENT,
+            baseReserve: state.poolBaseAmount,
+            quoteReserve: state.poolQuoteAmount,
+            baseMintAccount: state.baseMintAccount,
+            baseMint: state.baseMint,
+            coinCreator: state.pool.coinCreator,
+            creator: state.pool.creator,
+            feeConfig: state.feeConfig,
+            globalConfig: state.globalConfig,
+        });
+        tokenOutAtomic = entry.base;
+    }
+
+    const tokenOutUi = Number(tokenOutAtomic.toString()) / 10 ** tokenDecimals;
+    if (tokenOutAtomic.lte(new BN(0)) || !Number.isFinite(tokenOutUi) || tokenOutUi <= 0) {
+        return null;
+    }
+
+    return { tokenOutAtomic, tokenOutUi, orientation };
+}
+
+async function resolveEntryQuoteWithNoWsolRetry(
+    fetchStateWithRetry: () => Promise<any | null>,
+    tokenMint: string,
+    tokenDecimals: number,
+    buyAmountLamports: BN,
+    ctx: string,
+    forceEntryNoWsolBypass: boolean = false,
+): Promise<{ entryState: any; entryQuote: { tokenOutAtomic: BN; tokenOutUi: number; orientation: { solIsBase: boolean; tokenIsBase: boolean; hasWsol: boolean } } } | { error: string }> {
+    const state = await fetchStateWithRetry();
+    if (!state) {
+        return { error: "entry state unavailable" };
+    }
+
+    const quote = quoteTokenOutFromState(state, tokenMint, buyAmountLamports, tokenDecimals);
+    if (quote) {
+        return { entryState: state, entryQuote: quote };
+    }
+
+    // If force-entry bypass is active, accept the state even without WSOL side
+    if (forceEntryNoWsolBypass && CONFIG.FORCE_ENTRY_ON_NO_WSOL_SIDE) {
+        const mintInfo = describePoolMints(state, tokenMint);
+        stageLog(ctx, "NOWSOL", `force-entry bypass: proceeding without WSOL side (${mintInfo})`);
+        return {
+            entryState: state,
+            entryQuote: {
+                tokenOutAtomic: new BN(0),
+                tokenOutUi: 0,
+                orientation: { solIsBase: false, tokenIsBase: false, hasWsol: false },
+            },
+        };
+    }
+
+    const mintInfo = describePoolMints(state, tokenMint);
+    stageLog(ctx, "NOWSOL", `missing WSOL side, skipping (${mintInfo})`);
+    return { error: `pool has no WSOL side (${mintInfo})` };
+}
+
 export async function validatePreBuyEntryState(
     deps: ValidatePreBuyDeps,
     connection: Connection,
@@ -54,6 +139,7 @@ export async function validatePreBuyEntryState(
     createPoolBlockTime?: number | null,
     initialCreatorRisk?: CreatorRiskResult,
     options?: PaperSimulationOptions,
+    forceEntryNoWsolBypass: boolean = false,
 ): Promise<PreBuyEntryValidationResult> {
     if (
         creatorAddress &&
@@ -117,17 +203,24 @@ export async function validatePreBuyEntryState(
         }
     }
 
-    const entryState = await fetchStateWithRetry();
-    if (!entryState) {
-        return { ok: false, reason: "entry state unavailable" };
+     const entryResolution = await resolveEntryQuoteWithNoWsolRetry(
+         fetchStateWithRetry,
+         tokenMint,
+         tokenDecimals,
+         buyAmountLamports,
+         ctx,
+         forceEntryNoWsolBypass,
+     );
+    if ("error" in entryResolution) {
+        return { ok: false, reason: entryResolution.error };
     }
 
-    const orientation = getPoolOrientation(entryState, tokenMint);
-    if (!orientation.hasWsol) {
-        return { ok: false, reason: "pool has no WSOL side" };
-    }
+    const entryState = entryResolution.entryState;
+    const entryQuote = entryResolution.entryQuote;
 
-    const entrySolLiquidity = getSolLiquidityFromState(entryState, tokenMint) || 0;
+    let effectiveEntryState = entryState;
+    let effectiveEntryQuote = entryQuote;
+    const entrySolLiquidity = getSolLiquidityFromState(effectiveEntryState, tokenMint) || 0;
     const minAllowedLiq = baselineLiquiditySol > 0
         ? baselineLiquiditySol * (1 - Math.abs(CONFIG.PRE_BUY_REVALIDATION_MAX_LIQ_DROP_PCT) / 100)
         : CONFIG.MIN_POOL_LIQUIDITY_SOL;
@@ -142,43 +235,70 @@ export async function validatePreBuyEntryState(
         return { ok: false, reason: `liquidity ${entrySolLiquidity.toFixed(6)} SOL below revalidation threshold` };
     }
 
-    let tokenOutAtomic: BN;
-    if (orientation.solIsBase) {
-        const entry = sellBaseInput({
-            base: buyAmountLamports,
-            slippage: CONFIG.SLIPPAGE_PERCENT,
-            baseReserve: entryState.poolBaseAmount,
-            quoteReserve: entryState.poolQuoteAmount,
-            baseMintAccount: entryState.baseMintAccount,
-            baseMint: entryState.baseMint,
-            coinCreator: entryState.pool.coinCreator,
-            creator: entryState.pool.creator,
-            feeConfig: entryState.feeConfig,
-            globalConfig: entryState.globalConfig,
-        });
-        tokenOutAtomic = entry.uiQuote;
-    } else {
-        const entry = buyQuoteInput({
-            quote: buyAmountLamports,
-            slippage: CONFIG.SLIPPAGE_PERCENT,
-            baseReserve: entryState.poolBaseAmount,
-            quoteReserve: entryState.poolQuoteAmount,
-            baseMintAccount: entryState.baseMintAccount,
-            baseMint: entryState.baseMint,
-            coinCreator: entryState.pool.coinCreator,
-            creator: entryState.pool.creator,
-            feeConfig: entryState.feeConfig,
-            globalConfig: entryState.globalConfig,
-        });
-        tokenOutAtomic = entry.base;
+    if (CONFIG.PRE_BUY_ULTRA_SHORT_RUG_GUARD_ENABLED) {
+        const guardWindowMs = Math.max(0, CONFIG.PRE_BUY_ULTRA_SHORT_RUG_GUARD_WINDOW_MS);
+        const guardIntervalMs = Math.max(100, CONFIG.PRE_BUY_ULTRA_SHORT_RUG_GUARD_INTERVAL_MS);
+        const guardStartMs = Date.now();
+        let maxObservedLiqDropPct = 0;
+        let maxObservedQuoteDropPct = 0;
+
+        while (Date.now() - guardStartMs < guardWindowMs) {
+            await new Promise((r) => setTimeout(r, guardIntervalMs));
+            const probeState = await fetchStateWithRetry();
+            if (!probeState) {
+                return { ok: false, reason: "ultra-short rug guard state unavailable" };
+            }
+
+            const probeQuote = quoteTokenOutFromState(probeState, tokenMint, buyAmountLamports, tokenDecimals);
+            if (!probeQuote) {
+                return { ok: false, reason: `pool has no WSOL side (${describePoolMints(probeState, tokenMint)})` };
+            }
+
+            const probeSolLiquidity = getSolLiquidityFromState(probeState, tokenMint) || 0;
+            if (!Number.isFinite(probeSolLiquidity) || probeSolLiquidity <= 0) {
+                return { ok: false, reason: "ultra-short rug guard invalid liquidity" };
+            }
+
+            const liqDropPct = entrySolLiquidity > 0
+                ? ((entrySolLiquidity - probeSolLiquidity) / entrySolLiquidity) * 100
+                : 0;
+            if (Number.isFinite(liqDropPct)) {
+                maxObservedLiqDropPct = Math.max(maxObservedLiqDropPct, liqDropPct);
+            }
+            if (Number.isFinite(liqDropPct) && liqDropPct >= CONFIG.PRE_BUY_ULTRA_SHORT_RUG_GUARD_MAX_LIQ_DROP_PCT) {
+                stageLog(ctx, "PREBUY", `ultra-guard liq drop ${liqDropPct.toFixed(2)}% in ${Date.now() - guardStartMs}ms`);
+                return { ok: false, reason: `ultra-short rug guard liquidity drop ${liqDropPct.toFixed(2)}%` };
+            }
+
+            const quoteDropPct = ((effectiveEntryQuote.tokenOutUi - probeQuote.tokenOutUi) / effectiveEntryQuote.tokenOutUi) * 100;
+            if (Number.isFinite(quoteDropPct)) {
+                maxObservedQuoteDropPct = Math.max(maxObservedQuoteDropPct, quoteDropPct);
+            }
+            if (Number.isFinite(quoteDropPct) && quoteDropPct >= CONFIG.PRE_BUY_ULTRA_SHORT_RUG_GUARD_MAX_QUOTE_DROP_PCT) {
+                stageLog(ctx, "PREBUY", `ultra-guard quote drop ${quoteDropPct.toFixed(2)}% in ${Date.now() - guardStartMs}ms`);
+                return { ok: false, reason: `ultra-short rug guard quote drop ${quoteDropPct.toFixed(2)}%` };
+            }
+
+            effectiveEntryState = probeState;
+            effectiveEntryQuote = probeQuote;
+        }
+
+        stageLog(
+            ctx,
+            "PREGUARD",
+            `ultra-short pass ` +
+                `liq_drop_max=${maxObservedLiqDropPct.toFixed(2)}% ` +
+                `quote_drop_max=${maxObservedQuoteDropPct.toFixed(2)}% ` +
+                `(max_liq=${CONFIG.PRE_BUY_ULTRA_SHORT_RUG_GUARD_MAX_LIQ_DROP_PCT.toFixed(2)}% ` +
+                `max_quote=${CONFIG.PRE_BUY_ULTRA_SHORT_RUG_GUARD_MAX_QUOTE_DROP_PCT.toFixed(2)}% ` +
+                `window=${guardWindowMs}ms interval=${guardIntervalMs}ms)`
+        );
     }
 
-    const tokenOutUi = Number(tokenOutAtomic.toString()) / 10 ** tokenDecimals;
-    if (tokenOutAtomic.lte(new BN(0)) || !Number.isFinite(tokenOutUi) || tokenOutUi <= 0) {
-        return { ok: false, reason: "entry produced 0 tokens" };
-    }
+    const tokenOutAtomic = effectiveEntryQuote.tokenOutAtomic;
+    const tokenOutUi = effectiveEntryQuote.tokenOutUi;
 
-    const entrySpotSolPerToken = getSpotSolPerTokenFromState(entryState, tokenMint, tokenDecimals) || 0;
+    const entrySpotSolPerToken = getSpotSolPerTokenFromState(effectiveEntryState, tokenMint, tokenDecimals) || 0;
     if (CONFIG.PRE_BUY_REVALIDATION_ENABLED && entrySpotSolPerToken > 0) {
         const quoteSolPerToken = CONFIG.TRADE_AMOUNT_SOL / tokenOutUi;
         const quoteVsSpotRatio = quoteSolPerToken / entrySpotSolPerToken;
@@ -197,7 +317,7 @@ export async function validatePreBuyEntryState(
 
     return {
         ok: true,
-        entryState,
+        entryState: effectiveEntryState,
         tokenOutAtomic,
         tokenOutUi,
         entrySpotSolPerToken,

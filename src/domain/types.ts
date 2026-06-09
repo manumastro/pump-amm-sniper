@@ -54,21 +54,19 @@ export type CreatorRiskResult = {
     rapidDispersalTransfers?: number;
     rapidDispersalDestinations?: number;
     rapidDispersalTotalSol?: number;
+    rapidDispersalPctOfEntryLiquidity?: number;
     rapidDispersalWindowSec?: number | null;
     microInboundTransfers?: number;
     microInboundSources?: number;
-    creatorRiskMicroTransfers?: number;
-    creatorRiskMicroSources?: number;
-    relayFundingInboundSol?: number;
-    relayFundingOutboundSol?: number;
-    relayFundingWindowSec?: number | null;
-    relayFundingFunder?: string | null;
+    funderBlacklistedTriggered?: boolean;
+    precreateBurstTriggered?: boolean;
+    funderClusterHistoricalCount?: number;
+    funderClusterRecentCreatorCount?: number;
     repeatedCreateRemoveCreates?: number;
     repeatedCreateRemoveRemoves?: number;
     repeatedCreateRemoveCashouts?: number;
     repeatedCreateRemoveWindowSec?: number | null;
     repeatedCreateRemoveMaxCashoutSol?: number;
-    poolLiquiditySol?: number;
 };
 
 export type CreatorRiskCacheEntry = {
@@ -86,6 +84,7 @@ export type CreatorRiskCheckOptions = {
     allowReuseIfNoNewActivity?: boolean;
     allowFastPathOnDeepTimeout?: boolean;
     deepCheckBudgetMs?: number;
+    skipUniqueCounterparties?: boolean;
 };
 
 export type RugHistory = {
@@ -119,6 +118,7 @@ export type WinnerManagementProfile = {
     trailingDropPct: number;
     hardTakeProfitPct: number;
     minPeakSol: number;
+    profitFloorPct: number;
 };
 
 export type PaperSimulationOptions = {

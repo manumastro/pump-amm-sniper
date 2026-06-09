@@ -1,5 +1,5 @@
 import { Connection, PublicKey } from "@solana/web3.js";
-import { CONFIG, getWorkerConfigKey } from "../../app/config";
+import { CONFIG } from "../../app/config";
 import { CreatorRiskCacheEntry, CreatorRiskCheckOptions, CreatorRiskResult, ParsedCreatorRiskTx, RugHistory } from "../../domain/types";
 import { stageLog } from "../reporting/stageLog";
 import { shortSig } from "../../utils/pubkeys";
@@ -991,7 +991,7 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                 ctx,
                 "CRISK",
                 `cp=${uniqueCounterparties} in=${solInTransfers} out=${solOutTransfers} ` +
-                `window=${compressedWindowSec ?? "n/a"}s funder=${funder ? funder : "-"} refund=${funderRefundSol.toFixed(3)} ` +
+                `window=${compressedWindowSec ?? "n/a"}s funder=${funder ? shortSig(funder) : "-"} refund=${funderRefundSol.toFixed(3)} ` +
                 `micro=${microInboundTransfers.length}/${microInboundSources.size}`
             );
 
@@ -1069,7 +1069,7 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                     `max_out=${repeatCreateRemovePattern.maxCashoutSol.toFixed(3)}`
                 );
             }
-            if (directAmmReentry.detected) {
+            if (CONFIG.CREATOR_RISK_DIRECT_AMM_REENTRY_ENABLED && directAmmReentry.detected) {
                 stageLog(
                     ctx,
                     "CAMM",
@@ -1099,6 +1099,7 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                     ok: false,
                     reason: `funder blacklisted ${funder}`,
                     funder,
+                    funderBlacklistedTriggered: true,
                     uniqueCounterparties,
                     compressedWindowSec,
                     burner,
@@ -1291,44 +1292,29 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                 });
             }
 
-            if (
-                CONFIG.CREATOR_RISK_FUNDING_PATTERN_BLOCK_ENABLED &&
-                (
-                    (microInboundTransfers.length >= CONFIG.CREATOR_RISK_FUNDING_PATTERN_MICRO_MIN_TRANSFERS &&
-                     microInboundSources.size >= CONFIG.CREATOR_RISK_FUNDING_PATTERN_MICRO_MIN_SOURCES)
-                )
-            ) {
-                return returnEarlyDecision({
-                    ok: false,
-                    reason: `suspicious funding pattern: ${microInboundTransfers.length} micro transfers from ${microInboundSources.size} sources`,
-                    funder,
-                    uniqueCounterparties,
-                    compressedWindowSec,
-                    burner,
-                    creatorRiskMicroTransfers: microInboundTransfers.length,
-                    creatorRiskMicroSources: microInboundSources.size,
-                });
-            }
-
             if (funder && CONFIG.CREATOR_RISK_FUNDER_CLUSTER_ENABLED) {
                 const historicalCount = rugHistory.rugFunderCounts.get(funder) || 0;
+                const recentCreatorCount = deps.trackRecentFunderCreator(funder, creatorAddress);
                 if (historicalCount >= CONFIG.CREATOR_RISK_HISTORICAL_FUNDER_CLUSTER_MIN_RUG_CREATORS) {
                     return returnEarlyDecision({
                         ok: false,
                         reason: `funder cluster historical ${historicalCount} rug creators`,
                         funder,
+                        funderClusterHistoricalCount: historicalCount,
+                        funderClusterRecentCreatorCount: recentCreatorCount,
                         uniqueCounterparties,
                         compressedWindowSec,
                         burner,
                     });
                 }
 
-                const recentCreatorCount = deps.trackRecentFunderCreator(funder, creatorAddress);
                 if (recentCreatorCount >= CONFIG.CREATOR_RISK_FUNDER_CLUSTER_MIN_CREATORS) {
                     return returnEarlyDecision({
                         ok: false,
                         reason: `funder cluster recent ${recentCreatorCount} creators in ${CONFIG.CREATOR_RISK_FUNDER_CLUSTER_WINDOW_SEC}s`,
                         funder,
+                        funderClusterHistoricalCount: historicalCount,
+                        funderClusterRecentCreatorCount: recentCreatorCount,
                         uniqueCounterparties,
                         compressedWindowSec,
                         burner,
@@ -1360,10 +1346,11 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                 });
             }
 
-            if (uniqueCounterparties >= getWorkerConfigKey('CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES')) {
+            const whitelistedCcs = CONFIG.CREATOR_RISK_WHITELISTED_CC_VALUES || [];
+            if (!options.skipUniqueCounterparties && !whitelistedCcs.includes(uniqueCounterparties)) {
                 return returnEarlyDecision({
                     ok: false,
-                    reason: `unique counterparties ${uniqueCounterparties} >= ${getWorkerConfigKey('CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES')}`,
+                    reason: `unique counterparties ${uniqueCounterparties} not in whitelist`,
                     funder,
                     uniqueCounterparties,
                     compressedWindowSec,
@@ -1386,23 +1373,17 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                 });
             }
 
+
+
             if (burner) {
-                const entrySol = options.entrySolLiquidity || 0;
-                const burnerBypassEnabled = getWorkerConfigKey('CREATOR_RISK_BURNER_LIQUIDITY_BYPASS_ENABLED');
-                const burnerBypassMinSol = getWorkerConfigKey('CREATOR_RISK_BURNER_LIQUIDITY_BYPASS_MIN_SOL');
-                
-                if (burnerBypassEnabled && entrySol * 80 >= burnerBypassMinSol) {
-                    stageLog(ctx, "CRISK", `burner profile bypass (${entrySol.toFixed(2)} SOL >= ${burnerBypassMinSol} threshold)`);
-                } else {
-                    return returnEarlyDecision({
-                        ok: false,
-                        reason: `burner profile out=${solOutSol.toFixed(2)} SOL with no inbound transfers`,
-                        funder,
-                        uniqueCounterparties,
-                        compressedWindowSec,
-                        burner,
-                    });
-                }
+                return returnEarlyDecision({
+                    ok: false,
+                    reason: `burner profile out=${solOutSol.toFixed(2)} SOL with no inbound transfers`,
+                    funder,
+                    uniqueCounterparties,
+                    compressedWindowSec,
+                    burner,
+                });
             }
 
             const deepChecksPromise = Promise.all([
@@ -1488,7 +1469,7 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                 stageLog(
                     ctx,
                     "RRELAY",
-                    `root=${relayFunding.root ? shortSig(relayFunding.root) : "-"} funder=${funder ? funder : "-"} ` +
+                    `root=${relayFunding.root ? shortSig(relayFunding.root) : "-"} funder=${funder ? shortSig(funder) : "-"} ` +
                     `in=${relayFunding.inboundSol.toFixed(3)} out=${relayFunding.outboundSol.toFixed(3)} ` +
                     `window=${relayFunding.windowSec ?? "n/a"}s`
                 );
@@ -1551,6 +1532,7 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                         `(total ${precreateBurst.totalSol.toFixed(3)} SOL, ` +
                         `median ${precreateBurst.medianSol.toFixed(3)} SOL, rel_std ${precreateBurst.relStdDev.toFixed(2)})`,
                     funder,
+                    precreateBurstTriggered: true,
                     uniqueCounterparties,
                     compressedWindowSec,
                     burner,
@@ -1578,50 +1560,26 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
             }
 
             if (deepChecksComplete && precreateDispersalSetup.detected) {
-                const entrySol = options.entrySolLiquidity || 0;
-                const bypassLiqThreshold = CONFIG.CREATOR_RISK_SETUP_BURST_LIQUIDITY_BYPASS_SOL;
-                if (entrySol >= bypassLiqThreshold && !freshFundedHighSeed.strictFlowRequired) {
-                    stageLog(
-                        ctx,
-                        "CRISK",
-                        `precreate dispersal + setup burst bypassed (${entrySol.toFixed(2)} SOL >= ${bypassLiqThreshold} SOL threshold)`
-                    );
-                    return cacheAndReturn(enrichBaseResult({
-                        ok: true,
-                        setupBurstCreates: setupBurst.creates,
-                        setupBurstLookupTables: setupBurst.lookupTables,
-                        setupBurstWindowSec: setupBurst.windowSec,
-                        precreateDispersalSetupTransfers: precreateDispersalSetup.transfers,
-                        precreateDispersalSetupDestinations: precreateDispersalSetup.destinations,
-                        precreateDispersalSetupTotalSol: precreateDispersalSetup.totalSol,
-                        precreateDispersalSetupMedianSol: precreateDispersalSetup.medianSol,
-                        precreateDispersalSetupWindowSec: precreateDispersalSetup.windowSec,
-                        poolLiquiditySol: entrySol,
-                        deepChecksComplete: true,
-                        deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-                    }));
-                }
                 return cacheAndReturn(enrichBaseResult({
                     ok: false,
                     reason:
                         `precreate dispersal + setup burst ${precreateDispersalSetup.transfers} transfers ` +
                         `to ${precreateDispersalSetup.destinations} destinations ` +
-                        `(${precreateDispersalSetup.totalSol.toFixed(3)} SOL, ` +
+                        `(total ${precreateDispersalSetup.totalSol.toFixed(3)} SOL, ` +
                         `median ${precreateDispersalSetup.medianSol.toFixed(3)} SOL, ` +
                         `setup ${setupBurst.creates} in ${setupBurst.windowSec ?? "n/a"}s)`,
                     funder,
                     uniqueCounterparties,
                     compressedWindowSec,
                     burner,
-                    setupBurstCreates: setupBurst.creates,
-                    setupBurstLookupTables: setupBurst.lookupTables,
-                    setupBurstWindowSec: setupBurst.windowSec,
                     precreateDispersalSetupTransfers: precreateDispersalSetup.transfers,
                     precreateDispersalSetupDestinations: precreateDispersalSetup.destinations,
                     precreateDispersalSetupTotalSol: precreateDispersalSetup.totalSol,
                     precreateDispersalSetupMedianSol: precreateDispersalSetup.medianSol,
                     precreateDispersalSetupWindowSec: precreateDispersalSetup.windowSec,
-                    poolLiquiditySol: entrySol,
+                    setupBurstCreates: setupBurst.creates,
+                    setupBurstLookupTables: setupBurst.lookupTables,
+                    setupBurstWindowSec: setupBurst.windowSec,
                     deepChecksComplete: true,
                     deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
                 }));
@@ -1633,29 +1591,6 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                 setupBurst.creates >= CONFIG.CREATOR_RISK_CONCENTRATED_INBOUND_MIN_SETUP_CREATES &&
                 repeatCreateRemovePattern.creates >= CONFIG.CREATOR_RISK_CONCENTRATED_INBOUND_MIN_REPEAT_CREATES
             ) {
-                const entrySol = options.entrySolLiquidity || 0;
-                const bypassLiqThreshold = CONFIG.CREATOR_RISK_SETUP_BURST_LIQUIDITY_BYPASS_SOL;
-                if (entrySol >= bypassLiqThreshold) {
-                    stageLog(
-                        ctx,
-                        "CRISK",
-                        `concentrated inbound + setup burst bypassed (${entrySol.toFixed(2)} SOL >= ${bypassLiqThreshold} SOL threshold)`
-                    );
-                    return cacheAndReturn(enrichBaseResult({
-                        ok: true,
-                        setupBurstCreates: setupBurst.creates,
-                        setupBurstLookupTables: setupBurst.lookupTables,
-                        setupBurstWindowSec: setupBurst.windowSec,
-                        repeatedCreateRemoveCreates: repeatCreateRemovePattern.creates,
-                        repeatedCreateRemoveRemoves: repeatCreateRemovePattern.removes,
-                        repeatedCreateRemoveCashouts: repeatCreateRemovePattern.cashouts,
-                        repeatedCreateRemoveWindowSec: repeatCreateRemovePattern.windowSec,
-                        repeatedCreateRemoveMaxCashoutSol: repeatCreateRemovePattern.maxCashoutSol,
-                        poolLiquiditySol: entrySol,
-                        deepChecksComplete: true,
-                        deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-                    }));
-                }
                 return cacheAndReturn(enrichBaseResult({
                     ok: false,
                     reason:
@@ -1675,7 +1610,6 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                     repeatedCreateRemoveCashouts: repeatCreateRemovePattern.cashouts,
                     repeatedCreateRemoveWindowSec: repeatCreateRemovePattern.windowSec,
                     repeatedCreateRemoveMaxCashoutSol: repeatCreateRemovePattern.maxCashoutSol,
-                    poolLiquiditySol: entrySol,
                     deepChecksComplete: true,
                     deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
                 }));
@@ -1689,24 +1623,6 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                 setupBurst.windowSec !== null &&
                 setupBurst.windowSec <= CONFIG.CREATOR_RISK_LOOKUP_TABLE_NEAR_CREATE_MAX_WINDOW_SEC
             ) {
-                const entrySol = options.entrySolLiquidity || 0;
-                const bypassLiqThreshold = CONFIG.CREATOR_RISK_SETUP_BURST_LIQUIDITY_BYPASS_SOL;
-                if (entrySol >= bypassLiqThreshold && !freshFundedHighSeed.strictFlowRequired) {
-                    stageLog(
-                        ctx,
-                        "CRISK",
-                        `lookup-table + setup burst bypassed (${entrySol.toFixed(2)} SOL >= ${bypassLiqThreshold} SOL threshold)`
-                    );
-                    return cacheAndReturn(enrichBaseResult({
-                        ok: true,
-                        setupBurstCreates: setupBurst.creates,
-                        setupBurstLookupTables: setupBurst.lookupTables,
-                        setupBurstWindowSec: setupBurst.windowSec,
-                        poolLiquiditySol: entrySol,
-                        deepChecksComplete: true,
-                        deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-                    }));
-                }
                 return cacheAndReturn(enrichBaseResult({
                     ok: false,
                     reason:
@@ -1719,31 +1635,12 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                     setupBurstCreates: setupBurst.creates,
                     setupBurstLookupTables: setupBurst.lookupTables,
                     setupBurstWindowSec: setupBurst.windowSec,
-                    poolLiquiditySol: entrySol,
                     deepChecksComplete: true,
                     deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
                 }));
             }
 
             if (setupBurst.detected) {
-                const entrySol = options.entrySolLiquidity || 0;
-                const bypassLiqThreshold = CONFIG.CREATOR_RISK_SETUP_BURST_LIQUIDITY_BYPASS_SOL;
-                if (entrySol >= bypassLiqThreshold && !freshFundedHighSeed.strictFlowRequired) {
-                    stageLog(
-                        ctx,
-                        "CRISK",
-                        `setup burst ${setupBurst.creates} ops/${setupBurst.windowSec}s bypassed (${entrySol.toFixed(2)} SOL >= ${bypassLiqThreshold} SOL threshold)`
-                    );
-                    return cacheAndReturn(enrichBaseResult({
-                        ok: true,
-                        setupBurstCreates: setupBurst.creates,
-                        setupBurstLookupTables: setupBurst.lookupTables,
-                        setupBurstWindowSec: setupBurst.windowSec,
-                        poolLiquiditySol: entrySol,
-                        deepChecksComplete: true,
-                        deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-                    }));
-                }
                 return cacheAndReturn(enrichBaseResult({
                     ok: false,
                     reason: `setup burst ${setupBurst.creates} create/mint ops in ${setupBurst.windowSec ?? "n/a"}s`,
@@ -1754,7 +1651,6 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                     setupBurstCreates: setupBurst.creates,
                     setupBurstLookupTables: setupBurst.lookupTables,
                     setupBurstWindowSec: setupBurst.windowSec,
-                    poolLiquiditySol: entrySol,
                     deepChecksComplete: true,
                     deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
                 }));
@@ -1776,13 +1672,21 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                 }));
             }
 
-            if (deepChecksComplete && creatorCashout.totalSol > 0 && rapidDispersal.detected) {
+            const rapidDispersalPctOfEntryLiquidity =
+                options.entrySolLiquidity && options.entrySolLiquidity > 0
+                    ? (rapidDispersal.totalSol / options.entrySolLiquidity) * 100
+                    : 0;
+            const rapidDispersalSevere =
+                rapidDispersal.detected &&
+                rapidDispersalPctOfEntryLiquidity >= CONFIG.CREATOR_RISK_RAPID_DISPERSAL_MIN_PCT_OF_ENTRY_LIQ;
+
+            if (deepChecksComplete && rapidDispersal.detected && (creatorCashout.totalSol > 0 || rapidDispersalSevere)) {
                 return cacheAndReturn(enrichBaseResult({
                     ok: false,
                     reason:
                         `rapid creator dispersal ${rapidDispersal.transfers} transfers ` +
                         `to ${rapidDispersal.destinations} destinations ` +
-                        `(${rapidDispersal.totalSol.toFixed(3)} SOL)`,
+                        `(${rapidDispersal.totalSol.toFixed(3)} SOL, ${rapidDispersalPctOfEntryLiquidity.toFixed(2)}% liq)`,
                     funder,
                     uniqueCounterparties,
                     compressedWindowSec,
@@ -1794,6 +1698,7 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                     rapidDispersalTransfers: rapidDispersal.transfers,
                     rapidDispersalDestinations: rapidDispersal.destinations,
                     rapidDispersalTotalSol: rapidDispersal.totalSol,
+                    rapidDispersalPctOfEntryLiquidity,
                     rapidDispersalWindowSec: rapidDispersal.windowSec,
                     deepChecksComplete: true,
                     deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
@@ -1950,32 +1855,6 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                 }));
             }
 
-            if (
-                deepChecksComplete &&
-                CONFIG.CREATOR_RISK_FUNDING_PATTERN_BLOCK_ENABLED &&
-                relayFunding.detected &&
-                relayFunding.inboundSol > 0 &&
-                relayFunding.inboundSol <= CONFIG.CREATOR_RISK_FUNDING_PATTERN_RELAY_INBOUND_MAX_SOL &&
-                relayFunding.outboundSol >= CONFIG.CREATOR_RISK_FUNDING_PATTERN_RELAY_OUTBOUND_MIN_SOL &&
-                (relayFunding.outboundSol / relayFunding.inboundSol) > CONFIG.CREATOR_RISK_FUNDING_PATTERN_RELAY_ASYMMETRY_RATIO
-            ) {
-                return cacheAndReturn(enrichBaseResult({
-                    ok: false,
-                    reason: `relay funding asymmetry pattern (in ${relayFunding.inboundSol.toFixed(3)} SOL, out ${relayFunding.outboundSol.toFixed(1)} SOL, ratio ${(relayFunding.outboundSol / relayFunding.inboundSol).toFixed(0)}x)`,
-                    funder,
-                    uniqueCounterparties,
-                    compressedWindowSec,
-                    burner,
-                    relayFundingRoot: relayFunding.root,
-                    relayFundingInboundSol: relayFunding.inboundSol,
-                    relayFundingOutboundSol: relayFunding.outboundSol,
-                    relayFundingWindowSec: relayFunding.windowSec,
-                    relayFundingFunder: funder,
-                    deepChecksComplete: true,
-                    deepCheckMs: deepChecksDoneAtMs - earlyChecksDoneAtMs,
-                }));
-            }
-
             return cacheAndReturn(enrichBaseResult({
                 ok: true,
                 funder,
@@ -1991,12 +1870,6 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                 creatorCashoutScore: creatorCashout.score,
                 creatorCashoutDestination: creatorCashout.destination,
                 relayFundingRoot: relayFunding.root,
-                relayFundingInboundSol: relayFunding.inboundSol,
-                relayFundingOutboundSol: relayFunding.outboundSol,
-                relayFundingWindowSec: relayFunding.windowSec,
-                relayFundingFunder: funder,
-                creatorRiskMicroTransfers: microInboundTransfers.length,
-                creatorRiskMicroSources: microInboundSources.size,
                 directAmmReentrySig: directAmmReentry.signature,
                 strictPreEntryFlowRequired: freshFundedHighSeed.strictFlowRequired,
                 creatorSeedSol,
@@ -2014,6 +1887,10 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
                 rapidDispersalTransfers: rapidDispersal.transfers,
                 rapidDispersalDestinations: rapidDispersal.destinations,
                 rapidDispersalTotalSol: rapidDispersal.totalSol,
+                rapidDispersalPctOfEntryLiquidity:
+                    options.entrySolLiquidity && options.entrySolLiquidity > 0
+                        ? (rapidDispersal.totalSol / options.entrySolLiquidity) * 100
+                        : 0,
                 rapidDispersalWindowSec: rapidDispersal.windowSec,
                 repeatedCreateRemoveCreates: repeatCreateRemovePattern.creates,
                 repeatedCreateRemoveRemoves: repeatCreateRemovePattern.removes,
@@ -2045,9 +1922,6 @@ export function createCreatorRiskService(deps: CreatorRiskDeps) {
         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
             const result = await runCheck(connection, creatorAddress, ctx, options);
             if (!result.transientError) {
-                return result;
-            }
-            if ((result.reason || "").toLowerCase().includes("too many requests from your ip")) {
                 return result;
             }
 

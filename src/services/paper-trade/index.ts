@@ -66,6 +66,7 @@ export function createPaperTradeService(deps: PaperTradeDeps) {
         createPoolBlockTime?: number | null,
         initialCreatorRisk?: CreatorRiskResult,
         options?: PaperSimulationOptions,
+        forceEntryNoWsolBypass: boolean = false,
     ) {
         return validatePreBuyEntryState(
             {
@@ -86,6 +87,7 @@ export function createPaperTradeService(deps: PaperTradeDeps) {
             createPoolBlockTime,
             initialCreatorRisk,
             options,
+            forceEntryNoWsolBypass,
         );
     }
 
@@ -100,6 +102,7 @@ export function createPaperTradeService(deps: PaperTradeDeps) {
         createPoolBlockTime?: number | null,
         initialCreatorRisk?: CreatorRiskResult,
         options?: PaperSimulationOptions,
+        forceEntryNoWsolBypass: boolean = false,
     ): Promise<PaperTradeResult> {
         if (!CONFIG.PAPER_TRADE_ENABLED) return { ok: true };
 
@@ -126,21 +129,22 @@ export function createPaperTradeService(deps: PaperTradeDeps) {
                 // fallback to common pump token decimals
             }
 
-            const preBuy = await validatePreBuy(
-                connection,
-                fetchStateWithRetry,
-                tokenMint,
-                tokenDecimals,
-                buyAmountLamports,
-                baselineLiquiditySol,
-                ctx,
-                creatorAddress,
-                poolAddress,
-                createPoolSignature,
-                createPoolBlockTime,
-                initialCreatorRisk,
-                options,
-            );
+             const preBuy = await validatePreBuy(
+                 connection,
+                 fetchStateWithRetry,
+                 tokenMint,
+                 tokenDecimals,
+                 buyAmountLamports,
+                 baselineLiquiditySol,
+                 ctx,
+                 creatorAddress,
+                 poolAddress,
+                 createPoolSignature,
+                 createPoolBlockTime,
+                 initialCreatorRisk,
+                 options,
+                 forceEntryNoWsolBypass,
+             );
             if (!preBuy.ok || !preBuy.entryState || !preBuy.tokenOutAtomic || !preBuy.tokenOutUi) {
                 return { ok: false, reason: preBuy.reason || "pre-buy validation failed" };
             }
@@ -165,6 +169,12 @@ export function createPaperTradeService(deps: PaperTradeDeps) {
                 : suspiciousRelay
                     ? Math.max(1000, CONFIG.HOLD_SUSPICIOUS_RELAY_SHORT_HOLD_MS)
                     : Math.max(1000, CONFIG.AUTO_SELL_DELAY_MS);
+
+            // Use unified winner profile for all CC values (CP=1 profile: 100% take profit, 20% trailing)
+            const activeWinnerProfile = {
+                ...HOLD_WINNER_PROFILE,
+                hardTakeProfitPct: CONFIG.HOLD_WINNER_HARD_TAKE_PROFIT_PCT_CP1,
+            };
 
             if (forcedProbationHoldMs > 0) {
                 stageLog(ctx, "HOLD", `probation hold ${effectiveHoldMs}ms (paper creator-risk bypass)`);
@@ -203,7 +213,7 @@ export function createPaperTradeService(deps: PaperTradeDeps) {
                 createPoolSignature,
                 createPoolBlockTime,
                 initialCreatorRisk,
-                HOLD_WINNER_PROFILE,
+                activeWinnerProfile,
             );
             if (!exitOutcome?.state) {
                 console.log("⚠️ PAPER_TRADE: no exit pool state");

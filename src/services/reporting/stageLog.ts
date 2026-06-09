@@ -13,6 +13,7 @@ export function patchConsoleWithTimestamp() {
     const targetLogPath = IS_WORKER_PROCESS
         ? path.join(EARLY_ROOT_DIR, "logs", `paper-worker-${WORKER_SLOT || 1}.log`)
         : path.join(EARLY_ROOT_DIR, "paper.log");
+    const streamTag = IS_WORKER_PROCESS ? `W${WORKER_SLOT || 1}` : "MAIN";
 
     fs.mkdirSync(path.dirname(targetLogPath), { recursive: true });
 
@@ -23,10 +24,11 @@ export function patchConsoleWithTimestamp() {
     const shouldMirrorStdout = !process.env.INVOCATION_ID && !IS_WORKER_PROCESS;
     const wrap = (fn: (...args: any[]) => void) => (...args: any[]) => {
         const payload = util.format(...args);
-        if (SILENCE_RPC_429_LOGS && payload.includes("Server responded with 429 Too Many Requests.")) {
+        const isRpc429 = /429\s+too\s+many\s+requests/i.test(payload) || payload.includes("Too Many Requests");
+        if (SILENCE_RPC_429_LOGS && isRpc429) {
             return;
         }
-        const rendered = `[${timestampNow()}] ${payload}`;
+        const rendered = `[${timestampNow()}] [${streamTag}] ${payload}`;
         fs.appendFileSync(targetLogPath, `${rendered}\n`);
         if (shouldMirrorStdout) {
             fn(rendered);

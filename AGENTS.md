@@ -1,31 +1,43 @@
-# AGENTS
+# AGENTS 
 
-Questo file e ridotto al minimo per abilitare un approccio **lazy-load**:
-- mantieni qui solo regole essenziali ad alto impatto
-- carica i dettagli operativi dai documenti sotto solo quando servono al task
-
-## Regole essenziali
-- Non aggiungere nuovi controlli direttamente in `src/pumpAmmSniper.ts`.
-- Controlli creator/funder/relay/pattern wallet: `src/services/creator-risk/`.
-- Controlli pre-buy/hold/exit: `src/services/paper-trade/`.
-- Test corrente: A/B/C sincronizzato su 3 worker (w1 baseline, w2 unique counterparties=50, w3 burner bypass) con report dedicati `logs/paper-worker-*-report.json`.
-- Dopo modifiche a `src/**` che impattano runtime: `npm run build` prima del restart systemd.
-- I servizi systemd usano `dist/`, non `src/`.
-- Parser Solscan (`solscan-parser/`) solo per debug/investigazione, mai nel path realtime.
-
-## Quick links (caricare on-demand)
+## Indice rapido
 - Controlli bot: `docs/controls.md`
-- Architettura / ownership: `docs/architecture.md`
-- Anti-rug (Phase 1 + bypass): `docs/anti-rug-filter-implementation.md`
-- Phase 2 creator AMM buy: `docs/phase2-creator-amm-buy-detection.md`
-- Worker A/B/C: `docs/worker-ab-testing.md`
-- Runbook systemd: `docs/systemd-runbook.md`
-- Operazioni recenti: `docs/operations-notes.md`
-- Roadmap profit: `docs/profit-roadmap.md`
-- Checklist produzione: `PRODUCTION_BOT_CHECKLIST.md`
+- Runbook deploy/systemd: `docs/systemd-runbook.md`
+- Architettura e ownership moduli: `docs/architecture.md`
+- Roadmap tuning profit: `docs/profit-roadmap.md`
+- Worklog ultimo ciclo: `docs/worklog-2026-03-29.md`
+- Worklog ciclo precedente: `docs/worklog-2026-03-28.md`
+- Analisi creator/dev: `idea/creator-tx-analysis.md`
+- **Analisi periodiche:** `analysis/` — contiene snapshot analitici completi con metriche, config e raccomandazioni
+- **Analisi rug:** `node scripts/rug-analysis.js` — mostra tabella completa pre-entry (tutti i 18+ controlli) e post-entry (triggers, guards, exit reason) per ogni rug loss.
 
-## Paths utili
+## Fase operativa corrente
+
+**FASE: RACCOLTA DATI STABILE (dal 2026-04-02)**
+
+Il bot ha raggiunto una configurazione semi-ottimale:
+- WR 77.3%, median win +37%, EV +0.00314 SOL/trade
+- 18+ controlli pre-entry attivi, winner management con TP 50%, trailing 10%, profit floor 3%
+- Dynamic funder rug tracking operativo
+
+Siamo in attesa di raccogliere 500+ trade per validare la stabilità prima di intervenire.
+**Non modificare filtri pre-entry o soglie hold senza prima consultare l'ultima analisi in `analysis/`.**
+
+Ultima analisi: `analysis/2026-04-06-full-analysis.md` (348+39 trade, WR 69.4%, **+0.645 SOL** reali)
+
+> Nota: l'analisi 04-05 riportava +0.826 SOL ma escludeva le rug losses. Il valore corretto era +0.566 SOL. La metodologia è stata corretta nella 04-06.
+
+## Regole operative non negoziabili
+- **I controlli sono la parte piu importante del bot.** Prima di modificare logiche di entry, hold, creator-risk, report o analisi rug, consultare sempre `docs/controls.md`.
+- **Ogni modifica ai controlli deve aggiornare anche la documentazione.** Se cambia una soglia, un toggle, una regola di blocco, una guardia hold o il significato dei report/log, aggiornare subito `docs/controls.md` nello stesso ciclo di lavoro.
+- **DOPO OGNI MODIFICA A `src/**`:** `npm run build` → stop servizi → reset log/report → start servizi. Senza build, il bot esegue il codice vecchio in `dist/`.
+- Sequenza deploy runtime: build -> stop servizi -> reset log/report -> start/restart servizi.
+- File da resettare dopo modifiche importanti: `paper.log`, `logs/paper-report.json`, `logs/paper-report.txt`, `logs/paper-report-daemon.log`, tutti i `logs/paper-worker-*.log`.
+- **PRIMA di resettare il report:** fare sempre backup: `cp logs/paper-report.json logs/paper-report-YYYY-MM-DD.json` per preservare lo storico trade/wins/rug.
+- Nuovi controlli non in `src/pumpAmmSniper.ts`: usare i moduli target (`src/services/creator-risk/`, `src/services/paper-trade/`, ecc.) secondo `docs/architecture.md`.
+- Per debug investigativo manuale, utilizzare il solscan-parser.
+
+## Riferimenti rapidi
 - Config esempio: `.env.example`
+- Config runtime centralizzata: `src/app/config.ts`
 - Blacklist: `blacklists/`
-- Log principali: `paper.log`, `logs/paper-report.json`, `logs/paper-report.txt`
-- Servizi: `pump-sniper.service`, `pump-report.service`

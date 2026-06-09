@@ -10,10 +10,6 @@ const OUT_TXT = path.join(ROOT, 'logs', 'paper-report.txt');
 const OUT_OUTCOMES_JSON = path.join(ROOT, 'logs', 'paper-report-outcomes.json');
 const OUT_OUTCOMES_TXT = path.join(ROOT, 'logs', 'paper-report-outcomes.txt');
 
-// Per-worker report paths
-const OUT_WORKER_PREFIX = path.join(ROOT, 'logs', 'paper-worker-');
-const OUT_WORKER_SUFFIX = '-report.json';
-
 const SUB_TO_DIGIT = { '₀': '0', '₁': '1', '₂': '2', '₃': '3', '₄': '4', '₅': '5', '₆': '6', '₇': '7', '₈': '8', '₉': '9' };
 const DEFAULT_TRADE_AMOUNT_SOL = Number(process.env.TRADE_AMOUNT_SOL || '0.01');
 
@@ -44,13 +40,64 @@ function fmtNum(v, digits = 12) {
   return typeof v === 'number' && Number.isFinite(v) ? Number(v.toFixed(digits)) : null;
 }
 
+function safeJsonParse(raw) {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function summarizeEntryFilters(entryFilters, preBuyUltraGuard) {
+  if (!entryFilters && !preBuyUltraGuard) return '-';
+  const parts = [];
+  if (entryFilters?.liquidity) {
+    const liq = entryFilters.liquidity;
+    parts.push(`liq ${liq.observedSol ?? 'n/a'}>=${liq.minSol ?? 'n/a'} (${liq.pass ? 'PASS' : 'FAIL'})`);
+  }
+  if (entryFilters?.tokenSecurity) {
+    parts.push(`token ${entryFilters.tokenSecurity.pass ? 'PASS' : 'FAIL'}`);
+  }
+  if (entryFilters?.creatorRisk) {
+    const c = entryFilters.creatorRisk;
+    parts.push(
+      `creator pass=${c.pass ? 'YES' : 'NO'} cp=${c.uniqueCounterparties ?? 'n/a'}/${c.maxUniqueCounterparties ?? 'n/a'} ` +
+      `seed%=${c.seedPctOfLiq ?? 'n/a'}/${c.minSeedPctOfLiq ?? 'n/a'} fund=${c.freshFundingSol ?? 'n/a'}/${c.minFreshFundingSol ?? 'n/a'} ` +
+      `age=${c.freshFundingAgeSec ?? 'n/a'}/${c.maxFreshFundingAgeSec ?? 'n/a'} reentry=${c.directAmmReentryEnabled ? 'on' : 'off'}:${c.directAmmReentrySigPresent ? 'seen' : 'none'}`
+    );
+  }
+  if (entryFilters?.top10) {
+    const t = entryFilters.top10;
+    parts.push(`top10 ${t.pct ?? 'n/a'}<=${t.maxPct ?? 'n/a'} (${t.pass ? 'PASS' : 'FAIL'})`);
+  }
+  if (entryFilters?.cr_rapidDispersal) {
+    const rd = entryFilters.cr_rapidDispersal;
+    parts.push(`rapidDispersal t=${rd.observedTransfers ?? 0}/${rd.thresholdTransfers ?? 3} d=${rd.observedDestinations ?? 0}/${rd.thresholdDestinations ?? 3} sol=${rd.observedTotalSol ?? 0}/${rd.thresholdTotalSol ?? 100} (${rd.pass ? 'PASS' : 'BLOCK'})`);
+  }
+  if (entryFilters?.cr_lookupTable) {
+    const lt = entryFilters.cr_lookupTable;
+    parts.push(`lookupTable creates=${lt.observedCreates ?? 0}/${lt.thresholdCreates ?? 20} lookups=${lt.observedLookups ?? 0}/${lt.thresholdLookups ?? 2} (${lt.pass ? 'PASS' : 'BLOCK'})`);
+  }
+  if (entryFilters?.cr_setupBurst) {
+    const sb = entryFilters.cr_setupBurst;
+    parts.push(`setupBurst creates=${sb.observedCreates ?? 0}/${sb.thresholdCreates ?? 250} window=${sb.observedWindowSec ?? 'n/a'}s (${sb.pass ? 'PASS' : 'BLOCK'})`);
+  }
+  if (preBuyUltraGuard) {
+    parts.push(
+      `ultraGuard liqDropMax=${preBuyUltraGuard.maxObservedLiqDropPct ?? 'n/a'}<=${preBuyUltraGuard.maxLiqDropPct ?? 'n/a'} ` +
+      `quoteDropMax=${preBuyUltraGuard.maxObservedQuoteDropPct ?? 'n/a'}<=${preBuyUltraGuard.maxQuoteDropPct ?? 'n/a'}`
+    );
+  }
+  return parts.join(' | ');
+}
+
 const events = new Map();
 const offsets = new Map();
 const carries = new Map();
 let lastWriteAt = 0;
 let eventSeq = 0;
 const currentEventIds = new Map();
-const workerEvents = new Map(); // worker slot -> Set of event IDs
+const lastSignaturesPerLog = new Map();  // Track last signature per logPath to detect re-processing
 
 function discoverLogPaths() {
   const workerLogs = fs.existsSync(LOG_DIR)
@@ -67,7 +114,6 @@ function getEvent(id) {
   if (!events.has(id)) {
     events.set(id, {
       id,
-      workerSlot: null,
       startedAt: null,
       endedAt: null,
       signature: null,
@@ -100,14 +146,15 @@ function getEvent(id) {
       creatorCashoutRelPct: null,
       creatorCashoutScore: null,
       creatorCashoutDest: null,
+      noWsolRetryCount: 0,
+      noWsolRetryRecovered: false,
+      noWsolRetryExhausted: false,
+      entryFilters: null,
+      preBuyUltraGuard: null,
+      holdLog: null,
     });
   }
   return events.get(id);
-}
-
-function getWorkerSlotFromPath(logPath) {
-  const match = logPath.match(/paper-worker-(\d+)\.log$/);
-  return match ? Number(match[1]) : null;
 }
 
 function classifyOperation(e) {
@@ -182,31 +229,17 @@ function getCurrentEvent(logPath) {
 function ensureCurrentEvent(logPath, ts) {
   let ev = getCurrentEvent(logPath);
   if (ev) return ev;
-  
-  // Check if an event was already created for this logPath via WORKER parsing
-  const existingId = currentEventIds.get(logPath);
-  const id = existingId || `evt-${String(++eventSeq).padStart(6, '0')}`;
+  const id = `evt-${String(++eventSeq).padStart(6, '0')}`;
   ev = getEvent(id);
   ev.startedAt = ev.startedAt || ts || null;
-  if (!ev.workerSlot) {
-    ev.workerSlot = getWorkerSlotFromPath(logPath);
-  }
   currentEventIds.set(logPath, ev.id);
-  
-  // Track event per worker
-  if (ev.workerSlot !== null) {
-    if (!workerEvents.has(ev.workerSlot)) {
-      workerEvents.set(ev.workerSlot, new Set());
-    }
-    workerEvents.get(ev.workerSlot).add(ev.id);
-  }
-  
   return ev;
 }
 
 function parseLine(logPath, line) {
-  const ts = (line.match(/^\[([^\]]+)\]/) || [])[1] || null;
-  const stageLine = line.match(/^\[[^\]]+\]\s+(?:([^\s|]+)\s+\|\s+)?([^|]+?)\s+\|\s+(.+)$/);
+  const normalizedLine = line.replace(/^(\[[^\]]+\])\s+\[[A-Z0-9]+\]\s+/, '$1 ');
+  const ts = (normalizedLine.match(/^\[([^\]]+)\]/) || [])[1] || null;
+  const stageLine = normalizedLine.match(/^\[[^\]]+\]\s+(?:([^\s|]+)\s+\|\s+)?([^|]+?)\s+\|\s+(.+)$/);
   if (stageLine) {
     const maybeId = stageLine[1] ? stageLine[1].replace(/^\[|\]$/g, '') : null;
     const stage = stageLine[2].trim();
@@ -214,8 +247,20 @@ function parseLine(logPath, line) {
 
     let ev = null;
     if (maybeId && maybeId.includes('...')) {
-      ev = getEvent(maybeId);
-      currentEventIds.set(logPath, maybeId);
+      // This is a signature shorthand (e.g., "pnj2eK...cJPwTj")
+      // Check if current event matches this shorthand
+      const currentEv = getCurrentEvent(logPath);
+      let isSameSig = false;
+      if (currentEv && currentEv.signature && maybeId.includes('...')) {
+        const parts = maybeId.split('...');
+        isSameSig = currentEv.signature.startsWith(parts[0]) && currentEv.signature.endsWith(parts[1]);
+      }
+      if (isSameSig) {
+        ev = currentEv;
+      } else {
+        // No match - will use getCurrentEvent later or create new
+        ev = getCurrentEvent(logPath);
+      }
     } else {
       ev = getCurrentEvent(logPath);
     }
@@ -231,23 +276,55 @@ function parseLine(logPath, line) {
     }
 
     if (stage === 'WORKER') {
-      const startMatch = message.match(/^slot\s+(\d+)\s+start\s+([A-Za-z0-9.]+)$/);
+      const startMatch = message.match(/^slot\s+\d+\s+start\s+([A-Za-z0-9.]+)$/);
       if (startMatch) {
-        const slot = Number(startMatch[1]);
-        const shortSig = startMatch[2];
-        // Use unique ID per worker: shortSig + slot
-        const id = `evt-${shortSig}-w${slot}`;
-        ev = getEvent(id);
-        ev.workerSlot = slot;  // Always update workerSlot
-        ev.startedAt = ev.startedAt || ts;
-        ev.poolSignature = shortSig;  // Link events by pool signature
-        currentEventIds.set(logPath, ev.id);
+        const sigShort = startMatch[1];
+        const currentEv = getCurrentEvent(logPath);
         
-        // Track event per worker
-        if (!workerEvents.has(slot)) {
-          workerEvents.set(slot, new Set());
+        // Check if we already have an event for this exact signature in this logpath
+        // Signature shorthand format: "ABC...XYZ" (first 6 + ... + last 5 chars)
+        let isSameSig = false;
+        if (currentEv && currentEv.signature && sigShort.includes('...')) {
+          const parts = sigShort.split('...');
+          isSameSig = currentEv.signature.startsWith(parts[0]) && currentEv.signature.endsWith(parts[1]);
         }
-        workerEvents.get(slot).add(ev.id);
+        
+        if (isSameSig) {
+          // Duplicate start for the same signature - reuse existing event
+          ev = currentEv;
+          ev.startedAt = ev.startedAt || ts;
+        } else {
+          // Different signature - FIRST finalize the previous event if it doesn't have endStatus yet
+          if (currentEv && !currentEv.endStatus) {
+            currentEv.endStatus = 'MONITOR_ONLY (no explicit END marker)';
+            currentEv.endedAt = ts || nowIso();
+          }
+          // NOW create a new event for the new signature
+          const newId = `evt-${String(++eventSeq).padStart(6, '0')}`;
+          ev = getEvent(newId);
+          ev.startedAt = ev.startedAt || ts;
+          currentEventIds.set(logPath, newId);
+        }
+      } else {
+        // Check for "slot X done" - just mark that worker is done, but DON'T clear currentEventId
+        // because more log lines for this event may arrive after "done" (like PNL line at 08:57:30.193)
+        const doneMatch = message.match(/^slot\s+\d+\s+done\s+([A-Za-z0-9.]+)$/);
+        if (doneMatch) {
+          const sigShort = doneMatch[1];
+          const currentEv = getCurrentEvent(logPath);
+          
+          // If current event matches this signature and doesn't have endStatus yet, finalize it
+          if (currentEv && currentEv.signature && sigShort.includes('...')) {
+            const parts = sigShort.split('...');
+            const isSameSig = currentEv.signature.startsWith(parts[0]) && currentEv.signature.endsWith(parts[1]);
+            if (isSameSig && !currentEv.endStatus) {
+              // Auto-finalize with "MONITOR_ONLY" status (since this is a paper trade only)
+              currentEv.endStatus = 'MONITOR_ONLY (no explicit END marker)';
+              currentEv.endedAt = ts || nowIso();
+              // DO NOT delete from currentEventIds - PNL line may still come after done
+            }
+          }
+        }
       }
       return;
     }
@@ -282,31 +359,25 @@ function parseLine(logPath, line) {
       return;
     }
 
-    if (stage === 'CREATOR') {
-      ev = ev || ensureCurrentEvent(logPath, ts);
-      const addrMatch = message.match(/[1-9A-HJ-NP-Za-km-z]{32,44}/);
-      if (addrMatch) {
-        ev.creator = addrMatch[0];
-      }
-      return;
-    }
-
     if (stage === 'BUY_SPOT') {
-      ev = ev || ensureCurrentEvent(logPath, ts);
+      ev = ev || getCurrentEvent(logPath);
+      if (!ev) return;
       ev.buyAt = ts || ev.buyAt;
       ev.buySpotSolPerToken = parseCompactSol(message.replace(/^\~/, '').replace(/\/token$/i, '').trim());
       return;
     }
 
     if (stage === 'SELL_SPOT') {
-      ev = ev || ensureCurrentEvent(logPath, ts);
+      ev = ev || getCurrentEvent(logPath);
+      if (!ev) return;
       ev.sellAt = ts || ev.sellAt;
       ev.sellSpotSolPerToken = parseCompactSol(message.replace(/^\~/, '').replace(/\/token$/i, '').trim());
       return;
     }
 
     if (stage === 'PNL') {
-      ev = ev || ensureCurrentEvent(logPath, ts);
+      ev = ev || getCurrentEvent(logPath);
+      if (!ev) return;
       const m = message.match(/^([+-]?)(.+)\s+\(([-0-9.]+)%\)$/);
       if (m) {
         ev.pnlAt = ts || ev.pnlAt;
@@ -315,12 +386,18 @@ function parseLine(logPath, line) {
         const abs = parseCompactSol(m[2].trim());
         ev.pnlSol = abs == null ? null : sign * abs;
         ev.pnlPct = pct;
+        // If PNL comes after the recorded end time, update endedAt to match
+        // (This can happen when "WORKER done" precedes the PNL line)
+        if (ts && ev.endedAt && ts > ev.endedAt) {
+          ev.endedAt = ts;
+        }
       }
       return;
     }
 
     if (stage === 'CRISK') {
-      ev = ev || ensureCurrentEvent(logPath, ts);
+      ev = ev || getCurrentEvent(logPath);
+      if (!ev) return;
       const funder = (message.match(/funder=([^\s]+)/) || [])[1] || null;
       const refund = Number((message.match(/refund=([0-9.]+)/) || [])[1] || '0');
       const micro = (message.match(/micro=(\d+)\/(\d+)/) || []);
@@ -332,7 +409,8 @@ function parseLine(logPath, line) {
     }
 
     if (stage === 'RRELAY') {
-      ev = ev || ensureCurrentEvent(logPath, ts);
+      ev = ev || getCurrentEvent(logPath);
+      if (!ev) return;
       const root = (message.match(/root=([^\s]+)/) || [])[1] || null;
       const funder = (message.match(/funder=([^\s]+)/) || [])[1] || null;
       const inbound = Number((message.match(/in=([0-9.]+)/) || [])[1] || '0');
@@ -348,7 +426,8 @@ function parseLine(logPath, line) {
     }
 
     if (stage === 'CCASH') {
-      ev = ev || ensureCurrentEvent(logPath, ts);
+      ev = ev || getCurrentEvent(logPath);
+      if (!ev) return;
       const total = Number((message.match(/total=([0-9.]+)/) || [])[1] || '0');
       const max = Number((message.match(/max=([0-9.]+)/) || [])[1] || '0');
       const rel = Number((message.match(/rel=([0-9.]+)/) || [])[1] || '0');
@@ -362,8 +441,69 @@ function parseLine(logPath, line) {
       return;
     }
 
+    if (stage === 'FILTERS') {
+      ev = ev || getCurrentEvent(logPath);
+      if (!ev) return;
+      const parsed = safeJsonParse(message);
+      if (parsed && typeof parsed === 'object') {
+        ev.entryFilters = parsed;
+      }
+      return;
+    }
+
+    if (stage === 'PREGUARD') {
+      ev = ev || getCurrentEvent(logPath);
+      if (!ev) return;
+      const liqDropMax = Number((message.match(/liq_drop_max=([-0-9.]+)%/) || [])[1]);
+      const quoteDropMax = Number((message.match(/quote_drop_max=([-0-9.]+)%/) || [])[1]);
+      const maxLiq = Number((message.match(/max_liq=([-0-9.]+)%/) || [])[1]);
+      const maxQuote = Number((message.match(/max_quote=([-0-9.]+)%/) || [])[1]);
+      const windowMs = Number((message.match(/window=([0-9]+)ms/) || [])[1]);
+      const intervalMs = Number((message.match(/interval=([0-9]+)ms/) || [])[1]);
+      ev.preBuyUltraGuard = {
+        maxObservedLiqDropPct: Number.isFinite(liqDropMax) ? liqDropMax : null,
+        maxObservedQuoteDropPct: Number.isFinite(quoteDropMax) ? quoteDropMax : null,
+        maxLiqDropPct: Number.isFinite(maxLiq) ? maxLiq : null,
+        maxQuoteDropPct: Number.isFinite(maxQuote) ? maxQuote : null,
+        windowMs: Number.isFinite(windowMs) ? windowMs : null,
+        intervalMs: Number.isFinite(intervalMs) ? intervalMs : null,
+      };
+      return;
+    }
+
+    if (stage === 'NOWSOL') {
+      ev = ev || getCurrentEvent(logPath);
+      if (!ev) return;
+      const retryMatch = message.match(/retry\s+(\d+)\/(\d+)/i);
+      if (retryMatch) {
+        const retryCount = Number(retryMatch[1]);
+        ev.noWsolRetryCount = Math.max(ev.noWsolRetryCount || 0, Number.isFinite(retryCount) ? retryCount : 0);
+      }
+      const recoveredMatch = message.match(/recovered WSOL side after\s+(\d+)\s+retries/i);
+      if (recoveredMatch) {
+        const retryCount = Number(recoveredMatch[1]);
+        ev.noWsolRetryRecovered = true;
+        ev.noWsolRetryCount = Math.max(ev.noWsolRetryCount || 0, Number.isFinite(retryCount) ? retryCount : 0);
+      }
+      if (/retry exhausted/i.test(message)) {
+        ev.noWsolRetryExhausted = true;
+      }
+      return;
+    }
+
+    if (stage === 'HOLDLOG') {
+      ev = ev || getCurrentEvent(logPath);
+      if (!ev) return;
+      const parsed = safeJsonParse(message);
+      if (parsed && typeof parsed === 'object') {
+        ev.holdLog = parsed;
+      }
+      return;
+    }
+
     if (stage === 'CHECKS' && message === 'passed') {
-      ev = ev || ensureCurrentEvent(logPath, ts);
+      ev = ev || getCurrentEvent(logPath);
+      if (!ev) return;
       ev.checksPassed = true;
       return;
     }
@@ -490,6 +630,14 @@ function summarize() {
   const losses = validPnl.filter(e => e.effectivePnlSol < 0).length;
   const checksPassed = finished.filter(e => e.checksPassed).length;
   const skipped = finished.filter(e => e.skipReason || (e.endStatus && e.endStatus.startsWith('SKIP'))).length;
+  const noWsolSkipCount = finished.filter(e => {
+    const s = `${e.skipReason || ''} ${e.endStatus || ''}`.toLowerCase();
+    return s.includes('no wsol side');
+  }).length;
+  const noWsolRetryEvents = finished.filter(e => (e.noWsolRetryCount || 0) > 0).length;
+  const noWsolRetryRecoveredCount = finished.filter(e => e.noWsolRetryRecovered).length;
+  const noWsolRetryExhaustedCount = finished.filter(e => e.noWsolRetryExhausted).length;
+  const noWsolRetryAttemptsTotal = finished.reduce((acc, e) => acc + (Number(e.noWsolRetryCount) || 0), 0);
   const isRugLikeSignal = (e) => {
     const s = `${e.skipReason || ''} ${e.endStatus || ''}`.toLowerCase();
     return isRugLossEvent(e) ||
@@ -529,6 +677,12 @@ function summarize() {
       rugLoss: isRugLossEvent(e),
       classification: classifyOperation(e),
       pnlValidityIssue: getPnlValidityIssue(e),
+      entryFilters: e.entryFilters,
+      preBuyUltraGuard: e.preBuyUltraGuard,
+      holdLog: e.holdLog,
+      noWsolRetryCount: e.noWsolRetryCount || 0,
+      noWsolRetryRecovered: !!e.noWsolRetryRecovered,
+      noWsolRetryExhausted: !!e.noWsolRetryExhausted,
     }));
 
   return {
@@ -537,6 +691,11 @@ function summarize() {
     finishedEvents: finished.length,
     checksPassed,
     skipped,
+    noWsolSkipCount,
+    noWsolRetryEvents,
+    noWsolRetryRecoveredCount,
+    noWsolRetryExhaustedCount,
+    noWsolRetryAttemptsTotal,
     hostileSkipCount: hostileSkips.length,
     avoidedRugLikeCount: rugLikeAvoided.length,
     rugLossCount: rugLosses.length,
@@ -550,7 +709,6 @@ function summarize() {
     outcomeOperationCount: outcomeOperations.length,
     operations: enriched.map(e => ({
       id: e.id,
-      workerSlot: e.workerSlot,
       startedAt: e.startedAt,
       buyAt: e.buyAt,
       sellAt: e.sellAt,
@@ -586,8 +744,13 @@ function summarize() {
       creatorCashoutRelPct: e.creatorCashoutRelPct,
       creatorCashoutScore: e.creatorCashoutScore,
       creatorCashoutDest: e.creatorCashoutDest,
-      creator: e.creator,
       pnlValidityIssue: getPnlValidityIssue(e),
+      entryFilters: e.entryFilters,
+      preBuyUltraGuard: e.preBuyUltraGuard,
+      holdLog: e.holdLog,
+      noWsolRetryCount: e.noWsolRetryCount || 0,
+      noWsolRetryRecovered: !!e.noWsolRetryRecovered,
+      noWsolRetryExhausted: !!e.noWsolRetryExhausted,
     })),
     outcomeOperations,
     rugPullEvents: rugLosses.slice(-20).map(e => ({
@@ -608,6 +771,9 @@ function summarize() {
       skipReason: e.skipReason,
       endStatus: e.endStatus,
       classification: classifyOperation(e),
+      entryFilters: e.entryFilters,
+      preBuyUltraGuard: e.preBuyUltraGuard,
+      holdLog: e.holdLog,
     })),
   };
 }
@@ -627,6 +793,11 @@ function writeReports(force = false) {
     `finished: ${report.finishedEvents}`,
     `checks passed: ${report.checksPassed}`,
     `skipped: ${report.skipped}`,
+    `no WSOL skips: ${report.noWsolSkipCount}`,
+    `no WSOL retry events: ${report.noWsolRetryEvents}`,
+    `no WSOL retry recovered: ${report.noWsolRetryRecoveredCount}`,
+    `no WSOL retry exhausted: ${report.noWsolRetryExhaustedCount}`,
+    `no WSOL retry attempts total: ${report.noWsolRetryAttemptsTotal}`,
     `hostile skips: ${report.hostileSkipCount}`,
     `rug-like avoided: ${report.avoidedRugLikeCount}`,
     `rug losses (-100%): ${report.rugLossCount}`,
@@ -662,7 +833,8 @@ function writeReports(force = false) {
         `pnl=${e.pnlSol ?? 'n/a'} (${e.pnlPct ?? 'n/a'}%) ` +
         `class=${e.classification} ` +
         `reason=${e.skipReason || e.endStatus || '-'} ` +
-        `gmgn=${e.gmgn || '-'}`
+        `gmgn=${e.gmgn || '-'} ` +
+        `filters=${summarizeEntryFilters(e.entryFilters, e.preBuyUltraGuard)}`
       )
       : ['(none)']),
   ].join('\n');
@@ -705,63 +877,6 @@ function writeReports(force = false) {
       : ['(none)']),
   ].join('\n');
   fs.writeFileSync(OUT_OUTCOMES_TXT, outcomesTxt + '\n');
-
-  // Write per-worker reports
-  for (const [workerSlot, eventIds] of workerEvents) {
-    const workerFinished = report.operations.filter(e => e.workerSlot === workerSlot);
-    const workerPnlKnown = workerFinished.filter(e => typeof e.pnlSol === 'number');
-    const workerValidPnl = workerPnlKnown.filter(e => !getPnlValidityIssue(e));
-    const workerTotalPnl = workerValidPnl.reduce((a, e) => a + e.pnlSol, 0);
-    const workerAvgPnlPct = workerValidPnl.length ? workerValidPnl.reduce((a, e) => a + (e.pnlPct || 0), 0) / workerValidPnl.length : 0;
-    const workerWins = workerValidPnl.filter(e => e.pnlSol > 0).length;
-    const workerLosses = workerValidPnl.filter(e => e.pnlSol < 0).length;
-    const workerChecksPassed = workerFinished.filter(e => e.checksPassed).length;
-    const workerSkipped = workerFinished.filter(e => e.skipReason || (e.endStatus && e.endStatus.startsWith('SKIP'))).length;
-    const workerRugLosses = workerFinished.filter(e => isRugLossEvent(e)).length;
-    
-    const workerReport = {
-      generatedAt: nowIso(),
-      workerSlot,
-      eventsSeen: eventIds.size,
-      finishedEvents: workerFinished.length,
-      checksPassed: workerChecksPassed,
-      skipped: workerSkipped,
-      hostileSkipCount: workerFinished.filter(e => classifyOperation(e) === 'hostile').length,
-      rugLossCount: workerRugLosses,
-      totalPnlSol: Number(workerTotalPnl.toFixed(9)),
-      avgPnlPct: Number(workerAvgPnlPct.toFixed(4)),
-      wins: workerWins,
-      losses: workerLosses,
-      winRatePct: workerValidPnl.length ? Number(((workerWins / workerValidPnl.length) * 100).toFixed(2)) : 0,
-      operations: workerFinished.map(e => ({
-        id: e.id,
-        workerSlot: e.workerSlot,
-        startedAt: e.startedAt,
-        buyAt: e.buyAt,
-        sellAt: e.sellAt,
-        pnlAt: e.pnlAt,
-        endedAt: e.endedAt,
-        signature: e.signature,
-        tokenMint: e.tokenMint,
-        pool: e.pool,
-        gmgn: e.gmgn || (e.tokenMint ? `https://gmgn.ai/sol/token/${e.tokenMint}` : null),
-        buySpotSolPerToken: fmtNum(e.buySpotSolPerToken),
-        sellSpotSolPerToken: fmtNum(e.sellSpotSolPerToken),
-        pnlSol: e.pnlSol,
-        pnlPct: e.pnlPct,
-        checksPassed: e.checksPassed,
-        skipReason: e.skipReason,
-        endStatus: e.endStatus,
-        durationMs: e.durationMs,
-        rugPull: isRugLossEvent(e),
-        rugLoss: isRugLossEvent(e),
-        classification: classifyOperation(e),
-      })),
-    };
-    
-    const workerReportPath = `${OUT_WORKER_PREFIX}${workerSlot}${OUT_WORKER_SUFFIX}`;
-    fs.writeFileSync(workerReportPath, JSON.stringify(workerReport, null, 2));
-  }
 }
 
 function processChunk(logPath, chunk) {

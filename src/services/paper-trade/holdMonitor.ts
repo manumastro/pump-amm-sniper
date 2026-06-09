@@ -108,7 +108,17 @@ export async function waitForExitStateWithLiquidityStop(
 ): Promise<{ state: any | null; exitReason?: string } | null> {
     const startedAtMs = Date.now();
     const deadlineMs = startedAtMs + Math.max(1000, holdMs);
-    const pollIntervalMs = Math.max(250, Math.min(CONFIG.HOLD_REMOVE_LIQ_CHECK_INTERVAL_MS, 1500));
+    const pollIntervalMs = Math.max(
+        200,
+        Math.min(
+            CONFIG.HOLD_WINNER_CHECK_INTERVAL_MS,
+            CONFIG.HOLD_HARD_STOP_LOSS_CHECK_INTERVAL_MS,
+            CONFIG.HOLD_SINGLE_SWAP_SHOCK_CHECK_INTERVAL_MS,
+            CONFIG.HOLD_SELL_QUOTE_COLLAPSE_CHECK_INTERVAL_MS,
+            CONFIG.HOLD_REMOVE_LIQ_CHECK_INTERVAL_MS,
+            1000,
+        ),
+    );
     const removeLiqCheckIntervalMs = Math.max(500, CONFIG.HOLD_REMOVE_LIQ_CHECK_INTERVAL_MS);
     const entrySolLiquidity = getSolLiquidityFromState(entryState, tokenMint) || 0;
     let latestState: any | null = entryState;
@@ -121,6 +131,8 @@ export async function waitForExitStateWithLiquidityStop(
     let lastPoolChurnCheckAtMs = 0;
     let lastPoolChurnWarnAtMs = 0;
     let lastSellQuoteCollapseCheckAtMs = 0;
+    let lastSingleSwapShockCheckAtMs = 0;
+    let lastHardStopLossCheckAtMs = 0;
     let lastWinnerCheckAtMs = 0;
     const seenPoolSignatures = new Set<string>();
     const seenCreatorSignatures = new Set<string>();
@@ -132,10 +144,50 @@ export async function waitForExitStateWithLiquidityStop(
     const creatorInboundSprayEvents: Array<{ source: string; sol: number; eventTimeSec: number; signature: string }> = [];
     const creatorCloseAccountEvents: Array<{ closeCount: number; eventTimeSec: number; signature: string }> = [];
     const baselineCreatorCashoutSol = Number(initialCreatorRisk?.creatorCashoutSol || 0);
+
+    let triggerMap: Record<string, { triggered: boolean; detail: string }> = {};
+    function recordTrigger(name: string, triggered: boolean, detail: string) {
+        triggerMap[name] = { triggered, detail };
+    }
+    function logHoldSummary(reason: string | undefined) {
+        const peakPnlPct = peakExitQuoteSol > 0
+            ? ((peakExitQuoteSol - CONFIG.TRADE_AMOUNT_SOL) / CONFIG.TRADE_AMOUNT_SOL) * 100
+            : 0;
+        const winnerArmed = peakPnlPct >= activeWinnerProfile.armPnlPct;
+        const trailingActive = winnerArmed && activeWinnerProfile.trailingDropPct > 0;
+        stageLog(logPrefix, "HOLDLOG", JSON.stringify({
+            exitReason: reason || "deadline",
+            holdMs,
+            actualDurationMs: Date.now() - startedAtMs,
+            timeToPeakMs: peakAtMs - startedAtMs,
+            entryBaselineQuoteSol: baselineExitQuoteSol ? Number(baselineExitQuoteSol.toFixed(8)) : null,
+            peakExitQuoteSol: Number(peakExitQuoteSol.toFixed(8)),
+            peakPnlPct: Number(peakPnlPct.toFixed(4)),
+            winnerArmed,
+            trailingActive,
+            triggers: triggerMap,
+            guards: {
+                removeLiq: { enabled: CONFIG.HOLD_REMOVE_LIQ_DETECT_ENABLED },
+                creatorAmmBurst: { enabled: CONFIG.HOLD_CREATOR_AMM_BURST_DETECT_ENABLED },
+                creatorRiskRecheck: { enabled: CONFIG.HOLD_CREATOR_RISK_RECHECK_ENABLED && !suppressCreatorRiskRecheck },
+                winnerManagement: { enabled: activeWinnerProfile.enabled, armPct: activeWinnerProfile.armPnlPct, trailingPct: activeWinnerProfile.trailingDropPct, hardTpPct: activeWinnerProfile.hardTakeProfitPct, minHoldMs: activeWinnerProfile.minHoldMs },
+                sellQuoteCollapse: { enabled: CONFIG.HOLD_SELL_QUOTE_COLLAPSE_EXIT_ENABLED, minHoldMs: CONFIG.HOLD_SELL_QUOTE_COLLAPSE_MIN_HOLD_MS, dropPct: CONFIG.HOLD_SELL_QUOTE_COLLAPSE_DROP_PCT },
+                singleSwapShock: { enabled: CONFIG.HOLD_SINGLE_SWAP_SHOCK_EXIT_ENABLED, minHoldMs: CONFIG.HOLD_SINGLE_SWAP_SHOCK_MIN_HOLD_MS, dropPct: CONFIG.HOLD_SINGLE_SWAP_SHOCK_DROP_PCT },
+                hardStopLoss: { enabled: CONFIG.HOLD_HARD_STOP_LOSS_EXIT_ENABLED, minHoldMs: CONFIG.HOLD_HARD_STOP_LOSS_MIN_HOLD_MS, lossPct: CONFIG.HOLD_HARD_STOP_LOSS_PCT },
+                poolChurn: { enabled: CONFIG.HOLD_POOL_CHURN_DETECT_ENABLED },
+                creatorOutbound: { enabled: CONFIG.HOLD_CREATOR_OUTBOUND_EXIT_ENABLED },
+                creatorCloseAccount: { enabled: CONFIG.HOLD_CREATOR_CLOSE_ACCOUNT_BURST_EXIT_ENABLED },
+                creatorOutboundSpray: { enabled: CONFIG.HOLD_CREATOR_OUTBOUND_SPRAY_EXIT_ENABLED },
+                creatorInboundSpray: { enabled: CONFIG.HOLD_CREATOR_INBOUND_SPRAY_EXIT_ENABLED },
+            },
+        }));
+    }
     const baselineExitQuoteSol = getExitQuoteSolFromState(entryState, tokenMint, tokenOutAtomic);
     let peakExitQuoteSol = Number.isFinite(initialPeakExitQuoteSol)
         ? Number(initialPeakExitQuoteSol)
         : (baselineExitQuoteSol || 0);
+    let peakAtMs = startedAtMs;
+    let previousExitQuoteSol = baselineExitQuoteSol;
     const activeWinnerProfile: WinnerManagementProfile = winnerProfile || {
         enabled: CONFIG.HOLD_WINNER_MANAGEMENT_ENABLED,
         checkIntervalMs: CONFIG.HOLD_WINNER_CHECK_INTERVAL_MS,
@@ -144,6 +196,7 @@ export async function waitForExitStateWithLiquidityStop(
         trailingDropPct: CONFIG.HOLD_WINNER_TRAILING_DROP_PCT,
         hardTakeProfitPct: CONFIG.HOLD_WINNER_HARD_TAKE_PROFIT_PCT,
         minPeakSol: CONFIG.HOLD_WINNER_MIN_PEAK_SOL,
+        profitFloorPct: CONFIG.HOLD_WINNER_PROFIT_FLOOR_PCT,
     };
     if (createPoolSignature) seenPoolSignatures.add(createPoolSignature);
     if (createPoolSignature) seenCreatorSignatures.add(createPoolSignature);
@@ -155,7 +208,7 @@ export async function waitForExitStateWithLiquidityStop(
         suppressCreatorRiskRecheck
             ? Math.min(1, Math.max(0.1, CONFIG.HOLD_PROBATION_INTERVAL_MULTIPLIER))
             : 1;
-    const scaledInterval = (baseMs: number) => Math.max(500, Math.round(baseMs * holdIntervalScale));
+    const scaledInterval = (baseMs: number) => Math.max(250, Math.round(baseMs * holdIntervalScale));
 
     while (Date.now() < deadlineMs) {
         const s = await fetchStateWithRetry();
@@ -178,14 +231,10 @@ export async function waitForExitStateWithLiquidityStop(
                     createPoolBlockTime,
                 );
                 if (removeLiq.detected) {
-                    console.log(
-                        `⚠️ REMOVE LIQUIDITY EXIT: ` +
-                        `${shortSig(removeLiq.signature || "-")} ` +
-                        `(wsol_to_creator=${(removeLiq.wsolToCreator || 0).toFixed(3)} ` +
-                        `sol_to_creator=${(removeLiq.solToCreator || 0).toFixed(3)} ` +
-                        `token_to_creator=${(removeLiq.tokenToCreator || 0).toFixed(3)} ` +
-                        `entry_liq=${entrySolLiquidity.toFixed(2)} SOL)`
-                    );
+                    const detail = `${shortSig(removeLiq.signature || "-")} wsol=${(removeLiq.wsolToCreator||0).toFixed(3)} sol=${(removeLiq.solToCreator||0).toFixed(3)} tok=${(removeLiq.tokenToCreator||0).toFixed(3)}`;
+                    recordTrigger("removeLiq", true, detail);
+                    console.log(`⚠️ REMOVE LIQUIDITY EXIT: ${detail}`);
+                    logHoldSummary("remove liquidity");
                     return { state: s, exitReason: "remove liquidity" };
                 }
                 if (CONFIG.HOLD_CREATOR_AMM_BURST_DETECT_ENABLED && removeLiq.creatorAmmTouch) {
@@ -198,11 +247,9 @@ export async function waitForExitStateWithLiquidityStop(
                         creatorAmmTouchTimesSec.shift();
                     }
                     if (creatorAmmTouchTimesSec.length >= minTxs) {
-                        console.log(
-                            `⚠️ CREATOR AMM BURST EXIT: ` +
-                            `${creatorAmmTouchTimesSec.length} tx in ${windowSec}s ` +
-                            `(${shortSig(removeLiq.signature || "-")})`
-                        );
+                        recordTrigger("creatorAmmBurst", true, `${creatorAmmTouchTimesSec.length}tx/${windowSec}s`);
+                        console.log(`⚠️ CREATOR AMM BURST EXIT: ${creatorAmmTouchTimesSec.length}tx in ${windowSec}s (${shortSig(removeLiq.signature||"-")})`);
+                        logHoldSummary("creator amm burst");
                         return { state: s, exitReason: "creator amm burst" };
                     }
                 }
@@ -250,8 +297,53 @@ export async function waitForExitStateWithLiquidityStop(
                         stageLog(logPrefix, "CRISK", `transient error during hold recheck (${creatorRisk.reason || "rate limited"})`);
                         continue;
                     }
+                    recordTrigger("creatorRiskRecheck", true, creatorRisk.reason || "unknown");
                     console.log(`⚠️ CREATOR RISK EXIT: ${creatorRisk.reason}`);
+                    logHoldSummary(`creator risk: ${creatorRisk.reason || "unknown"}`);
                     return { state: s, exitReason: `creator risk: ${creatorRisk.reason || "unknown"}` };
+                }
+            }
+
+            if (
+                CONFIG.HOLD_HARD_STOP_LOSS_EXIT_ENABLED &&
+                elapsedBeforeStartMs + (Date.now() - startedAtMs) >= Math.max(0, CONFIG.HOLD_HARD_STOP_LOSS_MIN_HOLD_MS) &&
+                Date.now() - lastHardStopLossCheckAtMs >= scaledInterval(CONFIG.HOLD_HARD_STOP_LOSS_CHECK_INTERVAL_MS)
+            ) {
+                lastHardStopLossCheckAtMs = Date.now();
+                const currentExitQuoteSol = getExitQuoteSolFromState(s, tokenMint, tokenOutAtomic);
+                if (currentExitQuoteSol !== null && currentExitQuoteSol > 0) {
+                    const currentPnlPct = ((currentExitQuoteSol - CONFIG.TRADE_AMOUNT_SOL) / CONFIG.TRADE_AMOUNT_SOL) * 100;
+                    const hardStopLossPct = Math.abs(CONFIG.HOLD_HARD_STOP_LOSS_PCT);
+                    if (currentPnlPct <= -hardStopLossPct) {
+                        // --- Profit floor intercept for armed winners ---
+                        // If the trade was previously armed (peak exceeded arm threshold),
+                        // exit with profit floor instead of hard stop loss.
+                        // This prevents fast crashes from bypassing the profit floor check
+                        // which runs later in the winner management block.
+                        const peakPnlPctHsl = ((peakExitQuoteSol - CONFIG.TRADE_AMOUNT_SOL) / CONFIG.TRADE_AMOUNT_SOL) * 100;
+                        const minPeakSolHsl = Math.max(0, activeWinnerProfile.minPeakSol);
+                        if (
+                            activeWinnerProfile.enabled &&
+                            activeWinnerProfile.profitFloorPct > 0 &&
+                            peakExitQuoteSol >= minPeakSolHsl &&
+                            peakPnlPctHsl >= activeWinnerProfile.armPnlPct
+                        ) {
+                            recordTrigger("winnerProfitFloor", true, `peak=${peakExitQuoteSol.toFixed(6)}SOL(${peakPnlPctHsl.toFixed(2)}%) cur=${currentExitQuoteSol.toFixed(6)}SOL(${currentPnlPct.toFixed(2)}%) floor=${activeWinnerProfile.profitFloorPct.toFixed(2)}% [intercepted from hard stop]`);
+                            console.log(`⚠️ WINNER PROFIT FLOOR EXIT (intercepted at hard stop): peak ${peakExitQuoteSol.toFixed(6)} SOL (${peakPnlPctHsl.toFixed(2)}%) -> ${currentExitQuoteSol.toFixed(6)} SOL (${currentPnlPct.toFixed(2)}%), floor ${activeWinnerProfile.profitFloorPct.toFixed(2)}%`);
+                            logHoldSummary("winner profit floor");
+                            return { state: s, exitReason: "winner profit floor" };
+                        }
+                        recordTrigger(
+                            "hardStopLoss",
+                            true,
+                            `${currentExitQuoteSol.toFixed(6)}SOL(${currentPnlPct.toFixed(2)}%) <= -${hardStopLossPct.toFixed(2)}%`
+                        );
+                        console.log(
+                            `⚠️ HARD STOP LOSS EXIT: ${currentExitQuoteSol.toFixed(6)} SOL (${currentPnlPct.toFixed(2)}%) <= -${hardStopLossPct.toFixed(2)}%`
+                        );
+                        logHoldSummary("hard stop loss");
+                        return { state: s, exitReason: "hard stop loss" };
+                    }
                 }
             }
 
@@ -263,7 +355,10 @@ export async function waitForExitStateWithLiquidityStop(
                 lastWinnerCheckAtMs = Date.now();
                 const currentExitQuoteSol = getExitQuoteSolFromState(s, tokenMint, tokenOutAtomic);
                 if (currentExitQuoteSol !== null && currentExitQuoteSol > 0) {
-                    peakExitQuoteSol = Math.max(peakExitQuoteSol, currentExitQuoteSol);
+                    if (currentExitQuoteSol > peakExitQuoteSol) {
+                        peakExitQuoteSol = currentExitQuoteSol;
+                        peakAtMs = Date.now();
+                    }
                     const currentPnlPct = ((currentExitQuoteSol - CONFIG.TRADE_AMOUNT_SOL) / CONFIG.TRADE_AMOUNT_SOL) * 100;
                     const peakPnlPct = ((peakExitQuoteSol - CONFIG.TRADE_AMOUNT_SOL) / CONFIG.TRADE_AMOUNT_SOL) * 100;
                     const drawdownFromPeakPct =
@@ -275,10 +370,9 @@ export async function waitForExitStateWithLiquidityStop(
                         activeWinnerProfile.hardTakeProfitPct > 0 &&
                         currentPnlPct >= activeWinnerProfile.hardTakeProfitPct
                     ) {
-                        console.log(
-                            `⚠️ WINNER TAKE PROFIT EXIT: ` +
-                            `${currentExitQuoteSol.toFixed(6)} SOL (${currentPnlPct.toFixed(2)}%)`
-                        );
+                        recordTrigger("winnerTakeProfit", true, `${currentExitQuoteSol.toFixed(6)}SOL(${currentPnlPct.toFixed(2)}%)`);
+                        console.log(`⚠️ WINNER TAKE PROFIT EXIT: ${currentExitQuoteSol.toFixed(6)} SOL (${currentPnlPct.toFixed(2)}%)`);
+                        logHoldSummary("winner take profit");
                         return { state: s, exitReason: "winner take profit" };
                     }
                     if (
@@ -286,14 +380,48 @@ export async function waitForExitStateWithLiquidityStop(
                         peakPnlPct >= activeWinnerProfile.armPnlPct &&
                         drawdownFromPeakPct >= Math.abs(activeWinnerProfile.trailingDropPct)
                     ) {
-                        console.log(
-                            `⚠️ WINNER TRAILING EXIT: ` +
-                            `peak ${peakExitQuoteSol.toFixed(6)} SOL (${peakPnlPct.toFixed(2)}%) -> ` +
-                            `${currentExitQuoteSol.toFixed(6)} SOL (${currentPnlPct.toFixed(2)}%), ` +
-                            `drawdown ${drawdownFromPeakPct.toFixed(2)}%`
-                        );
+                        recordTrigger("winnerTrailing", true, `peak=${peakExitQuoteSol.toFixed(6)}SOL(${peakPnlPct.toFixed(2)}%) cur=${currentExitQuoteSol.toFixed(6)}SOL(${currentPnlPct.toFixed(2)}%) dd=${drawdownFromPeakPct.toFixed(2)}%`);
+                        console.log(`⚠️ WINNER TRAILING EXIT: peak ${peakExitQuoteSol.toFixed(6)} SOL (${peakPnlPct.toFixed(2)}%) -> ${currentExitQuoteSol.toFixed(6)} SOL (${currentPnlPct.toFixed(2)}%), drawdown ${drawdownFromPeakPct.toFixed(2)}%`);
+                        logHoldSummary("winner trailing stop");
                         return { state: s, exitReason: "winner trailing stop" };
                     }
+                    if (
+                        activeWinnerProfile.profitFloorPct > 0 &&
+                        peakExitQuoteSol >= minPeakSol &&
+                        peakPnlPct >= activeWinnerProfile.armPnlPct &&
+                        currentPnlPct < activeWinnerProfile.profitFloorPct
+                    ) {
+                        recordTrigger("winnerProfitFloor", true, `peak=${peakExitQuoteSol.toFixed(6)}SOL(${peakPnlPct.toFixed(2)}%) cur=${currentExitQuoteSol.toFixed(6)}SOL(${currentPnlPct.toFixed(2)}%) floor=${activeWinnerProfile.profitFloorPct.toFixed(2)}%`);
+                        console.log(`⚠️ WINNER PROFIT FLOOR EXIT: peak ${peakExitQuoteSol.toFixed(6)} SOL (${peakPnlPct.toFixed(2)}%) -> ${currentExitQuoteSol.toFixed(6)} SOL (${currentPnlPct.toFixed(2)}%), below floor ${activeWinnerProfile.profitFloorPct.toFixed(2)}%`);
+                        logHoldSummary("winner profit floor");
+                        return { state: s, exitReason: "winner profit floor" };
+                    }
+                }
+            }
+
+            if (
+                CONFIG.HOLD_SINGLE_SWAP_SHOCK_EXIT_ENABLED &&
+                Date.now() - startedAtMs >= Math.max(0, CONFIG.HOLD_SINGLE_SWAP_SHOCK_MIN_HOLD_MS) &&
+                Date.now() - lastSingleSwapShockCheckAtMs >= scaledInterval(CONFIG.HOLD_SINGLE_SWAP_SHOCK_CHECK_INTERVAL_MS)
+            ) {
+                lastSingleSwapShockCheckAtMs = Date.now();
+                const currentExitQuoteSol = getExitQuoteSolFromState(s, tokenMint, tokenOutAtomic);
+                if (
+                    previousExitQuoteSol !== null &&
+                    previousExitQuoteSol > 0 &&
+                    currentExitQuoteSol !== null &&
+                    Number.isFinite(currentExitQuoteSol)
+                ) {
+                    const dropPct = ((previousExitQuoteSol - currentExitQuoteSol) / previousExitQuoteSol) * 100;
+                    if (dropPct >= Math.abs(CONFIG.HOLD_SINGLE_SWAP_SHOCK_DROP_PCT)) {
+                        recordTrigger("singleSwapShock", true, `${previousExitQuoteSol.toFixed(6)}->${currentExitQuoteSol.toFixed(6)} drop=${dropPct.toFixed(2)}%`);
+                        console.log(`⚠️ SINGLE SWAP SHOCK EXIT: ${previousExitQuoteSol.toFixed(6)} -> ${currentExitQuoteSol.toFixed(6)} SOL (drop ${dropPct.toFixed(2)}%)`);
+                        logHoldSummary("single swap shock");
+                        return { state: s, exitReason: "single swap shock" };
+                    }
+                }
+                if (currentExitQuoteSol !== null && Number.isFinite(currentExitQuoteSol) && currentExitQuoteSol > 0) {
+                    previousExitQuoteSol = currentExitQuoteSol;
                 }
             }
 
@@ -312,11 +440,9 @@ export async function waitForExitStateWithLiquidityStop(
                     const dropTriggered = dropPct >= Math.abs(CONFIG.HOLD_SELL_QUOTE_COLLAPSE_DROP_PCT);
                     const floorTriggered = currentExitQuoteSol <= minExitSol;
                     if (dropTriggered || floorTriggered) {
-                        console.log(
-                            `⚠️ SELL QUOTE COLLAPSE EXIT: ` +
-                            `${baselineExitQuoteSol.toFixed(6)} -> ${currentExitQuoteSol.toFixed(6)} SOL ` +
-                            `(drop ${dropPct.toFixed(2)}%, floor ${minExitSol.toFixed(6)} SOL)`
-                        );
+                        recordTrigger("sellQuoteCollapse", true, `${baselineExitQuoteSol.toFixed(6)}->${currentExitQuoteSol.toFixed(6)} drop=${dropPct.toFixed(2)}%`);
+                        console.log(`⚠️ SELL QUOTE COLLAPSE EXIT: ${baselineExitQuoteSol.toFixed(6)} -> ${currentExitQuoteSol.toFixed(6)} SOL (drop ${dropPct.toFixed(2)}%, floor ${minExitSol.toFixed(6)} SOL)`);
+                        logHoldSummary("sell quote collapse");
                         return { state: s, exitReason: "sell quote collapse" };
                     }
                 }
@@ -359,15 +485,11 @@ export async function waitForExitStateWithLiquidityStop(
                     }
 
                     if (criticalTriggered || longTriggered) {
-                        const windowMs = criticalTriggered
-                            ? CONFIG.HOLD_POOL_CHURN_WINDOW_CRITICAL_MS
-                            : CONFIG.HOLD_POOL_CHURN_WINDOW_LONG_MS;
+                        const windowMs = criticalTriggered ? CONFIG.HOLD_POOL_CHURN_WINDOW_CRITICAL_MS : CONFIG.HOLD_POOL_CHURN_WINDOW_LONG_MS;
                         const txCount = criticalTriggered ? churn.criticalCount : churn.longCount;
-                        console.log(
-                            `⚠️ POOL CHURN EXIT: ${txCount} tx in ${(windowMs / 1000).toFixed(0)}s ` +
-                            `(sell_quote ${baselineExitQuoteSol.toFixed(6)} -> ${currentExitQuoteSol.toFixed(6)} SOL, ` +
-                            `${formatQuoteMovePct(baselineExitQuoteSol, currentExitQuoteSol)})`
-                        );
+                        recordTrigger("poolChurn", true, `${txCount}tx/${(windowMs/1000).toFixed(0)}s`);
+                        console.log(`⚠️ POOL CHURN EXIT: ${txCount} tx in ${(windowMs/1000).toFixed(0)}s (quote ${baselineExitQuoteSol.toFixed(6)}->${currentExitQuoteSol.toFixed(6)})`);
+                        logHoldSummary("pool churn");
                         return { state: s, exitReason: "pool churn" };
                     }
                 }
@@ -388,11 +510,9 @@ export async function waitForExitStateWithLiquidityStop(
                     createPoolBlockTime,
                 );
                 if (creatorOutbound.detected) {
-                    console.log(
-                        `⚠️ CREATOR OUTBOUND EXIT: ` +
-                        `${shortSig(creatorOutbound.signature || "-")} ` +
-                        `(${(creatorOutbound.outboundSol || 0).toFixed(3)} SOL -> ${shortSig(creatorOutbound.destination || "-")})`
-                    );
+                    recordTrigger("creatorOutbound", true, `${(creatorOutbound.outboundSol||0).toFixed(3)}SOL->${shortSig(creatorOutbound.destination||"-")}`);
+                    console.log(`⚠️ CREATOR OUTBOUND EXIT: ${shortSig(creatorOutbound.signature||"-")} (${(creatorOutbound.outboundSol||0).toFixed(3)}SOL->${shortSig(creatorOutbound.destination||"-")})`);
+                    logHoldSummary("creator outbound");
                     return { state: s, exitReason: "creator outbound" };
                 }
             }
@@ -422,11 +542,9 @@ export async function waitForExitStateWithLiquidityStop(
                 }
                 const burst = deps.classifyHoldCreatorCloseAccountBurst(creatorCloseAccountEvents);
                 if (burst.detected) {
-                    console.log(
-                        `⚠️ CREATOR CLOSE ACCOUNT BURST EXIT: ` +
-                        `${burst.txCount} tx / ${burst.totalCloseCount} closes in ${windowSec}s ` +
-                        `(sig=${shortSig(burst.latestSignature)})`
-                    );
+                    recordTrigger("creatorCloseAccount", true, `${burst.txCount}tx/${burst.totalCloseCount}closes/${windowSec}s`);
+                    console.log(`⚠️ CREATOR CLOSE ACCOUNT BURST EXIT: ${burst.txCount}tx/${burst.totalCloseCount}closes in ${windowSec}s (sig=${shortSig(burst.latestSignature)})`);
+                    logHoldSummary("creator close-account burst");
                     return { state: s, exitReason: "creator close-account burst" };
                 }
             }
@@ -458,12 +576,9 @@ export async function waitForExitStateWithLiquidityStop(
                 const spray = deps.classifyHoldCreatorOutboundSpray(creatorOutboundSprayEvents);
                 if (spray.detected) {
                     const latestSig = creatorOutboundSprayEvents[creatorOutboundSprayEvents.length - 1]?.signature || "-";
-                    console.log(
-                        `⚠️ CREATOR OUTBOUND SPRAY EXIT: ` +
-                        `${spray.transfers} transfers to ${spray.destinations} destinations in ${windowSec}s ` +
-                        `(median ${spray.medianSol.toFixed(3)} SOL, rel_std ${spray.relStdDev.toFixed(2)}, ` +
-                        `ratio ${spray.amountRatio.toFixed(2)}, sig=${shortSig(latestSig)})`
-                    );
+                    recordTrigger("creatorOutboundSpray", true, `${spray.transfers}transfers/${spray.destinations}dest/${windowSec}s`);
+                    console.log(`⚠️ CREATOR OUTBOUND SPRAY EXIT: ${spray.transfers}transfers->${spray.destinations}dest in ${windowSec}s (median=${spray.medianSol.toFixed(3)}SOL)`);
+                    logHoldSummary("creator outbound spray");
                     return { state: s, exitReason: "creator outbound spray" };
                 }
             }
@@ -494,13 +609,9 @@ export async function waitForExitStateWithLiquidityStop(
                 }
                 const spray = deps.classifyHoldCreatorInboundSpray(creatorInboundSprayEvents);
                 if (spray.detected) {
-                    const latestSig = creatorInboundSprayEvents[creatorInboundSprayEvents.length - 1]?.signature || "-";
-                    console.log(
-                        `⚠️ CREATOR INBOUND SPRAY EXIT: ` +
-                        `${spray.transfers} transfers from ${spray.sources} sources in ${windowSec}s ` +
-                        `(median ${spray.medianSol.toFixed(3)} SOL, rel_std ${spray.relStdDev.toFixed(2)}, ` +
-                        `ratio ${spray.amountRatio.toFixed(2)}, sig=${shortSig(latestSig)})`
-                    );
+                    recordTrigger("creatorInboundSpray", true, `${spray.transfers}transfers/${spray.sources}sources/${windowSec}s`);
+                    console.log(`⚠️ CREATOR INBOUND SPRAY EXIT: ${spray.transfers}transfers<-${spray.sources}sources in ${windowSec}s (median=${spray.medianSol.toFixed(3)}SOL)`);
+                    logHoldSummary("creator inbound spray");
                     return { state: s, exitReason: "creator inbound spray" };
                 }
             }
@@ -509,5 +620,7 @@ export async function waitForExitStateWithLiquidityStop(
         await new Promise((r) => setTimeout(r, pollIntervalMs));
     }
 
+    recordTrigger("deadline", true, "hold timeout reached");
+    logHoldSummary("hold timeout");
     return { state: latestState || await fetchStateWithRetry(), exitReason: "hold timeout" };
 }
