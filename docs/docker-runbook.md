@@ -15,7 +15,7 @@ Il bot e un **processo supervisore** che fa spawn di processi figli, uno per poo
 ## Avvio
 
 ```bash
-cp .env.example .env        # riempire almeno SVS_UNSTAKED_RPC
+cp .env.example .env        # riempire SVS_UNSTAKED_RPC e SVS_UNSTAKED_WS
 docker compose up -d --build
 docker compose logs -f sniper
 ```
@@ -68,3 +68,46 @@ docker compose up -d
 - Il container gira come utente `node`? No: gira come root. Se il deploy e su una macchina condivisa,
   aggiungere `user: node` in compose e sistemare i permessi dei bind mount.
 - Per una VPS: `docker compose up -d` e sufficiente, non serve altro orchestratore.
+
+
+## Endpoint RPC: HTTP e WebSocket vanno separati
+
+`.env` ha due variabili invece di una:
+
+```bash
+SVS_UNSTAKED_RPC=https://solana-rpc.publicnode.com    # letture HTTP
+SVS_UNSTAKED_WS=wss://api.mainnet-beta.solana.com     # subscription
+```
+
+Omettere `SVS_UNSTAKED_WS` e lecito: il WebSocket viene derivato da `SVS_UNSTAKED_RPC`, che e il
+comportamento precedente.
+
+**Ma per questa configurazione servono entrambe.** Il bot ascolta tre program e publicnode, pur
+reggendo 71 req/s in HTTP, **accetta la subscription su Meteora DAMM v2 e non consegna mai niente**:
+0 eventi in 45s, contro 6.026 su `api.mainnet-beta.solana.com` nella stessa finestra e con pumpswap
+e ray_v4 che arrivavano normalmente sulla stessa connessione. Non produce errori: quel DEX
+sparirebbe in silenzio. Al contrario mainnet-beta consegna tutto ma regge ~1,1 req/s in HTTP, che
+non basta nemmeno ai poll di hold.
+
+Da qui la divisione: mainnet-beta per il WebSocket (una connessione, nessun rate limit rilevante),
+publicnode per le letture.
+
+Prima di cambiare provider, verificare **entrambi**:
+
+```bash
+SVS_UNSTAKED_RPC="https://..." SVS_UNSTAKED_WS="wss://..." node scripts/rpc-smoke-test.js
+```
+
+La fase 2 sottoscrive tutti i program registrati e segnala quelli che restano a zero log.
+
+## Verificare gli adapter DEX prima di una sessione
+
+```bash
+node scripts/dex-adapter-live-check.js 240            # tutti gli adapter
+node scripts/dex-adapter-live-check.js 900 ray_v4     # uno solo, per i DEX a bassa frequenza
+```
+
+Per ogni pool creata sulla rete esegue il percorso completo che userebbe il bot e stampa mint,
+orientamento, liquidita e un round trip di 0,01 SOL. **Lo scarto del round trip deve essere circa il
+doppio della fee di swap.** Un pool quasi vuoto dara scarti enormi (−80%, −99%) ed e corretto che sia
+cosi: e il price impact reale, ed e la ragione per cui la soglia di liquidita esiste.

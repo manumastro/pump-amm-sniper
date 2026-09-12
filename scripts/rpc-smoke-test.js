@@ -3,30 +3,47 @@
  * Verifica se un endpoint RPC regge questo bot, prima di metterlo in produzione.
  *
  * Il bot ha due profili di carico molto diversi:
- *   - una subscription logsSubscribe permanente sul program PumpSwap
+ *   - una subscription logsSubscribe permanente per ogni DEX registrato
  *   - raffiche di getParsedTransaction/getSignaturesForAddress durante i deep
  *     check creator-risk, piu un poll di stato ogni 200ms per ogni hold attivo
  *     (con MAX_CONCURRENT_OPERATIONS=2 fanno ~10 req/s di picco solo per l'hold)
  *
  * Un free tier a 10 RPS non ha margine: satura sull'hold e va in 429 sui deep check.
  *
+ * ⚠️ Un endpoint puo consegnare i log di un program e NON quelli di un altro, senza
+ * dare errore: la subscription viene accettata e non arriva mai niente. Succede davvero
+ * (publicnode, program Meteora DAMM v2, 2026-09-12), ed e per questo che la fase 2
+ * prova TUTTI i program registrati e non solo il primo. In una sessione lunga un buco
+ * del genere si vede solo come "quel DEX non produce mai eventi".
+ *
  * Uso:  SVS_UNSTAKED_RPC="https://..." node scripts/rpc-smoke-test.js
+ *       SVS_UNSTAKED_WS="wss://..."    per testare un WS separato dall'HTTP
  */
 const { Connection, PublicKey } = require('@solana/web3.js');
+// senza variabili esplicite si testa l'endpoint attualmente in uso
+try { require('dotenv').config(); } catch {}
 
 const RPC = process.env.SVS_UNSTAKED_RPC;
+const WS = process.env.SVS_UNSTAKED_WS;
 const PROGRAM = 'pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA';
+const PROGRAMS = {
+  pumpswap: 'pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA',
+  ray_v4: '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8',
+  meteora_damm_v2: 'cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG',
+};
 const WS_WAIT_MS = Number(process.env.WS_WAIT_MS || 90000);
 const BURST = Number(process.env.BURST || 60);
 
-if (!RPC) { console.error('manca SVS_UNSTAKED_RPC'); process.exit(1); }
+if (!RPC) { console.error('manca SVS_UNSTAKED_RPC (ne in ambiente ne in .env)'); process.exit(1); }
 
 const ms = () => Date.now();
 function pct(arr, p) { const s = [...arr].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor(s.length * p))]; }
 
 (async () => {
-  console.log('endpoint:', RPC.replace(/api-key=[^&]+/, 'api-key=***'));
-  const conn = new Connection(RPC, { commitment: 'confirmed' });
+  const mask = (u) => u.replace(/api-key=[^&]+/, 'api-key=***');
+  console.log('endpoint:', mask(RPC));
+  if (WS) console.log('websocket:', mask(WS));
+  const conn = new Connection(RPC, WS ? { commitment: 'confirmed', wsEndpoint: WS } : { commitment: 'confirmed' });
 
   // 1. l'endpoint risponde?
   try {
@@ -38,29 +55,38 @@ function pct(arr, p) { const s = [...arr].sort((a, b) => a - b); return s[Math.m
     console.log('\nInutilizzabile.'); process.exit(1);
   }
 
-  // 2. logsSubscribe: senza questo il bot non vede nulla. E' il primo motivo
-  //    per cui un endpoint "gratis" va scartato: molti non espongono il WS.
-  console.log(`\n[2] logsSubscribe    in ascolto su ${PROGRAM.slice(0, 8)}... (max ${WS_WAIT_MS / 1000}s)`);
-  let subId = null, logCount = 0, createPoolCount = 0;
-  const firstLogAt = await new Promise((resolve) => {
-    const timer = setTimeout(() => resolve(null), WS_WAIT_MS);
+  // 2. logsSubscribe su OGNI program registrato: senza questo il bot non vede nulla.
+  //    Un program che riceve 0 log qui e un DEX che il bot non vedrebbe mai.
+  const WINDOW_MS = 45000;
+  console.log(`\n[2] logsSubscribe    ${Object.keys(PROGRAMS).length} program in ascolto per ${WINDOW_MS / 1000}s`);
+  const counters = {};
+  const subs = [];
+  for (const [name, program] of Object.entries(PROGRAMS)) {
+    counters[name] = { logs: 0, createPool: 0, firstAt: null };
     const t0 = ms();
     try {
-      subId = conn.onLogs(new PublicKey(PROGRAM), (l) => {
-        logCount++;
-        if (l.logs.some((x) => /create_?pool/i.test(x))) createPoolCount++;
-        if (logCount === 1) { clearTimeout(timer); resolve(ms() - t0); }
-      }, 'confirmed');
-    } catch (e) { clearTimeout(timer); resolve(null); }
-  });
-  if (firstLogAt === null) {
-    console.log('    NESSUN LOG ricevuto: WS non supportato, filtrato, o program senza traffico.');
-  } else {
-    console.log(`    primo log dopo ${firstLogAt}ms`);
-    await new Promise((r) => setTimeout(r, 20000));
-    console.log(`    in 20s: ${logCount} log, di cui ${createPoolCount} create_pool`);
+      subs.push(await conn.onLogs(new PublicKey(program), (l) => {
+        const c = counters[name];
+        c.logs++;
+        if (c.firstAt === null) c.firstAt = ms() - t0;
+        if (l.logs.some((x) => /create_?pool|initialize2|Instruction: Initialize(Customizable)?Pool/i.test(x))) c.createPool++;
+      }, 'confirmed'));
+    } catch (e) {
+      console.log(`    ${name}: subscribe FALLITO: ${e.message.slice(0, 80)}`);
+    }
   }
-  if (subId !== null) { try { await conn.removeOnLogsListener(subId); } catch {} }
+  await new Promise((r) => setTimeout(r, WINDOW_MS));
+  const silent = [];
+  for (const [name, c] of Object.entries(counters)) {
+    if (c.logs === 0) {
+      silent.push(name);
+      console.log(`    ${name.padEnd(16)} NESSUN LOG in ${WINDOW_MS / 1000}s`);
+    } else {
+      console.log(`    ${name.padEnd(16)} ${String(c.logs).padStart(6)} log  (primo dopo ${c.firstAt}ms, ${c.createPool} creazioni)`);
+    }
+  }
+  const firstLogAt = counters.pumpswap.firstAt;
+  for (const id of subs) { try { await conn.removeOnLogsListener(id); } catch {} }
 
   // 3. raffica: simula i deep check creator-risk. Qui esce il vero limite.
   console.log(`\n[3] raffica ${BURST} getSignaturesForAddress in parallelo`);
@@ -83,6 +109,10 @@ function pct(arr, p) { const s = [...arr].sort((a, b) => a - b); return s[Math.m
   console.log('\n--- verdetto ---');
   const problems = [];
   if (firstLogAt === null) problems.push('logsSubscribe non funziona: il bot non riceverebbe eventi');
+  if (silent.length) problems.push(
+    `nessun log per ${silent.join(', ')}: l'endpoint accetta la subscription ma non consegna niente. `
+    + 'Quei DEX sarebbero invisibili al bot, in silenzio. Usare SVS_UNSTAKED_WS per mettere il '
+    + 'WebSocket su un provider diverso da quello HTTP.');
   if (rateLimited > 0) problems.push(`${rateLimited}/${BURST} richieste rate-limited: i deep check creator-risk andrebbero in 429`);
   if (ok && pct(lat, 0.95) > 2000) problems.push(`p95 ${pct(lat, 0.95)}ms: troppo lento per i poll di hold a 200ms`);
   if (!problems.length) console.log('Nessun problema rilevato su questo campione. Serve comunque ~10 req/s sostenuti con 2 worker attivi.');

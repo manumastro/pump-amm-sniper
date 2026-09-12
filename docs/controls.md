@@ -1119,3 +1119,112 @@ Il punto di ingresso (`t=0`) e il punto di uscita entrano sempre. A cap raggiunt
 **Impatto sui report:** `logs/paper-report.json` cresce (stima ~5-10 MB in piu su una sessione da ~300 trade). Il daemon non richiede modifiche: `pricePath` viene assorbito come parte dell'oggetto `holdLog`.
 
 **Perche serve.** Da qui in avanti ogni sessione paper diventa un dataset ri-simulabile all'infinito: si possono testare offline trailing diversi, floor diversi, exit anticipate e TP condizionati al rischio, senza rimettere il bot in paper per 72h a ogni ipotesi.
+
+---
+
+## 20. Soglia di liquidita configurabile e superficie multi-DEX
+
+**Aggiunto il 2026-09-12.**
+
+### Cosa cambia
+
+`MIN_POOL_LIQUIDITY_SOL` e `MIN_POOL_LIQUIDITY_USD` erano costanti nel codice (20 SOL /
+10.000 USD). Ora si leggono da env, con gli stessi valori come default:
+
+```bash
+MIN_POOL_LIQUIDITY_SOL=20      # default, invariato
+MIN_POOL_LIQUIDITY_USD=10000   # default, invariato
+```
+
+**Nessun comportamento cambia se le env non sono impostate.** La soglia resta quella con cui
+sono stati prodotti i numeri di aprile.
+
+### Perche
+
+Con tre DEX attivi (`pumpswap`, `ray_v4`, `meteora_damm_v2`) la soglia non descrive piu una
+popolazione sola: i pool nascono con profondita diverse a seconda del DEX. Serviva poterla
+muovere per una sessione senza ricompilare e senza toccare il codice.
+
+### Come leggere i risultati dopo un cambio
+
+Ogni trade logga `entrySolLiquidity` nell'HOLDLOG (vedi sezione 19), quindi una sessione con
+soglia bassa **resta segmentabile per fascia di liquidita a posteriori**: si puo ricostruire
+quale sarebbe stato il PnL a 20 SOL, a 10, a 5, dalla stessa sessione. Abbassare la soglia
+aggiunge dati, non li sostituisce.
+
+⚠️ **Ma non e gratis.** Vale la lezione della sezione su `cp=1` (whitelist unique-counterparties,
+2026-04-01): allentare un filtro pre-entry ha gia prodotto 43,6% WR e 20 rug su 39 trade. Un pool
+con poca liquidita e piu facile da svuotare e piu facile da manipolare, e il crash da
+`remove liquidity` e atomico. Una sessione a soglia bassa va letta come **raccolta dati**, non
+come configurazione candidata, finche i numeri per fascia non dicono il contrario.
+
+### Il filtro di liquidita e per DEX, ma i controlli no
+
+I 30 controlli creator-risk non guardano il DEX: guardano il wallet del creator, i suoi funder,
+la dispersione e il cashout. Restano validi identici su `ray_v4` e `meteora_damm_v2`, che sono
+AMM con riserve reali come pumpswap.
+
+**Non si estendono invece ai launchpad su bonding curve** (`pump`, `meteora_virtual_curve`,
+`ray_launchpad`). La ragione non e prudenza, e meccanica:
+
+| Controllo | Su bonding curve |
+|---|---|
+| liquidita minima | non esiste liquidita alla creazione |
+| top-10 holder | alla creazione non detiene nessuno |
+| dev holdings | idem |
+| exit su `remove liquidity` | impossibile: i fondi stanno in un PDA fino al diploma |
+
+`remove liquidity` e 25 dei 26 rug della sessione di aprile. Su bonding curve il rug e il dump
+del dev, che e un trigger che questo bot non ha. Sono una strategia separata, non un adapter.
+
+---
+
+## 21. Correzione: meta dei pool PumpSwap erano invisibili al filtro di liquidita
+
+**Trovato e corretto il 2026-09-12. Non e una modifica di soglia: e un bug.**
+
+### Il sintomo
+
+`getPoolOrientation()` leggeva il mint del lato quote da `state.quoteMint`. Quel campo **non
+esiste**: `swapSolanaState()` dell'SDK Pump espone `baseMint` in cima allo stato, ma il quote sta
+dentro `state.pool.quoteMint`. La lettura tornava sempre stringa vuota.
+
+Conseguenza su `hasWsol`:
+
+```
+hasWsol = (baseMint === WSOL) || (quoteMint === WSOL)
+                                  ^^^^^^^^^ sempre ""
+```
+
+Quindi `hasWsol` era vero **solo** per i pool con layout `base=WSOL`. Per i pool con layout
+`base=token, quote=WSOL` tornava falso, e a cascata:
+
+- `getSolLiquidityFromState()` → `null`
+- liquidita letta come non disponibile → sotto `MIN_POOL_LIQUIDITY_SOL`
+- pool scartato come "liquidita insufficiente"
+
+Entrambi i layout sono normali su PumpSwap. Nel campione live del 2026-09-12, 4 pool su 11 avevano
+il layout `base=token`. Uno di quelli scartati aveva **478 SOL** di liquidita.
+
+### Come si e visto
+
+Non dai log del bot: lo scarto sembrava un normale "sotto soglia". E emerso da
+`scripts/dex-adapter-live-check.js`, che stampa orientamento e mint accanto a ogni quote — il
+`quote=-` accanto a una liquidita `n/d` ha reso la cosa leggibile in una riga.
+
+**E la ragione per cui quello script esiste** ed e un passaggio obbligato per ogni nuovo adapter:
+un errore di orientamento non solleva eccezioni, si traveste da pool scartato o da PnL plausibile.
+
+### Effetto sui numeri storici
+
+I risultati di aprile (387 outcome, +0,645 SOL) sono stati prodotti con questo bug attivo. Restano
+validi come misura di **cosa ha fatto il bot**, ma il bot vedeva meno opportunita di quante ce ne
+fossero. Non c'e motivo di pensare che i pool scartati fossero peggiori: venivano scartati per il
+loro layout, non per una loro proprieta. La prossima sessione paper e quindi la prima su
+popolazione completa, e **il volume di trade non e confrontabile con quello di aprile**.
+
+### Cosa e cambiato nel codice
+
+`poolMints()` in `src/services/dex/pumpswap.ts` legge da entrambe le posizioni
+(`state.baseMint ?? state.pool.baseMint`, `state.quoteMint ?? state.pool.quoteMint`).
+Nessuna soglia toccata.

@@ -3,37 +3,37 @@
  *
  * La logica di prezzo vive ora in src/services/dex/ dietro l'interfaccia DexAdapter.
  * Questo file resta come punto di ingresso per i ~40 call site esistenti e instrada
- * tutto sull'adapter di default (PumpSwap). Quando la propagazione del program per
- * evento sara completa, i chiamanti prenderanno l'adapter dal registro e questa
- * facciata potra sparire.
+ * tutto sull'adapter del DEX su cui gira il processo corrente (getActiveAdapter),
+ * non su quello di default: in un worker Raydium o Meteora l'adapter di default
+ * darebbe numeri plausibili e sbagliati invece di un errore.
  */
 import BN from "bn.js";
-import { defaultAdapter } from "../dex";
+import { getActiveAdapter } from "../dex";
 
 export { WSOL } from "../dex";
 
 export function describePoolMints(state: any, tokenMint: string): string {
-    return defaultAdapter.describePoolMints(state, tokenMint);
+    return getActiveAdapter().describePoolMints(state, tokenMint);
 }
 
 export function getPoolOrientation(state: any, tokenMint: string) {
-    return defaultAdapter.getOrientation(state, tokenMint);
+    return getActiveAdapter().getOrientation(state, tokenMint);
 }
 
 export function getSolLiquidityFromState(state: any, tokenMint: string): number | null {
-    return defaultAdapter.getSolLiquidity(state, tokenMint);
+    return getActiveAdapter().getSolLiquidity(state, tokenMint);
 }
 
 export function getSpotSolPerTokenFromState(state: any, tokenMint: string, tokenDecimals: number): number | null {
-    return defaultAdapter.getSpotSolPerToken(state, tokenMint, tokenDecimals);
+    return getActiveAdapter().getSpotSolPerToken(state, tokenMint, tokenDecimals);
 }
 
 export function getEntryTokenOutFromState(state: any, tokenMint: string, solLamports: BN): BN | null {
-    return defaultAdapter.getEntryTokenOut(state, tokenMint, solLamports);
+    return getActiveAdapter().getEntryTokenOut(state, tokenMint, solLamports);
 }
 
 export function getExitQuoteSolFromState(state: any, tokenMint: string, tokenOutAtomic: BN): number | null {
-    return defaultAdapter.getExitQuoteSol(state, tokenMint, tokenOutAtomic);
+    return getActiveAdapter().getExitQuoteSol(state, tokenMint, tokenOutAtomic);
 }
 
 /** usata dai report per il prezzo spot grezzo, senza passare dall'orientamento */

@@ -11,8 +11,11 @@ export const SILENCE_RPC_429_LOGS = process.env.SILENCE_RPC_429_LOGS !== "false"
 
 export const CONFIG = {
     TRADE_AMOUNT_SOL: 0.01,
-    MIN_POOL_LIQUIDITY_USD: 10000,
-    MIN_POOL_LIQUIDITY_SOL: 20,
+    MIN_POOL_LIQUIDITY_USD: Number(process.env.MIN_POOL_LIQUIDITY_USD || 10000),
+    // Soglia via env perche e la prima leva da muovere quando si aggiunge un DEX: i pool
+    // di ray_v4 e meteora_damm_v2 nascono con profondita diversa da quelli pumpswap.
+    // Ogni trade logga entrySolLiquidity, quindi i risultati restano segmentabili per fascia.
+    MIN_POOL_LIQUIDITY_SOL: Number(process.env.MIN_POOL_LIQUIDITY_SOL || 20),
     AUTO_SELL_DELAY_MS: Number(900000),
     HOLD_SUSPICIOUS_RELAY_SHORT_HOLD_ENABLED: true,
     HOLD_SUSPICIOUS_RELAY_SHORT_HOLD_MS: Number(15000),

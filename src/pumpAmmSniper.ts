@@ -3,13 +3,10 @@ import fs from "fs";
 import path from "path";
 import bs58 from "bs58";
 import { OnlinePumpAmmSdk, PumpAmmSdk, buyQuoteInput, sellBaseInput } from "@pump-fun/pump-swap-sdk";
-import { getAdapterForProgram, defaultAdapter, initAdapters, listMonitoredProgramIds } from "./services/dex";
+import { getActiveAdapter, initAdapters, listAdapters, listMonitoredProgramIds } from "./services/dex";
 
-// Il supervisore etichetta ogni dispatch con il program di provenienza
-// (WORKER_TASK_PROGRAM_ID). Il worker risolve qui l'adapter da usare per
-// tutta la sua vita: un worker analizza una pool sola, quindi un solo DEX.
-const ACTIVE_ADAPTER =
-    getAdapterForProgram(process.env.WORKER_TASK_PROGRAM_ID || "") || defaultAdapter;
+// L'adapter del DEX su cui gira questo processo, risolto da WORKER_TASK_PROGRAM_ID.
+const ACTIVE_ADAPTER = getActiveAdapter();
 import BN from "bn.js";
 import { AccountLayout, getMint, TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
 import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction, createCloseAccountInstruction } from "@solana/spl-token";
@@ -44,7 +41,10 @@ import { instructionAccountToBase58, instructionProgramIdToBase58, pubkeyToBase5
 patchConsoleWithTimestamp();
 
 // Program IDs
-const PUMPFUN_AMM_PROGRAM_ID = "pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA";
+// Il program dell'AMM su cui gira QUESTO worker. Serve a riconoscere "questa tx tocca
+// il nostro AMM" nei controlli creator-risk e nel rilevamento del primo trade: con piu
+// DEX attivi non puo piu essere una costante hardcoded.
+const PUMPFUN_AMM_PROGRAM_ID = ACTIVE_ADAPTER.programId;
 const WSOL = "So11111111111111111111111111111111111111112";
 
 // Runtime mode
@@ -232,19 +232,50 @@ function isRateLimitedMessage(message?: string): boolean {
 let onlineSdk: OnlinePumpAmmSdk;
 let offlineSdk: PumpAmmSdk;
 
+const DEFAULT_RPC = "https://api.mainnet-beta.solana.com";
+
+function rpcEndpoint(): string {
+    return process.env.SVS_UNSTAKED_RPC || DEFAULT_RPC;
+}
+
+/**
+ * Endpoint WebSocket, separabile da quello HTTP.
+ *
+ * I due profili di carico sono opposti: la subscription e una sola connessione che non
+ * consuma rate limit, mentre le letture HTTP sono raffiche da decine di req/s. Serve
+ * poterli mettere su provider diversi perche non tutti gli endpoint sono equivalenti sui
+ * due fronti: publicnode regge 71 req/s in HTTP ma il suo logsSubscribe **non consegna
+ * nulla** per il program Meteora DAMM v2 (misurato il 2026-09-12: 0 eventi in 45s contro
+ * i 6.026 dello stesso program su api.mainnet-beta.solana.com nella stessa finestra),
+ * mentre mainnet-beta consegna tutto ma regge solo 1,1 req/s.
+ *
+ * Senza SVS_UNSTAKED_WS il comportamento e quello di prima: WS derivato dall'HTTP.
+ */
+function wsEndpoint(): string | undefined {
+    const explicit = process.env.SVS_UNSTAKED_WS;
+    return explicit && explicit.trim() ? explicit.trim() : undefined;
+}
+
 function createRuntimeConnection() {
-    const rpcEndpoint = process.env.SVS_UNSTAKED_RPC || "https://api.mainnet-beta.solana.com";
-    return new Connection(rpcEndpoint, { commitment: "confirmed" });
+    const ws = wsEndpoint();
+    return new Connection(rpcEndpoint(), ws
+        ? { commitment: "confirmed", wsEndpoint: ws }
+        : { commitment: "confirmed" });
+}
+
+function describeEndpoint(url: string): string {
+    try {
+        const parsed = new URL(url);
+        return `${parsed.protocol}//${parsed.host}${parsed.pathname}`;
+    } catch {
+        return url;
+    }
 }
 
 function describeRpcEndpoint(): string {
-    const rpcEndpoint = process.env.SVS_UNSTAKED_RPC || "https://api.mainnet-beta.solana.com";
-    try {
-        const parsed = new URL(rpcEndpoint);
-        return `${parsed.protocol}//${parsed.host}${parsed.pathname}`;
-    } catch {
-        return rpcEndpoint;
-    }
+    const ws = wsEndpoint();
+    const http = describeEndpoint(rpcEndpoint());
+    return ws ? `${http}  (WS: ${describeEndpoint(ws)})` : http;
 }
 
 function initSdks(connection: Connection) {
@@ -284,75 +315,22 @@ async function handleNewPool(connection: Connection, signature: string) {
             return;
         }
 
-        // Extract pool address and token mint from transaction
-        // According to IDL: pool=0, global_config=1, creator=2, base_mint=3, quote_mint=4
+        // L'estrazione di pool/token/creator dipende dal DEX: la fa l'adapter.
         const accountKeys = tx.transaction.message.accountKeys;
-        let poolAddress: string | null = null;
-        let tokenMint: string | null = null;
+        stageLog(ctx, "TX", `accounts=${accountKeys.length} dex=${ACTIVE_ADAPTER.name}`);
 
-        // Debug: Log account keys
-        stageLog(ctx, "TX", `accounts=${accountKeys.length}`);
-
-        // Find the create_pool instruction within the transaction
-        let creatorAddress: string | null = null;
-        const instructions = tx.transaction.message.instructions;
-        let fallbackPoolAddress: string | null = null;
-        let fallbackTokenMint: string | null = null;
-        let fallbackCreatorAddress: string | null = null;
-        for (const ix of instructions) {
-            // Check if this instruction is to the Pump AMM program
-            const programId = instructionProgramIdToBase58(ix, accountKeys);
-            
-            if (programId === PUMPFUN_AMM_PROGRAM_ID) {
-                const ixAccounts = Array.isArray(ix.accounts) ? ix.accounts : [];
-                stageLog(ctx, "TX", `pump-amm instruction accounts=${ixAccounts.length}`);
-                // Extract accounts based on IDL order: pool=0, creator=2, base_mint=3, quote_mint=4
-                if (ixAccounts.length >= 5) {
-                    const candidatePool = instructionAccountToBase58(ixAccounts[0], accountKeys);
-                    const candidateCreator = instructionAccountToBase58(ixAccounts[2], accountKeys);
-                    const candidateBaseMint = instructionAccountToBase58(ixAccounts[3], accountKeys);
-                    const candidateQuoteMint = instructionAccountToBase58(ixAccounts[4], accountKeys);
-
-                    if (!fallbackPoolAddress && candidatePool) fallbackPoolAddress = candidatePool;
-                    if (!fallbackCreatorAddress && candidateCreator) fallbackCreatorAddress = candidateCreator;
-                    if (!fallbackTokenMint && candidateBaseMint && candidateBaseMint !== WSOL) fallbackTokenMint = candidateBaseMint;
-
-                    if (candidatePool && candidateBaseMint && candidateQuoteMint === WSOL) {
-                        poolAddress = candidatePool;
-                        tokenMint = candidateBaseMint;
-                        creatorAddress = candidateCreator;
-                        break;
-                    }
-                }
-            }
-        }
-
-        if (!poolAddress && fallbackPoolAddress) poolAddress = fallbackPoolAddress;
-        if (!tokenMint && fallbackTokenMint) tokenMint = fallbackTokenMint;
-        if (!creatorAddress && fallbackCreatorAddress) creatorAddress = fallbackCreatorAddress;
-        if (creatorAddress) {
-            stageLog(ctx, "CREATOR", creatorAddress);
-        }
-
-        // Fallback for tokenMint/pool if instructions didn't match (sometimes it's inner instructions)
-        if (!tokenMint || !poolAddress) {
-            stageLog(ctx, "TX", "fallback postTokenBalances");
-            const balances = tx.meta?.postTokenBalances || [];
-            // Token is usually the one that IS NOT WSOL
-            const tokenBalance = balances.find((b: any) => b.mint !== WSOL);
-            if (tokenBalance) {
-                tokenMint = tokenBalance.mint;
-                // Pool address is often the owner of the WSOL account in the transaction
-                const txSigner = pubkeyToBase58(tx.transaction.message.accountKeys[0]);
-                const poolBalance = balances.find((b: any) => b.mint === WSOL && b.owner !== txSigner);
-                if (poolBalance) poolAddress = poolBalance.owner;
-            }
-        }
-
-        if (!poolAddress || !tokenMint) {
+        const resolved = await ACTIVE_ADAPTER.resolvePoolFromCreateTx(tx);
+        if (!resolved) {
             console.log(`❌ Could not extract pool/token from TX. Skipping.`);
             finalStatus = "SKIP: pool/token unresolved";
             return;
+        }
+
+        const poolAddress: string = resolved.poolAddress;
+        const tokenMint: string = resolved.tokenMint;
+        let creatorAddress: string | null = resolved.creatorAddress;
+        if (creatorAddress) {
+            stageLog(ctx, "CREATOR", creatorAddress);
         }
 
         stageLog(ctx, "STEP 2/7", "resolve token/pool/creator");
@@ -3491,7 +3469,7 @@ const supervisorRuntime = createSupervisorRuntime({
     stageLog,
     onStartupLog: (workerCount) => {
         console.log("🎯 STARTING PUMP.FUN AMM SNIPER 🎯");
-        console.log(`Program: ${PUMPFUN_AMM_PROGRAM_ID}`);
+        console.log(`DEX: ${listAdapters().map((a) => `${a.name} (${a.programId})`).join(", ")}`);
         console.log(`Mode: ${MONITOR_ONLY ? "MONITOR_ONLY" : "TRADING"}`);
         console.log(`Wallet: ${walletKeypair ? walletKeypair.publicKey.toBase58() : "N/A (no private key loaded)"}`);
         console.log(`RPC: ${describeRpcEndpoint()}`);

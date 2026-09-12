@@ -100,19 +100,28 @@ binario con `WORKER_TASK_SIGNATURE` impostata. `MAX_CONCURRENT_OPERATIONS=2` slo
 
 ### Program monitorati
 
-La lista viene dal registro degli adapter in `src/services/dex/index.ts`. Oggi ce n'e uno:
+La lista viene dal registro degli adapter in `src/services/dex/index.ts`:
 
 ```
-pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA   // PumpSwap, AMM di Pump.fun
+pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA   // pumpswap        AMM di Pump.fun
+675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8   // ray_v4          Raydium AMM v4
+cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG    // meteora_damm_v2 Meteora CP-AMM
 ```
 
-La pipeline e gia multi-DEX: una subscription per adapter, il program viaggia fino al worker che
-risolve il proprio `ACTIVE_ADAPTER`. Aggiungerne uno = implementare `DexAdapter` + una riga nel
-registro. Vedi `docs/architecture.md` (DEX Layer).
+Una subscription per adapter, il program viaggia fino al worker che risolve il proprio
+`ACTIVE_ADAPTER`. Aggiungerne uno = implementare `DexAdapter` + una riga nel registro,
+**poi verificarlo contro la rete** con `node scripts/dex-adapter-live-check.js 180`.
+Vedi `docs/architecture.md` (DEX Layer).
 
-E il **14%** delle nuove pair Solana: il bot vede solo token gia diplomati dalla bonding curve.
-Il 65% delle creazioni che si vedono su gmgn sono lanci su bonding curve, senza pool e con
-`initial_liquidity` mediana 0. Dettagli e piano di espansione in `docs/expansion-sources-2026-09-12.md`.
+⚠️ **Nei worker non usare mai `defaultAdapter`: usare `getActiveAdapter()`.** Quotare un pool
+Raydium con la matematica di PumpSwap non solleva un errore, produce un PnL sbagliato.
+
+**I launchpad su bonding curve non sono un adapter.** `pump` (207 creazioni su 300 nel campione
+gmgn), `meteora_virtual_curve` e `ray_launchpad` non hanno pool ne liquidita alla creazione:
+filtro di liquidita, top-10 e dev-holdings sono ciechi, e il rug non avviene per
+`remove liquidity` (25 dei 26 rug di aprile) ma per dump del dev, trigger che il bot non ha.
+Sono una seconda strategia che condivide l'infrastruttura. Dettagli in
+`docs/expansion-sources-2026-09-12.md`.
 
 ## Deploy
 
@@ -135,32 +144,37 @@ tutti i `logs/paper-worker-*.log`.
 
 ### RPC
 
-Un solo env var, provider-agnostico: `SVS_UNSTAKED_RPC`.
+Due env var, entrambe provider-agnostiche:
 
-**Endpoint verificati** (con `scripts/rpc-smoke-test.js`, 2026-09-12):
+```bash
+SVS_UNSTAKED_RPC=https://solana-rpc.publicnode.com    # letture HTTP
+SVS_UNSTAKED_WS=wss://api.mainnet-beta.solana.com     # subscription (opzionale)
+```
 
-| Endpoint | logsSubscribe | Esito |
-|---|---|---|
-| `https://solana-rpc.publicnode.com` | si | **usato**, 71 req/s, 0 rate-limit, nessuna registrazione |
-| `https://api.mainnet-beta.solana.com` | si | 1,1 req/s effettivi: inutilizzabile |
-| Alchemy free | **no** | l'intera WebSocket API risponde "method not found": nessun metodo pubsub disponibile |
-| dRPC free | — | Solana non inclusa nel piano free |
+Senza `SVS_UNSTAKED_WS` il WebSocket viene derivato dall'HTTP, come prima.
 
-**Il requisito che scarta la maggior parte dei provider e `logsSubscribe`**, non il rate limit:
-il bot rileva le nuove pool esattamente da li. Verificare sempre prima di adottare un endpoint.
+**Perche separarli.** I due carichi sono opposti — una connessione permanente da un lato,
+raffiche da decine di req/s dall'altro — e nessun provider gratuito e buono su entrambi:
 
-Il bot e affamato di RPC. Due profili di carico:
-- `logsSubscribe` permanente sul program
-- raffiche di `getSignaturesForAddress`/`getParsedTransaction` per i deep check creator-risk,
-  piu un poll di stato ogni 200ms per ogni hold attivo
+| Endpoint | logsSubscribe | HTTP | Esito |
+|---|---|---|---|
+| `https://solana-rpc.publicnode.com` | parziale | 71 req/s, 0 rate-limit | **usato per HTTP** |
+| `wss://api.mainnet-beta.solana.com` | completo | 1,1 req/s | **usato per WS** |
+| Alchemy free | **no** | ok a basso ritmo | l'intera API pubsub risponde "method not found": il piano free espone solo HTTPS |
+| dRPC free | — | — | Solana non inclusa nel piano free |
 
-Con 2 worker in hold contemporaneo sono **~10 req/s sostenuti solo per l'hold**, prima dei deep check.
-Un free tier a 10 RPS (Helius free) satura e va in 429. E gia successo: il 2026-03-29 una chiave e
-stata bruciata da 444 resubscribe in 10 ore (WebSocket death spiral, poi risolto con un circuit breaker
-in `startLogHealthcheck()` che fa `process.exit(1)` dopo 5 resubscribe a vuoto).
+⚠️ **"parziale" significa che publicnode accetta la subscription e non consegna niente** per il
+program Meteora DAMM v2. Misurato il 2026-09-12: 0 eventi in 45s, contro 6.026 dello stesso program
+su mainnet-beta nella stessa finestra, mentre pumpswap e ray_v4 arrivavano regolarmente sulla stessa
+connessione. Nessun errore, nessun log: quel DEX sarebbe stato semplicemente invisibile.
+
+`getProgramAccounts` su publicnode risponde 403 (richiede un token), e anche
+`getMultipleAccountsInfo` con troppi account in una volta. Il bot non usa il primo, e il secondo
+passa da `getAccountsChunked()`. Non e un problema, ma spiega i 403 se compaiono.
 
 **Prima di adottare un endpoint, verificarlo:** `SVS_UNSTAKED_RPC="https://..." node scripts/rpc-smoke-test.js`.
-Controlla che logsSubscribe funzioni davvero, misura la latenza e trova la soglia di 429.
+La fase 2 prova **tutti** i program registrati, proprio per far emergere i buchi silenziosi come
+quello sopra; poi misura la latenza e trova la soglia di 429.
 
 ## Strumentazione dati
 

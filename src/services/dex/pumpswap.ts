@@ -2,7 +2,9 @@ import BN from "bn.js";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { OnlinePumpAmmSdk, buyQuoteInput, sellBaseInput } from "@pump-fun/pump-swap-sdk";
 import { CONFIG } from "../../app/config";
-import { DexAdapter, PoolOrientation, WSOL } from "./types";
+import { instructionAccountToBase58, pubkeyToBase58 } from "../../utils/pubkeys";
+import { instructionsForProgram } from "./txScan";
+import { DexAdapter, PoolOrientation, ResolvedPool, WSOL } from "./types";
 
 export const PUMPSWAP_PROGRAM_ID = "pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA";
 
@@ -15,6 +17,19 @@ export function initPumpSwapSdk(connection: Connection) {
 function toMintString(value: any): string {
     if (!value) return "";
     return value?.toBase58?.() || String(value);
+}
+
+/**
+ * swapSolanaState espone `baseMint` in cima ma **non** `quoteMint`: quello sta dentro
+ * `state.pool`. Leggendolo dal posto sbagliato risulta sempre vuoto, e il pool sembra
+ * senza lato WSOL ogni volta che il layout e base=token / quote=WSOL — che e la meta
+ * dei pool PumpSwap. Il bot li scartava come "liquidita non leggibile".
+ */
+function poolMints(state: any): { base: string; quote: string } {
+    return {
+        base: toMintString(state?.baseMint ?? state?.pool?.baseMint),
+        quote: toMintString(state?.quoteMint ?? state?.pool?.quoteMint),
+    };
 }
 
 function calcSpotSolPerToken(baseReserve: BN, quoteReserve: BN, tokenDecimals: number): number {
@@ -39,6 +54,25 @@ function quoteArgs(state: any) {
     };
 }
 
+/**
+ * Ultima spiaggia comune a tutti gli AMM: la creazione compare comunque nei token
+ * balance della tx. Il token e il mint che non e WSOL, il pool e il proprietario
+ * dell'account WSOL che non appartiene al signer.
+ */
+export function resolveFromTokenBalances(tx: any): ResolvedPool | null {
+    const balances = tx?.meta?.postTokenBalances || [];
+    const tokenBalance = balances.find((b: any) => b.mint !== WSOL);
+    if (!tokenBalance) return null;
+
+    const signer = pubkeyToBase58(tx?.transaction?.message?.accountKeys?.[0]);
+    const poolBalance = balances.find((b: any) => b.mint === WSOL && b.owner && b.owner !== signer);
+    if (!poolBalance) return null;
+
+    // creator lasciato nullo di proposito: il chiamante lo risolve dal pool on-chain,
+    // che e piu affidabile del signer della tx di creazione
+    return { poolAddress: poolBalance.owner, tokenMint: tokenBalance.mint, creatorAddress: null };
+}
+
 export const pumpSwapAdapter: DexAdapter = {
     name: "pumpswap",
     programId: PUMPSWAP_PROGRAM_ID,
@@ -53,20 +87,58 @@ export const pumpSwapAdapter: DexAdapter = {
         return await onlineSdk.swapSolanaState(poolAddress, user);
     },
 
+    /**
+     * Ordine account di create_pool secondo l'IDL Pump:
+     * pool=0, global_config=1, creator=2, base_mint=3, quote_mint=4.
+     *
+     * Il pool viene sempre confrontato con quello ricavato dai token balance della tx.
+     * Serve perche la creazione arriva spesso come CPI (migrazione dalla bonding curve) e
+     * fra le istruzioni interne ce ne sono altre dello stesso program — swap compresi —
+     * con abbastanza account da superare un controllo basato sui soli offset. Leggendo il
+     * loro account[0] come se fosse un pool si ottiene un indirizzo plausibile e sbagliato,
+     * che poi non quota. I token balance dicono invece con certezza chi possiede il conto
+     * WSOL del pool, quindi fanno da verifica; l'istruzione serve solo per il creator,
+     * che i balance non conoscono.
+     */
+    async resolvePoolFromCreateTx(tx: any): Promise<ResolvedPool | null> {
+        const accountKeys = tx?.transaction?.message?.accountKeys || [];
+        const fromBalances = resolveFromTokenBalances(tx);
+
+        let firstWsolCandidate: ResolvedPool | null = null;
+
+        for (const ix of instructionsForProgram(tx, PUMPSWAP_PROGRAM_ID)) {
+            const ixAccounts = Array.isArray(ix.accounts) ? ix.accounts : [];
+            if (ixAccounts.length < 5) continue;
+
+            const pool = instructionAccountToBase58(ixAccounts[0], accountKeys);
+            const creator = instructionAccountToBase58(ixAccounts[2], accountKeys);
+            const baseMint = instructionAccountToBase58(ixAccounts[3], accountKeys);
+            const quoteMint = instructionAccountToBase58(ixAccounts[4], accountKeys);
+            if (!pool || !baseMint || quoteMint !== WSOL) continue;
+
+            const candidate: ResolvedPool = { poolAddress: pool, tokenMint: baseMint, creatorAddress: creator };
+            if (fromBalances && pool === fromBalances.poolAddress) return candidate;
+            if (!firstWsolCandidate) firstWsolCandidate = candidate;
+        }
+
+        // i balance hanno l'ultima parola sul pool; l'istruzione contribuisce il creator
+        // solo se parlava dello stesso pool, altrimenti lo risolve il chiamante on-chain
+        if (fromBalances) return fromBalances;
+        return firstWsolCandidate;
+    },
+
     getOrientation(state: any, tokenMint: string): PoolOrientation {
-        const baseMintStr = toMintString(state?.baseMint);
-        const quoteMintStr = toMintString(state?.quoteMint);
+        const { base, quote } = poolMints(state);
         return {
-            solIsBase: baseMintStr === WSOL,
-            tokenIsBase: baseMintStr === tokenMint,
-            hasWsol: baseMintStr === WSOL || quoteMintStr === WSOL,
+            solIsBase: base === WSOL,
+            tokenIsBase: base === tokenMint,
+            hasWsol: base === WSOL || quote === WSOL,
         };
     },
 
     describePoolMints(state: any, tokenMint: string): string {
-        const baseMintStr = toMintString(state?.baseMint) || "-";
-        const quoteMintStr = toMintString(state?.quoteMint) || "-";
-        return `base=${baseMintStr} quote=${quoteMintStr} token=${tokenMint}`;
+        const { base, quote } = poolMints(state);
+        return `base=${base || "-"} quote=${quote || "-"} token=${tokenMint}`;
     },
 
     getSolLiquidity(state: any, tokenMint: string): number | null {
