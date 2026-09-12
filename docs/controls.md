@@ -1932,3 +1932,78 @@ a coda vuota `precedenza` resta a zero perche non c'e contesa, ed e corretto cos
 
 Nota di lettura: la quota pumpswap sugli arrivi passa dal 7% al 14,6% fra mattina e sera, ma in
 valore assoluto pumpswap e stabile (204 -> 210/h). A cambiare e solo il volume di pump.
+
+---
+
+## 32. Il bot si e fermato 15 minuti: il portatile dormiva
+
+**2026-09-12, sera.** Sessione apparentemente sana, poi i contatori di `QUEUE STATS` congelati e
+i due slot worker liberi senza che succedesse niente.
+
+```
+[18:28:19] QUEUE STATS  | pending=13 scadute=13 create_fallite=73 precedenza=5 slot_liberi=0/2
+   ... 913 secondi di nulla ...
+[18:43:38] WORKER       | worker-1 done 5A11vJ...6qQwKc
+[18:43:41] ⚠️ Log stream stale for 915s. Resubscribe attempt 1/5
+[18:44:54] ws error: Unexpected server response: 403
+```
+
+**Due guasti indipendenti sovrapposti**, che da soli sarebbero stati facili e insieme sembravano
+un bug del supervisore.
+
+### 1. L'healthcheck non era rotto: l'host dormiva
+
+`HEALTHCHECK_INTERVAL_MS=15000` e `LOG_STALE_RESUBSCRIBE_MS=90000`: il rilevatore avrebbe dovuto
+reagire dopo 90 secondi, non 915. E sembrava un event loop bloccato.
+
+Non lo era. `pmset -g log` sull'host:
+
+```
+2026-09-12 20:43:35  Sleep    Entering Sleep state due to 'Sleep Service Back to Sleep'
+2026-09-12 20:45:11  Wake     Wake from Deep Idle ... lid ... HID Activity
+```
+
+Il Mac e andato in sleep (l'orario del container e quello dell'host meno due ore). La VM Docker si
+congela, **nessun timer scatta**, la connessione WebSocket cade. Al risveglio tutto riparte e il
+rilevatore di stallo fa esattamente il suo lavoro — 3 secondi dopo il ritorno del processo.
+
+⚠️ **Un portatile che dorme non puo ospitare una sessione paper.** Ogni sleep uccide la subscription
+e congela il bot, e i buchi non si distinguono da un guasto senza guardare i log di sistema. Per
+una sessione lunga serve `caffeinate -i` davanti al comando, le impostazioni di risparmio energia
+cambiate, o una macchina che non dorme.
+
+**Come riconoscerlo:** un salto nei timestamp di `QUEUE STATS` molto piu lungo di
+`HEALTHCHECK_INTERVAL_MS`, con il processo ancora vivo dopo. Prima di cercare un bug nel codice,
+controllare `pmset -g log | grep -E "Sleep|Wake"`.
+
+### 2. Chainstack free: quota mensile esaurita
+
+Al risveglio la riconnessione ha ricevuto 403. Non era un problema di rete:
+
+```json
+{"code":-32005,"message":"You've reached your monthly quota of Request Units (RUs)."}
+```
+
+Le Request Units del piano free sono **mensili**, non giornaliere: una giornata di misure e riavvii
+le ha consumate, e l'endpoint resta inutilizzabile fino al rinnovo. Vale sia per HTTP che per WS.
+
+### L'endpoint WebSocket sostitutivo
+
+Misurato subito dopo, 60 secondi per endpoint:
+
+| Endpoint | creazioni `pump` | `pumpswap` |
+|---|---|---|
+| `wss://api.mainnet-beta.solana.com` | **46** | 2 |
+| `wss://solana-rpc.publicnode.com` | 33 | 2 |
+
+`mainnet-beta` consegna circa il 40% in piu di publicnode su pump. Il suo limite noto — 1,1 req/s
+in HTTP — non conta, perche qui fa solo da WebSocket: le letture restano su publicnode e i metodi
+pesanti su Alchemy (sezione 28).
+
+```bash
+SVS_UNSTAKED_WS=wss://api.mainnet-beta.solana.com
+```
+
+⚠️ **Terza volta in un giorno che un endpoint viene sostituito.** La configurazione a tre ruoli
+della sezione 28 non e un'ottimizzazione: e la struttura che permette di cambiarne uno senza
+toccare gli altri. Qui e servita davvero.

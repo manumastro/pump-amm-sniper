@@ -165,7 +165,7 @@ Due env var, entrambe provider-agnostiche:
 
 ```bash
 SVS_UNSTAKED_RPC=https://solana-rpc.publicnode.com                  # letture HTTP
-SVS_UNSTAKED_WS=wss://solana-mainnet.core.chainstack.com/<node-id>  # subscription (opzionale)
+SVS_UNSTAKED_WS=wss://api.mainnet-beta.solana.com                   # subscription (opzionale)
 SVS_HEAVY_RPC=https://solana-mainnet.g.alchemy.com/v2/<key>         # metodi strozzati (opzionale)
 ```
 
@@ -183,8 +183,8 @@ raffiche da decine di req/s dall'altro — e nessun provider gratuito e buono su
 | Endpoint | logsSubscribe | HTTP | Esito |
 |---|---|---|---|
 | `https://solana-rpc.publicnode.com` | parziale | 218 req/s, archive ok, 250ms | **usato per HTTP** |
-| Chainstack free (nodo Elastic) | completo, primo log ~500ms | **niente archive** | **usato per WS** |
-| `wss://api.mainnet-beta.solana.com` | completo | 1,1 req/s | ripiego per il WS |
+| Chainstack free (nodo Elastic) | completo, primo log ~500ms | niente archive | ⚠️ **quota mensile esaurita** |
+| `wss://api.mainnet-beta.solana.com` | completo, il piu ricco misurato | 1,1 req/s | **usato per WS** |
 | Alchemy free | **no** | archive ok, **58ms**, 25 req/s | HTTP ottimo, WS assente |
 | dRPC free | — | — | Solana non inclusa nel piano free |
 
