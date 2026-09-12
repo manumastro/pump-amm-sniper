@@ -37,6 +37,7 @@ import { createTop10Service } from "./services/top10";
 import { checkTokenSecurity, getMintInfoRobust } from "./services/token-security";
 import { formatLiquiditySol, formatQuoteMovePct, formatSolCompact, formatSolDecimal } from "./utils/format";
 import { createSemaphore, mapWithSemaphore } from "./utils/concurrency";
+import { createRateLimiter } from "./utils/rateLimiter";
 import { instructionAccountToBase58, instructionProgramIdToBase58, pubkeyToBase58, shortSig } from "./utils/pubkeys";
 
 patchConsoleWithTimestamp();
@@ -285,12 +286,29 @@ function heavyRpcEndpoint(): string | undefined {
 // il 2026-09-12 publicnode ha tenuto aperta una getTokenLargestAccounts per 32 secondi
 // prima di rispondere 429, e con 8 tentativi interni x 4 esterni il controllo top-10
 // teneva uno slot worker occupato per oltre otto minuti. Vedi controls.md 28.
+// Costo RPC di una valutazione. Senza questo numero qualunque taratura dei tetti di
+// concorrenza e a caso: il 2026-09-12 il 66% delle valutazioni moriva in 429 al primo step
+// e non si sapeva se il problema fosse il ritmo, il parallelismo o un endpoint. Vedi controls.md 31.
+let rpcRequestCount = 0;
+let rpcRateLimitedCount = 0;
+export function rpcCallStats() {
+    return { requests: rpcRequestCount, rateLimited: rpcRateLimitedCount };
+}
+
+const rpcRateLimiter = createRateLimiter(CONFIG.RPC_MAX_REQUESTS_PER_SEC);
+
 const fetchWithTimeout: typeof fetch = async (input, init) => {
+    // Il tetto di ritmo sta qui perche e l'unico punto da cui esce ogni chiamata RPC del
+    // processo: metterlo nei singoli servizi significherebbe dimenticarselo nel prossimo.
+    await rpcRateLimiter.acquire();
+    rpcRequestCount += 1;
     const timeoutMs = Math.max(1000, CONFIG.RPC_REQUEST_TIMEOUT_MS);
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-        return await fetch(input as any, { ...(init || {}), signal: controller.signal });
+        const res = await fetch(input as any, { ...(init || {}), signal: controller.signal });
+        if (res.status === 429) rpcRateLimitedCount += 1;
+        return res;
     } catch (e: any) {
         if (e?.name === "AbortError") {
             throw new Error(`richiesta RPC oltre ${timeoutMs}ms (timeout locale)`);
@@ -1126,7 +1144,12 @@ async function handleNewPool(connection: Connection, signature: string) {
         finalStatus = `ERROR: ${e.message}`;
     } finally {
         activePoolJobs = Math.max(0, activePoolJobs - 1);
-        stageLog(ctx, "END", `${finalStatus} (${Date.now() - eventStartedAt}ms)`);
+        const rpc = rpcCallStats();
+        stageLog(
+            ctx,
+            "END",
+            `${finalStatus} (${Date.now() - eventStartedAt}ms, rpc=${rpc.requests} 429=${rpc.rateLimited})`,
+        );
         console.log("────────────────────────────────────────────────────────");
     }
 }

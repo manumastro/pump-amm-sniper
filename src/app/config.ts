@@ -396,6 +396,12 @@ export const CONFIG = {
     RPC_MAX_CONCURRENT_TX_FETCH: Number(process.env.RPC_MAX_CONCURRENT_TX_FETCH || 6),
     // Tetto locale per singola richiesta HTTP: web3.js non ne ha uno. Vedi controls.md 28.
     RPC_REQUEST_TIMEOUT_MS: Number(process.env.RPC_REQUEST_TIMEOUT_MS || 8000),
+    // Tetto al RITMO, per processo worker. Diverso da RPC_MAX_CONCURRENT_TX_FETCH, che limita
+    // il parallelismo di un solo helper: i deep check creator-risk emettono ~60 richieste in
+    // 2,4s con richieste brevi e sequenziali, che nessun tetto di concorrenza rallenta.
+    // Il totale verso l'endpoint e questo valore x MAX_CONCURRENT_OPERATIONS. 0 = nessun
+    // limite, da usare solo con un endpoint a pagamento. Vedi controls.md 31.
+    RPC_MAX_REQUESTS_PER_SEC: Number(process.env.RPC_MAX_REQUESTS_PER_SEC ?? 12),
     QUEUE_MAX_PENDING_SIGNATURES: Number(300),
     // Rete di sicurezza, non una manopola di tuning: un worker che supera questo tempo viene
     // ucciso e il suo slot liberato. Senza, un solo worker appeso su una chiamata RPC che non

@@ -1837,3 +1837,81 @@ QUEUE STATS | pending=7 scadute=151 create_fallite=195 precedenza=12 slot_liberi
 
 `precedenza` che resta a zero mentre pumpswap riceve poche valutazioni significa che la
 configurazione non sta avendo effetto.
+
+---
+
+## 31. Il 66% delle valutazioni moriva in 429: limitare il ritmo, non il parallelismo
+
+**2026-09-12.** Con tutto il resto funzionante, il tasso di errore delle valutazioni era salito
+al **66%**, tutte allo `STEP 1/7` e tutte con lo stesso messaggio:
+
+```
+ERROR: getMultipleAccountsInfo fallita dopo 3 tentativi su 10 account: 429 Too Many Requests
+```
+
+### Prima misurare, poi tarare
+
+Una sonda esterna contro publicnode **mentre il bot girava** ha risposto `ok=12 429=0` a ritmo
+sequenziale. Quindi l'endpoint non ci stava bloccando: era il bot a superarne il ritmo. Ma non si
+sapeva quanto costasse una valutazione, e senza quel numero qualunque taratura dei tetti sarebbe
+stata a caso.
+
+Da qui il contatore per valutazione, aggiunto in modo permanente alla riga `END`:
+
+```
+END | SKIP: no WSOL side  (1049ms, rpc=6 429=0)
+END | SKIP: low liquidity (6361ms, rpc=17 429=0)
+END | SKIP: creator risk  (2717ms, rpc=60 429=39)
+```
+
+| Esito | richieste RPC |
+|---|---|
+| `no WSOL side` | 5-10 |
+| `low liquidity` | 17-22 |
+| **`creator risk`** | **57-63 in ~2,4s** |
+
+I deep check creator-risk emettono **circa 25 richieste al secondo da un solo worker**, cioe 50
+con due, e due terzi tornavano 429.
+
+### Perche il tetto esistente non bastava
+
+`RPC_MAX_CONCURRENT_TX_FETCH=6` limita il **parallelismo** di un solo helper
+(`fetchParsedTransactionsForSignatures`). I deep check creator-risk fanno tutt'altro: richieste
+brevi, molte, in gran parte sequenziali. **Nessun tetto di concorrenza rallenta una sequenza.**
+Concorrenza e ritmo sono due grandezze diverse, e il bot aveva solo la prima.
+
+### La correzione
+
+`src/utils/rateLimiter.ts`, un token bucket, agganciato dentro `fetchWithTimeout` — **l'unico punto
+da cui esce ogni chiamata RPC del processo**. Metterlo nei singoli servizi significherebbe
+dimenticarselo nel prossimo.
+
+| Controllo | Default | Limita |
+|---|---|---|
+| `RPC_MAX_REQUESTS_PER_SEC` | `12` | Il **ritmo**, per processo worker |
+| `RPC_MAX_CONCURRENT_TX_FETCH` | `6` | Il **parallelismo** di un helper |
+
+Il totale verso l'endpoint e `RPC_MAX_REQUESTS_PER_SEC x MAX_CONCURRENT_OPERATIONS` = 24/s.
+`0` disattiva il limite, da usare solo con un endpoint a pagamento.
+
+Il bucket si ricarica in modo continuo, non a scatti a inizio secondo: altrimenti una raffica
+aspetterebbe il secondo successivo per ripartire tutta insieme, che e il comportamento che genera
+i 429.
+
+### Risultato
+
+| | prima | dopo |
+|---|---|---|
+| Valutazioni in errore | **66%** | **15%** |
+| 429 per valutazione (max) | 40 | 25 |
+
+Il costo e che una valutazione creator-risk passa da ~2,4s a ~5s. E un cambio favorevole: prima
+due terzi di quelle richieste venivano rifiutate e l'intera valutazione era persa.
+
+⚠️ **Il limite resta condiviso fra endpoint.** `SVS_HEAVY_RPC` passa dallo stesso bucket, il che va
+bene finche riceve una chiamata per valutazione (sezione 28), ma se in futuro ci finisse altro
+servirebbe un bucket per endpoint.
+
+**Leva rimasta:** a 12/s ci sono ancora valutazioni con 18-25 rifiuti. Scendere a 8/s ridurrebbe
+ulteriormente gli errori al costo di throughput. Da decidere sui dati di una sessione lunga, non
+adesso.
