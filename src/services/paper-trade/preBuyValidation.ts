@@ -1,4 +1,3 @@
-import { buyQuoteInput, sellBaseInput } from "@pump-fun/pump-swap-sdk";
 import BN from "bn.js";
 import { Connection } from "@solana/web3.js";
 import { CONFIG } from "../../app/config";
@@ -6,7 +5,7 @@ import { CreatorRiskResult, PaperSimulationOptions, PreBuyEntryValidationResult 
 import { stageLog } from "../reporting/stageLog";
 import { formatSolCompact } from "../../utils/format";
 import { shortSig } from "../../utils/pubkeys";
-import { describePoolMints, getPoolOrientation, getSolLiquidityFromState, getSpotSolPerTokenFromState } from "./quote";
+import { describePoolMints, getEntryTokenOutFromState, getPoolOrientation, getSolLiquidityFromState, getSpotSolPerTokenFromState } from "./quote";
 
 type ValidatePreBuyDeps = {
     recheckCreatorRisk: (
@@ -48,36 +47,8 @@ function quoteTokenOutFromState(
     const orientation = getPoolOrientation(state, tokenMint);
     if (!orientation.hasWsol) return null;
 
-    let tokenOutAtomic: BN;
-    if (orientation.solIsBase) {
-        const entry = sellBaseInput({
-            base: buyAmountLamports,
-            slippage: CONFIG.SLIPPAGE_PERCENT,
-            baseReserve: state.poolBaseAmount,
-            quoteReserve: state.poolQuoteAmount,
-            baseMintAccount: state.baseMintAccount,
-            baseMint: state.baseMint,
-            coinCreator: state.pool.coinCreator,
-            creator: state.pool.creator,
-            feeConfig: state.feeConfig,
-            globalConfig: state.globalConfig,
-        });
-        tokenOutAtomic = entry.uiQuote;
-    } else {
-        const entry = buyQuoteInput({
-            quote: buyAmountLamports,
-            slippage: CONFIG.SLIPPAGE_PERCENT,
-            baseReserve: state.poolBaseAmount,
-            quoteReserve: state.poolQuoteAmount,
-            baseMintAccount: state.baseMintAccount,
-            baseMint: state.baseMint,
-            coinCreator: state.pool.coinCreator,
-            creator: state.pool.creator,
-            feeConfig: state.feeConfig,
-            globalConfig: state.globalConfig,
-        });
-        tokenOutAtomic = entry.base;
-    }
+    const tokenOutAtomic = getEntryTokenOutFromState(state, tokenMint, buyAmountLamports);
+    if (!tokenOutAtomic) return null;
 
     const tokenOutUi = Number(tokenOutAtomic.toString()) / 10 ** tokenDecimals;
     if (tokenOutAtomic.lte(new BN(0)) || !Number.isFinite(tokenOutUi) || tokenOutUi <= 0) {

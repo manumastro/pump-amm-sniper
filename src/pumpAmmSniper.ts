@@ -22,6 +22,7 @@ import { createPaperTradeService } from "./services/paper-trade";
 import {
     calcSpotSolPerToken,
     describePoolMints,
+    getEntryTokenOutFromState,
     getExitQuoteSolFromState,
     getPoolOrientation,
     getSolLiquidityFromState,
@@ -1166,32 +1167,10 @@ async function waitForPreEntryFlowSignal(
         }
 
         if (!baselineTokenOutAtomic) {
-            baselineTokenOutAtomic = orientation.solIsBase
-                ? sellBaseInput({
-                    base: buyAmountLamports,
-                    slippage: CONFIG.SLIPPAGE_PERCENT,
-                    baseReserve: state.poolBaseAmount,
-                    quoteReserve: state.poolQuoteAmount,
-                    baseMintAccount: state.baseMintAccount,
-                    baseMint: state.baseMint,
-                    coinCreator: state.pool.coinCreator,
-                    creator: state.pool.creator,
-                    feeConfig: state.feeConfig,
-                    globalConfig: state.globalConfig,
-                }).uiQuote
-                : buyQuoteInput({
-                    quote: buyAmountLamports,
-                    slippage: CONFIG.SLIPPAGE_PERCENT,
-                    baseReserve: state.poolBaseAmount,
-                    quoteReserve: state.poolQuoteAmount,
-                    baseMintAccount: state.baseMintAccount,
-                    baseMint: state.baseMint,
-                    coinCreator: state.pool.coinCreator,
-                    creator: state.pool.creator,
-                    feeConfig: state.feeConfig,
-                    globalConfig: state.globalConfig,
-                }).base;
-            baselineExitQuoteSol = getExitQuoteSolFromState(state, tokenMint, baselineTokenOutAtomic);
+            baselineTokenOutAtomic = getEntryTokenOutFromState(state, tokenMint, buyAmountLamports);
+            baselineExitQuoteSol = baselineTokenOutAtomic
+                ? getExitQuoteSolFromState(state, tokenMint, baselineTokenOutAtomic)
+                : null;
         }
 
         const currentExitQuoteSol =

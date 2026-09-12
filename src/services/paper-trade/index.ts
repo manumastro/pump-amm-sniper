@@ -1,4 +1,3 @@
-import { buyQuoteInput, sellBaseInput } from "@pump-fun/pump-swap-sdk";
 import BN from "bn.js";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { CONFIG, HOLD_WINNER_PROFILE } from "../../app/config";
@@ -8,7 +7,7 @@ import { formatSolCompact, formatSolDecimal } from "../../utils/format";
 import { shortSig } from "../../utils/pubkeys";
 import { waitForExitStateWithLiquidityStop } from "./holdMonitor";
 import { validatePreBuyEntryState } from "./preBuyValidation";
-import { getPoolOrientation, getSolLiquidityFromState, getSpotSolPerTokenFromState } from "./quote";
+import { getExitQuoteSolFromState, getPoolOrientation, getSolLiquidityFromState, getSpotSolPerTokenFromState } from "./quote";
 
 type PaperTradeDeps = {
     getObserverPublicKey: () => PublicKey;
@@ -222,36 +221,15 @@ export function createPaperTradeService(deps: PaperTradeDeps) {
             const exitState = exitOutcome.state;
             const exitReason = exitOutcome.exitReason;
 
-            let solOut: number;
-            if (orientation.solIsBase) {
-                const exit = buyQuoteInput({
-                    quote: tokenOutAtomic,
-                    slippage: CONFIG.SLIPPAGE_PERCENT,
-                    baseReserve: exitState.poolBaseAmount,
-                    quoteReserve: exitState.poolQuoteAmount,
-                    baseMintAccount: exitState.baseMintAccount,
-                    baseMint: exitState.baseMint,
-                    coinCreator: exitState.pool.coinCreator,
-                    creator: exitState.pool.creator,
-                    feeConfig: exitState.feeConfig,
-                    globalConfig: exitState.globalConfig,
-                });
-                solOut = Number(exit.base.toString()) / 1e9;
-            } else {
-                const exit = sellBaseInput({
-                    base: tokenOutAtomic,
-                    slippage: CONFIG.SLIPPAGE_PERCENT,
-                    baseReserve: exitState.poolBaseAmount,
-                    quoteReserve: exitState.poolQuoteAmount,
-                    baseMintAccount: exitState.baseMintAccount,
-                    baseMint: exitState.baseMint,
-                    coinCreator: exitState.pool.coinCreator,
-                    creator: exitState.pool.creator,
-                    feeConfig: exitState.feeConfig,
-                    globalConfig: exitState.globalConfig,
-                });
-                solOut = Number(exit.uiQuote.toString()) / 1e9;
+            // Attenzione: "quote non calcolabile" (null) e "quote pari a zero" sono due
+            // cose diverse. Il secondo e un rug reale, il primo un errore di lettura:
+            // confonderli significa iniettare falsi -100% nelle statistiche rug.
+            const exitQuote = getExitQuoteSolFromState(exitState, tokenMint, tokenOutAtomic);
+            if (exitQuote === null) {
+                console.log("⚠️ PAPER_TRADE: exit quote non calcolabile (stato pool illeggibile)");
+                return { ok: false, reason: "exit quote unavailable", exitReason };
             }
+            const solOut: number = exitQuote;
 
             const exitSpotSolPerToken = getSpotSolPerTokenFromState(exitState, tokenMint, tokenDecimals) || 0;
             const exitSolLiquidity = getSolLiquidityFromState(exitState, tokenMint) || 0;

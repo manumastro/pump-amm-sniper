@@ -222,6 +222,10 @@ export async function waitForExitStateWithLiquidityStop(
             actualDurationMs: Date.now() - startedAtMs,
             timeToPeakMs: peakAtMs - startedAtMs,
             entryBaselineQuoteSol: baselineExitQuoteSol ? Number(baselineExitQuoteSol.toFixed(8)) : null,
+            // Liquidita SOL del pool all'ingresso. Serve a segmentare i risultati per fascia
+            // di liquidita: senza questo, abbassare MIN_POOL_LIQUIDITY_SOL produce un mucchio
+            // di trade non separabili da quelli del bacino storico.
+            entrySolLiquidity: Number(entrySolLiquidity.toFixed(4)),
             peakExitQuoteSol: Number(peakExitQuoteSol.toFixed(8)),
             peakPnlPct: Number(peakPnlPct.toFixed(4)),
             winnerArmed,
