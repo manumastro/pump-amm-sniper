@@ -1082,3 +1082,40 @@ I token cp=1 hanno funder=N/A (non tracciabile), nessuna history utile, e sono p
 La sessione precedente (senza cp=1) aveva 72.7% WR e +0.078 SOL. Con cp=1 la sessione e andata a -0.102 SOL.
 
 **Revert**: whitelist torna a `"0,2,4,47"` (senza cp=1). La documentazione in sezione 6.15 e stata aggiornata.
+
+## 19. Changelog strumentazione 2026-09-12
+
+### Price path recorder nell'HOLDLOG
+
+**Problema.** `holdLog` salvava solo un riepilogo del trade: entry, picco, time-to-peak, exit reason, trigger e guard attivi. Il percorso del prezzo durante l'hold non veniva registrato da nessuna parte, nemmeno nei worker log. Conseguenza: le sessioni paper non sono ri-simulabili offline. Con i soli dati storici si puo validare la soglia di take profit (basta il picco), ma **non** il trailing stop, il profit floor o qualsiasi exit anticipata, perche non si sa come il prezzo e arrivato al picco ne quanto ci ha messo a crollare.
+
+**Cosa fa.** `waitForExitStateWithLiquidityStop()` campiona il quote di uscita a ogni lettura di stato e lo accumula in due array paralleli, emessi nell'HOLDLOG sotto `pricePath`:
+
+```json
+"pricePath": { "t": [0, 1400, 3200], "q": [0.00993, 0.01102, 0.01041], "samples": 3, "dropped": 0 }
+```
+
+- `t` = millisecondi dall'inizio dell'hold
+- `q` = SOL ricavabili vendendo l'intera posizione a quell'istante (stesso valore su cui ragionano tutti i trigger di hold)
+
+**Filtro di campionamento.** Il quote resta piatto tra uno swap e l'altro, quindi salvare ogni poll produrrebbe migliaia di punti identici. Un punto viene registrato solo se:
+- il prezzo si e mosso di almeno `HOLD_PRICE_PATH_MIN_CHANGE_PCT` rispetto all'ultimo punto salvato, **oppure**
+- sono passati `HOLD_PRICE_PATH_HEARTBEAT_MS` dall'ultimo punto (battito, serve a distinguere "prezzo fermo" da "monitor bloccato"), **oppure**
+- e un nuovo massimo (i picchi entrano sempre, anche sotto soglia)
+
+Il punto di ingresso (`t=0`) e il punto di uscita entrano sempre. A cap raggiunto (`HOLD_PRICE_PATH_MAX_SAMPLES`) i campioni successivi vengono scartati e contati in `dropped`, ma il prezzo di uscita rimpiazza comunque l'ultimo campione: **il prezzo a cui il trade e stato chiuso non si perde mai**.
+
+**Parametri:**
+
+| Parametro | Valore | Note |
+|---|---|---|
+| `HOLD_PRICE_PATH_RECORD_ENABLED` | true | a false, `pricePath` e `null` e il comportamento torna identico a prima |
+| `HOLD_PRICE_PATH_MAX_SAMPLES` | 3000 | cap per trade |
+| `HOLD_PRICE_PATH_MIN_CHANGE_PCT` | 0.05 | soglia di movimento per registrare un punto |
+| `HOLD_PRICE_PATH_HEARTBEAT_MS` | 5000 | battito su prezzo piatto |
+
+**Impatto sui controlli:** nessuno. Il recorder e puramente osservativo, non modifica soglie ne decisioni di exit.
+
+**Impatto sui report:** `logs/paper-report.json` cresce (stima ~5-10 MB in piu su una sessione da ~300 trade). Il daemon non richiede modifiche: `pricePath` viene assorbito come parte dell'oggetto `holdLog`.
+
+**Perche serve.** Da qui in avanti ogni sessione paper diventa un dataset ri-simulabile all'infinito: si possono testare offline trailing diversi, floor diversi, exit anticipate e TP condizionati al rischio, senza rimettere il bot in paper per 72h a ogni ipotesi.

@@ -148,12 +148,74 @@ export async function waitForExitStateWithLiquidityStop(
     function recordTrigger(name: string, triggered: boolean, detail: string) {
         triggerMap[name] = { triggered, detail };
     }
+
+    // ── Price path recorder ────────────────────────────────────────────────────
+    // Il quote di uscita resta piatto tra uno swap e l'altro, quindi campionare a
+    // ogni poll produrrebbe migliaia di punti identici. Registriamo un punto solo
+    // quando il prezzo si muove oltre MIN_CHANGE_PCT, piu un battito ogni
+    // HEARTBEAT_MS per distinguere "piatto" da "monitor fermo".
+    const pricePathT: number[] = [];
+    const pricePathQ: number[] = [];
+    let pricePathLastQuoteSol = 0;
+    let pricePathLastAtMs = 0;
+    let pricePathDropped = 0;
+    let lastObservedExitQuoteSol = 0;
+
+    function pushPricePoint(tMs: number, quoteSol: number) {
+        pricePathT.push(tMs);
+        pricePathQ.push(Number(quoteSol.toFixed(8)));
+        pricePathLastQuoteSol = quoteSol;
+        pricePathLastAtMs = startedAtMs + tMs;
+    }
+
+    function observeExitQuote(quoteSol: number | null, isPeak = false) {
+        if (quoteSol === null || !Number.isFinite(quoteSol) || quoteSol < 0) return;
+        lastObservedExitQuoteSol = quoteSol;
+        if (!CONFIG.HOLD_PRICE_PATH_RECORD_ENABLED) return;
+
+        const nowMs = Date.now();
+        const tMs = nowMs - startedAtMs;
+        if (pricePathT.length) {
+            if (tMs <= pricePathT[pricePathT.length - 1]) return;
+            const changePct = pricePathLastQuoteSol > 0
+                ? Math.abs((quoteSol - pricePathLastQuoteSol) / pricePathLastQuoteSol) * 100
+                : 100;
+            const flatForMs = nowMs - pricePathLastAtMs;
+            const mustRecord = isPeak
+                || changePct >= CONFIG.HOLD_PRICE_PATH_MIN_CHANGE_PCT
+                || flatForMs >= CONFIG.HOLD_PRICE_PATH_HEARTBEAT_MS;
+            if (!mustRecord) return;
+        }
+        if (pricePathT.length >= CONFIG.HOLD_PRICE_PATH_MAX_SAMPLES) {
+            pricePathDropped++;
+            return;
+        }
+        pushPricePoint(tMs, quoteSol);
+    }
+
+    // All'uscita l'ultimo punto e' il piu importante (e' il prezzo a cui il trade
+    // e' stato chiuso): va registrato sempre, anche a cap raggiunto.
+    function sealPricePath() {
+        if (!CONFIG.HOLD_PRICE_PATH_RECORD_ENABLED) return;
+        if (!Number.isFinite(lastObservedExitQuoteSol) || lastObservedExitQuoteSol < 0) return;
+        const lastIdx = pricePathT.length - 1;
+        const lastT = lastIdx >= 0 ? pricePathT[lastIdx] : -1;
+        if (lastIdx >= 0 && pricePathQ[lastIdx] === Number(lastObservedExitQuoteSol.toFixed(8))) return;
+        if (pricePathT.length >= CONFIG.HOLD_PRICE_PATH_MAX_SAMPLES) {
+            // rimpiazza l'ultimo campione invece di perdere il prezzo di uscita
+            pricePathT.pop();
+            pricePathQ.pop();
+            pricePathDropped++;
+        }
+        pushPricePoint(Math.max(Date.now() - startedAtMs, lastT + 1), lastObservedExitQuoteSol);
+    }
     function logHoldSummary(reason: string | undefined) {
         const peakPnlPct = peakExitQuoteSol > 0
             ? ((peakExitQuoteSol - CONFIG.TRADE_AMOUNT_SOL) / CONFIG.TRADE_AMOUNT_SOL) * 100
             : 0;
         const winnerArmed = peakPnlPct >= activeWinnerProfile.armPnlPct;
         const trailingActive = winnerArmed && activeWinnerProfile.trailingDropPct > 0;
+        sealPricePath();
         stageLog(logPrefix, "HOLDLOG", JSON.stringify({
             exitReason: reason || "deadline",
             holdMs,
@@ -164,6 +226,12 @@ export async function waitForExitStateWithLiquidityStop(
             peakPnlPct: Number(peakPnlPct.toFixed(4)),
             winnerArmed,
             trailingActive,
+            // Serie temporale del quote di uscita: t = ms dall'inizio dell'hold,
+            // q = SOL ricavabili vendendo l'intera posizione a quell'istante.
+            // Rende il trade ri-simulabile offline con soglie diverse.
+            pricePath: CONFIG.HOLD_PRICE_PATH_RECORD_ENABLED
+                ? { t: pricePathT, q: pricePathQ, samples: pricePathT.length, dropped: pricePathDropped }
+                : null,
             triggers: triggerMap,
             guards: {
                 removeLiq: { enabled: CONFIG.HOLD_REMOVE_LIQ_DETECT_ENABLED },
@@ -187,6 +255,8 @@ export async function waitForExitStateWithLiquidityStop(
         : (baselineExitQuoteSol || 0);
     let peakAtMs = startedAtMs;
     let previousExitQuoteSol = baselineExitQuoteSol;
+    // punto zero del path: il quote all'ingresso
+    if (baselineExitQuoteSol !== null && baselineExitQuoteSol > 0) observeExitQuote(baselineExitQuoteSol);
     const activeWinnerProfile: WinnerManagementProfile = winnerProfile || {
         enabled: CONFIG.HOLD_WINNER_MANAGEMENT_ENABLED,
         checkIntervalMs: CONFIG.HOLD_WINNER_CHECK_INTERVAL_MS,
@@ -289,6 +359,7 @@ export async function waitForExitStateWithLiquidityStop(
             ) {
                 lastHardStopLossCheckAtMs = Date.now();
                 const currentExitQuoteSol = getExitQuoteSolFromState(s, tokenMint, tokenOutAtomic);
+                observeExitQuote(currentExitQuoteSol);
                 if (currentExitQuoteSol !== null && currentExitQuoteSol > 0) {
                     const currentPnlPct = ((currentExitQuoteSol - CONFIG.TRADE_AMOUNT_SOL) / CONFIG.TRADE_AMOUNT_SOL) * 100;
                     const hardStopLossPct = Math.abs(CONFIG.HOLD_HARD_STOP_LOSS_PCT);
@@ -332,10 +403,13 @@ export async function waitForExitStateWithLiquidityStop(
             ) {
                 lastWinnerCheckAtMs = Date.now();
                 const currentExitQuoteSol = getExitQuoteSolFromState(s, tokenMint, tokenOutAtomic);
+                observeExitQuote(currentExitQuoteSol);
                 if (currentExitQuoteSol !== null && currentExitQuoteSol > 0) {
                     if (currentExitQuoteSol > peakExitQuoteSol) {
                         peakExitQuoteSol = currentExitQuoteSol;
                         peakAtMs = Date.now();
+                        // un nuovo massimo va sempre nel path, anche se il delta e' sotto soglia
+                        observeExitQuote(currentExitQuoteSol, true);
                     }
                     const currentPnlPct = ((currentExitQuoteSol - CONFIG.TRADE_AMOUNT_SOL) / CONFIG.TRADE_AMOUNT_SOL) * 100;
                     const peakPnlPct = ((peakExitQuoteSol - CONFIG.TRADE_AMOUNT_SOL) / CONFIG.TRADE_AMOUNT_SOL) * 100;
@@ -384,6 +458,7 @@ export async function waitForExitStateWithLiquidityStop(
             ) {
                 lastSingleSwapShockCheckAtMs = Date.now();
                 const currentExitQuoteSol = getExitQuoteSolFromState(s, tokenMint, tokenOutAtomic);
+                observeExitQuote(currentExitQuoteSol);
                 if (
                     previousExitQuoteSol !== null &&
                     previousExitQuoteSol > 0 &&
@@ -412,6 +487,7 @@ export async function waitForExitStateWithLiquidityStop(
             ) {
                 lastSellQuoteCollapseCheckAtMs = Date.now();
                 const currentExitQuoteSol = getExitQuoteSolFromState(s, tokenMint, tokenOutAtomic);
+                observeExitQuote(currentExitQuoteSol);
                 if (currentExitQuoteSol !== null) {
                     const dropPct = ((baselineExitQuoteSol - currentExitQuoteSol) / baselineExitQuoteSol) * 100;
                     const minExitSol = Math.max(0, CONFIG.HOLD_SELL_QUOTE_COLLAPSE_MIN_SOL);
@@ -440,6 +516,7 @@ export async function waitForExitStateWithLiquidityStop(
                     Math.max(createPoolBlockTime || 0, Math.floor(startedAtMs / 1000)),
                 );
                 const currentExitQuoteSol = getExitQuoteSolFromState(s, tokenMint, tokenOutAtomic);
+                observeExitQuote(currentExitQuoteSol);
                 if (currentExitQuoteSol && currentExitQuoteSol > 0) {
                     const dropPct = ((baselineExitQuoteSol - currentExitQuoteSol) / baselineExitQuoteSol) * 100;
                     const shortTriggered = churn.shortCount >= Math.max(1, CONFIG.HOLD_POOL_CHURN_TX_SHORT_MIN);
