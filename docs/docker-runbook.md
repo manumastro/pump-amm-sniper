@@ -75,8 +75,8 @@ docker compose up -d
 `.env` ha due variabili invece di una:
 
 ```bash
-SVS_UNSTAKED_RPC=https://solana-rpc.publicnode.com    # letture HTTP
-SVS_UNSTAKED_WS=wss://api.mainnet-beta.solana.com     # subscription
+SVS_UNSTAKED_RPC=https://solana-rpc.publicnode.com                  # letture HTTP
+SVS_UNSTAKED_WS=wss://solana-mainnet.core.chainstack.com/<node-id>  # subscription
 ```
 
 Omettere `SVS_UNSTAKED_WS` e lecito: il WebSocket viene derivato da `SVS_UNSTAKED_RPC`, che e il
@@ -89,8 +89,14 @@ e ray_v4 che arrivavano normalmente sulla stessa connessione. Non produce errori
 sparirebbe in silenzio. Al contrario mainnet-beta consegna tutto ma regge ~1,1 req/s in HTTP, che
 non basta nemmeno ai poll di hold.
 
-Da qui la divisione: mainnet-beta per il WebSocket (una connessione, nessun rate limit rilevante),
-publicnode per le letture.
+Il verso opposto vale per Chainstack: il suo WebSocket consegna tutti e tre i program, col primo
+log in ~500ms, ma il piano free **blocca i metodi archive** (`getSignaturesForAddress`,
+`getParsedTransaction`, `403 -32002`). Le letture di account passano, quindi i poll di hold
+girerebbero e il problema non si vedrebbe subito — ma i 30 controlli creator-risk sono costruiti
+sulla storia delle transazioni e non funzionerebbero affatto.
+
+Da qui la divisione: Chainstack per il WebSocket, publicnode per le letture. `api.mainnet-beta.solana.com`
+resta un ripiego valido per il WS se il nodo Chainstack non e disponibile.
 
 Prima di cambiare provider, verificare **entrambi**:
 

@@ -40,7 +40,11 @@ const ms = () => Date.now();
 function pct(arr, p) { const s = [...arr].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor(s.length * p))]; }
 
 (async () => {
-  const mask = (u) => u.replace(/api-key=[^&]+/, 'api-key=***');
+  // la chiave sta nella query (Helius, Alchemy) o nel path (Chainstack): entrambe fuori dall'output
+  const mask = (u) => u
+    .replace(/([?&](?:api[-_]?key|apikey|access[-_]?token)=)[^&]+/gi, '$1***')
+    .replace(/\/[0-9a-f]{24,}(?=\/|$)/gi, '/***')
+    .replace(/\/\/[^/@]+:[^/@]+@/, '//***:***@');
   console.log('endpoint:', mask(RPC));
   if (WS) console.log('websocket:', mask(WS));
   const conn = new Connection(RPC, WS ? { commitment: 'confirmed', wsEndpoint: WS } : { commitment: 'confirmed' });
@@ -114,6 +118,10 @@ function pct(arr, p) { const s = [...arr].sort((a, b) => a - b); return s[Math.m
     + 'Quei DEX sarebbero invisibili al bot, in silenzio. Usare SVS_UNSTAKED_WS per mettere il '
     + 'WebSocket su un provider diverso da quello HTTP.');
   if (rateLimited > 0) problems.push(`${rateLimited}/${BURST} richieste rate-limited: i deep check creator-risk andrebbero in 429`);
+  if (failed > 0) problems.push(
+    `${failed}/${BURST} richieste fallite (non 429): l'endpoint rifiuta getSignaturesForAddress. `
+    + 'I deep check creator-risk non funzionerebbero affatto.');
+  if (ok === 0) problems.push('nessuna richiesta HTTP e andata a buon fine: inutilizzabile come SVS_UNSTAKED_RPC');
   if (ok && pct(lat, 0.95) > 2000) problems.push(`p95 ${pct(lat, 0.95)}ms: troppo lento per i poll di hold a 200ms`);
   if (!problems.length) console.log('Nessun problema rilevato su questo campione. Serve comunque ~10 req/s sostenuti con 2 worker attivi.');
   else problems.forEach((p) => console.log('  ⚠️ ' + p));

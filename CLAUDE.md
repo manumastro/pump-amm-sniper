@@ -147,8 +147,8 @@ tutti i `logs/paper-worker-*.log`.
 Due env var, entrambe provider-agnostiche:
 
 ```bash
-SVS_UNSTAKED_RPC=https://solana-rpc.publicnode.com    # letture HTTP
-SVS_UNSTAKED_WS=wss://api.mainnet-beta.solana.com     # subscription (opzionale)
+SVS_UNSTAKED_RPC=https://solana-rpc.publicnode.com                  # letture HTTP
+SVS_UNSTAKED_WS=wss://solana-mainnet.core.chainstack.com/<node-id>  # subscription (opzionale)
 ```
 
 Senza `SVS_UNSTAKED_WS` il WebSocket viene derivato dall'HTTP, come prima.
@@ -158,10 +158,16 @@ raffiche da decine di req/s dall'altro — e nessun provider gratuito e buono su
 
 | Endpoint | logsSubscribe | HTTP | Esito |
 |---|---|---|---|
-| `https://solana-rpc.publicnode.com` | parziale | 71 req/s, 0 rate-limit | **usato per HTTP** |
-| `wss://api.mainnet-beta.solana.com` | completo | 1,1 req/s | **usato per WS** |
+| `https://solana-rpc.publicnode.com` | parziale | 218 req/s, archive ok | **usato per HTTP** |
+| Chainstack free (nodo Elastic) | completo, primo log ~500ms | **niente archive** | **usato per WS** |
+| `wss://api.mainnet-beta.solana.com` | completo | 1,1 req/s | ripiego per il WS |
 | Alchemy free | **no** | ok a basso ritmo | l'intera API pubsub risponde "method not found": il piano free espone solo HTTPS |
 | dRPC free | — | — | Solana non inclusa nel piano free |
+
+**Chainstack free blocca i metodi archive** (`getSignaturesForAddress`, `getParsedTransaction`)
+con `403 -32002 "Archive, Debug and Trace requests are not available"`. Le letture di account
+funzionano, quindi i poll di hold girerebbero, ma **i 30 controlli creator-risk no**: sono costruiti
+sulla storia delle transazioni. Ottimo come WebSocket, inutilizzabile come `SVS_UNSTAKED_RPC`.
 
 ⚠️ **"parziale" significa che publicnode accetta la subscription e non consegna niente** per il
 program Meteora DAMM v2. Misurato il 2026-09-12: 0 eventi in 45s, contro 6.026 dello stesso program
