@@ -1,0 +1,36 @@
+# Sostituisce i due servizi systemd --user descritti in docs/systemd-runbook.md.
+# La macchina originale (/home/manu) non esiste piu: questo setup e portabile.
+services:
+  sniper:
+    build: .
+    image: pump-amm-sniper:latest
+    container_name: pump-sniper
+    env_file: .env
+    restart: unless-stopped
+    stop_grace_period: 30s
+    volumes:
+      # stato mutabile: il dynamic funder rug tracking riscrive questi file
+      - ./blacklists:/app/blacklists
+      # log e report: il daemon legge i paper-worker-*.log scritti qui dallo sniper
+      - ./logs:/app/logs
+    # I worker sono processi figli: senza init i figli orfani restano zombie.
+    init: true
+    logging:
+      driver: json-file
+      options: { max-size: "50m", max-file: "3" }
+
+  report:
+    build: .
+    image: pump-amm-sniper:latest
+    container_name: pump-report
+    env_file: .env
+    restart: unless-stopped
+    command: ["node", "scripts/paper-report-daemon.js"]
+    volumes:
+      - ./blacklists:/app/blacklists
+      - ./logs:/app/logs
+    depends_on: [sniper]
+    init: true
+    logging:
+      driver: json-file
+      options: { max-size: "20m", max-file: "2" }

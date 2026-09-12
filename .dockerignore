@@ -1,0 +1,12 @@
+node_modules
+dist
+.git
+.env
+*.log
+logs
+analysis
+docs
+idea
+last_rugpulls
+solscan-parser
+blacklists

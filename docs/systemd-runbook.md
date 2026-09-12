@@ -1,3 +1,7 @@
+> **OBSOLETO (2026-09-12).** La macchina descritta qui (`/home/manu`) non esiste piu.
+> Il deploy corrente e via Docker: vedi `docs/docker-runbook.md`.
+> Questo file resta come riferimento storico della configurazione delle sessioni di marzo/aprile.
+
 # Pump Bot via systemd (user services)
 
 ## Cosa ho implementato
