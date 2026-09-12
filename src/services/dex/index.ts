@@ -19,8 +19,10 @@ export { pumpBondingCurveAdapter, PUMP_PROGRAM_ID, deriveBondingCurve } from "./
  * riga qui. La subscription in src/app/runtime.ts si estende da sola a tutti i
  * program registrati.
  *
- * Registrati: `pumpswap` e `pump`. Scelta del 2026-09-12: concentrarsi sui due lati dello
- * stesso ecosistema — la bonding curve e l'AMM in cui i token si diplomano.
+ * Registrato: solo `pump`. Scelta del 2026-09-12 (controls.md 38): cercare edge sulla
+ * bonding curve, con un modello seriale a un worker. `pumpSwapAdapter` resta implementato
+ * e verificato (e' il DEX dei +0,645 SOL di aprile): riattivarlo e' rimetterlo in questa
+ * lista, ma con un solo worker rubera' capacita' a pump invece di aggiungersi.
  *
  * `meteoraDammV2Adapter` e implementato e verificato (12 pool risolte su 13 in un campione
  * live, round trip coerente con le fee) ma **non registrato**, per tenere la prima sessione
@@ -38,7 +40,6 @@ export { pumpBondingCurveAdapter, PUMP_PROGRAM_ID, deriveBondingCurve } from "./
  * di questo bot non si applicano. Vedi docs/expansion-sources-2026-09-12.md.
  */
 const ADAPTERS: DexAdapter[] = [
-    pumpSwapAdapter,
     pumpBondingCurveAdapter,
 ];
 

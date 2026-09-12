@@ -1,11 +1,760 @@
 {
-  "generatedAt": "2026-09-12T20:10:10.997Z",
-  "outcomeOperationCount": 0,
+  "generatedAt": "2026-09-12T20:51:25.613Z",
+  "outcomeOperationCount": 2,
   "invalidPnlCount": 0,
-  "totalPnlSol": 0,
-  "avgPnlPct": 0,
+  "totalPnlSol": -0.002006,
+  "avgPnlPct": -10.03,
   "wins": 0,
-  "losses": 0,
+  "losses": 2,
   "winRatePct": 0,
-  "outcomeOperations": []
+  "outcomeOperations": [
+    {
+      "id": "evt-000197",
+      "startedAt": "20:42:31.955",
+      "buyAt": "20:42:38.512",
+      "sellAt": "20:43:40.187",
+      "pnlAt": "20:43:40.188",
+      "endedAt": "20:43:40.189",
+      "signature": "y6CNP4tmniwdVkYrk2a9TiaZ5dDmGBuGpS4nbd8qTiWmgpV5yhj3MLZTckfwnxbcuW9tMJfxYCeEEKthvDWzB1h",
+      "tokenMint": "FgrBzy1RuX2jn7KaM3pcAYb3irUTAin7hW2PqTcqpump",
+      "pool": "AyPfjYMQL7SjtwTGqBRkUfq7R8wA4MUPZ6swX6axvTn",
+      "gmgn": "https://gmgn.ai/sol/token/FgrBzy1RuX2jn7KaM3pcAYb3irUTAin7hW2PqTcqpump",
+      "buySpotSolPerToken": 3.822e-8,
+      "sellSpotSolPerToken": 3.174e-8,
+      "pnlSol": -0.001906,
+      "pnlPct": -19.06,
+      "inferredPnl": false,
+      "checksPassed": true,
+      "skipReason": null,
+      "endStatus": "COMPLETED (68229ms, rpc=158 429=6)",
+      "durationMs": null,
+      "rugPull": false,
+      "rugLoss": false,
+      "classification": "clean",
+      "pnlValidityIssue": null,
+      "entryFilters": {
+        "liquidity": {
+          "pass": true,
+          "observed": 5.167375,
+          "threshold": 1,
+          "sign": ">="
+        },
+        "tokenSecurity": {
+          "pass": true
+        },
+        "top10": {
+          "pass": true,
+          "observed": null,
+          "threshold": 90,
+          "sign": "<=",
+          "top1ExternalEnabled": true,
+          "observedTop1External": null,
+          "thresholdTop1External": 20,
+          "signTop1External": "<=",
+          "top1ExternalOwner": null
+        },
+        "ultraShortGuard": {
+          "observedLiqDropMax": 0,
+          "observedQuoteDropMax": 0,
+          "thresholdLiqDropPct": 35,
+          "thresholdQuoteDropPct": 35
+        },
+        "cr_uniqueCounterparties": {
+          "enabled": true,
+          "observed": 0,
+          "maxThreshold": 3,
+          "aboveMax": false,
+          "pass": true
+        },
+        "cr_compressedActivity": {
+          "enabled": true,
+          "observedCp": 0,
+          "observedWindowSec": 0,
+          "thresholdCp": 60,
+          "thresholdWindowSec": 90,
+          "sign": "<=",
+          "pass": true
+        },
+        "cr_directAmmReentry": {
+          "enabled": false,
+          "observed": false,
+          "pass": true
+        },
+        "cr_relayFunding": {
+          "enabled": false,
+          "observed": false,
+          "pass": true
+        },
+        "cr_funderBlacklisted": {
+          "enabled": true,
+          "observed": null,
+          "inRugHistory": false,
+          "pass": true
+        },
+        "cr_creatorSeed": {
+          "enabled": false,
+          "observedSeedPct": 0,
+          "observedGrowth": null,
+          "thresholdSeedPct": 1,
+          "thresholdGrowth": 120,
+          "signSeedPct": ">=",
+          "signGrowth": "<=",
+          "pass": false
+        },
+        "cr_freshFundedHighSeed": {
+          "enabled": true,
+          "observedFundingSol": 0,
+          "observedAgeSec": 0,
+          "observedSeedPct": 0,
+          "observedCp": 0,
+          "thresholdFundingSol": 220,
+          "thresholdAgeSec": 30,
+          "thresholdSeedPct": 95,
+          "thresholdCp": 3,
+          "signFundingSol": ">=",
+          "signAgeSec": "<=",
+          "signSeedPct": ">=",
+          "signCp": "<=",
+          "pass": true
+        },
+        "cr_rapidDispersal": {
+          "enabled": true,
+          "observedTransfers": 0,
+          "observedDestinations": 0,
+          "observedTotalSol": 0,
+          "observedWindowSec": null,
+          "thresholdTransfers": 3,
+          "thresholdDestinations": 3,
+          "thresholdTotalSol": 100,
+          "thresholdWindowSec": 20,
+          "signTransfers": ">=",
+          "signDestinations": ">=",
+          "signTotalSol": ">=",
+          "signWindowSec": "<=",
+          "pass": true
+        },
+        "cr_burnerProfile": {
+          "enabled": true,
+          "observedOutSol": 0,
+          "threshold": 100,
+          "sign": ">=",
+          "pass": true
+        },
+        "cr_setupBurst": {
+          "enabled": true,
+          "observedCreates": 0,
+          "observedLookups": 0,
+          "thresholdCreates": 250,
+          "thresholdLookups": 2,
+          "signCreates": ">=",
+          "signLookups": ">=",
+          "pass": true
+        },
+        "cr_lookupTable": {
+          "enabled": true,
+          "observedCreates": 0,
+          "observedLookups": 0,
+          "observedWindowSec": null,
+          "thresholdCreates": 20,
+          "thresholdLookups": 2,
+          "thresholdWindowSec": 30,
+          "signCreates": ">=",
+          "signLookups": ">=",
+          "signWindowSec": "<=",
+          "pass": true
+        },
+        "cr_precreateBurst": {
+          "enabled": false,
+          "deepChecksComplete": true,
+          "observedTransfers": 0,
+          "observedDestinations": 0,
+          "observedTotalSol": 0,
+          "thresholdTransfers": 12,
+          "thresholdDestinations": 12,
+          "thresholdTotalSol": 3,
+          "triggered": false,
+          "pass": true
+        },
+        "cr_precreateLargeBurst": {
+          "enabled": true,
+          "observedTransfers": 0,
+          "threshold": 8,
+          "sign": ">=",
+          "pass": true
+        },
+        "cr_creatorCashout": {
+          "enabled": true,
+          "observedCashoutSol": 0,
+          "observedLiqPct": 0,
+          "observedScore": 0,
+          "thresholdLiqPct": 25,
+          "thresholdScore": 1,
+          "signLiqPct": "<=",
+          "signScore": "<=",
+          "pass": true
+        },
+        "cr_microInbound": {
+          "enabled": true,
+          "observedTransfers": 0,
+          "observedSources": 0,
+          "thresholdTransfers": 6,
+          "thresholdSources": 2,
+          "signTransfers": ">=",
+          "signSources": ">=",
+          "pass": true
+        },
+        "cr_closeAccountBurst": {
+          "enabled": true,
+          "observedTxs": 0,
+          "observedCloses": 0,
+          "thresholdTxs": 4,
+          "thresholdCloses": 12,
+          "signTxs": ">=",
+          "signCloses": ">=",
+          "pass": true
+        },
+        "cr_funderCluster": {
+          "enabled": true,
+          "observedCounterparties": 0,
+          "historicalRugCount": 0,
+          "recentCreatorCount": 0,
+          "thresholdHistorical": 1,
+          "thresholdRecent": 2,
+          "triggered": false,
+          "pass": true
+        },
+        "cr_allPassed": true,
+        "cr_probationBypass": false,
+        "cr_entryBlocked": null,
+        "cr_reason": null
+      },
+      "preBuyUltraGuard": {
+        "maxObservedLiqDropPct": 2.09,
+        "maxObservedQuoteDropPct": 0,
+        "maxLiqDropPct": 35,
+        "maxQuoteDropPct": 35,
+        "windowMs": 2500,
+        "intervalMs": 500
+      },
+      "holdLog": {
+        "exitReason": "hard stop loss",
+        "holdMs": 90000,
+        "actualDurationMs": 61673,
+        "timeToPeakMs": 0,
+        "entryBaselineQuoteSol": 0.0097476,
+        "entrySolLiquidity": 5.0787,
+        "peakExitQuoteSol": 0.0097476,
+        "peakPnlPct": -2.524,
+        "winnerArmed": false,
+        "trailingActive": false,
+        "pricePath": {
+          "t": [
+            0,
+            3006,
+            4393,
+            5464,
+            6806,
+            7890,
+            9151,
+            10216,
+            11704,
+            12765,
+            14024,
+            15180,
+            16441,
+            17510,
+            18893,
+            19957,
+            21248,
+            22306,
+            23661,
+            24726,
+            26000,
+            27062,
+            28429,
+            29494,
+            30781,
+            31846,
+            33207,
+            34274,
+            35529,
+            36589,
+            38607,
+            40720,
+            42495,
+            43875,
+            44937,
+            46390,
+            47455,
+            48813,
+            49874,
+            51210,
+            52268,
+            53726,
+            54794,
+            56144,
+            57201,
+            58781,
+            59995,
+            61672
+          ],
+          "q": [
+            0.0097476,
+            0.00889776,
+            0.00889776,
+            0.00889776,
+            0.00889776,
+            0.00889776,
+            0.00889761,
+            0.00889761,
+            0.00942429,
+            0.00942429,
+            0.00942429,
+            0.00942429,
+            0.00942429,
+            0.00942429,
+            0.00942429,
+            0.00922151,
+            0.00922146,
+            0.00922146,
+            0.00922146,
+            0.00922146,
+            0.00922146,
+            0.00922146,
+            0.00922146,
+            0.00922141,
+            0.00922136,
+            0.00922136,
+            0.00922136,
+            0.00922136,
+            0.00922136,
+            0.00922136,
+            0.00922136,
+            0.0092212,
+            0.00938041,
+            0.00938041,
+            0.00938041,
+            0.00938041,
+            0.00938041,
+            0.00938041,
+            0.00938031,
+            0.00938031,
+            0.00938031,
+            0.00938031,
+            0.00938031,
+            0.00938031,
+            0.00938031,
+            0.00938031,
+            0.00938031,
+            0.00809371
+          ],
+          "samples": 48,
+          "dropped": 0
+        },
+        "triggers": {
+          "hardStopLoss": {
+            "triggered": true,
+            "detail": "0.008094SOL(-19.06%) <= -15.00%"
+          }
+        },
+        "guards": {
+          "removeLiq": {
+            "enabled": false
+          },
+          "creatorAmmBurst": {
+            "enabled": true
+          },
+          "creatorRiskRecheck": {
+            "enabled": true
+          },
+          "winnerManagement": {
+            "enabled": true,
+            "armPct": 8,
+            "trailingPct": 10,
+            "hardTpPct": 50,
+            "minHoldMs": 4000
+          },
+          "sellQuoteCollapse": {
+            "enabled": false,
+            "minHoldMs": 3000,
+            "dropPct": 35
+          },
+          "singleSwapShock": {
+            "enabled": true,
+            "minHoldMs": 3000,
+            "dropPct": 35
+          },
+          "hardStopLoss": {
+            "enabled": true,
+            "minHoldMs": 3000,
+            "lossPct": 15
+          },
+          "poolChurn": {
+            "enabled": false
+          },
+          "creatorOutbound": {
+            "enabled": false
+          },
+          "creatorCloseAccount": {
+            "enabled": false
+          },
+          "creatorOutboundSpray": {
+            "enabled": true
+          },
+          "creatorInboundSpray": {
+            "enabled": false
+          }
+        }
+      },
+      "noWsolRetryCount": 0,
+      "noWsolRetryRecovered": false,
+      "noWsolRetryExhausted": false
+    },
+    {
+      "id": "evt-000310",
+      "startedAt": "20:48:35.008",
+      "buyAt": "20:48:43.271",
+      "sellAt": "20:49:08.681",
+      "pnlAt": "20:49:08.684",
+      "endedAt": "20:49:08.686",
+      "signature": "4i3WYJ6oQRBNzqHzNUJLpYdkBXLXKdcdEQWU3rjSLoLBz8vajxnUdwqNwwH6G52byDzn36xBqwowUffXNmVCtYvA",
+      "tokenMint": "2NZVUrDTJNQbXChEWmak1oPF2ued1vtfdKzWfxbCpump",
+      "pool": "3p5VRxVuwehqvCA2pmHLbqR8eHEFibDaCst8xdHPtg3s",
+      "gmgn": "https://gmgn.ai/sol/token/2NZVUrDTJNQbXChEWmak1oPF2ued1vtfdKzWfxbCpump",
+      "buySpotSolPerToken": 4.95e-8,
+      "sellSpotSolPerToken": 5.026e-8,
+      "pnlSol": -0.0001,
+      "pnlPct": -1,
+      "inferredPnl": false,
+      "checksPassed": true,
+      "skipReason": null,
+      "endStatus": "COMPLETED (33676ms, rpc=87 429=7)",
+      "durationMs": null,
+      "rugPull": false,
+      "rugLoss": false,
+      "classification": "clean",
+      "pnlValidityIssue": null,
+      "entryFilters": {
+        "liquidity": {
+          "pass": true,
+          "observed": 10.068068,
+          "threshold": 1,
+          "sign": ">="
+        },
+        "tokenSecurity": {
+          "pass": true
+        },
+        "top10": {
+          "pass": true,
+          "observed": null,
+          "threshold": 90,
+          "sign": "<=",
+          "top1ExternalEnabled": true,
+          "observedTop1External": null,
+          "thresholdTop1External": 20,
+          "signTop1External": "<=",
+          "top1ExternalOwner": null
+        },
+        "ultraShortGuard": {
+          "observedLiqDropMax": 0,
+          "observedQuoteDropMax": 0,
+          "thresholdLiqDropPct": 35,
+          "thresholdQuoteDropPct": 35
+        },
+        "cr_uniqueCounterparties": {
+          "enabled": true,
+          "observed": 0,
+          "maxThreshold": 3,
+          "aboveMax": false,
+          "pass": true
+        },
+        "cr_compressedActivity": {
+          "enabled": true,
+          "observedCp": 0,
+          "observedWindowSec": 0,
+          "thresholdCp": 60,
+          "thresholdWindowSec": 90,
+          "sign": "<=",
+          "pass": true
+        },
+        "cr_directAmmReentry": {
+          "enabled": false,
+          "observed": false,
+          "pass": true
+        },
+        "cr_relayFunding": {
+          "enabled": false,
+          "observed": false,
+          "pass": true
+        },
+        "cr_funderBlacklisted": {
+          "enabled": true,
+          "observed": null,
+          "inRugHistory": false,
+          "pass": true
+        },
+        "cr_creatorSeed": {
+          "enabled": false,
+          "observedSeedPct": 0,
+          "observedGrowth": null,
+          "thresholdSeedPct": 1,
+          "thresholdGrowth": 120,
+          "signSeedPct": ">=",
+          "signGrowth": "<=",
+          "pass": false
+        },
+        "cr_freshFundedHighSeed": {
+          "enabled": true,
+          "observedFundingSol": 0,
+          "observedAgeSec": 0,
+          "observedSeedPct": 0,
+          "observedCp": 0,
+          "thresholdFundingSol": 220,
+          "thresholdAgeSec": 30,
+          "thresholdSeedPct": 95,
+          "thresholdCp": 3,
+          "signFundingSol": ">=",
+          "signAgeSec": "<=",
+          "signSeedPct": ">=",
+          "signCp": "<=",
+          "pass": true
+        },
+        "cr_rapidDispersal": {
+          "enabled": true,
+          "observedTransfers": 0,
+          "observedDestinations": 0,
+          "observedTotalSol": 0,
+          "observedWindowSec": null,
+          "thresholdTransfers": 3,
+          "thresholdDestinations": 3,
+          "thresholdTotalSol": 100,
+          "thresholdWindowSec": 20,
+          "signTransfers": ">=",
+          "signDestinations": ">=",
+          "signTotalSol": ">=",
+          "signWindowSec": "<=",
+          "pass": true
+        },
+        "cr_burnerProfile": {
+          "enabled": true,
+          "observedOutSol": 0,
+          "threshold": 100,
+          "sign": ">=",
+          "pass": true
+        },
+        "cr_setupBurst": {
+          "enabled": true,
+          "observedCreates": 0,
+          "observedLookups": 0,
+          "thresholdCreates": 250,
+          "thresholdLookups": 2,
+          "signCreates": ">=",
+          "signLookups": ">=",
+          "pass": true
+        },
+        "cr_lookupTable": {
+          "enabled": true,
+          "observedCreates": 0,
+          "observedLookups": 0,
+          "observedWindowSec": null,
+          "thresholdCreates": 20,
+          "thresholdLookups": 2,
+          "thresholdWindowSec": 30,
+          "signCreates": ">=",
+          "signLookups": ">=",
+          "signWindowSec": "<=",
+          "pass": true
+        },
+        "cr_precreateBurst": {
+          "enabled": false,
+          "deepChecksComplete": true,
+          "observedTransfers": 0,
+          "observedDestinations": 0,
+          "observedTotalSol": 0,
+          "thresholdTransfers": 12,
+          "thresholdDestinations": 12,
+          "thresholdTotalSol": 3,
+          "triggered": false,
+          "pass": true
+        },
+        "cr_precreateLargeBurst": {
+          "enabled": true,
+          "observedTransfers": 0,
+          "threshold": 8,
+          "sign": ">=",
+          "pass": true
+        },
+        "cr_creatorCashout": {
+          "enabled": true,
+          "observedCashoutSol": 0,
+          "observedLiqPct": 0,
+          "observedScore": 0,
+          "thresholdLiqPct": 25,
+          "thresholdScore": 1,
+          "signLiqPct": "<=",
+          "signScore": "<=",
+          "pass": true
+        },
+        "cr_microInbound": {
+          "enabled": true,
+          "observedTransfers": 0,
+          "observedSources": 0,
+          "thresholdTransfers": 6,
+          "thresholdSources": 2,
+          "signTransfers": ">=",
+          "signSources": ">=",
+          "pass": true
+        },
+        "cr_closeAccountBurst": {
+          "enabled": true,
+          "observedTxs": 0,
+          "observedCloses": 0,
+          "thresholdTxs": 4,
+          "thresholdCloses": 12,
+          "signTxs": ">=",
+          "signCloses": ">=",
+          "pass": true
+        },
+        "cr_funderCluster": {
+          "enabled": true,
+          "observedCounterparties": 0,
+          "historicalRugCount": 0,
+          "recentCreatorCount": 0,
+          "thresholdHistorical": 1,
+          "thresholdRecent": 2,
+          "triggered": false,
+          "pass": true
+        },
+        "cr_allPassed": true,
+        "cr_probationBypass": false,
+        "cr_entryBlocked": null,
+        "cr_reason": null
+      },
+      "preBuyUltraGuard": {
+        "maxObservedLiqDropPct": 0,
+        "maxObservedQuoteDropPct": 0,
+        "maxLiqDropPct": 35,
+        "maxQuoteDropPct": 35,
+        "windowMs": 2500,
+        "intervalMs": 500
+      },
+      "holdLog": {
+        "exitReason": "winner trailing stop",
+        "holdMs": 90000,
+        "actualDurationMs": 25407,
+        "timeToPeakMs": 19310,
+        "entryBaselineQuoteSol": 0.00974826,
+        "entrySolLiquidity": 9.9178,
+        "peakExitQuoteSol": 0.01115317,
+        "peakPnlPct": 11.5317,
+        "winnerArmed": true,
+        "trailingActive": true,
+        "pricePath": {
+          "t": [
+            0,
+            3005,
+            4407,
+            5525,
+            6720,
+            7919,
+            9190,
+            10389,
+            11750,
+            12870,
+            14422,
+            15531,
+            16772,
+            18066,
+            19310,
+            20520,
+            21804,
+            22923,
+            24191,
+            25406
+          ],
+          "q": [
+            0.00974826,
+            0.00965286,
+            0.00966258,
+            0.00966258,
+            0.00966248,
+            0.00966248,
+            0.00966248,
+            0.00966248,
+            0.00966248,
+            0.0095122,
+            0.0094645,
+            0.00946445,
+            0.01042879,
+            0.01114285,
+            0.01115317,
+            0.01115249,
+            0.01114836,
+            0.01114836,
+            0.01099332,
+            0.00989963
+          ],
+          "samples": 20,
+          "dropped": 0
+        },
+        "triggers": {
+          "winnerTrailing": {
+            "triggered": true,
+            "detail": "peak=0.011153SOL(11.53%) cur=0.009900SOL(-1.00%) dd=11.24%"
+          }
+        },
+        "guards": {
+          "removeLiq": {
+            "enabled": false
+          },
+          "creatorAmmBurst": {
+            "enabled": true
+          },
+          "creatorRiskRecheck": {
+            "enabled": true
+          },
+          "winnerManagement": {
+            "enabled": true,
+            "armPct": 8,
+            "trailingPct": 10,
+            "hardTpPct": 50,
+            "minHoldMs": 4000
+          },
+          "sellQuoteCollapse": {
+            "enabled": false,
+            "minHoldMs": 3000,
+            "dropPct": 35
+          },
+          "singleSwapShock": {
+            "enabled": true,
+            "minHoldMs": 3000,
+            "dropPct": 35
+          },
+          "hardStopLoss": {
+            "enabled": true,
+            "minHoldMs": 3000,
+            "lossPct": 15
+          },
+          "poolChurn": {
+            "enabled": false
+          },
+          "creatorOutbound": {
+            "enabled": false
+          },
+          "creatorCloseAccount": {
+            "enabled": false
+          },
+          "creatorOutboundSpray": {
+            "enabled": true
+          },
+          "creatorInboundSpray": {
+            "enabled": false
+          }
+        }
+      },
+      "noWsolRetryCount": 0,
+      "noWsolRetryRecovered": false,
+      "noWsolRetryExhausted": false
+    }
+  ]
 }

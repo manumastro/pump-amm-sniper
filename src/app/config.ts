@@ -393,7 +393,9 @@ export const CONFIG = {
     LOW_LIQUIDITY_RECHECK_WINDOW_MS: Number(process.env.LOW_LIQUIDITY_RECHECK_WINDOW_MS ?? 5000),
     LOW_LIQUIDITY_RECHECK_INTERVAL_MS: Number(process.env.LOW_LIQUIDITY_RECHECK_INTERVAL_MS ?? 300),
     LOW_LIQUIDITY_POOL_COOLDOWN_MS: Number(process.env.LOW_LIQUIDITY_POOL_COOLDOWN_MS ?? 120000),
-    MAX_CONCURRENT_OPERATIONS: Number(process.env.MAX_CONCURRENT_OPERATIONS ?? 2),
+    // Modello seriale (controls.md 38): un token alla volta. Alzarlo reintroduce la
+    // contesa che la coda serviva a gestire, e la coda non esiste piu.
+    MAX_CONCURRENT_OPERATIONS: Number(process.env.MAX_CONCURRENT_OPERATIONS ?? 1),
     // Tetto di getParsedTransaction simultanee per processo worker. Il bot leggeva fino
     // a 40 firme con un Promise.all senza limite, da otto punti diversi e con quattro
     // deep check in parallelo fra loro: il picco non era limitato da niente ed e cosi che
@@ -408,7 +410,6 @@ export const CONFIG = {
     // Il totale verso l'endpoint e questo valore x MAX_CONCURRENT_OPERATIONS. 0 = nessun
     // limite, da usare solo con un endpoint a pagamento. Vedi controls.md 31.
     RPC_MAX_REQUESTS_PER_SEC: Number(process.env.RPC_MAX_REQUESTS_PER_SEC ?? 8),
-    QUEUE_MAX_PENDING_SIGNATURES: Number(process.env.QUEUE_MAX_PENDING_SIGNATURES ?? 300),
     // Rete di sicurezza, non una manopola di tuning: un worker che supera questo tempo viene
     // ucciso e il suo slot liberato. Senza, un solo worker appeso su una chiamata RPC che non
     // ritorna mai tiene lo slot per sempre, e con MAX_CONCURRENT_OPERATIONS=2 ne bastano due
@@ -418,16 +419,13 @@ export const CONFIG = {
     // Con 2.856 creazioni/ora contro 360 di capacita la coda e sempre piena: senza TTL
     // il worker riceve pool vecchie di ~50 minuti, gia migrate o gia ruggate. Scartare
     // e corretto, non e una perdita: quella firma non era comunque valutabile in tempo.
-    QUEUE_MAX_AGE_MS: Number(process.env.QUEUE_MAX_AGE_MS || 45000),
     // "lifo" prende la firma piu fresca, "fifo" la piu vecchia. Per uno sniper la fresca
     // e l'unica che ha senso; "fifo" resta per riprodurre il comportamento storico.
-    QUEUE_ORDER: String(process.env.QUEUE_ORDER || "lifo").toLowerCase(),
     // Nomi di DEX (come in src/services/dex/index.ts) che hanno la precedenza quando hanno
     // lavoro in coda. Serve perche la coda e unica e pump genera ~13 creazioni per ogni
     // pumpswap: a coda satura — e lo e il 99% del tempo — pumpswap viene affamata, e il LIFO
     // peggiora la cosa perche "il piu fresco" coincide quasi sempre con "chi arriva di piu".
     // Vuoto = nessuna precedenza. Vedi controls.md 30.
-    QUEUE_PRIORITY_DEX: String(process.env.QUEUE_PRIORITY_DEX ?? "pumpswap"),
     DEFERRED_NO_WSOL_QUEUE_ENABLED: envBool("DEFERRED_NO_WSOL_QUEUE_ENABLED", false),
     DEFERRED_NO_WSOL_QUEUE_MAX_JOBS: Number(process.env.DEFERRED_NO_WSOL_QUEUE_MAX_JOBS ?? 300),
     DEFERRED_NO_WSOL_INITIAL_DELAY_MS: Number(process.env.DEFERRED_NO_WSOL_INITIAL_DELAY_MS ?? 2000),
@@ -511,11 +509,7 @@ export const CONFIG_GROUPS = {
     },
     runtime: {
         maxConcurrentOperations: CONFIG.MAX_CONCURRENT_OPERATIONS,
-        queueMaxPendingSignatures: CONFIG.QUEUE_MAX_PENDING_SIGNATURES,
-        queueMaxAgeMs: CONFIG.QUEUE_MAX_AGE_MS,
         workerMaxLifetimeMs: CONFIG.WORKER_MAX_LIFETIME_MS,
-        queueOrder: CONFIG.QUEUE_ORDER,
-        queuePriorityDex: CONFIG.QUEUE_PRIORITY_DEX,
         deferredNoWsolQueueEnabled: CONFIG.DEFERRED_NO_WSOL_QUEUE_ENABLED,
         deferredNoWsolQueueMaxJobs: CONFIG.DEFERRED_NO_WSOL_QUEUE_MAX_JOBS,
         deferredNoWsolInitialDelayMs: CONFIG.DEFERRED_NO_WSOL_INITIAL_DELAY_MS,

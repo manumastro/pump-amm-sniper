@@ -2217,3 +2217,55 @@ definizione i trade che impiegavano più di un minuto e mezzo a raggiungere il p
 (sezione 34) rende la verifica possibile sui dati della prossima sessione: se una quota rilevante
 dei picchi cade oltre i 90s, `AUTO_SELL_DELAY_MS` va rialzato tenendo il poll a 1000ms — le due
 manopole sono indipendenti e il risparmio grosso è già nel poll.
+
+---
+
+## 38. Architettura seriale: un worker, un token alla volta, solo pump (2026-09-12)
+
+Sostituisce il modello a 2 worker + coda condivisa (sezioni 23, 25, 29).
+
+**Come funziona.** Il supervisore ascolta `logsSubscribe` sul solo program `pump`. Alla prima
+creazione valida fa spawn di un worker e **da quel momento scarta ogni altra creazione** finche il
+worker non termina. Non e una coda con capienza 1: l'evento scartato non torna piu. Quando il worker
+si libera, il supervisore prende la prima creazione che arriva *dopo* — cioe sempre la piu fresca
+possibile. Una coda, anche di un solo posto, potrebbe solo consegnare qualcosa di piu vecchio.
+
+**Cosa sparisce.** `src/app/queueSelect.ts` e il suo test, `pendingSignatures`, TTL, LIFO/FIFO,
+precedenza per DEX, `drainPendingQueue`, `QUEUE STATS`. Le chiavi `QUEUE_MAX_PENDING_SIGNATURES`,
+`QUEUE_MAX_AGE_MS`, `QUEUE_ORDER`, `QUEUE_PRIORITY_DEX` non esistono piu e sono commentate nel `.env`.
+`MAX_CONCURRENT_OPERATIONS` passa da 2 a **1**: alzarlo reintrodurrebbe la contesa che la coda
+serviva a gestire, e la coda non c'e piu. Netto: −290 righe.
+
+**Nuova riga di log**, al posto di `QUEUE STATS`:
+
+```
+SERIALE      | valutate=N ignorate_occupato=N quota_vista=N% create_fallite=N worker=N/1
+```
+
+`quota_vista` e la metrica che conta: quante creazioni valutiamo sul totale arrivato.
+
+**Perche.** Tre motivi, in ordine di peso.
+
+1. **Il tetto di spesa diventa vero.** Il rate limiter e un token bucket **per processo**, e ogni
+   worker e un processo nuovo che parte col secchio pieno: con piu worker vivi insieme
+   `RPC_MAX_REQUESTS_PER_SEC` non limitava quasi nulla. Con un solo processo alla volta e un tetto
+   globale reale. Questo risolve strutturalmente il difetto annotato alla sezione 29, senza spostare
+   il limiter nel supervisore.
+2. **Il costo scende e resta prevedibile.** Proiezione sui dati della sessione delle 20:32
+   (valutazione media 6,2s / 27 richieste, trade ~1% con hold 90s e ~200 richieste):
+   ciclo medio 7,1s → **507 valutazioni/ora, ~14.500 richieste/ora, ~10,6M/mese**, contro le
+   25.617/ora di oggi.
+3. **Semplicita.** La coda esisteva solo per arbitrare fra due worker in contesa.
+
+**Costo della scelta, esplicito.** Sul flusso pump (1.350 creazioni/ora) si valuta il **38%**.
+E soprattutto **`pumpswap` viene spento**: e il DEX dei +0,645 SOL di aprile, 69,4% di win rate,
+mentre pump finora ha fatto −0,056 SOL su 14 trade. La decisione e deliberata — cercare edge su pump
+con dati puliti invece di dividere la capacita fra due popolazioni — ma va rivalutata contro i
+numeri di pump quando ce ne saranno abbastanza. `pumpSwapAdapter` resta implementato: riattivarlo e
+rimetterlo nella lista di `src/services/dex/index.ts`. Con un solo worker pero' **ruberebbe**
+capacita a pump invece di aggiungersi.
+
+⚠️ Il supervisore **ignora** gli eventi nel callback, non chiude la subscription. Disiscriversi e
+riscriversi ogni pochi secondi farebbe sbattere la connessione WebSocket contro il circuit breaker
+dei resubscribe. L'effetto RPC e identico: `logsSubscribe` e un flusso push, ricevere un evento non
+costa chiamate.

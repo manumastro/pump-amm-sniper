@@ -4,7 +4,6 @@ import fs from "fs";
 import path from "path";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { WorkerSlotState } from "../domain/types";
-import { PendingSignature, selectNextSignature } from "./queueSelect";
 
 type DeferredNoWsolCandidatePayload = {
     signature: string;
@@ -62,10 +61,6 @@ export function createSupervisorRuntime(options: {
     rootDir: string;
     workerLogDir: string;
     maxConcurrentOperations: number;
-    queueMaxPendingSignatures: number;
-    queueMaxAgeMs: number;
-    queueOrder: string;
-    queuePriorityDex: string;
     workerMaxLifetimeMs: number;
     deferredNoWsolQueueEnabled: boolean;
     deferredNoWsolQueueDir: string;
@@ -127,11 +122,11 @@ export function createSupervisorRuntime(options: {
     const MAX_CONSECUTIVE_RESUBSCRIBES = 5;
     const seenSignatures = new Map<string, number>();
     const activeSignatures = new Set<string>();
-    const pendingSignatures: PendingSignature[] = [];
-    let queueExpiredCount = 0;
     let failedCreateTxCount = 0;
-    let queuePriorityServedCount = 0;
-    const pendingSignatureSet = new Set<string>();
+    // Modello seriale: mentre un worker e vivo il supervisore ignora ogni altra creazione.
+    // Non e una coda con capienza 1, e' assenza di coda: l'evento scartato non torna piu.
+    let ignoredWhileBusyCount = 0;
+    let dispatchedCount = 0;
     const deferredNoWsolJobs = new Map<string, DeferredNoWsolJob>();
     const deferredNoWsolBySignature = new Set<string>();
     let deferredQueueInterval: NodeJS.Timeout | null = null;
@@ -326,90 +321,6 @@ export function createSupervisorRuntime(options: {
         return workerSlots.find((slot) => !slot.busy) || null;
     }
 
-    const queueMaxAgeMs = Math.max(0, options.queueMaxAgeMs);
-    const queueIsLifo = options.queueOrder !== "fifo";
-
-    // Nomi di DEX -> program id, per la precedenza in coda. Un nome che non corrisponde a
-    // nessun adapter registrato e quasi sempre un refuso in .env: meglio dirlo all'avvio che
-    // lasciare una precedenza silenziosamente inattiva.
-    const priorityProgramIds = new Set<string>();
-    {
-        const wanted = options.queuePriorityDex
-            .split(",")
-            .map((x) => x.trim().toLowerCase())
-            .filter(Boolean);
-        const byName = new Map(listAdapters().map((a) => [a.name.toLowerCase(), a.programId]));
-        for (const name of wanted) {
-            const programId = byName.get(name);
-            if (programId) {
-                priorityProgramIds.add(programId);
-            } else {
-                console.warn(`QUEUE        | QUEUE_PRIORITY_DEX: "${name}" non e un adapter registrato, ignorato`);
-            }
-        }
-    }
-
-    function enqueuePendingSignature(signature: string, programId: string) {
-        if (pendingSignatureSet.has(signature) || activeSignatures.has(signature)) return;
-
-        const maxPending = Math.max(1, options.queueMaxPendingSignatures);
-        if (pendingSignatures.length >= maxPending) {
-            const dropped = pendingSignatures.shift();
-            if (dropped) {
-                pendingSignatureSet.delete(dropped.signature);
-                console.warn(`QUEUE        | drop oldest ${options.shortSig(dropped.signature)} (max ${maxPending})`);
-            }
-        }
-
-        sweepExpiredPendingSignatures();
-        pendingSignatures.push({ signature, programId, enqueuedAtMs: Date.now() });
-        pendingSignatureSet.add(signature);
-        console.log(`QUEUE        | enqueued ${options.shortSig(signature)} (pending=${pendingSignatures.length})`);
-    }
-
-    // In LIFO le firme scadute si accumulano in TESTA, dove takeNextPendingSignature() non
-    // arriva mai finche la coda resta satura: senza questa spazzata resterebbero in coda fino
-    // all'overflow, contate come "drop oldest" invece che come scadute. Il contatore mentirebbe
-    // proprio nel caso che deve misurare.
-    function sweepExpiredPendingSignatures() {
-        if (queueMaxAgeMs <= 0) return;
-        const nowMs = Date.now();
-        let swept = 0;
-        while (pendingSignatures.length > 0 && nowMs - pendingSignatures[0].enqueuedAtMs > queueMaxAgeMs) {
-            const stale = pendingSignatures.shift()!;
-            pendingSignatureSet.delete(stale.signature);
-            queueExpiredCount += 1;
-            swept += 1;
-        }
-        if (swept > 0) {
-            console.warn(
-                `QUEUE        | scadute ${swept} firme oltre ${(queueMaxAgeMs / 1000).toFixed(0)}s (pending=${pendingSignatures.length}, totale scadute=${queueExpiredCount})`,
-            );
-        }
-    }
-
-    // Estrae la prossima firma ancora valutabile, scartando quelle scadute.
-    // In LIFO la coda e ordinata per eta crescente, quindi le scadute sono tutte in testa.
-    function takeNextPendingSignature(): PendingSignature | null {
-        const result = selectNextSignature(pendingSignatures, {
-            priorityProgramIds,
-            isLifo: queueIsLifo,
-            maxAgeMs: queueMaxAgeMs,
-            nowMs: Date.now(),
-            isActive: (sig) => activeSignatures.has(sig),
-        });
-
-        for (const stale of result.expired) {
-            pendingSignatureSet.delete(stale.signature);
-            queueExpiredCount += 1;
-        }
-        if (result.entry) {
-            pendingSignatureSet.delete(result.entry.signature);
-            if (result.servedByPriority) queuePriorityServedCount += 1;
-        }
-        return result.entry;
-    }
-
     function dispatchPoolToWorker(signature: string, extraEnv?: Record<string, string>): boolean {
         // Atomic check-and-set: prevent double dispatch for same signature
         if (activeSignatures.has(signature)) {
@@ -488,7 +399,6 @@ export function createSupervisorRuntime(options: {
             slot.signature = null;
             slot.child = null;
             activeSignatures.delete(signature);
-            drainPendingQueue();
         });
 
         child.on("error", (error) => {
@@ -498,24 +408,9 @@ export function createSupervisorRuntime(options: {
             slot.signature = null;
             slot.child = null;
             activeSignatures.delete(signature);
-            drainPendingQueue();
         });
 
         return true;
-    }
-
-    function drainPendingQueue() {
-        while (findIdleWorkerSlot()) {
-            const entry = takeNextPendingSignature();
-            if (!entry) return;
-            if (!dispatchPoolToWorker(entry.signature, { WORKER_TASK_PROGRAM_ID: entry.programId })) {
-                // Nessuno slot libero: rimetti la firma in coda conservando la sua eta,
-                // altrimenti un rimbalzo la farebbe sembrare appena arrivata e il TTL sarebbe cieco.
-                pendingSignatures.push(entry);
-                pendingSignatureSet.add(entry.signature);
-                return;
-            }
-        }
     }
 
     function createDeferredNoWsolJob(payload: DeferredNoWsolCandidatePayload, nowMs: number): DeferredNoWsolJob | null {
@@ -875,8 +770,15 @@ export function createSupervisorRuntime(options: {
                             return;
                         }
 
+                        // Cuore del modello seriale: se il worker e occupato la creazione viene
+                        // scartata subito e per sempre. Non viene messa da parte: quando il worker
+                        // si libera prendera la prima creazione che arriva DOPO, che e sempre la
+                        // piu fresca possibile. Una coda, anche di un solo posto, servirebbe solo
+                        // a consegnare qualcosa di piu vecchio.
                         if (!dispatchPoolToWorker(logs.signature, { WORKER_TASK_PROGRAM_ID: adapter.programId })) {
-                            enqueuePendingSignature(logs.signature, adapter.programId);
+                            ignoredWhileBusyCount += 1;
+                        } else {
+                            dispatchedCount += 1;
                         }
                     } catch (e: any) {
                         console.error(`❌ Log handler error (${adapter.name}): ${e.message}`);
@@ -905,14 +807,17 @@ export function createSupervisorRuntime(options: {
             const now = Date.now();
             const staleForMs = now - lastLogAtMs;
 
-            drainPendingQueue();
 
             // Salute della coda: senza questa riga la saturazione e gli scarti restano
             // sepolti in mezzo ai log dei worker e non si vedono a colpo d'occhio.
+            // Quota vista: quante creazioni abbiamo davvero valutato sul totale arrivato.
+            // E' la misura che dice se il modello seriale sta guardando abbastanza campioni.
+            const totale = dispatchedCount + ignoredWhileBusyCount;
+            const quota = totale > 0 ? (dispatchedCount / totale) * 100 : 0;
             console.log(
-                `QUEUE STATS  | pending=${pendingSignatures.length} scadute=${queueExpiredCount} ` +
-                `create_fallite=${failedCreateTxCount} precedenza=${queuePriorityServedCount} ` +
-                `slot_liberi=${workerSlots.filter((sl) => !sl.busy).length}/${workerSlots.length}`,
+                `SERIALE      | valutate=${dispatchedCount} ignorate_occupato=${ignoredWhileBusyCount} ` +
+                `quota_vista=${quota.toFixed(1)}% create_fallite=${failedCreateTxCount} ` +
+                `worker=${workerSlots.filter((sl) => sl.busy).length}/${workerSlots.length}`,
             );
             if (staleForMs < options.logStaleResubscribeMs) return;
 
