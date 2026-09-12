@@ -152,6 +152,7 @@ function getEvent(id) {
       entryFilters: null,
       preBuyUltraGuard: null,
       holdLog: null,
+      liqPath: null,
     });
   }
   return events.get(id);
@@ -491,6 +492,18 @@ function parseLine(logPath, line) {
       return;
     }
 
+    if (stage === 'LIQPATH') {
+      // Traiettoria della liquidita durante la finestra di recheck: serve a testare
+      // offline "momentum" contro "livello" come segnale d'ingresso. Vedi controls.md 39.
+      ev = ev || getCurrentEvent(logPath);
+      if (!ev) return;
+      const parsed = safeJsonParse(message);
+      if (parsed && typeof parsed === 'object') {
+        ev.liqPath = parsed;
+      }
+      return;
+    }
+
     if (stage === 'HOLDLOG') {
       ev = ev || getCurrentEvent(logPath);
       if (!ev) return;
@@ -680,6 +693,7 @@ function summarize() {
       entryFilters: e.entryFilters,
       preBuyUltraGuard: e.preBuyUltraGuard,
       holdLog: e.holdLog,
+      liqPath: e.liqPath,
       noWsolRetryCount: e.noWsolRetryCount || 0,
       noWsolRetryRecovered: !!e.noWsolRetryRecovered,
       noWsolRetryExhausted: !!e.noWsolRetryExhausted,
@@ -748,6 +762,7 @@ function summarize() {
       entryFilters: e.entryFilters,
       preBuyUltraGuard: e.preBuyUltraGuard,
       holdLog: e.holdLog,
+      liqPath: e.liqPath,
       noWsolRetryCount: e.noWsolRetryCount || 0,
       noWsolRetryRecovered: !!e.noWsolRetryRecovered,
       noWsolRetryExhausted: !!e.noWsolRetryExhausted,
@@ -774,6 +789,7 @@ function summarize() {
       entryFilters: e.entryFilters,
       preBuyUltraGuard: e.preBuyUltraGuard,
       holdLog: e.holdLog,
+      liqPath: e.liqPath,
     })),
   };
 }

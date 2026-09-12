@@ -439,6 +439,16 @@ export const CONFIG = {
     CC_SHADOW_FAST_INTERVAL_MS: Number(process.env.CC_SHADOW_FAST_INTERVAL_MS ?? 5000),
     CC_SHADOW_FAST_PHASE_MS: Number(process.env.CC_SHADOW_FAST_PHASE_MS ?? 180000),
     CC_SHADOW_SLOW_INTERVAL_MS: Number(process.env.CC_SHADOW_SLOW_INTERVAL_MS ?? 60000),
+    // Shadow tracking degli skip per liquidita: e il 55,6% degli scarti e non sappiamo
+    // niente di cosa fanno dopo. Campionati, non tutti: a piena copertura raddoppierebbero
+    // il conto RPC. Vedi docs/controls.md 39.
+    // TTL dello shadow, sganciato da AUTO_SELL_DELAY_MS: l'hold e sceso a 90s ma per capire
+    // cosa fa un token che abbiamo scartato serve una finestra molto piu lunga.
+    CC_SHADOW_HOLD_TTL_MS: Number(process.env.CC_SHADOW_HOLD_TTL_MS ?? 600000),
+    // Campionamento anche sugli skip da creator risk: prima li seguiva tutti.
+    CC_SHADOW_SAMPLE_PCT: Number(process.env.CC_SHADOW_SAMPLE_PCT ?? 100),
+    CC_SHADOW_LOW_LIQ_ENABLED: envBool("CC_SHADOW_LOW_LIQ_ENABLED", false),
+    CC_SHADOW_LOW_LIQ_SAMPLE_PCT: Number(process.env.CC_SHADOW_LOW_LIQ_SAMPLE_PCT ?? 20),
     CC_SHADOW_DEX_EVERY_N_SNAPSHOTS: Number(process.env.CC_SHADOW_DEX_EVERY_N_SNAPSHOTS ?? 1),
     CREATOR_RISK_RATE_LIMIT_RETRIES: Number(process.env.CREATOR_RISK_RATE_LIMIT_RETRIES ?? 3),
     CREATOR_RISK_RATE_LIMIT_RETRY_BASE_MS: Number(process.env.CREATOR_RISK_RATE_LIMIT_RETRY_BASE_MS ?? 350),

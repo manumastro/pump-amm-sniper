@@ -18,7 +18,10 @@ uso: ./scripts/bot <comando>
   worker      il log del worker attivo in questo momento, dall'inizio
   stato       fotografia: config attiva, contatori, ultime valutazioni
   rpc         quante chiamate stiamo facendo, al minuto e per valutazione
+  analisi     momentum d'ingresso e costo degli skip (il quadro di domani)
   shell       entra nel container
+  veglia      impedisce al Mac di dormire col coperchio chiuso (chiede sudo)
+  dormi       ripristina il comportamento normale (chiede sudo)
   su | giu | riavvia | rebuild
   reset       backup del report, azzera i log, riavvia da zero
 
@@ -125,6 +128,32 @@ rpc)
       for (const [k,v] of Object.entries(per).sort((a,b)=>b[1][1]-a[1][1]))
         console.log(`  ${k.padEnd(34)} n=${String(v[0]).padStart(4)} rpc=${String(v[1]).padStart(6)} media=${(v[1]/v[0]).toFixed(1).padStart(6)} 429=${v[2]}`);
     '
+    ;;
+
+analisi)
+    node scripts/entry-signal-analysis.js "${2:-}"
+    ;;
+
+veglia)
+    # caffeinate NON basta: impedisce il sonno da inattivita', ma la chiusura del
+    # coperchio di un portatile manda comunque in sleep. L'unico flag che regge il
+    # coperchio chiuso e' pmset disablesleep, e vuole i privilegi di root.
+    echo "Serve la password di sistema (pmset vuole root)."
+    sudo pmset -a disablesleep 1
+    caffeinate -dimsu -w $$ >/dev/null 2>&1 &
+    echo
+    echo "Il Mac non dormira' piu' col coperchio chiuso."
+    pmset -g | grep -E "^ sleep|SleepDisabled" || true
+    echo
+    echo "Tienilo attaccato alla corrente: a batteria si scarichera' fino a spegnersi."
+    echo "Per tornare normale: ./scripts/bot dormi"
+    ;;
+
+dormi)
+    echo "Serve la password di sistema (pmset vuole root)."
+    sudo pmset -a disablesleep 0
+    pkill -f "caffeinate -dimsu" 2>/dev/null || true
+    echo "Ripristinato: il Mac torna a dormire col coperchio chiuso."
     ;;
 
 shell)

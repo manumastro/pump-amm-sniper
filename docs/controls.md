@@ -2269,3 +2269,69 @@ capacita a pump invece di aggiungersi.
 riscriversi ogni pochi secondi farebbe sbattere la connessione WebSocket contro il circuit breaker
 dei resubscribe. L'effetto RPC e identico: `logsSubscribe` e un flusso push, ricevere un evento non
 costa chiamate.
+
+---
+
+## 39. Strumentazione per misurare i filtri invece di crederci (2026-09-12)
+
+Il problema che risolve: **vediamo l'esito solo dei token che passano.** Ogni token scartato
+sparisce, quindi nessuna soglia e' mai stata confutabile. E' lo stesso vizio che ha prodotto 30
+regole creator-risk di cui ne sparano 4 (sezione 34).
+
+### 39.1 Traiettoria della liquidita all'ingresso (costo zero)
+
+`recheckLowLiquidity` campionava la curva 16 volte in 5s e teneva **solo il massimo**. Ora registra
+la traiettoria completa e la emette come `LIQPATH`, che il report daemon salva in `liqPath`:
+
+```json
+{"esito":"sotto_soglia","initialSol":0.0779,"finalSol":0.0323,"bestSol":0.0779,
+ "slopeSolPerSec":-0.0092,"windowMs":5000,"t":[...],"q":[...]}
+```
+
+**Perche' conta.** Su una bonding curve il livello di liquidita e' uno *stock* che parte da zero
+per tutti: quello che distingue un token a sei secondi di vita non e' quanta SOL c'e' dentro, ma
+quanto in fretta sta arrivando. `MIN_POOL_LIQUIDITY_SOL` misura lo stock; la pendenza misura il
+flusso. I primi due campioni reali mostrano la differenza:
+
+| token | da → a | pendenza | esito |
+|---|---|---|---|
+| A | 0,0779 → 0,0323 SOL | **−0,0092 SOL/s** (si sta svuotando) | scartato |
+| B | 0,9890 → 1,0949 SOL | **+0,2259 SOL/s** | passato |
+
+**Costo RPC: zero.** I 16 campioni erano gia' pagati, venivano buttati.
+Si spegne con `LOW_LIQUIDITY_RECHECK_ENABLED=false`, che pero' spegne anche il recheck.
+
+### 39.2 Shadow tracking esteso agli skip di liquidita
+
+`CC_SHADOW_ENABLED` passa da `false` a **`true`**, e lo shadow tracker — che seguiva solo gli skip
+da creator risk — ora segue anche quelli da liquidita, il **55,6%** degli scarti.
+
+| Controllo | prima | ora | perche' |
+|---|---|---|---|
+| `CC_SHADOW_ENABLED` | false | **true** | senza, nessun controfattuale |
+| `CC_SHADOW_LOW_LIQ_ENABLED` | — (nuovo) | **true** | e' la popolazione piu' grossa |
+| `CC_SHADOW_SAMPLE_PCT` | — (nuovo, era 100 implicito) | **20** | tetto al costo |
+| `CC_SHADOW_LOW_LIQ_SAMPLE_PCT` | — (nuovo) | **20** | idem |
+| `CC_SHADOW_HOLD_TTL_MS` | — (era `AUTO_SELL_DELAY_MS`) | **600.000** | l'hold e' sceso a 90s, troppo corto per vedere cosa fa un token scartato |
+| `CC_SHADOW_FAST_INTERVAL_MS` | 5.000 | **10.000** | meta' snapshot, meta' costo |
+| `CC_SHADOW_DEX_EVERY_N_SNAPSHOTS` | 1 | **3** | DexScreener non e' RPC ma ha un suo rate limit |
+
+**Dimensionamento del costo.** A copertura piena sarebbe stato un raddoppio del conto RPC
+(~9.700 richieste/ora in piu'). Con il 20% su entrambe le popolazioni e ~25 snapshot per job:
+~68 job/ora × ~35 richieste = **~2.400 richieste/ora, +24%**. Il campione resta ampiamente
+sufficiente per una tabella di frequenze.
+
+⚠️ I job shadow girano nel **supervisore**, che ha il proprio token bucket: non rubano il budget al
+worker, ma insistono sullo stesso endpoint. Se ricompaiono i 429, la prima manopola da abbassare e'
+`CC_SHADOW_SAMPLE_PCT`.
+
+### 39.3 Come si leggono
+
+```
+./scripts/bot analisi
+```
+
+Due tabelle: la prima incrocia pendenza d'ingresso ed esito, la seconda dice per ogni motivo di
+skip quanti token scartati hanno poi fatto +10%, +25%, +50%, +100%, e quanti sono andati in rug.
+Se la colonna rug regge il confronto con i picchi, il filtro sta lavorando; se i picchi dominano,
+la soglia e' troppo severa.

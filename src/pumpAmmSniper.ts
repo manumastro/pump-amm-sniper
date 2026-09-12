@@ -204,9 +204,28 @@ function enqueueCcShadowCandidate(payload: {
     startedAt?: string;
     createPoolBlockTime?: number | null;
     skipReason?: string;
+    // "creator-risk" (storico) oppure "low-liq". Il campo distingue le due popolazioni
+    // nell'analisi: hanno motivi di scarto diversi e vanno lette separatamente.
+    kind?: string;
+    liqSol?: number;
+    liqSlopeSolPerSec?: number;
 }) {
     if (!CONFIG.CC_SHADOW_ENABLED) return;
-    if (!Number.isFinite(payload.cc) || payload.cc < CONFIG.CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES) return;
+    const kind = payload.kind || "creator-risk";
+    // La soglia su cc vale solo per gli skip da creator risk: un low-liq non ha un cc
+    // significativo e verrebbe scartato sempre.
+    if (kind === "creator-risk") {
+        if (!Number.isFinite(payload.cc) || payload.cc < CONFIG.CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES) return;
+        const pct = Math.max(0, Math.min(100, CONFIG.CC_SHADOW_SAMPLE_PCT));
+        if (pct <= 0) return;
+        if (pct < 100 && Math.random() * 100 >= pct) return;
+    }
+    if (kind === "low-liq") {
+        if (!CONFIG.CC_SHADOW_LOW_LIQ_ENABLED) return;
+        const pct = Math.max(0, Math.min(100, CONFIG.CC_SHADOW_LOW_LIQ_SAMPLE_PCT));
+        if (pct <= 0) return;
+        if (Math.random() * 100 >= pct) return;
+    }
 
     try {
         fs.mkdirSync(CC_SHADOW_QUEUE_DIR, { recursive: true });
@@ -214,7 +233,7 @@ function enqueueCcShadowCandidate(payload: {
         const baseName = `${Date.now()}-${payload.eventId}-${randomSuffix}`;
         const tmpPath = path.join(CC_SHADOW_QUEUE_DIR, `${baseName}.tmp`);
         const outPath = path.join(CC_SHADOW_QUEUE_DIR, `${baseName}.json`);
-        fs.writeFileSync(tmpPath, JSON.stringify(payload));
+        fs.writeFileSync(tmpPath, JSON.stringify({ ...payload, kind }));
         fs.renameSync(tmpPath, outPath);
     } catch (error) {
         console.error(`CCSHADOW    | enqueue failed ${payload.eventId}: ${(error as Error)?.message || "unknown"}`);
@@ -581,6 +600,21 @@ async function handleNewPool(connection: Connection, signature: string) {
                 `(${liqSolFinalFmt} SOL / ${usdPart}; ` +
                 `min ${CONFIG.MIN_POOL_LIQUIDITY_SOL} SOL)`
             );
+            // Shadow: senza questo non sapremo mai cosa hanno fatto i token che scartiamo,
+            // e ogni soglia di liquidita resta una convinzione invece che una misura.
+            enqueueCcShadowCandidate({
+                kind: "low-liq",
+                eventId: signature,
+                signature,
+                tokenMint,
+                poolAddress,
+                creatorAddress: creatorAddress || null,
+                cc: 0,
+                liqSol: Number(liquiditySOL.toFixed(9)),
+                startedAt: new Date().toISOString(),
+                createPoolBlockTime: tx.blockTime || null,
+                skipReason: `low liquidity (${liqSolFinalFmt} SOL, min ${CONFIG.MIN_POOL_LIQUIDITY_SOL})`,
+            });
             finalStatus = "SKIP: low liquidity";
             return;
         }
@@ -3533,7 +3567,7 @@ const supervisorRuntime = createSupervisorRuntime({
     ccShadowFastPhaseMs: CONFIG.CC_SHADOW_FAST_PHASE_MS,
     ccShadowSlowIntervalMs: CONFIG.CC_SHADOW_SLOW_INTERVAL_MS,
     ccShadowDexEveryNSnapshots: CONFIG.CC_SHADOW_DEX_EVERY_N_SNAPSHOTS,
-    ccShadowHoldTtlMs: CONFIG.AUTO_SELL_DELAY_MS,
+    ccShadowHoldTtlMs: CONFIG.CC_SHADOW_HOLD_TTL_MS,
     signatureCacheTtlMs: CONFIG.SIGNATURE_CACHE_TTL_MS,
     signatureCacheMaxSize: CONFIG.SIGNATURE_CACHE_MAX_SIZE,
     logStaleResubscribeMs: CONFIG.LOG_STALE_RESUBSCRIBE_MS,
