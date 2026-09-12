@@ -18,7 +18,7 @@ const { Connection, PublicKey, Keypair } = require("@solana/web3.js");
 const BN = require("bn.js");
 require("dotenv").config();
 
-const { listAdapters, initAdapters } = require("../dist/services/dex");
+const { listAdapters, initAdapters, matchesCreateMarkers } = require("../dist/services/dex");
 
 const RPC = process.env.SVS_UNSTAKED_RPC || "https://api.mainnet-beta.solana.com";
 const WS = process.env.SVS_UNSTAKED_WS || RPC.replace(/^http/, "ws");
@@ -48,8 +48,7 @@ const PROBE_LAMPORTS = new BN(10_000_000); // 0,01 SOL, la size simulata del pap
     for (const adapter of adapters) {
         connection.onLogs(new PublicKey(adapter.programId), async (logs) => {
             if (logs.err || seen.has(logs.signature)) return;
-            const hit = logs.logs.some((l) => adapter.createPoolLogMarkers.some((m) => l.toLowerCase().includes(m)));
-            if (!hit) return;
+            if (!matchesCreateMarkers(adapter, logs.logs)) return;
             seen.add(logs.signature);
 
             const st = stats.get(adapter.name);

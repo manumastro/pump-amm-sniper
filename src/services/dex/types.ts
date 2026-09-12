@@ -31,8 +31,15 @@ export interface DexAdapter {
     readonly name: string;
     /** program id da ascoltare con onLogs */
     readonly programId: string;
-    /** sottostringhe che identificano la creazione di un pool nei log del program */
-    readonly createPoolLogMarkers: string[];
+    /**
+     * Come si riconosce la creazione nei log del program.
+     *
+     * Le stringhe sono cercate come sottostringa nella riga in minuscolo. Le RegExp sono
+     * applicate alla riga originale e servono quando il nome dell'istruzione e un prefisso
+     * di altre: su pump l'istruzione e `CreateV2`, ma cercare "create" colpirebbe anche
+     * `CreateTokenAccount` e `CreatePool`, che compaiono nelle stesse transazioni.
+     */
+    readonly createPoolLogMarkers: Array<string | RegExp>;
 
     /** lega l'adapter alla connection condivisa; va chiamata una volta all'avvio */
     init(connection: Connection): void;

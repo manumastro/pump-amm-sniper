@@ -11,6 +11,11 @@ export const SILENCE_RPC_429_LOGS = process.env.SILENCE_RPC_429_LOGS !== "false"
 
 export const CONFIG = {
     TRADE_AMOUNT_SOL: 0.01,
+    // Fee totale di pump sulla bonding curve, in basis point (protocollo + creator).
+    // Misurata il 2026-09-12 su 1.111 TradeEvent reali: 95+30 = 125 bps nel 75% dei casi,
+    // 0 bps nel 23%, 95+100 in coda. Si usa il caso dominante, che e anche il prudente.
+    // Le fee sono dinamiche: se pump cambia il tariffario va rimisurata, non indovinata.
+    PUMP_CURVE_FEE_BPS: Number(process.env.PUMP_CURVE_FEE_BPS || 125),
     MIN_POOL_LIQUIDITY_USD: Number(process.env.MIN_POOL_LIQUIDITY_USD || 10000),
     // Soglia via env perche e la prima leva da muovere quando si aggiunge un DEX: i pool
     // di ray_v4 e meteora_damm_v2 nascono con profondita diversa da quelli pumpswap.
@@ -379,6 +384,12 @@ export const CONFIG = {
     LOW_LIQUIDITY_RECHECK_INTERVAL_MS: Number(300),
     LOW_LIQUIDITY_POOL_COOLDOWN_MS: Number(120000),
     MAX_CONCURRENT_OPERATIONS: Number(2),
+    // Tetto di getParsedTransaction simultanee per processo worker. Il bot leggeva fino
+    // a 40 firme con un Promise.all senza limite, da otto punti diversi e con quattro
+    // deep check in parallelo fra loro: il picco non era limitato da niente ed e cosi che
+    // il 2026-03-29 e stata bruciata una chiave Helius. Il totale del sistema e questo
+    // valore x MAX_CONCURRENT_OPERATIONS.
+    RPC_MAX_CONCURRENT_TX_FETCH: Number(process.env.RPC_MAX_CONCURRENT_TX_FETCH || 6),
     QUEUE_MAX_PENDING_SIGNATURES: Number(300),
     DEFERRED_NO_WSOL_QUEUE_ENABLED: false,
     DEFERRED_NO_WSOL_QUEUE_MAX_JOBS: Number(300),

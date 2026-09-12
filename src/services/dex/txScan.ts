@@ -1,4 +1,20 @@
 import { instructionAccountToBase58, instructionProgramIdToBase58 } from "../../utils/pubkeys";
+import { DexAdapter } from "./types";
+
+/**
+ * Le righe di log di questa transazione annunciano la creazione di un pool su questo DEX?
+ *
+ * Vive qui e non nel supervisore perche la usano sia il runtime sia
+ * scripts/dex-adapter-live-check.js: quando la logica era duplicata, aggiungere un marker
+ * RegExp ha fatto esplodere lo script e non il bot.
+ */
+export function matchesCreateMarkers(adapter: DexAdapter, logLines: string[]): boolean {
+    return logLines.some((line) => {
+        const lower = line.toLowerCase();
+        return adapter.createPoolLogMarkers.some((marker) =>
+            typeof marker === "string" ? lower.includes(marker) : marker.test(line));
+    });
+}
 
 /**
  * Tutte le istruzioni di una transazione parsata, esterne e interne.

@@ -3,11 +3,14 @@ import { DexAdapter } from "./types";
 import { pumpSwapAdapter, PUMPSWAP_PROGRAM_ID } from "./pumpswap";
 import { raydiumV4Adapter, RAYDIUM_V4_PROGRAM_ID } from "./raydiumV4";
 import { meteoraDammV2Adapter, METEORA_DAMM_V2_PROGRAM_ID } from "./meteoraDammV2";
+import { pumpBondingCurveAdapter, PUMP_PROGRAM_ID } from "./pumpBondingCurve";
 
 export { DexAdapter, PoolOrientation, ResolvedPool, WSOL } from "./types";
+export { matchesCreateMarkers, allInstructions, instructionsForProgram, accountsTouchedByProgram, getAccountsChunked } from "./txScan";
 export { pumpSwapAdapter, PUMPSWAP_PROGRAM_ID, initPumpSwapSdk } from "./pumpswap";
 export { raydiumV4Adapter, RAYDIUM_V4_PROGRAM_ID } from "./raydiumV4";
 export { meteoraDammV2Adapter, METEORA_DAMM_V2_PROGRAM_ID } from "./meteoraDammV2";
+export { pumpBondingCurveAdapter, PUMP_PROGRAM_ID, deriveBondingCurve } from "./pumpBondingCurve";
 
 /**
  * Registro dei DEX che il bot sa leggere.
@@ -30,6 +33,7 @@ export { meteoraDammV2Adapter, METEORA_DAMM_V2_PROGRAM_ID } from "./meteoraDammV
 const ADAPTERS: DexAdapter[] = [
     pumpSwapAdapter,
     meteoraDammV2Adapter,
+    pumpBondingCurveAdapter,
 ];
 
 const BY_PROGRAM = new Map<string, DexAdapter>(ADAPTERS.map((a) => [a.programId, a]));

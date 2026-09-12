@@ -10,7 +10,8 @@
     "report:paper": "node scripts/paper-report-daemon.js",
     "forensics:rug-loss": "ts-node --transpile-only scripts/rug-loss-forensics.ts",
     "report:paper:bg": "nohup npm run report:paper >> logs/paper-report-daemon.log 2>&1 &",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "test": "node --test test/*.test.js"
   },
   "dependencies": {
     "@meteora-ag/cp-amm-sdk": "^1.4.8",

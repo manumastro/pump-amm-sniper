@@ -1252,3 +1252,86 @@ popolazione completa, e **il volume di trade non e confrontabile con quello di a
 `poolMints()` in `src/services/dex/pumpswap.ts` legge da entrambe le posizioni
 (`state.baseMint ?? state.pool.baseMint`, `state.quoteMint ?? state.pool.quoteMint`).
 Nessuna soglia toccata.
+
+---
+
+## 22. Il tetto alle richieste RPC simultanee
+
+**Aggiunto il 2026-09-12 dopo aver mandato in 429 un endpoint da 200 req/s.**
+
+### Il difetto
+
+`fetchParsedTransactionsForSignatures()` faceva `Promise.all` sull'intera lista di firme.
+Le liste arrivano a 40 elementi (`CREATOR_RISK_*_SIG_LIMIT`), la funzione e chiamata da otto
+punti, e i deep check creator-risk girano a loro volta in parallelo fra loro
+(`Promise.all` di quattro controlli in `creator-risk/index.ts`). Il picco di richieste
+simultanee non era limitato da niente: 40 x 4 x 2 worker nel caso peggiore.
+
+E lo stesso difetto che il 2026-03-29 ha bruciato una chiave Helius. Allora era stato
+curato il sintomo (circuit breaker sui resubscribe), non la causa.
+
+### La correzione
+
+`src/utils/concurrency.ts` — un semaforo, e un solo punto in cui passa tutto:
+
+```ts
+const txFetchSemaphore = createSemaphore(CONFIG.RPC_MAX_CONCURRENT_TX_FETCH);
+```
+
+`RPC_MAX_CONCURRENT_TX_FETCH` vale **6 per processo worker**, quindi il tetto di sistema e
+6 x `MAX_CONCURRENT_OPERATIONS`. Configurabile da env.
+
+**Il tetto e di processo, non di chiamata.** E la differenza che conta: un limite
+per-chiamata lascerebbe quattro deep check paralleli a 6 ciascuno.
+
+### Perche non si risolve pagando
+
+Un piano RPC piu veloce non limita un picco illimitato, alza solo il muro contro cui si
+sbatte. Con 40x4x2 richieste in volo anche 300 req/s vanno in 429, semplicemente piu tardi.
+
+### Test
+
+`test/concurrency.test.js`, **il primo test del repo** (`npm test`). Non e l'inizio di una
+suite per principio: il semaforo e il tipo di codice che si rompe in silenzio — se il tetto
+smette di funzionare non compare un errore, compaiono dei 429 sotto carico, cioe ore dopo e
+altrove. Cinque casi: tetto rispettato, ordine dei risultati preservato, tetto condiviso fra
+chiamate concorrenti, doppio rilascio che non gonfia i permessi, permesso restituito anche
+se il task lancia.
+
+---
+
+## 23. Il collo di bottiglia sono i worker, non l'RPC
+
+**Misurato il 2026-09-12** con `node scripts/creation-rate.js 300` (solo WebSocket, nessuna
+chiamata HTTP: si puo lasciare girare senza consumare rate limit).
+
+| DEX | creazioni/ora | quota |
+|---|---|---|
+| `pump` | 2.652 | 87,4% |
+| `pumpswap` | 204 | 6,7% |
+| `meteora_damm_v2` | 180 | 5,9% |
+| **totale** | **3.036** | 0,84 al secondo |
+
+Con `MAX_CONCURRENT_OPERATIONS=2`, la capacita e `2 / durata_valutazione`:
+
+| Durata di una valutazione | Valutazioni/ora | Copertura del flusso |
+|---|---|---|
+| 5s | 1.440 | 47,4% |
+| 10s | 720 | 23,7% |
+| 20s | 360 | 11,9% |
+| 40s | 180 | 5,9% |
+
+**Conseguenze operative:**
+
+1. **Aggiungere un DEX non aumenta il carico RPC.** Lo decidono i worker. Aumenta la
+   pressione sulla coda, che scarta i piu vecchi (`QUEUE_MAX_PENDING_SIGNATURES=300`).
+2. **Con pump attivo il bot diventa quasi solo un bot pump.** La coda e unica e pump e l'87%
+   degli eventi: a parita di tutto il resto, circa 9 dispatch su 10 sono curve pump, e
+   pumpswap viene affamato. Se si vuole continuare a coprire pumpswap serve una quota per
+   DEX, che **oggi non esiste**.
+3. **La latenza dell'endpoint vale quanto il numero di worker.** Una valutazione e fatta di
+   round trip in gran parte sequenziali: passare da 250ms a 58ms di latenza accorcia la
+   valutazione e alza la copertura senza toccare i worker.
+
+Prima di aumentare `MAX_CONCURRENT_OPERATIONS`: il carico RPC scala linearmente con i worker,
+ed e li che un piano a pagamento inizia a servire davvero.

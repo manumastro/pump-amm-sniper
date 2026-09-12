@@ -1,5 +1,5 @@
 import { spawn } from "child_process";
-import { listAdapters } from "../services/dex";
+import { listAdapters, matchesCreateMarkers } from "../services/dex";
 import fs from "fs";
 import path from "path";
 import { Connection, PublicKey } from "@solana/web3.js";
@@ -766,11 +766,7 @@ export function createSupervisorRuntime(options: {
                         }
 
                         // ogni DEX nomina diversamente l'istruzione di creazione pool
-                        const hasCreatePool = logs.logs.some((log) => {
-                            const lower = log.toLowerCase();
-                            return adapter.createPoolLogMarkers.some((marker) => lower.includes(marker));
-                        });
-                        if (!hasCreatePool) return;
+                        if (!matchesCreateMarkers(adapter, logs.logs)) return;
 
                         if (!dispatchPoolToWorker(logs.signature, { WORKER_TASK_PROGRAM_ID: adapter.programId })) {
                             enqueuePendingSignature(logs.signature, adapter.programId);

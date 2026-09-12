@@ -36,6 +36,7 @@ import { patchConsoleWithTimestamp, stageLog } from "./services/reporting/stageL
 import { createTop10Service } from "./services/top10";
 import { checkTokenSecurity, getMintInfoRobust } from "./services/token-security";
 import { formatLiquiditySol, formatQuoteMovePct, formatSolCompact, formatSolDecimal } from "./utils/format";
+import { createSemaphore, mapWithSemaphore } from "./utils/concurrency";
 import { instructionAccountToBase58, instructionProgramIdToBase58, pubkeyToBase58, shortSig } from "./utils/pubkeys";
 
 patchConsoleWithTimestamp();
@@ -1485,12 +1486,21 @@ function recordRugFunder(
     cachedRugHistory = null;
 }
 
+/**
+ * Unico cancello per le letture di transazioni di questo processo. Tutti i deep check
+ * creator-risk passano da fetchParsedTransactionsForSignatures, quindi limitare qui
+ * limita davvero il picco, anche quando quattro controlli partono insieme.
+ */
+const txFetchSemaphore = createSemaphore(CONFIG.RPC_MAX_CONCURRENT_TX_FETCH);
+
 async function fetchParsedTransactionsForSignatures(
     connection: Connection,
     signatures: Array<{ signature: string; blockTime?: number | null }>,
 ): Promise<Array<{ signature: string; blockTime: number | null; tx: any }>> {
-    const results = await Promise.all(
-        signatures.map(async (sig) => {
+    const results = await mapWithSemaphore(
+        signatures,
+        txFetchSemaphore,
+        async (sig) => {
             try {
                 const tx = await connection.getParsedTransaction(sig.signature, {
                     maxSupportedTransactionVersion: 0,
@@ -1505,7 +1515,7 @@ async function fetchParsedTransactionsForSignatures(
             } catch {
                 return null;
             }
-        })
+        },
     );
 
     return results.filter((item): item is { signature: string; blockTime: number | null; tx: any } => !!item);
