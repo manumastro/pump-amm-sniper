@@ -410,6 +410,12 @@ export const CONFIG = {
     // "lifo" prende la firma piu fresca, "fifo" la piu vecchia. Per uno sniper la fresca
     // e l'unica che ha senso; "fifo" resta per riprodurre il comportamento storico.
     QUEUE_ORDER: String(process.env.QUEUE_ORDER || "lifo").toLowerCase(),
+    // Nomi di DEX (come in src/services/dex/index.ts) che hanno la precedenza quando hanno
+    // lavoro in coda. Serve perche la coda e unica e pump genera ~13 creazioni per ogni
+    // pumpswap: a coda satura — e lo e il 99% del tempo — pumpswap viene affamata, e il LIFO
+    // peggiora la cosa perche "il piu fresco" coincide quasi sempre con "chi arriva di piu".
+    // Vuoto = nessuna precedenza. Vedi controls.md 30.
+    QUEUE_PRIORITY_DEX: String(process.env.QUEUE_PRIORITY_DEX ?? "pumpswap"),
     DEFERRED_NO_WSOL_QUEUE_ENABLED: false,
     DEFERRED_NO_WSOL_QUEUE_MAX_JOBS: Number(300),
     DEFERRED_NO_WSOL_INITIAL_DELAY_MS: Number(2000),
@@ -497,6 +503,7 @@ export const CONFIG_GROUPS = {
         queueMaxAgeMs: CONFIG.QUEUE_MAX_AGE_MS,
         workerMaxLifetimeMs: CONFIG.WORKER_MAX_LIFETIME_MS,
         queueOrder: CONFIG.QUEUE_ORDER,
+        queuePriorityDex: CONFIG.QUEUE_PRIORITY_DEX,
         deferredNoWsolQueueEnabled: CONFIG.DEFERRED_NO_WSOL_QUEUE_ENABLED,
         deferredNoWsolQueueMaxJobs: CONFIG.DEFERRED_NO_WSOL_QUEUE_MAX_JOBS,
         deferredNoWsolInitialDelayMs: CONFIG.DEFERRED_NO_WSOL_INITIAL_DELAY_MS,

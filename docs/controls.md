@@ -1759,3 +1759,81 @@ Quinto caso in un giorno di guasto che non sembra un guasto. Qui il pattern e pi
 precedenti: **un `catch` vuoto dentro un ciclo di retry converte un bug deterministico in un timeout
 apparentemente transitorio.** Se il codice riprova dodici volte, deve saper dire perche ha fallito
 l'ultima.
+
+---
+
+## 30. Precedenza per DEX: pumpswap riceveva il 5% delle valutazioni
+
+**2026-09-12.** Terza e ultima delle correzioni di coda, dopo TTL e LIFO (sezione 25).
+
+### La misura
+
+Prime due ore con entrambi i DEX registrati:
+
+| DEX | valutazioni | quota | quota degli **arrivi** |
+|---|---|---|---|
+| `pump` | 247 | 95% | ~93% |
+| `pumpswap` | 13 | **5%** | ~7% |
+
+E la coda non e quasi mai vuota:
+
+```
+516 giri con arretrato
+  5 giri a coda vuota
+```
+
+⚠️ **Correzione a quanto concluso in mattinata.** Misurato che una valutazione dura 2-4 secondi
+invece dei 20 stimati, avevo concluso che la quota per DEX non servisse. Il ragionamento sulla
+capacita era giusto, la conclusione no: la coda resta satura il 99% del tempo lo stesso, perche
+pump genera piu creazioni di quante se ne possano consumare a qualunque velocita ragionevole.
+
+**E il LIFO peggiora lo squilibrio.** Su una coda sempre piena, "servi il piu fresco" coincide in
+pratica con "servi chi arriva piu spesso", e pump arriva ~13 volte piu spesso. Il LIFO resta la
+scelta giusta per la freschezza, ma da solo penalizza il DEX di minoranza.
+
+### Perche conta
+
+`pumpswap` e **l'unica fonte con un track record**: 387 outcome, +0,645 SOL, 69,4% di win rate. Le
+bonding curve pump sono una strategia nuova, non validata, con un round trip che parte a -2,53%
+contro un profit floor al 3%.
+
+E non c'e nemmeno un vero conflitto di capacita:
+
+| | |
+|---|---|
+| Throughput misurato | ~1.300 valutazioni/ora |
+| Arrivi pumpswap | ~204/ora = **16%** della capacita |
+
+Dare la precedenza a pumpswap lo copre quasi del tutto lasciando l'84% a pump.
+
+### Il controllo
+
+| Controllo | Default | Effetto |
+|---|---|---|
+| `QUEUE_PRIORITY_DEX` | `pumpswap` | Nomi di DEX, separati da virgola, che passano avanti in coda |
+
+Vuoto = nessuna precedenza, comportamento identico a prima. Un nome che non corrisponde a nessun
+adapter registrato viene segnalato all'avvio invece di restare una precedenza silenziosamente
+inattiva — un refuso in `.env` altrimenti non si vedrebbe mai.
+
+La precedenza **non scavalca il TTL**: una firma prioritaria scaduta viene scartata come le altre.
+Fra piu firme prioritarie vince comunque la piu fresca.
+
+### La logica di selezione ora ha dei test
+
+TTL, LIFO e precedenza interagiscono, e `selectNextSignature()` e l'unico punto da cui una firma
+esce dalla coda. Un errore li non produce un log sbagliato: fa **sparire un DEX**, in silenzio.
+
+Per questo la selezione e stata estratta da `runtime.ts` in `src/app/queueSelect.ts` come funzione
+pura, con 10 casi in `test/queue-select.test.js` — compresi quelli che si sbagliano facilmente:
+la firma prioritaria scaduta che non deve essere resuscitata, e la firma gia in lavorazione che non
+deve essere restituita due volte.
+
+Nuovo campo in `QUEUE STATS`:
+
+```
+QUEUE STATS | pending=7 scadute=151 create_fallite=195 precedenza=12 slot_liberi=1/2
+```
+
+`precedenza` che resta a zero mentre pumpswap riceve poche valutazioni significa che la
+configurazione non sta avendo effetto.

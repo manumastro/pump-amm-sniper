@@ -4,6 +4,7 @@ import fs from "fs";
 import path from "path";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { WorkerSlotState } from "../domain/types";
+import { PendingSignature, selectNextSignature } from "./queueSelect";
 
 type DeferredNoWsolCandidatePayload = {
     signature: string;
@@ -57,8 +58,6 @@ type CcShadowJob = {
     state: Record<string, any>;
 };
 
-type PendingSignature = { signature: string; programId: string; enqueuedAtMs: number };
-
 export function createSupervisorRuntime(options: {
     rootDir: string;
     workerLogDir: string;
@@ -66,6 +65,7 @@ export function createSupervisorRuntime(options: {
     queueMaxPendingSignatures: number;
     queueMaxAgeMs: number;
     queueOrder: string;
+    queuePriorityDex: string;
     workerMaxLifetimeMs: number;
     deferredNoWsolQueueEnabled: boolean;
     deferredNoWsolQueueDir: string;
@@ -130,6 +130,7 @@ export function createSupervisorRuntime(options: {
     const pendingSignatures: PendingSignature[] = [];
     let queueExpiredCount = 0;
     let failedCreateTxCount = 0;
+    let queuePriorityServedCount = 0;
     const pendingSignatureSet = new Set<string>();
     const deferredNoWsolJobs = new Map<string, DeferredNoWsolJob>();
     const deferredNoWsolBySignature = new Set<string>();
@@ -328,6 +329,26 @@ export function createSupervisorRuntime(options: {
     const queueMaxAgeMs = Math.max(0, options.queueMaxAgeMs);
     const queueIsLifo = options.queueOrder !== "fifo";
 
+    // Nomi di DEX -> program id, per la precedenza in coda. Un nome che non corrisponde a
+    // nessun adapter registrato e quasi sempre un refuso in .env: meglio dirlo all'avvio che
+    // lasciare una precedenza silenziosamente inattiva.
+    const priorityProgramIds = new Set<string>();
+    {
+        const wanted = options.queuePriorityDex
+            .split(",")
+            .map((x) => x.trim().toLowerCase())
+            .filter(Boolean);
+        const byName = new Map(listAdapters().map((a) => [a.name.toLowerCase(), a.programId]));
+        for (const name of wanted) {
+            const programId = byName.get(name);
+            if (programId) {
+                priorityProgramIds.add(programId);
+            } else {
+                console.warn(`QUEUE        | QUEUE_PRIORITY_DEX: "${name}" non e un adapter registrato, ignorato`);
+            }
+        }
+    }
+
     function enqueuePendingSignature(signature: string, programId: string) {
         if (pendingSignatureSet.has(signature) || activeSignatures.has(signature)) return;
 
@@ -370,23 +391,23 @@ export function createSupervisorRuntime(options: {
     // Estrae la prossima firma ancora valutabile, scartando quelle scadute.
     // In LIFO la coda e ordinata per eta crescente, quindi le scadute sono tutte in testa.
     function takeNextPendingSignature(): PendingSignature | null {
-        const nowMs = Date.now();
-        while (pendingSignatures.length > 0) {
-            const entry = queueIsLifo ? pendingSignatures.pop()! : pendingSignatures.shift()!;
-            pendingSignatureSet.delete(entry.signature);
+        const result = selectNextSignature(pendingSignatures, {
+            priorityProgramIds,
+            isLifo: queueIsLifo,
+            maxAgeMs: queueMaxAgeMs,
+            nowMs: Date.now(),
+            isActive: (sig) => activeSignatures.has(sig),
+        });
 
-            if (queueMaxAgeMs > 0 && nowMs - entry.enqueuedAtMs > queueMaxAgeMs) {
-                queueExpiredCount += 1;
-                const ageS = ((nowMs - entry.enqueuedAtMs) / 1000).toFixed(1);
-                console.warn(
-                    `QUEUE        | expired ${options.shortSig(entry.signature)} (eta ${ageS}s > ${(queueMaxAgeMs / 1000).toFixed(0)}s, totale scadute=${queueExpiredCount})`,
-                );
-                continue;
-            }
-            if (activeSignatures.has(entry.signature)) continue;
-            return entry;
+        for (const stale of result.expired) {
+            pendingSignatureSet.delete(stale.signature);
+            queueExpiredCount += 1;
         }
-        return null;
+        if (result.entry) {
+            pendingSignatureSet.delete(result.entry.signature);
+            if (result.servedByPriority) queuePriorityServedCount += 1;
+        }
+        return result.entry;
     }
 
     function dispatchPoolToWorker(signature: string, extraEnv?: Record<string, string>): boolean {
@@ -890,7 +911,8 @@ export function createSupervisorRuntime(options: {
             // sepolti in mezzo ai log dei worker e non si vedono a colpo d'occhio.
             console.log(
                 `QUEUE STATS  | pending=${pendingSignatures.length} scadute=${queueExpiredCount} ` +
-                `create_fallite=${failedCreateTxCount} slot_liberi=${workerSlots.filter((sl) => !sl.busy).length}/${workerSlots.length}`,
+                `create_fallite=${failedCreateTxCount} precedenza=${queuePriorityServedCount} ` +
+                `slot_liberi=${workerSlots.filter((sl) => !sl.busy).length}/${workerSlots.length}`,
             );
             if (staleForMs < options.logStaleResubscribeMs) return;
 
