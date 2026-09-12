@@ -391,6 +391,13 @@ export const CONFIG = {
     // valore x MAX_CONCURRENT_OPERATIONS.
     RPC_MAX_CONCURRENT_TX_FETCH: Number(process.env.RPC_MAX_CONCURRENT_TX_FETCH || 6),
     QUEUE_MAX_PENDING_SIGNATURES: Number(300),
+    // Con 2.856 creazioni/ora contro 360 di capacita la coda e sempre piena: senza TTL
+    // il worker riceve pool vecchie di ~50 minuti, gia migrate o gia ruggate. Scartare
+    // e corretto, non e una perdita: quella firma non era comunque valutabile in tempo.
+    QUEUE_MAX_AGE_MS: Number(process.env.QUEUE_MAX_AGE_MS || 45000),
+    // "lifo" prende la firma piu fresca, "fifo" la piu vecchia. Per uno sniper la fresca
+    // e l'unica che ha senso; "fifo" resta per riprodurre il comportamento storico.
+    QUEUE_ORDER: String(process.env.QUEUE_ORDER || "lifo").toLowerCase(),
     DEFERRED_NO_WSOL_QUEUE_ENABLED: false,
     DEFERRED_NO_WSOL_QUEUE_MAX_JOBS: Number(300),
     DEFERRED_NO_WSOL_INITIAL_DELAY_MS: Number(2000),
@@ -475,6 +482,8 @@ export const CONFIG_GROUPS = {
     runtime: {
         maxConcurrentOperations: CONFIG.MAX_CONCURRENT_OPERATIONS,
         queueMaxPendingSignatures: CONFIG.QUEUE_MAX_PENDING_SIGNATURES,
+        queueMaxAgeMs: CONFIG.QUEUE_MAX_AGE_MS,
+        queueOrder: CONFIG.QUEUE_ORDER,
         deferredNoWsolQueueEnabled: CONFIG.DEFERRED_NO_WSOL_QUEUE_ENABLED,
         deferredNoWsolQueueMaxJobs: CONFIG.DEFERRED_NO_WSOL_QUEUE_MAX_JOBS,
         deferredNoWsolInitialDelayMs: CONFIG.DEFERRED_NO_WSOL_INITIAL_DELAY_MS,

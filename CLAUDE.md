@@ -119,9 +119,11 @@ I due lati dello stesso ecosistema: la curva e l'AMM in cui i token si diplomano
 | `pumpswap` | 204 | 7,1% |
 
 ⚠️ **Con 2 worker la capacita e 360 valutazioni/ora** (a 20s per valutazione): il flusso e
-otto volte la capacita. La coda e **FIFO con scarto del piu vecchio** e **non ha TTL**, quindi
-a regime consegna al worker pool vecchie di ~50 minuti. Con la sola pumpswap non si era mai
-vista perche la coda non si riempiva. Vedi `docs/controls.md` sezione 23.
+otto volte la capacita, quindi la coda e permanentemente satura. Dal 2026-09-12 e **LIFO con
+TTL** (`QUEUE_ORDER=lifo`, `QUEUE_MAX_AGE_MS=45000`): serve la firma piu fresca e scarta le
+altre. Prima era FIFO senza TTL e consegnava al worker pool vecchie di ~50 minuti — invisibile
+con la sola pumpswap, perche la coda non si riempiva mai. Vedi `docs/controls.md` sezioni 23 e 25.
+**Non esiste ancora una quota per DEX:** pump e il 92,9% degli eventi e affama pumpswap.
 
 Una subscription per adapter, il program viaggia fino al worker che risolve il proprio
 `ACTIVE_ADAPTER`. Aggiungerne uno = implementare `DexAdapter` + una riga nel registro,

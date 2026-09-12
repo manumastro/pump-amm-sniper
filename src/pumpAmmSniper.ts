@@ -3413,6 +3413,8 @@ const supervisorRuntime = createSupervisorRuntime({
     workerLogDir: WORKER_LOG_DIR,
     maxConcurrentOperations: CONFIG.MAX_CONCURRENT_OPERATIONS,
     queueMaxPendingSignatures: CONFIG.QUEUE_MAX_PENDING_SIGNATURES,
+    queueMaxAgeMs: CONFIG.QUEUE_MAX_AGE_MS,
+    queueOrder: CONFIG.QUEUE_ORDER,
     deferredNoWsolQueueEnabled: CONFIG.DEFERRED_NO_WSOL_QUEUE_ENABLED,
     deferredNoWsolQueueDir: DEFERRED_NO_WSOL_QUEUE_DIR,
     deferredNoWsolLogPath: DEFERRED_NO_WSOL_LOG_PATH,

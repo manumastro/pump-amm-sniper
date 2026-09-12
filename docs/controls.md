@@ -1422,3 +1422,75 @@ costo — ma i winner su pump vanno letti sapendolo.
 mediana 0, e da li era stato concluso che non hanno liquidita da filtrare. La mediana reale
 e **0,19 SOL**, e il 32% delle curve nasce sopra 1 SOL: la soglia di liquidita su pump ha
 significato. Resta vero che il grosso nasce quasi vuoto.
+
+---
+
+## 25. Coda: TTL e LIFO
+
+**Aggiunto il 2026-09-12**, prima della sessione di osservazione pump.
+
+### Il difetto
+
+`pendingSignatures` era **FIFO senza TTL**: `drainPendingQueue()` prendeva `pendingSignatures[0]`,
+cioe la firma piu vecchia, e sull'overflow scartava anch'esso il piu vecchio.
+
+Con la sola pumpswap (204 creazioni/ora contro 360 di capacita) la coda non si riempiva mai e il
+difetto era invisibile. Con pump registrata il flusso sale a **2.856/ora**, circa **8x la capacita**:
+la coda e permanentemente piena a 300 elementi, e una firma entrata in fondo esce dopo
+`300 / (360/3600) = 50 minuti`.
+
+Una pool di 50 minuti fa non e una pool da snipare. E gia migrata, gia ruggata, o ha gia fatto il suo
+movimento: il worker spende 20 secondi di RPC per produrre una valutazione priva di significato.
+**Non era un problema di performance, era un problema di correttezza dei dati raccolti.**
+
+### Le due correzioni
+
+| Controllo | Default | Effetto |
+|---|---|---|
+| `QUEUE_MAX_AGE_MS` | `45000` | Scarta all'uscita dalla coda le firme piu vecchie di 45s |
+| `QUEUE_ORDER` | `lifo` | Serve la firma piu fresca; `fifo` riproduce il comportamento storico |
+
+Entrambe stanno in `takeNextPendingSignature()` (`src/app/runtime.ts`), che e ora **l'unico punto**
+da cui una firma esce dalla coda — prima la logica era duplicata dentro il `while` di
+`drainPendingQueue()`.
+
+**Perche 45s.** E il tempo oltre il quale una valutazione non e piu un'osservazione della creazione
+ma di qualcos'altro. Con una valutazione da 20s, 45s significa che una firma ha avuto due giri di
+dispatch per essere presa; oltre, lo stato on-chain e cambiato abbastanza da rendere il dato non
+comparabile con gli altri.
+
+**Perche LIFO.** Su una coda satura FIFO e esattamente il contrario di quello che serve: garantisce
+che ogni firma servita sia la piu stantia disponibile. LIFO serve la piu fresca e lascia scadere le
+altre, che e il comportamento corretto quando l'input e 8 volte la capacita.
+
+⚠️ **Lo scarto non e una perdita.** Una firma scaduta non era comunque valutabile in tempo: con
+questo flusso l'88% degli eventi non viene visto in nessun caso. Il TTL rende esplicito cio che
+gia accadeva, invece di nasconderlo dietro valutazioni tardive che sembrano valide.
+
+Il log `QUEUE | expired <sig> (eta Xs > 45s, totale scadute=N)` e la misura di quanto il bot e
+sott'acqua: `totale scadute` che cresce linearmente conferma la saturazione.
+
+### Cosa resta aperto: la quota per DEX
+
+Non implementata. Con una coda unica e pump al 92,9% degli eventi, circa 9 dispatch su 10 sono
+curve pump e **pumpswap viene affamata** — l'unica fonte con un track record (387 outcome,
++0,645 SOL). La decisione e rimandata a dopo la prima ora di sessione, quando si sapra quanto dura
+davvero una valutazione e quindi quanta capacita ci sia da ripartire. Vedi sezione 23.
+
+### Soglia di liquidita per la sessione
+
+`MIN_POOL_LIQUIDITY_SOL=0.1` e `MIN_POOL_LIQUIDITY_USD=0` in `.env` (i default nel codice restano
+20 e 10.000). A 0,1 SOL passa il 53,8% delle curve pump (sezione 24). E una soglia da
+**osservazione**, non da trading: serve a raccogliere abbastanza campioni per vedere come si
+comportano top-10, dev-holdings e creator-risk su token appena nati. Da rialzare prima di
+qualunque conclusione sul PnL.
+
+### La spazzata della testa
+
+In LIFO le firme scadute si accumulano **in testa**, dove `takeNextPendingSignature()` — che pop-pa
+dalla coda — non arriva mai finche la coda resta satura. Senza intervento resterebbero dentro fino
+all'overflow a 300 e verrebbero contate come `drop oldest` invece che come scadute: il contatore
+avrebbe riportato **0 scadute proprio nella condizione che deve misurare**.
+
+`sweepExpiredPendingSignatures()` gira a ogni enqueue e svuota la testa. Verificato a runtime: senza
+la spazzata, con `pending` salito a 64 in cinque minuti, il log `expired` restava a zero.

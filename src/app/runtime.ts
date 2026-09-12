@@ -57,11 +57,15 @@ type CcShadowJob = {
     state: Record<string, any>;
 };
 
+type PendingSignature = { signature: string; programId: string; enqueuedAtMs: number };
+
 export function createSupervisorRuntime(options: {
     rootDir: string;
     workerLogDir: string;
     maxConcurrentOperations: number;
     queueMaxPendingSignatures: number;
+    queueMaxAgeMs: number;
+    queueOrder: string;
     deferredNoWsolQueueEnabled: boolean;
     deferredNoWsolQueueDir: string;
     deferredNoWsolLogPath: string;
@@ -122,7 +126,8 @@ export function createSupervisorRuntime(options: {
     const MAX_CONSECUTIVE_RESUBSCRIBES = 5;
     const seenSignatures = new Map<string, number>();
     const activeSignatures = new Set<string>();
-    const pendingSignatures: Array<{ signature: string; programId: string }> = [];
+    const pendingSignatures: PendingSignature[] = [];
+    let queueExpiredCount = 0;
     const pendingSignatureSet = new Set<string>();
     const deferredNoWsolJobs = new Map<string, DeferredNoWsolJob>();
     const deferredNoWsolBySignature = new Set<string>();
@@ -318,6 +323,9 @@ export function createSupervisorRuntime(options: {
         return workerSlots.find((slot) => !slot.busy) || null;
     }
 
+    const queueMaxAgeMs = Math.max(0, options.queueMaxAgeMs);
+    const queueIsLifo = options.queueOrder !== "fifo";
+
     function enqueuePendingSignature(signature: string, programId: string) {
         if (pendingSignatureSet.has(signature) || activeSignatures.has(signature)) return;
 
@@ -330,9 +338,53 @@ export function createSupervisorRuntime(options: {
             }
         }
 
-        pendingSignatures.push({ signature, programId });
+        sweepExpiredPendingSignatures();
+        pendingSignatures.push({ signature, programId, enqueuedAtMs: Date.now() });
         pendingSignatureSet.add(signature);
         console.log(`QUEUE        | enqueued ${options.shortSig(signature)} (pending=${pendingSignatures.length})`);
+    }
+
+    // In LIFO le firme scadute si accumulano in TESTA, dove takeNextPendingSignature() non
+    // arriva mai finche la coda resta satura: senza questa spazzata resterebbero in coda fino
+    // all'overflow, contate come "drop oldest" invece che come scadute. Il contatore mentirebbe
+    // proprio nel caso che deve misurare.
+    function sweepExpiredPendingSignatures() {
+        if (queueMaxAgeMs <= 0) return;
+        const nowMs = Date.now();
+        let swept = 0;
+        while (pendingSignatures.length > 0 && nowMs - pendingSignatures[0].enqueuedAtMs > queueMaxAgeMs) {
+            const stale = pendingSignatures.shift()!;
+            pendingSignatureSet.delete(stale.signature);
+            queueExpiredCount += 1;
+            swept += 1;
+        }
+        if (swept > 0) {
+            console.warn(
+                `QUEUE        | scadute ${swept} firme oltre ${(queueMaxAgeMs / 1000).toFixed(0)}s (pending=${pendingSignatures.length}, totale scadute=${queueExpiredCount})`,
+            );
+        }
+    }
+
+    // Estrae la prossima firma ancora valutabile, scartando quelle scadute.
+    // In LIFO la coda e ordinata per eta crescente, quindi le scadute sono tutte in testa.
+    function takeNextPendingSignature(): PendingSignature | null {
+        const nowMs = Date.now();
+        while (pendingSignatures.length > 0) {
+            const entry = queueIsLifo ? pendingSignatures.pop()! : pendingSignatures.shift()!;
+            pendingSignatureSet.delete(entry.signature);
+
+            if (queueMaxAgeMs > 0 && nowMs - entry.enqueuedAtMs > queueMaxAgeMs) {
+                queueExpiredCount += 1;
+                const ageS = ((nowMs - entry.enqueuedAtMs) / 1000).toFixed(1);
+                console.warn(
+                    `QUEUE        | expired ${options.shortSig(entry.signature)} (eta ${ageS}s > ${(queueMaxAgeMs / 1000).toFixed(0)}s, totale scadute=${queueExpiredCount})`,
+                );
+                continue;
+            }
+            if (activeSignatures.has(entry.signature)) continue;
+            return entry;
+        }
+        return null;
     }
 
     function dispatchPoolToWorker(signature: string, extraEnv?: Record<string, string>): boolean {
@@ -407,18 +459,16 @@ export function createSupervisorRuntime(options: {
     }
 
     function drainPendingQueue() {
-        while (pendingSignatures.length > 0) {
-            const { signature, programId } = pendingSignatures[0];
-            if (activeSignatures.has(signature)) {
-                pendingSignatures.shift();
-                pendingSignatureSet.delete(signature);
-                continue;
-            }
-            if (!dispatchPoolToWorker(signature, { WORKER_TASK_PROGRAM_ID: programId })) {
+        while (findIdleWorkerSlot()) {
+            const entry = takeNextPendingSignature();
+            if (!entry) return;
+            if (!dispatchPoolToWorker(entry.signature, { WORKER_TASK_PROGRAM_ID: entry.programId })) {
+                // Nessuno slot libero: rimetti la firma in coda conservando la sua eta,
+                // altrimenti un rimbalzo la farebbe sembrare appena arrivata e il TTL sarebbe cieco.
+                pendingSignatures.push(entry);
+                pendingSignatureSet.add(entry.signature);
                 return;
             }
-            pendingSignatures.shift();
-            pendingSignatureSet.delete(signature);
         }
     }
 
