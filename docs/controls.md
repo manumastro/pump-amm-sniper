@@ -2007,3 +2007,74 @@ SVS_UNSTAKED_WS=wss://api.mainnet-beta.solana.com
 ⚠️ **Terza volta in un giorno che un endpoint viene sostituito.** La configurazione a tre ruoli
 della sezione 28 non e un'ottimizzazione: e la struttura che permette di cambiarne uno senza
 toccare gli altri. Qui e servita davvero.
+
+
+---
+
+## 33. Soglia di liquidita pump a 1 SOL, e dove va davvero il budget RPC
+
+**2026-09-12, sera.** Prima sessione con 14 trade reali su bonding curve pump.
+
+### La misura
+
+Liquidita **all'ingresso** (non quella iniziale: con `LOW_LIQUIDITY_RECHECK_ENABLED=true` una curva
+letta troppo presto viene riletta, e in un caso e passata da 0,0196 a 0,3129 SOL in 1,5 secondi).
+
+| SOL all'entry | esito |
+|---|---|
+| 0,13 | -100% |
+| 0,23 | -100% |
+| 0,29 | -100% |
+| 0,31 | **+73,48%** |
+| 0,46 | -100% |
+| 0,51 | -100% |
+| 0,90 | -100% |
+| 2,00 | -46,19% |
+| 2,45 | -9,36% |
+| 2,74 | **+56,73%** |
+| 4,00 | -100% |
+| 5,66 | -4,80% |
+| 5,96 | -32,14% |
+| 27,38 | -63,06% |
+
+| | sotto 1 SOL | sopra 1 SOL |
+|---|---|---|
+| Trade | 7 | 7 |
+| Rug a -100% | **6 (86%)** | 1 (14%) |
+| Net | **-0,0527 SOL** | -0,0199 SOL |
+
+Ha senso meccanicamente: una curva con 0,1-0,9 SOL dentro e un dev con un sacchetto minuscolo, che
+puo svuotarlo in una transazione. Non serve malizia, basta che venda.
+
+`MIN_POOL_LIQUIDITY_SOL` passa da **0,1 a 1**. Lo 0,1 era una soglia da osservazione, scelta per
+raccogliere campioni (sezione 25), non da trading.
+
+⚠️ **Limiti di questa conclusione, che non sono piccoli.** 14 trade sono pochissimi; il campione e
+**distorto** perche il 64% delle valutazioni e morto su errori RPC, quindi non e casuale; e anche
+sopra 1 SOL il risultato resta negativo (-0,0199 su 7 trade). La soglia toglie la parte peggiore,
+**non rende pump profittevole**: il round trip a -2,53% contro un profit floor al 3% resta.
+
+La soglia e globale, condivisa con pumpswap, ma le pool pumpswap alla creazione nascono su un'altra
+scala (ne e stata vista una a 88 SOL), quindi 1 SOL non le tocca.
+
+### Dove va il budget RPC: il 42% in 14 trade
+
+Costo misurato per esito, dal contatore `rpc=` della sezione 31:
+
+| Esito | n | richieste medie |
+|---|---|---|
+| **TRADE (fino all'uscita)** | 14 | **~1.000** |
+| `SKIP: creator risk` | 172 | 54,5 |
+| `SKIP: low liquidity` | 109 | 22,0 |
+| `SKIP: creator unresolved` | 121 | 11,7 |
+| `SKIP: no WSOL side` | 125 | 8,4 |
+
+**I 14 trade sono l'1,0% delle valutazioni e il 42% di tutte le richieste RPC.** Il motivo e
+l'hold monitor: nove controlli che pollano ogni 1-1,5 secondi per i 900s di `AUTO_SELL_DELAY_MS`.
+
+⚠️ **Questa e la leva piu grossa sul costo, molto piu della soglia di liquidita.** E si combina con
+un fatto gia noto (punto 3 del CLAUDE.md): **il crash da `remove liquidity` e atomico**, quindi
+pollare piu spesso non aiuta a intercettarlo. Se il polling veloce non serve a prendere i rug,
+raddoppiare gli intervalli di hold dimezza il costo di un trade con una perdita di informazione che
+riguarda solo la granularita del trailing stop. Da valutare con i dati di `pricePath` (sezione 19),
+che e esattamente cio che serve per rispondere.
