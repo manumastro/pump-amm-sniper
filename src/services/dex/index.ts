@@ -16,14 +16,19 @@ export { meteoraDammV2Adapter, METEORA_DAMM_V2_PROGRAM_ID } from "./meteoraDammV
  * riga qui. La subscription in src/app/runtime.ts si estende da sola a tutti i
  * program registrati.
  *
- * Misurato sul feed gmgn (vedi docs/expansion-sources-2026-09-12.md): questi tre sono
- * le uniche fonti che producono pool sopra la soglia di liquidita. Gli altri launchpad
- * (pump bonding curve, meteora_virtual_curve, ray_launchpad) non sono AMM: non hanno
- * pool ne liquidita alla creazione, e i controlli di questo bot non si applicano.
+ * `raydiumV4Adapter` e implementato ma **non registrato**: in 25 minuti di ascolto
+ * continuo non ha prodotto una sola creazione di pool, mentre meteora_damm_v2 ne faceva
+ * 4 in 45 secondi. Raydium AMM v4 e ormai legacy — il traffico che si vede sul suo
+ * program sono swap su pool vecchie, non lanci nuovi. Tenerlo registrato costerebbe una
+ * subscription permanente per zero eventi. Il codice resta perche la matematica e
+ * verificata contro pool esistenti: se servisse riattivarlo basta rimetterlo qui.
+ *
+ * Gli altri launchpad del feed gmgn (pump bonding curve, meteora_virtual_curve,
+ * ray_launchpad) non sono AMM: non hanno pool ne liquidita alla creazione, e i controlli
+ * di questo bot non si applicano. Vedi docs/expansion-sources-2026-09-12.md.
  */
 const ADAPTERS: DexAdapter[] = [
     pumpSwapAdapter,
-    raydiumV4Adapter,
     meteoraDammV2Adapter,
 ];
 

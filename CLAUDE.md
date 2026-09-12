@@ -158,16 +158,29 @@ raffiche da decine di req/s dall'altro — e nessun provider gratuito e buono su
 
 | Endpoint | logsSubscribe | HTTP | Esito |
 |---|---|---|---|
-| `https://solana-rpc.publicnode.com` | parziale | 218 req/s, archive ok | **usato per HTTP** |
+| `https://solana-rpc.publicnode.com` | parziale | 218 req/s, archive ok, 250ms | **usato per HTTP** |
 | Chainstack free (nodo Elastic) | completo, primo log ~500ms | **niente archive** | **usato per WS** |
 | `wss://api.mainnet-beta.solana.com` | completo | 1,1 req/s | ripiego per il WS |
-| Alchemy free | **no** | ok a basso ritmo | l'intera API pubsub risponde "method not found": il piano free espone solo HTTPS |
+| Alchemy free | **no** | archive ok, **58ms**, 25 req/s | HTTP ottimo, WS assente |
 | dRPC free | — | — | Solana non inclusa nel piano free |
 
 **Chainstack free blocca i metodi archive** (`getSignaturesForAddress`, `getParsedTransaction`)
 con `403 -32002 "Archive, Debug and Trace requests are not available"`. Le letture di account
 funzionano, quindi i poll di hold girerebbero, ma **i 30 controlli creator-risk no**: sono costruiti
 sulla storia delle transazioni. Ottimo come WebSocket, inutilizzabile come `SVS_UNSTAKED_RPC`.
+
+**Alchemy free e il contrario:** in HTTP e il piu veloce misurato (58ms contro i 250ms di
+publicnode, archive incluso, 12/12 senza rate limit a ritmo sequenziale), ma **ogni metodo pubsub
+risponde "method not found"** — `logsSubscribe`, `programSubscribe`, `accountSubscribe`,
+`slotSubscribe`. La documentazione Alchemy elenca i WebSocket su tutti i piani, quindi la causa non
+e chiara e **non e detto che un piano a pagamento la risolva**. Il limite del free e 25 req/s, il
+PAYG sale a 300.
+
+⚠️ **Alchemy restituisce un array vuoto, senza errore, su `getSignaturesForAddress` di un program
+id** ad altissimo volume. Su wallet e pool risponde correttamente, ed e l'unica cosa che il bot
+interroga davvero (`grep getSignaturesForAddress src/`: sempre creator, funder o pool) — quindi non
+lo scarta. Ma e il terzo endpoint in un giorno che **risponde "ok" senza dare i dati**, ed e la
+ragione per cui la fase 3 dello smoke test ora conta anche le risposte vuote.
 
 ⚠️ **"parziale" significa che publicnode accetta la subscription e non consegna niente** per il
 program Meteora DAMM v2. Misurato il 2026-09-12: 0 eventi in 45s, contro 6.026 dello stesso program

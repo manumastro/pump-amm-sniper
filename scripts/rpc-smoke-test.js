@@ -26,11 +26,23 @@ try { require('dotenv').config(); } catch {}
 const RPC = process.env.SVS_UNSTAKED_RPC;
 const WS = process.env.SVS_UNSTAKED_WS;
 const PROGRAM = 'pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA';
-const PROGRAMS = {
-  pumpswap: 'pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA',
-  ray_v4: '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8',
-  meteora_damm_v2: 'cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG',
-};
+// I deep check creator-risk interrogano wallet e pool, mai un program id. La differenza
+// conta: Alchemy free risponde con un array VUOTO e senza errore su getSignaturesForAddress
+// di un program ad altissimo volume, ma risponde correttamente su wallet e pool. Usando il
+// program come bersaglio si scarterebbe un endpoint sano. Questo e il pool SOL-USDC di
+// Raydium: permanente e sempre attivo.
+const BUSY_ACCOUNT = '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2';
+
+// I program da testare vengono dal registro degli adapter, cosi il test resta allineato
+// a cio che il bot ascolta davvero. Senza una build in dist/ si ricade sulla lista nota.
+const PROGRAMS = (() => {
+  try {
+    const { listAdapters } = require('../dist/services/dex');
+    return Object.fromEntries(listAdapters().map((a) => [a.name, a.programId]));
+  } catch {
+    return { pumpswap: 'pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA' };
+  }
+})();
 const WS_WAIT_MS = Number(process.env.WS_WAIT_MS || 90000);
 const BURST = Number(process.env.BURST || 60);
 
@@ -94,18 +106,22 @@ function pct(arr, p) { const s = [...arr].sort((a, b) => a - b); return s[Math.m
 
   // 3. raffica: simula i deep check creator-risk. Qui esce il vero limite.
   console.log(`\n[3] raffica ${BURST} getSignaturesForAddress in parallelo`);
-  const lat = []; let ok = 0, rateLimited = 0, failed = 0;
+  const lat = []; let ok = 0, rateLimited = 0, failed = 0, empty = 0;
   const t0 = ms();
   await Promise.all(Array.from({ length: BURST }, async () => {
     const s = ms();
-    try { await conn.getSignaturesForAddress(new PublicKey(PROGRAM), { limit: 1 }); ok++; lat.push(ms() - s); }
+    try {
+      const res = await conn.getSignaturesForAddress(new PublicKey(BUSY_ACCOUNT), { limit: 1 });
+      if (!res || res.length === 0) empty++;
+      ok++; lat.push(ms() - s);
+    }
     catch (e) {
       const m = String(e.message || '');
       if (/429|too many requests|rate/i.test(m)) rateLimited++; else { failed++; if (failed === 1) console.log('    errore:', m.slice(0, 100)); }
     }
   }));
   const elapsed = ms() - t0;
-  console.log(`    ok=${ok}  429=${rateLimited}  altri errori=${failed}  in ${elapsed}ms`);
+  console.log(`    ok=${ok}  429=${rateLimited}  altri errori=${failed}  risposte vuote=${empty}  in ${elapsed}ms`);
   if (ok) console.log(`    latenza p50=${pct(lat, 0.5)}ms p95=${pct(lat, 0.95)}ms`);
   console.log(`    throughput effettivo ~${(ok / (elapsed / 1000)).toFixed(1)} req/s`);
 
@@ -122,6 +138,10 @@ function pct(arr, p) { const s = [...arr].sort((a, b) => a - b); return s[Math.m
     `${failed}/${BURST} richieste fallite (non 429): l'endpoint rifiuta getSignaturesForAddress. `
     + 'I deep check creator-risk non funzionerebbero affatto.');
   if (ok === 0) problems.push('nessuna richiesta HTTP e andata a buon fine: inutilizzabile come SVS_UNSTAKED_RPC');
+  if (empty > 0) problems.push(
+    `${empty}/${BURST} risposte vuote senza errore su un account notoriamente attivo: l'endpoint `
+    + 'non indicizza la storia delle transazioni. I controlli creator-risk leggerebbero "nessuno '
+    + 'storico" e passerebbero tutti a vuoto, senza che nulla segnali il problema.');
   if (ok && pct(lat, 0.95) > 2000) problems.push(`p95 ${pct(lat, 0.95)}ms: troppo lento per i poll di hold a 200ms`);
   if (!problems.length) console.log('Nessun problema rilevato su questo campione. Serve comunque ~10 req/s sostenuti con 2 worker attivi.');
   else problems.forEach((p) => console.log('  ⚠️ ' + p));

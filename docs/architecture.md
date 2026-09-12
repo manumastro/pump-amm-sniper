@@ -58,10 +58,13 @@ Adapter registrati:
 | Adapter | Program | Stato pool | Quote |
 |---|---|---|---|
 | `pumpswap.ts` | `pAMMBay6…fXEA` | SDK `@pump-fun/pump-swap-sdk` | SDK |
-| `raydiumV4.ts` | `675kPX9M…1Mp8` | decodifica diretta di `LIQUIDITY_STATE_LAYOUT_V4` | x\*y=k con swap fee del pool |
+| `raydiumV4.ts` | `675kPX9M…1Mp8` | decodifica diretta di `LIQUIDITY_STATE_LAYOUT_V4` | x\*y=k con swap fee del pool — **non registrato** |
 | `meteoraDammV2.ts` | `cpamdpZC…1sGG` | SDK `@meteora-ag/cp-amm-sdk` | `CpAmm.getQuote` (CLMM) |
 
-`index.ts` e il registro programId -> adapter.
+`index.ts` e il registro programId -> adapter. **`raydiumV4` e implementato ma non registrato:**
+in 25 minuti di ascolto continuo non ha prodotto una sola creazione di pool (meteora_damm_v2 ne
+faceva 4 in 45 secondi). Raydium AMM v4 e legacy, il traffico sul suo program sono swap su pool
+vecchie. Il codice resta, la subscription no.
 
 **`resolvePoolFromCreateTx` sta nell'adapter perche ogni DEX ordina diversamente gli account
 della sua istruzione di init.** pumpswap usa gli offset dell'IDL (pool=0, creator=2, base_mint=3,

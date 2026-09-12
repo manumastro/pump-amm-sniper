@@ -1158,6 +1158,30 @@ con poca liquidita e piu facile da svuotare e piu facile da manipolare, e il cra
 `remove liquidity` e atomico. Una sessione a soglia bassa va letta come **raccolta dati**, non
 come configurazione candidata, finche i numeri per fascia non dicono il contrario.
 
+### `MIN_POOL_LIQUIDITY_USD` non e un filtro
+
+Nonostante il nome, non e mai confrontata con niente: `grep MIN_POOL_LIQUIDITY_USD src/` la trova
+solo in `config.ts`. Il valore USD viene calcolato e loggato accanto a quello in SOL, ma **l'unico
+cancello e `MIN_POOL_LIQUIDITY_SOL`**. Metterla a 0 non cambia nulla; metterla a 10.000 non blocca
+niente.
+
+### Vedere le creation non richiede di abbassare la soglia
+
+Ogni pool valutata e gia loggata prima del filtro, con la sua liquidita:
+
+```
+🛑 SKIP: Liquidity too low (0.02 SOL / $4; min 20 SOL)
+```
+
+Abbassare la soglia non serve a **vedere** le creation, serve a **farci trading sopra**. Sono due
+cose diverse: su un pool da 0,005 SOL un ingresso da 0,01 SOL ha un round trip di −80% per solo
+price impact, prima che succeda qualunque cosa. Quel −80% finisce nelle statistiche accanto alle rug
+vere, e non e la stessa cosa.
+
+**Sessione 2026-09-12: `MIN_POOL_LIQUIDITY_SOL=0.1`**, scelta deliberata di osservazione per
+verificare a runtime la pipeline multi-DEX e il price path recorder. I numeri di questa sessione
+**non sono confrontabili** con quelli di aprile, ne come win rate ne come PnL.
+
 ### Il filtro di liquidita e per DEX, ma i controlli no
 
 I 30 controlli creator-risk non guardano il DEX: guardano il wallet del creator, i suoi funder,
