@@ -1900,10 +1900,14 @@ i 429.
 
 ### Risultato
 
-| | prima | dopo |
+| Tetto | Valutazioni in errore | 429 per valutazione (max) |
 |---|---|---|
-| Valutazioni in errore | **66%** | **15%** |
-| 429 per valutazione (max) | 40 | 25 |
+| nessuno | **66%** | 40 |
+| 12/s | 15% | 25 |
+| **8/s** | **0%** | **0** |
+
+Il default e **8** (16/s con due worker). A 12/s restavano valutazioni con 18-25 rifiuti; a 8/s
+la mediana e il massimo dei 429 sono entrambi zero su un campione di 38 valutazioni.
 
 Il costo e che una valutazione creator-risk passa da ~2,4s a ~5s. E un cambio favorevole: prima
 due terzi di quelle richieste venivano rifiutate e l'intera valutazione era persa.
@@ -1912,6 +1916,19 @@ due terzi di quelle richieste venivano rifiutate e l'intera valutazione era pers
 bene finche riceve una chiamata per valutazione (sezione 28), ma se in futuro ci finisse altro
 servirebbe un bucket per endpoint.
 
-**Leva rimasta:** a 12/s ci sono ancora valutazioni con 18-25 rifiuti. Scendere a 8/s ridurrebbe
-ulteriormente gli errori al costo di throughput. Da decidere sui dati di una sessione lunga, non
-adesso.
+⚠️ **Attenzione a non attribuire tutto al tetto.** La sessione a 8/s e partita mentre il flusso
+di creazioni era circa la meta di quello del mattino:
+
+| | mattina | sera |
+|---|---|---|
+| `pump` | 2.652/h | 1.230/h |
+| `pumpswap` | 204/h | 210/h |
+| **totale** | **3.036/h** | **1.440/h** |
+
+Con ~1.020 valutazioni/ora di throughput, la capacita copre il 71% degli arrivi serali ma solo il
+34% di quelli del mattino. **Lo zero errori va quindi riverificato a volume pieno**, e la coda
+tornera ad avere arretrato — che e anche quando la precedenza per DEX (sezione 30) torna a contare:
+a coda vuota `precedenza` resta a zero perche non c'e contesa, ed e corretto cosi.
+
+Nota di lettura: la quota pumpswap sugli arrivi passa dal 7% al 14,6% fra mattina e sera, ma in
+valore assoluto pumpswap e stabile (204 -> 210/h). A cambiare e solo il volume di pump.
