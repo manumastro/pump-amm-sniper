@@ -103,10 +103,25 @@ binario con `WORKER_TASK_SIGNATURE` impostata. `MAX_CONCURRENT_OPERATIONS=2` slo
 La lista viene dal registro degli adapter in `src/services/dex/index.ts`:
 
 ```
-pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA   // pumpswap        AMM di Pump.fun
-675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8   // ray_v4          Raydium AMM v4
-cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG    // meteora_damm_v2 Meteora CP-AMM
+pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA   // pumpswap  AMM di Pump.fun (post-diploma)
+6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P    // pump      bonding curve di Pump.fun
 ```
+
+I due lati dello stesso ecosistema: la curva e l'AMM in cui i token si diplomano.
+`meteora_damm_v2` e `ray_v4` sono implementati e verificati ma **non registrati**
+(`src/services/dex/index.ts` spiega perche); riattivarli e una riga.
+
+**Flusso misurato** (`node scripts/creation-rate.js 300`, 2026-09-12):
+
+| DEX | creazioni/ora | quota |
+|---|---|---|
+| `pump` | 2.652 | **92,9%** |
+| `pumpswap` | 204 | 7,1% |
+
+⚠️ **Con 2 worker la capacita e 360 valutazioni/ora** (a 20s per valutazione): il flusso e
+otto volte la capacita. La coda e **FIFO con scarto del piu vecchio** e **non ha TTL**, quindi
+a regime consegna al worker pool vecchie di ~50 minuti. Con la sola pumpswap non si era mai
+vista perche la coda non si riempiva. Vedi `docs/controls.md` sezione 23.
 
 Una subscription per adapter, il program viaggia fino al worker che risolve il proprio
 `ACTIVE_ADAPTER`. Aggiungerne uno = implementare `DexAdapter` + una riga nel registro,

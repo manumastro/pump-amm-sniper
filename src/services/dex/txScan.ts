@@ -72,3 +72,25 @@ export async function getAccountsChunked(
     }
     return out;
 }
+
+/**
+ * Il mint creato DA questa transazione, non uno qualunque fra quelli che tocca.
+ *
+ * La distinzione conta: una tx di creazione puo contenere anche acquisti in bundle su
+ * token gia esistenti, che compaiono nei token balance esattamente come il nuovo. Senza
+ * questo controllo si finisce per analizzare una curva vecchia — anche gia diplomata — al
+ * posto di quella appena nata.
+ *
+ * Il segnale e l'istruzione `initializeMint` del token program: identifica il mint creato
+ * qui e non e un'euristica.
+ */
+export function mintCreatedInTx(tx: any): string | null {
+    for (const ix of allInstructions(tx)) {
+        const parsed = (ix as any)?.parsed;
+        const type = parsed?.type;
+        if (type !== "initializeMint" && type !== "initializeMint2") continue;
+        const mint = parsed?.info?.mint;
+        if (typeof mint === "string" && mint) return mint;
+    }
+    return null;
+}

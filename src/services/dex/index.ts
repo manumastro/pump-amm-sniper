@@ -6,7 +6,7 @@ import { meteoraDammV2Adapter, METEORA_DAMM_V2_PROGRAM_ID } from "./meteoraDammV
 import { pumpBondingCurveAdapter, PUMP_PROGRAM_ID } from "./pumpBondingCurve";
 
 export { DexAdapter, PoolOrientation, ResolvedPool, WSOL } from "./types";
-export { matchesCreateMarkers, allInstructions, instructionsForProgram, accountsTouchedByProgram, getAccountsChunked } from "./txScan";
+export { matchesCreateMarkers, allInstructions, instructionsForProgram, accountsTouchedByProgram, getAccountsChunked, mintCreatedInTx } from "./txScan";
 export { pumpSwapAdapter, PUMPSWAP_PROGRAM_ID, initPumpSwapSdk } from "./pumpswap";
 export { raydiumV4Adapter, RAYDIUM_V4_PROGRAM_ID } from "./raydiumV4";
 export { meteoraDammV2Adapter, METEORA_DAMM_V2_PROGRAM_ID } from "./meteoraDammV2";
@@ -18,6 +18,13 @@ export { pumpBondingCurveAdapter, PUMP_PROGRAM_ID, deriveBondingCurve } from "./
  * Per aggiungerne uno servono due cose: un adapter che implementi DexAdapter e una
  * riga qui. La subscription in src/app/runtime.ts si estende da sola a tutti i
  * program registrati.
+ *
+ * Registrati: `pumpswap` e `pump`. Scelta del 2026-09-12: concentrarsi sui due lati dello
+ * stesso ecosistema — la bonding curve e l'AMM in cui i token si diplomano.
+ *
+ * `meteoraDammV2Adapter` e implementato e verificato (12 pool risolte su 13 in un campione
+ * live, round trip coerente con le fee) ma **non registrato**, per tenere la prima sessione
+ * multi-DEX su una popolazione sola. Riattivarlo e una riga.
  *
  * `raydiumV4Adapter` e implementato ma **non registrato**: in 25 minuti di ascolto
  * continuo non ha prodotto una sola creazione di pool, mentre meteora_damm_v2 ne faceva
@@ -32,7 +39,6 @@ export { pumpBondingCurveAdapter, PUMP_PROGRAM_ID, deriveBondingCurve } from "./
  */
 const ADAPTERS: DexAdapter[] = [
     pumpSwapAdapter,
-    meteoraDammV2Adapter,
     pumpBondingCurveAdapter,
 ];
 

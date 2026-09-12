@@ -1335,3 +1335,90 @@ Con `MAX_CONCURRENT_OPERATIONS=2`, la capacita e `2 / durata_valutazione`:
 
 Prima di aumentare `MAX_CONCURRENT_OPERATIONS`: il carico RPC scala linearmente con i worker,
 ed e li che un piano a pagamento inizia a servire davvero.
+
+---
+
+## 24. Bonding curve pump: cosa e stato misurato
+
+**Aggiunto il 2026-09-12.** Registro: `pumpswap` + `pump`, i due lati dello stesso
+ecosistema. `meteora_damm_v2` e `ray_v4` sono implementati ma non registrati.
+
+### Non tutte le curve sono denominate in SOL
+
+**E il controllo piu importante di questo adapter.** All'offset 83 dell'account
+`BondingCurve` c'e il quote mint: tutto zeri significa SOL nativo, altrimenti e un altro
+token. Pump emette curve quotate in **BONK** e **PUMP** — nel campione del 2026-09-12 sono
+**18 creazioni su 111, il 16%**.
+
+Su quelle `virtualSolReserves` non contiene lamport. Leggendole come SOL:
+
+```
+curva quotata in BONK letta come SOL  ->  "21.421 SOL di liquidita"
+```
+
+Non e un errore che si nota: non solleva eccezioni, non fa fallire un quote, produce solo
+numeri. In paper trade sarebbero diventati PnL inventati, e l'unica traccia sarebbe stata
+un token con una liquidita d'ingresso assurda in mezzo a centinaia di righe.
+
+`unusable()` le scarta. Il bot sa prezzare solo in SOL: interpretarle sarebbe peggio che
+ignorarle.
+
+**Come e emersa:** dalla distribuzione. La coda diceva p90 = 232 SOL e max = 5.092 SOL, e
+una bonding curve si diploma intorno agli 85 SOL — impossibile per costruzione. Senza quel
+controllo di plausibilita il numero sarebbe passato.
+
+### Il mint giusto e quello creato dalla tx
+
+Una `CreateV2` puo contenere acquisti in bundle su token pump gia esistenti, che nei token
+balance sono indistinguibili dal nuovo. Prendere il primo candidato portava ad analizzare
+curve vecchie, a volte gia diplomate (`virtualSol = 503`, `complete = true`).
+`mintCreatedInTx()` usa l'istruzione `initializeMint` del token program: identifica il mint
+creato **in quella transazione**, e non e un'euristica.
+
+### Fee: 125 bps, misurate
+
+Su 1.111 `TradeEvent` decodificati dai log: `95 + 30 = 125 bps` nel **75%** dei casi,
+`0 bps` nel 23%, `95 + 100` in coda. Si usa il caso dominante (`PUMP_CURVE_FEE_BPS`), che e
+anche il prudente. **Sono dinamiche:** se pump cambia tariffario va rimisurata, non
+indovinata.
+
+La formula del prodotto costante sulle riserve virtuali riproduce i token effettivamente
+ricevuti **a meno di 1 unita atomica** rispetto ai `TradeEvent` reali.
+
+### Il costo d'ingresso e quattro volte quello di PumpSwap
+
+| | round trip su 0,01 SOL |
+|---|---|
+| `pumpswap` | −0,62% |
+| `pump` | **−2,53%** |
+
+Il profit floor e al 3%: su pump un trade parte 2,5 punti sotto, quindi il floor si attiva
+subito dopo il pareggio invece che dopo un guadagno reale. Non e un bug, e la struttura di
+costo — ma i winner su pump vanno letti sapendolo.
+
+### Distribuzione della liquidita alla creazione
+
+`node scripts/pump-curve-liquidity.js 300` — 91 curve in SOL, escluse le 18 non-SOL:
+
+| | SOL realmente in curva |
+|---|---|
+| p10 | 0,0000 |
+| p25 | 0,0395 |
+| p50 | **0,1945** |
+| p75 | 1,8445 |
+| p90 | 5,2799 |
+| max | 13,6543 |
+
+| Soglia | Passano | Quota |
+|---|---|---|
+| 0 | 91 | 100% |
+| 0,1 | 49 | 53,8% |
+| 0,5 | 35 | 38,5% |
+| 1 | 29 | 31,9% |
+| 5 | 10 | 11,0% |
+
+⚠️ **Correzione a quanto scritto in precedenza.** Nella mappa delle fonti
+(`docs/expansion-sources-2026-09-12.md`) le bonding curve risultavano con liquidita iniziale
+mediana 0, e da li era stato concluso che non hanno liquidita da filtrare. La mediana reale
+e **0,19 SOL**, e il 32% delle curve nasce sopra 1 SOL: la soglia di liquidita su pump ha
+significato. Resta vero che il grosso nasce quasi vuoto.

@@ -2,7 +2,7 @@ import BN from "bn.js";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { CONFIG } from "../../app/config";
 import { pubkeyToBase58 } from "../../utils/pubkeys";
-import { accountsTouchedByProgram, getAccountsChunked } from "./txScan";
+import { accountsTouchedByProgram, getAccountsChunked, mintCreatedInTx } from "./txScan";
 import { DexAdapter, PoolOrientation, ResolvedPool, WSOL } from "./types";
 
 export const PUMP_PROGRAM_ID = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P";
@@ -12,6 +12,9 @@ export const PUMP_PROGRAM_ID = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P";
  * (discriminator 17b7f83760d8ac60, 125 byte).
  */
 const CURVE_MIN_LEN = 49;
+/** offset del quote mint: tutto zeri = curva denominata in SOL nativo */
+const OFF_QUOTE_MINT = 83;
+const QUOTE_MINT_END = OFF_QUOTE_MINT + 32;
 const OFF = {
     virtualTokenReserves: 8,
     virtualSolReserves: 16,
@@ -32,6 +35,15 @@ type CurveState = {
     /** true = curva completata e migrata su PumpSwap: non si scambia piu qui */
     complete: boolean;
     creator: string | null;
+    /**
+     * Token in cui la curva e denominata. null = SOL nativo.
+     *
+     * Pump emette anche curve quotate in altri token (misurati BONK e PUMP il 2026-09-12).
+     * Su quelle `virtualSolReserves` non contiene lamport e dividere per 1e9 produce numeri
+     * privi di senso: una curva BONK risultava con 21.421 "SOL" di liquidita. Il bot sa
+     * prezzare solo in SOL, quindi queste vanno scartate, non interpretate.
+     */
+    quoteMint: string | null;
 };
 
 let conn: Connection | null = null;
@@ -56,6 +68,18 @@ export function deriveBondingCurve(mint: string): PublicKey {
     return pda;
 }
 
+/** null se il campo e assente o tutto zeri, cioe se la curva e in SOL nativo */
+function readQuoteMint(data: Buffer): string | null {
+    if (data.length < QUOTE_MINT_END) return null;
+    const raw = data.subarray(OFF_QUOTE_MINT, QUOTE_MINT_END);
+    if (raw.every((b) => b === 0)) return null;
+    try {
+        return new PublicKey(raw).toBase58();
+    } catch {
+        return null;
+    }
+}
+
 function decodeCurve(address: string, data: Buffer, tokenMint: string): CurveState {
     return {
         curveAddress: address,
@@ -68,6 +92,7 @@ function decodeCurve(address: string, data: Buffer, tokenMint: string): CurveSta
         creator: data.length >= OFF.creator + 32
             ? new PublicKey(data.subarray(OFF.creator, OFF.creator + 32)).toBase58()
             : null,
+        quoteMint: readQuoteMint(data),
     };
 }
 
@@ -77,10 +102,14 @@ function totalFeeBps(): BN {
     return new BN(Math.max(0, CONFIG.PUMP_CURVE_FEE_BPS));
 }
 
-/** true se la curva non e scambiabile: migrata, vuota, o stato illeggibile */
+/**
+ * true se la curva non e scambiabile da questo bot: migrata su PumpSwap, vuota,
+ * illeggibile, o denominata in un token diverso da SOL.
+ */
 function unusable(state: CurveState | null | undefined): boolean {
     return !state
         || state.complete
+        || state.quoteMint !== null
         || state.virtualSolReserves.lten(0)
         || state.virtualTokenReserves.lten(0);
 }
@@ -114,16 +143,21 @@ export const pumpBondingCurveAdapter: DexAdapter = {
     async resolvePoolFromCreateTx(tx: any): Promise<ResolvedPool | null> {
         if (!conn) throw new Error("pump adapter non inizializzato: chiamare init(connection)");
 
-        // il mint nuovo compare nei token balance della tx; WSOL e l'eventuale dev buy
+        // Il mint creato da questa tx ha la precedenza assoluta su tutto il resto: una
+        // CreateV2 puo contenere acquisti in bundle su token pump gia esistenti, che nei
+        // token balance sono indistinguibili dal nuovo. Sceglierne uno a caso significa
+        // analizzare una curva vecchia, a volte gia diplomata, al posto di quella nata ora.
+        const created = mintCreatedInTx(tx);
+
         const balanceMints = (tx?.meta?.postTokenBalances || [])
             .map((b: any) => b.mint)
             .filter((m: string) => m && m !== WSOL);
 
-        const candidates: string[] = [...new Set<string>(balanceMints)];
-        // ripiego: fra gli account toccati da pump c'e comunque il mint
-        for (const addr of accountsTouchedByProgram(tx, PUMP_PROGRAM_ID)) {
-            if (!candidates.includes(addr)) candidates.push(addr);
-        }
+        const candidates: string[] = [...new Set<string>([
+            ...(created ? [created] : []),
+            ...balanceMints,
+            ...accountsTouchedByProgram(tx, PUMP_PROGRAM_ID),
+        ])];
         if (candidates.length === 0) return null;
 
         const curves = candidates.map((m) => {
@@ -165,8 +199,10 @@ export const pumpBondingCurveAdapter: DexAdapter = {
     },
 
     describePoolMints(state: CurveState, tokenMint: string): string {
-        return `curve=${state?.curveAddress || "-"} token=${tokenMint}`
-            + `${state?.complete ? " (migrata su PumpSwap)" : ""}`;
+        const note = state?.complete ? " (migrata su PumpSwap)"
+            : state?.quoteMint ? ` (quotata in ${state.quoteMint}, non in SOL: scartata)`
+            : "";
+        return `curve=${state?.curveAddress || "-"} token=${tokenMint} quote=${state?.quoteMint || "SOL"}${note}`;
     },
 
     getSolLiquidity(state: CurveState, tokenMint: string): number | null {
