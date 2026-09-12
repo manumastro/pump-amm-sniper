@@ -2185,3 +2185,35 @@ aprile sono stati prodotti da quelli, non da quelli del `.env`. Le 34 righe sono
 volta e misurando.
 
 Verifica: dump di `CONFIG` prima e dopo la conversione, **328 chiavi su 328 identiche**.
+
+---
+
+## 37. Hold: 90 poll per trade invece di 4.500 (2026-09-12)
+
+Riattivate due delle 34 chiavi congelate alla sezione 36, più tre intervalli che le rendevano inefficaci.
+
+| Controllo | prima | ora |
+|---|---|---|
+| `AUTO_SELL_DELAY_MS` | 900.000 (900s) | **90.000 (90s)** |
+| `HOLD_WINNER_CHECK_INTERVAL_MS` | 200 | **1000** |
+| `HOLD_HARD_STOP_LOSS_CHECK_INTERVAL_MS` | 250 | **1000** |
+| `HOLD_SINGLE_SWAP_SHOCK_CHECK_INTERVAL_MS` | 300 | **1000** |
+| `HOLD_SELL_QUOTE_COLLAPSE_CHECK_INTERVAL_MS` | 300 | **1000** |
+
+`pollIntervalMs` è il **minimo** fra tutti gli intervalli dei controlli di prezzo
+(`holdMonitor.ts:110`), quindi alzare solo il winner non sarebbe bastato: il poll sarebbe sceso da
+200 a 250ms per via dell'hard stop loss, cioè un risparmio dell'1,25× invece del 5×. Alzati anche
+gli altri tre, nessuno dei quali merita di quadruplicare il ritmo: hard stop loss vale 2 uscite per
+−0,005 SOL su 386 trade, single swap shock etichetta un −100% comunque inevitabile, e sell quote
+collapse è già spento (sezione 35, 0 uscite su 386).
+
+**Effetto:** da 4.500 poll per trade (900s / 200ms) a **90** (90s / 1000ms), cioè **50×**, che è
+esattamente il divario fra il `.env` e il codice descritto alla sezione 36.
+
+⚠️ **Da verificare, non è una modifica gratuita.** I +0,781 SOL di `winner take profit` — il 121%
+del net PnL di aprile — sono stati prodotti a 200ms su un hold di 900s. Un hold di 90s tronca per
+definizione i trade che impiegavano più di un minuto e mezzo a raggiungere il picco: in aprile il
+`time-to-peak` mediano non è stato misurato contro questa soglia. Il `pricePath` a piena frequenza
+(sezione 34) rende la verifica possibile sui dati della prossima sessione: se una quota rilevante
+dei picchi cade oltre i 90s, `AUTO_SELL_DELAY_MS` va rialzato tenendo il poll a 1000ms — le due
+manopole sono indipendenti e il risparmio grosso è già nel poll.
