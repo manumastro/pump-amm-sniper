@@ -1,0 +1,34 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - heading "GMGN.AI | The Fastest Multi-Chain Meme Trading Terminal" [level=2] [ref=e3]
+    - paragraph [ref=e4]: GMGN.AI is a MEME token trading platform supporting Solana, BSC, Base, and Ethereum — covering new token monitoring, security auditing, holder analysis, smart money copy trading, wallet P&L analytics, and automated trade execution, widely used for early-stage on-chain project discovery and quantitative trading.
+    - heading "Core Features" [level=3] [ref=e5]
+    - list [ref=e6]:
+      - listitem [ref=e7]:
+        - strong [ref=e8]: Real-Time New Token Monitoring
+        - paragraph [ref=e9]: Continuously scans launchpads including Pump.fun, FourMeme, Raydium, and letsbonk with filters for market cap, volume, and creation time — helping users enter positions at early low-cap stages.
+      - listitem [ref=e10]:
+        - strong [ref=e11]: Live Trending Token Rankings
+        - paragraph [ref=e12]: Leaderboard updated every minute based on buy/sell count, trading volume, price change, and holder growth — reflecting real-time market momentum and capital flow.
+      - listitem [ref=e13]:
+        - strong [ref=e14]: Token Holder Structure Analysis
+        - paragraph [ref=e15]: "Real-time calculation of four key metrics: insider/rat wallet ratio, bundle buy ratio, DEV holdings %, and Top 10 wallet concentration."
+      - listitem [ref=e16]:
+        - strong [ref=e17]: Automated Token Security Audit
+        - paragraph [ref=e18]: "Auto-checks every token for: LP burned status, honeypot detection, contract renounced status, and mintable flag."
+      - listitem [ref=e19]:
+        - strong [ref=e20]: Smart Money Copy Trading
+        - paragraph [ref=e21]: Identifies high-win-rate wallets on-chain and enables one-click copy trading that automatically mirrors their buy/sell actions and position sizing.
+      - listitem [ref=e22]:
+        - strong [ref=e23]: KOL & Wallet Tracker with Real-Time Alerts
+        - paragraph [ref=e24]: Custom watchlist with real-time push notifications for every on-chain event — buys, sells, position adds, and full exits — from tracked wallets and KOLs.
+      - listitem [ref=e25]:
+        - strong [ref=e26]: Zero-Latency Trading & Automated Strategies
+        - paragraph [ref=e27]: Zero-latency on-chain trade execution with Take Profit, Stop Loss, Trailing Take Profit / Trailing Stop Loss, and multi-wallet batch order support.
+      - listitem [ref=e28]:
+        - strong [ref=e29]: Wallet P&L Analytics
+        - paragraph [ref=e30]: "Enter any wallet address to instantly generate: realized/unrealized PnL, win rate and risk/reward ratio, current holdings valuation, full trade history, and developer wallet token creation records with all-time high (ATH) market cap per token."
+      - listitem [ref=e31]:
+        - strong [ref=e32]: Trading Data API & AI-Native Skills
+        - paragraph [ref=e33]: Five structured API categories — token data, wallet data, market data, trade execution, and signal tracking — packaged as standardized AI Skills directly callable by Claude, GPT, and other AI Agents via natural language for on-chain data queries and trade execution.
+  - alert [ref=e34]

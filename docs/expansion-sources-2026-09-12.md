@@ -17,32 +17,77 @@ La subscription e in `src/app/runtime.ts:749` (`subscribeToPoolLogs`): `connecti
 
 ## Cosa mostra gmgn
 
-Campione dal feed `https://gmgn.ai/api/v1/pairs/sol/new_pairs/1h` (100 pair, finestra 4.5 minuti, ~1.300 nuove pair/ora su Solana):
+Campione dal feed `https://gmgn.ai/api/v1/pairs/sol/new_pairs/` (300 pair in 12,2 minuti,
+~1.470 nuove pair/ora su Solana). La colonna che conta non e il numero di pair, ma **quante
+superano `MIN_POOL_LIQUIDITY_USD = 10.000`**, cioe quante il bot prenderebbe davvero in
+considerazione:
 
-| exchange | quota | il bot lo vede? |
-|---|---|---|
-| `pump` (bonding curve) | 65% | no |
-| `pump_amm` (PumpSwap) | **14%** | **si** |
-| `ray_launchpad` | 10% | no |
-| `meteora_virtual_curve` | 4% | no |
-| `meteora_damm_v2` | 3% | no |
-| `orca` / `ray_v4` / `fluxbeam` | 4% | no |
+| exchange | pair | % | liquidita iniziale mediana | sopra 10k USD | il bot lo vede? |
+|---|---|---|---|---|---|
+| `pump` (bonding curve) | 207 | 69,0% | 0 | **0** | no |
+| `ray_launchpad` | 31 | 10,3% | 3.624 | **0** | no |
+| `pump_amm` (PumpSwap) | 25 | 8,3% | 17.333 | **20** | **si** |
+| `meteora_virtual_curve` | 21 | 7,0% | 1.675 | **0** | no |
+| `meteora_damm_v2` | 10 | 3,3% | 41 | **4** | no |
+| `ray_v4` | 4 | 1,3% | 17.369 | **4** | no |
+| `fluxbeam` | 1 | 0,3% | 2.038 | 0 | no |
+| `orca` | 1 | 0,3% | 0 | 0 | no |
 
-Quindi le "tantissime nuove creazioni" sono per **due terzi lanci su bonding curve**, cioe token che non hanno ancora una pool: `initial_liquidity` mediana = 0. Solo 16 pair su 100 partono sopra i 10.000 USD di `MIN_POOL_LIQUIDITY_USD`, e sono quasi tutte `pump_amm` (~17.300 USD, la liquidita tipica di un diploma).
+Due letture importanti.
 
-Ordine di grandezza coerente: ~1.300 pair/ora totali, ~185/ora su `pump_amm`; il bot nella sessione di aprile vedeva ~97 eventi/ora (6.959 in 72h), la differenza sta nel dedup delle signature e nelle pool senza lato WSOL.
+**Il grosso del volume e gia escluso dalla soglia di liquidita, non dalla scelta del program.**
+`pump`, `ray_launchpad` e `meteora_virtual_curve` sono 259 pair su 300 (86%) e **nessuna** parte
+sopra i 10.000 USD: sono bonding curve o equivalenti, token senza pool vera. Ascoltarli non
+aggiungerebbe un solo trade, verrebbero scartati al primo controllo.
+
+**Le uniche fonti che producono pool qualificate sono tre**, e il bot ne ascolta una:
+`pump_amm` (20 su 300), `ray_v4` (4) e `meteora_damm_v2` (4).
+
+Verifica incrociata: 20 pool qualificate su 300 pair in 12,2 minuti = **~98 all'ora**. Il bot nella
+sessione di aprile ne vedeva **97 all'ora** (6.959 eventi in 72h). I conti tornano: il bot sta gia
+catturando praticamente tutto il suo bacino.
+
+**Quanto si guadagna espandendo:** aggiungere `ray_v4` e `meteora_damm_v2` porta da 20 a 28 pool
+qualificate ogni 300 pair, cioe da ~98 a ~137 eventi/ora: **+40% di flusso**, a parita di profilo
+(liquidita iniziale mediana di `ray_v4` 17.369 USD, praticamente identica a PumpSwap).
 
 ## Implicazioni per un'espansione
 
 **Il filtro piu selettivo del bot non e un controllo: e la scelta del program.** Ascoltando solo `pAMMBay...` il bot lavora esclusivamente su token gia diplomati, con liquidita reale e una storia on-chain del creator interrogabile. Tutti i 30 controlli creator-risk presuppongono quel contesto.
 
-Le tre direzioni possibili, in ordine di rischio:
+Le direzioni possibili, riordinate alla luce dei dati sopra:
 
-1. **Altri AMM post-graduation** (`meteora_damm_v2`, `ray_v4`, `orca`) — ~8% di volume aggiuntivo. E l'estensione piu naturale: stesso profilo di rischio, stessi controlli, cambia solo il modo di leggere lo stato della pool e di calcolare il quote. Richiede un adattatore per pool state / quote per ogni DEX.
-2. **Altri launchpad post-graduation** (`ray_launchpad`, `meteora_virtual_curve`) — ~14%. I controlli creator-risk restano validi in linea di principio, ma le soglie sono tarate su Pump.fun e andrebbero ri-validate da zero.
-3. **Bonding curve Pump.fun** (`6EF8rrec...`) — il 65% del volume, e la tentazione ovvia. **Profilo di rischio completamente diverso:** nessuna pool, nessuna liquidita, nessuno storico del creator al momento del lancio. E esattamente il contesto in cui i controlli attuali sono ciechi: l'esperimento `cp=1` del 2026-04-02 (creator senza storia tracciabile) ha prodotto 43,6% WR e 20 rug su 39 trade, −0,102 SOL. Da non affrontare senza un modello di rischio nuovo.
+1. **`ray_v4` + `meteora_damm_v2`** — le uniche due fonti, oltre a PumpSwap, che producono pool sopra
+   la soglia di liquidita. **+40% di flusso** a parita di profilo di rischio: sono AMM
+   post-graduation, i token hanno liquidita reale e il creator ha una storia on-chain interrogabile,
+   quindi i 30 controlli creator-risk restano validi cosi come sono.
+2. **`ray_launchpad` + `meteora_virtual_curve`** — 52 pair su 300, ma **zero** sopra i 10.000 USD:
+   aggiungerebbero eventi che vengono scartati al primo controllo. Non vale il lavoro.
+3. **Bonding curve Pump.fun** (`6EF8rrec...`) — il 69% del volume, la tentazione ovvia.
+   **Profilo di rischio completamente diverso:** nessuna pool, nessuna liquidita, nessuno storico del
+   creator al lancio. E esattamente il contesto in cui i controlli attuali sono ciechi: l'esperimento
+   `cp=1` del 2026-04-02 (creator senza storia tracciabile) ha prodotto 43,6% WR e 20 rug su 39
+   trade, −0,102 SOL. Serve un modello di rischio nuovo, non un'estensione di questo.
 
-**Raccomandazione:** nessuna espansione prima di avere il price path (sezione 19 di `controls.md`) e un replay offline funzionante. Allargare le fonti moltiplica gli eventi, non l'edge; e con 39 rug che gia costano il 37,6% del profitto lordo, il collo di bottiglia oggi e la selezione, non il flusso.
+## Cosa serve tecnicamente per il punto 1
+
+Il lavoro non e nella subscription — quella e una riga — ma nel **layer di lettura della pool**, oggi
+interamente legato all'SDK di Pump:
+
+| Giuntura | File | Cosa fa oggi |
+|---|---|---|
+| Subscription | `src/app/runtime.ts:749` | un solo `onLogs(programId)`, filtra i log `create_pool` |
+| Stato pool | `src/pumpAmmSniper.ts`, ~10 call site | `onlineSdk.swapSolanaState(poolKey, user)` |
+| Quote e liquidita | `src/services/paper-trade/quote.ts` | `buyQuoteInput`/`sellBaseInput` dell'SDK Pump, piu accesso diretto a `state.poolBaseAmount`, `state.pool.coinCreator`, `state.feeConfig`, `state.globalConfig` |
+
+Serve un'interfaccia adapter con cinque metodi — `fetchPoolState`, `getOrientation`,
+`getSolLiquidity`, `getSpotPrice`, `getExitQuote` — di cui l'implementazione attuale diventa il primo
+adapter (`pumpswap`), piu un adapter per DEX nuovo. La subscription diventa una lista di program, e
+ogni evento porta con se quale adapter usare.
+
+**Prerequisito non negoziabile:** il refactor tocca il percorso caldo di un file da 3.538 righe
+**senza un singolo test in tutto il repo**. Va fatto quando c'e una sessione paper funzionante con cui
+verificare che il comportamento su PumpSwap resti identico prima e dopo, non alla cieca.
 
 ## Accesso ai dati gmgn
 
