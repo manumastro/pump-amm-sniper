@@ -2109,3 +2109,79 @@ trade. A 200ms il `pricePath` coincide con il poll di stato e ogni intervallo di
 ri-simulabile offline. **Costo RPC: zero** — il recorder legge lo stato già scaricato dal loop, non
 aggiunge chiamate; cresce solo la dimensione del report (6.000 campioni per hold pieno invece di 180).
 Nessuna decisione di uscita cambia. Si torna al comportamento precedente togliendo le due env.
+
+---
+
+## 35. Tagli applicati dall'audit RPC (2026-09-12)
+
+Tutti i toggle sotto erano costanti in `src/app/config.ts`: ora leggono da env tramite `envBool()`,
+quindi il rollback è togliere la riga dal `.env` senza toccare il codice. Motivazioni e misure in
+`docs/rpc-audit-2026-09-12.md`.
+
+| Controllo | prima | ora | evidenza |
+|---|---|---|---|
+| `HOLD_REMOVE_LIQ_DETECT_ENABLED` | true | **false** | 4 uscite +0,001 SOL, **36 rug mancati su 36**; RPC ogni 1,5s |
+| `HOLD_POOL_CHURN_DETECT_ENABLED` | true | **false** | **0 uscite** su 386 trade; RPC ogni 1,5s |
+| `HOLD_CREATOR_CLOSE_ACCOUNT_BURST_EXIT_ENABLED` | true | **false** | 1 uscita, +0,002 SOL; RPC ogni 1s |
+| `HOLD_CREATOR_OUTBOUND_EXIT_ENABLED` | true | **false** | 1 uscita, +0,000 SOL; RPC ogni 1,5s |
+| `HOLD_CREATOR_INBOUND_SPRAY_EXIT_ENABLED` | true | **false** | **0 uscite** su 386 trade; RPC ogni 1,5s |
+| `HOLD_SELL_QUOTE_COLLAPSE_EXIT_ENABLED` | true | **false** | **0 uscite** su 386 trade (non costava RPC) |
+| `HOLD_WINNER_PROFIT_FLOOR_PCT` | 3 | **0** (spento) | 4 uscite normali 1W/3L, **−0,011 SOL** |
+| `CREATOR_RISK_PRECREATE_BURST_BLOCK_ENABLED` | true | **false** | **0 blocchi** su 1.482 valutazioni |
+| `PRE_BUY_TOP10_CHECK_ENABLED` | true | **false** | **1 blocco** su 1.482; unica ragione di `SVS_HEAVY_RPC` |
+| `ENFORCE_DEV_HOLDINGS_CHECK` | true | **false** | **0 blocchi** su 1.482 valutazioni |
+
+**Restano accesi** i tre poller di hold che producono valore: `winner take profit` (119 uscite,
++0,781 SOL), `creator outbound spray` (147 uscite, +0,141 SOL) e il recheck creator-risk
+(38 uscite, +0,057 SOL). Resta acceso anche `PRE_BUY_FINAL_REMOVE_LIQ_CHECK_ENABLED`: a differenza
+del poller di hold, controlla un rug **già avvenuto** fra rilevamento ed entrata, quindi non è
+soggetto al problema dell'atomicità.
+
+**Non applicato:** `CREATOR_RISK_PARSED_TX_LIMIT` resta **50**. Dimezzarlo non è un risparmio ma un
+allentamento del filtro unique-counterparties — meno transazioni lette, meno counterparties contate,
+meno blocchi — cioè la stessa direzione dell'esperimento `cp=1` che costò −0,102 SOL.
+
+**Non applicato:** `HOLD_WINNER_CHECK_INTERVAL_MS` resta **200ms**, ed è il 72% del costo di un
+trade. Dipende dal `pricePath` a piena frequenza attivato alla sezione 34: prima i dati, poi il taglio.
+
+**Conseguenza operativa:** con il top-10 spento, `SVS_HEAVY_RPC` non serve più. Resta configurato ma
+inutilizzato; se dopo una sessione i log non mostrano chiamate pesanti, si può togliere Alchemy.
+
+---
+
+## 36. Il `.env` era in gran parte ignorato dal codice (2026-09-12)
+
+Scoperto verificando i tagli della sezione 35 contro il container: il banner stampava
+`exit delay 900s` mentre il `.env` conteneva `AUTO_SELL_DELAY_MS=90000`.
+
+**Causa.** `src/app/config.ts` definiva la quasi totalità dei controlli come letterali
+(`AUTO_SELL_DELAY_MS: Number(900000)`) invece che come override da env. Su ~285 chiavi presenti
+nel `.env`, **solo 39 venivano effettivamente lette**: le altre 246 erano scritte, caricate da
+Docker nell'ambiente del processo, e poi ignorate. Nessun errore, nessun log.
+
+**Le 34 con un valore diverso da quello del codice**, cioè i tuning che non hanno mai avuto effetto.
+Le tre che pesano sulle chiamate RPC:
+
+| Controllo | `.env` (creduto attivo) | codice (realmente attivo) | effetto |
+|---|---|---|---|
+| `AUTO_SELL_DELAY_MS` | 90.000 (90s) | **900.000 (900s)** | hold **10× più lungo** |
+| `HOLD_WINNER_CHECK_INTERVAL_MS` | 1.000 | **200** | poll **5× più fitto** |
+| `CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES` | 25 | **3** | filtro **8× più severo** |
+
+Le prime due si moltiplicano: il costo RPC di un trade è stato **~50 volte** quello che il `.env`
+descriveva. È la spiegazione del 41,4% di spesa sui trade misurato nella sezione 34, e non era una
+scelta di progetto ma un bug silenzioso.
+La terza spiega perché `unique counterparties` fa il 79% dei blocchi: la soglia attiva è 3, non 25.
+
+**Correzione strutturale.** Tutte le 328 chiavi di `CONFIG` ora accettano un override da env
+(`Number(process.env.X ?? default)`, `envBool("X", default)`). Il `.env` non può più mentire.
+
+**Correzione di comportamento: nessuna, deliberatamente.** Attivare di colpo le 34 chiavi avrebbe
+significato applicare 34 modifiche mai validate insieme ai tagli della sezione 35, fra cui
+allentare `CREATOR_RISK_MAX_UNIQUE_COUNTERPARTIES` da 3 a 25 — la stessa direzione dell'esperimento
+`cp=1` che costò −0,102 SOL. I valori del codice sono anche gli unici validati: i +0,645 SOL di
+aprile sono stati prodotti da quelli, non da quelli del `.env`. Le 34 righe sono quindi
+**commentate** nel `.env`, con il valore leggibile accanto: riattivarle è togliere un `#`, una alla
+volta e misurando.
+
+Verifica: dump di `CONFIG` prima e dopo la conversione, **328 chiavi su 328 identiche**.
