@@ -1,4 +1,5 @@
 import { spawn } from "child_process";
+import { listAdapters } from "../services/dex";
 import fs from "fs";
 import path from "path";
 import { Connection, PublicKey } from "@solana/web3.js";
@@ -85,7 +86,8 @@ export function createSupervisorRuntime(options: {
     signatureCacheMaxSize: number;
     logStaleResubscribeMs: number;
     healthcheckIntervalMs: number;
-    programId: string;
+    /** program da ascoltare; uno per DEX supportato (src/services/dex) */
+    programIds: string[];
     createConnection: () => Connection;
     initSdks: (connection: Connection) => void;
     handleNewPool: (connection: Connection, signature: string) => Promise<void>;
@@ -113,14 +115,14 @@ export function createSupervisorRuntime(options: {
     }) => Promise<{ snapshot: Record<string, any>; nextState?: Record<string, any> }>;
     onStartupLog: (workerCount: number) => void;
 }) {
-    let logSubscriptionId: number | null = null;
+    const logSubscriptionIds: number[] = [];
     let lastLogAtMs = Date.now();
     let healthcheckInterval: NodeJS.Timeout | null = null;
     let consecutiveResubscribes = 0;
     const MAX_CONSECUTIVE_RESUBSCRIBES = 5;
     const seenSignatures = new Map<string, number>();
     const activeSignatures = new Set<string>();
-    const pendingSignatures: string[] = [];
+    const pendingSignatures: Array<{ signature: string; programId: string }> = [];
     const pendingSignatureSet = new Set<string>();
     const deferredNoWsolJobs = new Map<string, DeferredNoWsolJob>();
     const deferredNoWsolBySignature = new Set<string>();
@@ -316,19 +318,19 @@ export function createSupervisorRuntime(options: {
         return workerSlots.find((slot) => !slot.busy) || null;
     }
 
-    function enqueuePendingSignature(signature: string) {
+    function enqueuePendingSignature(signature: string, programId: string) {
         if (pendingSignatureSet.has(signature) || activeSignatures.has(signature)) return;
 
         const maxPending = Math.max(1, options.queueMaxPendingSignatures);
         if (pendingSignatures.length >= maxPending) {
             const dropped = pendingSignatures.shift();
             if (dropped) {
-                pendingSignatureSet.delete(dropped);
-                console.warn(`QUEUE        | drop oldest ${options.shortSig(dropped)} (max ${maxPending})`);
+                pendingSignatureSet.delete(dropped.signature);
+                console.warn(`QUEUE        | drop oldest ${options.shortSig(dropped.signature)} (max ${maxPending})`);
             }
         }
 
-        pendingSignatures.push(signature);
+        pendingSignatures.push({ signature, programId });
         pendingSignatureSet.add(signature);
         console.log(`QUEUE        | enqueued ${options.shortSig(signature)} (pending=${pendingSignatures.length})`);
     }
@@ -406,13 +408,13 @@ export function createSupervisorRuntime(options: {
 
     function drainPendingQueue() {
         while (pendingSignatures.length > 0) {
-            const signature = pendingSignatures[0];
+            const { signature, programId } = pendingSignatures[0];
             if (activeSignatures.has(signature)) {
                 pendingSignatures.shift();
                 pendingSignatureSet.delete(signature);
                 continue;
             }
-            if (!dispatchPoolToWorker(signature)) {
+            if (!dispatchPoolToWorker(signature, { WORKER_TASK_PROGRAM_ID: programId })) {
                 return;
             }
             pendingSignatures.shift();
@@ -747,33 +749,50 @@ export function createSupervisorRuntime(options: {
     }
 
     async function subscribeToPoolLogs(connection: Connection) {
-        console.log("👀 Listening for 'create_pool' logs...");
-        logSubscriptionId = connection.onLogs(
-            new PublicKey(options.programId),
-            async (logs) => {
-                try {
-                    lastLogAtMs = Date.now();
-                    consecutiveResubscribes = 0;
-                    pruneSignatureCache(lastLogAtMs);
+        const adapters = listAdapters();
+        console.log(`👀 Listening for pool creation on ${adapters.length} program(s): ${adapters.map((a) => a.name).join(", ")}`);
 
-                    if (alreadySeenSignature(logs.signature, lastLogAtMs)) {
-                        return;
+        for (const adapter of adapters) {
+            const subId = connection.onLogs(
+                new PublicKey(adapter.programId),
+                async (logs) => {
+                    try {
+                        lastLogAtMs = Date.now();
+                        consecutiveResubscribes = 0;
+                        pruneSignatureCache(lastLogAtMs);
+
+                        if (alreadySeenSignature(logs.signature, lastLogAtMs)) {
+                            return;
+                        }
+
+                        // ogni DEX nomina diversamente l'istruzione di creazione pool
+                        const hasCreatePool = logs.logs.some((log) => {
+                            const lower = log.toLowerCase();
+                            return adapter.createPoolLogMarkers.some((marker) => lower.includes(marker));
+                        });
+                        if (!hasCreatePool) return;
+
+                        if (!dispatchPoolToWorker(logs.signature, { WORKER_TASK_PROGRAM_ID: adapter.programId })) {
+                            enqueuePendingSignature(logs.signature, adapter.programId);
+                        }
+                    } catch (e: any) {
+                        console.error(`❌ Log handler error (${adapter.name}): ${e.message}`);
                     }
+                },
+                "confirmed",
+            );
+            logSubscriptionIds.push(subId);
+        }
+    }
 
-                    const hasCreatePool = logs.logs.some((log) =>
-                        log.toLowerCase().includes("create_pool") || log.toLowerCase().includes("createpool")
-                    );
-                    if (!hasCreatePool) return;
-
-                    if (!dispatchPoolToWorker(logs.signature)) {
-                        enqueuePendingSignature(logs.signature);
-                    }
-                } catch (e: any) {
-                    console.error(`❌ Log handler error: ${e.message}`);
-                }
-            },
-            "confirmed",
-        );
+    async function removeAllLogListeners(connection: Connection) {
+        for (const id of logSubscriptionIds.splice(0)) {
+            try {
+                await connection.removeOnLogsListener(id);
+            } catch (e: any) {
+                console.warn(`⚠️ Failed removing old log subscription: ${e.message}`);
+            }
+        }
     }
 
     function startLogHealthcheck(connection: Connection) {
@@ -802,15 +821,7 @@ export function createSupervisorRuntime(options: {
                 `Resubscribe attempt ${consecutiveResubscribes}/${MAX_CONSECUTIVE_RESUBSCRIBES} (backoff ${Math.floor(backoffMs / 1000)}s)...`
             );
 
-            try {
-                if (logSubscriptionId !== null) {
-                    await connection.removeOnLogsListener(logSubscriptionId);
-                }
-            } catch (e: any) {
-                console.warn(`⚠️ Failed removing old log subscription: ${e.message}`);
-            }
-
-            logSubscriptionId = null;
+            await removeAllLogListeners(connection);
             lastLogAtMs = now;
             await subscribeToPoolLogs(connection);
         }, options.healthcheckIntervalMs);
@@ -865,14 +876,7 @@ export function createSupervisorRuntime(options: {
                 ccShadowInterval = null;
             }
 
-            if (logSubscriptionId !== null) {
-                try {
-                    await connection.removeOnLogsListener(logSubscriptionId);
-                } catch {
-                    // no-op on shutdown
-                }
-                logSubscriptionId = null;
-            }
+            await removeAllLogListeners(connection);
 
             for (const slot of workerSlots) {
                 if (slot.child && !slot.child.killed) {

@@ -98,13 +98,17 @@ binario con `WORKER_TASK_SIGNATURE` impostata. `MAX_CONCURRENT_OPERATIONS=2` slo
 
 **Dopo ogni modifica a `src/**`: `npm run build`.** Senza build il bot esegue il codice vecchio in `dist/`.
 
-### Program monitorato
+### Program monitorati
 
-Uno solo, `src/pumpAmmSniper.ts:39`:
+La lista viene dal registro degli adapter in `src/services/dex/index.ts`. Oggi ce n'e uno:
 
 ```
 pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA   // PumpSwap, AMM di Pump.fun
 ```
+
+La pipeline e gia multi-DEX: una subscription per adapter, il program viaggia fino al worker che
+risolve il proprio `ACTIVE_ADAPTER`. Aggiungerne uno = implementare `DexAdapter` + una riga nel
+registro. Vedi `docs/architecture.md` (DEX Layer).
 
 E il **14%** delle nuove pair Solana: il bot vede solo token gia diplomati dalla bonding curve.
 Il 65% delle creazioni che si vedono su gmgn sono lanci su bonding curve, senza pool e con
@@ -131,7 +135,19 @@ tutti i `logs/paper-worker-*.log`.
 
 ### RPC
 
-Un solo env var, provider-agnostico: `SVS_UNSTAKED_RPC` (default: RPC pubblico, inutilizzabile).
+Un solo env var, provider-agnostico: `SVS_UNSTAKED_RPC`.
+
+**Endpoint verificati** (con `scripts/rpc-smoke-test.js`, 2026-09-12):
+
+| Endpoint | logsSubscribe | Esito |
+|---|---|---|
+| `https://solana-rpc.publicnode.com` | si | **usato**, 71 req/s, 0 rate-limit, nessuna registrazione |
+| `https://api.mainnet-beta.solana.com` | si | 1,1 req/s effettivi: inutilizzabile |
+| Alchemy free | **no** | l'intera WebSocket API risponde "method not found": nessun metodo pubsub disponibile |
+| dRPC free | — | Solana non inclusa nel piano free |
+
+**Il requisito che scarta la maggior parte dei provider e `logsSubscribe`**, non il rate limit:
+il bot rileva le nuove pool esattamente da li. Verificare sempre prima di adottare un endpoint.
 
 Il bot e affamato di RPC. Due profili di carico:
 - `logsSubscribe` permanente sul program

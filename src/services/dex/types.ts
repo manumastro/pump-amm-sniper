@@ -27,7 +27,9 @@ export interface DexAdapter {
     /** sottostringhe che identificano la creazione di un pool nei log del program */
     readonly createPoolLogMarkers: string[];
 
-    fetchPoolState(connection: Connection, poolAddress: PublicKey, user: PublicKey): Promise<any>;
+    /** lega l'adapter alla connection condivisa; va chiamata una volta all'avvio */
+    init(connection: Connection): void;
+    fetchPoolState(poolAddress: PublicKey, user: PublicKey): Promise<any>;
 
     getOrientation(state: any, tokenMint: string): PoolOrientation;
     describePoolMints(state: any, tokenMint: string): string;

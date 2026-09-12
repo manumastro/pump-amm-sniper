@@ -44,9 +44,13 @@ export const pumpSwapAdapter: DexAdapter = {
     programId: PUMPSWAP_PROGRAM_ID,
     createPoolLogMarkers: ["create_pool", "createpool"],
 
-    async fetchPoolState(connection: Connection, poolAddress: PublicKey, user: PublicKey) {
-        if (!onlineSdk) initPumpSwapSdk(connection);
-        return await onlineSdk!.swapSolanaState(poolAddress, user);
+    init(connection: Connection) {
+        initPumpSwapSdk(connection);
+    },
+
+    async fetchPoolState(poolAddress: PublicKey, user: PublicKey) {
+        if (!onlineSdk) throw new Error("pumpswap adapter non inizializzato: chiamare init(connection)");
+        return await onlineSdk.swapSolanaState(poolAddress, user);
     },
 
     getOrientation(state: any, tokenMint: string): PoolOrientation {

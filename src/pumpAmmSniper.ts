@@ -3,6 +3,13 @@ import fs from "fs";
 import path from "path";
 import bs58 from "bs58";
 import { OnlinePumpAmmSdk, PumpAmmSdk, buyQuoteInput, sellBaseInput } from "@pump-fun/pump-swap-sdk";
+import { getAdapterForProgram, defaultAdapter, initAdapters, listMonitoredProgramIds } from "./services/dex";
+
+// Il supervisore etichetta ogni dispatch con il program di provenienza
+// (WORKER_TASK_PROGRAM_ID). Il worker risolve qui l'adapter da usare per
+// tutta la sua vita: un worker analizza una pool sola, quindi un solo DEX.
+const ACTIVE_ADAPTER =
+    getAdapterForProgram(process.env.WORKER_TASK_PROGRAM_ID || "") || defaultAdapter;
 import BN from "bn.js";
 import { AccountLayout, getMint, TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
 import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction, createCloseAccountInstruction } from "@solana/spl-token";
@@ -242,6 +249,7 @@ function describeRpcEndpoint(): string {
 
 function initSdks(connection: Connection) {
     onlineSdk = new OnlinePumpAmmSdk(connection);
+    initAdapters(connection);
     offlineSdk = new PumpAmmSdk();
 }
 
@@ -410,7 +418,7 @@ async function handleNewPool(connection: Connection, signature: string) {
 
         for (let i = 0; i < stateAttempts; i++) {
             try {
-                const poolState = await onlineSdk.swapSolanaState(poolKey, observerUser);
+                const poolState = await ACTIVE_ADAPTER.fetchPoolState(poolKey, observerUser);
                 const orientation = getPoolOrientation(poolState, tokenMint);
                 if (!orientation.hasWsol) {
                     const mintInfo = describePoolMints(poolState, tokenMint);
@@ -1019,7 +1027,7 @@ async function handleNewPool(connection: Connection, signature: string) {
             const fetchStateWithRetry = async () => {
                 for (let i = 0; i < 12; i++) {
                     try {
-                        const state = await onlineSdk.swapSolanaState(poolKey, observerUser);
+                        const state = await ACTIVE_ADAPTER.fetchPoolState(poolKey, observerUser);
                         if (state.poolBaseAmount.gt(new BN(0)) && state.poolQuoteAmount.gt(new BN(0))) return state;
                     } catch {
                         // wait and retry
@@ -1071,7 +1079,7 @@ async function resolveCreatorFromPool(connection: Connection, poolAddress: strin
     const poolKey = new PublicKey(poolAddress);
     for (let i = 0; i < 8; i++) {
         try {
-            const state = await onlineSdk.swapSolanaState(poolKey, observerUser);
+            const state = await ACTIVE_ADAPTER.fetchPoolState(poolKey, observerUser);
             const creator = pubkeyToBase58(state?.pool?.creator);
             if (creator) return creator;
         } catch {
@@ -1149,7 +1157,7 @@ async function waitForPreEntryFlowSignal(
         const signatures = await connection.getSignaturesForAddress(poolKey, { limit: Math.max(20, minTrades + 5) }, "confirmed");
         const tradeCount = signatures.filter((s: any) => s.signature !== createSignature).length;
 
-        const state = await onlineSdk.swapSolanaState(poolKey, observerUser);
+        const state = await ACTIVE_ADAPTER.fetchPoolState(poolKey, observerUser);
         const orientation = getPoolOrientation(state, tokenMint);
         if (!orientation.hasWsol) {
             if (CONFIG.FORCE_ENTRY_ON_NO_WSOL_SIDE) {
@@ -1241,7 +1249,7 @@ async function preEntryWaitAndCheck(
             : 0;
 
         for (let i = 0; i < samples; i++) {
-            const state = await onlineSdk.swapSolanaState(new PublicKey(poolAddress), observerUser);
+            const state = await ACTIVE_ADAPTER.fetchPoolState(new PublicKey(poolAddress), observerUser);
             const liq = getSolLiquidityFromState(state, tokenMint);
             if (liq === null || !Number.isFinite(liq) || liq <= 0) {
                 if (CONFIG.FORCE_ENTRY_ON_NO_WSOL_SIDE) {
@@ -2824,7 +2832,7 @@ const paperTradeService = createPaperTradeService({
     fetchSwapState: async (poolAddress: string, observerUser: PublicKey) => {
         const poolKey = new PublicKey(poolAddress);
         try {
-            return await onlineSdk.swapSolanaState(poolKey, observerUser);
+            return await ACTIVE_ADAPTER.fetchPoolState(poolKey, observerUser);
         } catch {
             return null;
         }
@@ -2870,7 +2878,7 @@ const liquidityService = createLiquidityService({
     fetchSwapState: async (poolAddress: string, observerUser: PublicKey) => {
         const poolKey = new PublicKey(poolAddress);
         try {
-            return await onlineSdk.swapSolanaState(poolKey, observerUser);
+            return await ACTIVE_ADAPTER.fetchPoolState(poolKey, observerUser);
         } catch {
             return null;
         }
@@ -2883,7 +2891,7 @@ const top10Service = createTop10Service({
     fetchSwapState: async (poolAddress: string, observerUser: PublicKey) => {
         const poolKey = new PublicKey(poolAddress);
         try {
-            return await onlineSdk.swapSolanaState(poolKey, observerUser);
+            return await ACTIVE_ADAPTER.fetchPoolState(poolKey, observerUser);
         } catch {
             return null;
         }
@@ -3083,6 +3091,11 @@ async function executeBuy(connection: Connection, poolAddress: string, tokenMint
         if (!walletKeypair) {
             throw new Error("PRIVATE_KEY missing: cannot execute buy in monitor-only mode");
         }
+        // Il path live costruisce istruzioni con l'SDK Pump: su un altro DEX
+        // produrrebbe transazioni sbagliate. Meglio fallire qui che firmarle.
+        if (ACTIVE_ADAPTER.name !== "pumpswap") {
+            throw new Error(`live trading non implementato per il DEX '${ACTIVE_ADAPTER.name}'`);
+        }
 
         const poolKey = new PublicKey(poolAddress);
         const user = walletKeypair.publicKey;
@@ -3094,7 +3107,7 @@ async function executeBuy(connection: Connection, poolAddress: string, tokenMint
         
         while (attempts < maxAttempts) {
             try {
-                swapSolanaState = await onlineSdk.swapSolanaState(poolKey, user);
+                swapSolanaState = await ACTIVE_ADAPTER.fetchPoolState(poolKey, user);
                 
                 // Use correct property names from SDK: poolBaseAmount and poolQuoteAmount
                 const baseAmount = swapSolanaState.poolBaseAmount;
@@ -3206,7 +3219,7 @@ async function executeSell(connection: Connection, poolAddress: string, tokenMin
         console.log(`🚀 Selling ${balanceResponse.value.uiAmount} tokens...`);
         
         const poolKey = new PublicKey(poolAddress);
-        const swapSolanaState = await onlineSdk.swapSolanaState(poolKey, user);
+        const swapSolanaState = await ACTIVE_ADAPTER.fetchPoolState(poolKey, user);
         
         // To SELL TOKEN (quote) for SOL (base)
         const sellInstructions: TransactionInstruction[] = await offlineSdk.buyBaseInput(
@@ -3264,7 +3277,7 @@ async function sampleCcShadowCandidate(candidate: {
     let poolState: any | null = null;
     let poolError: string | null = null;
     try {
-        poolState = await onlineSdk.swapSolanaState(poolKey, observerUser);
+        poolState = await ACTIVE_ADAPTER.fetchPoolState(poolKey, observerUser);
     } catch (error: any) {
         poolError = error?.message || "state_unavailable";
     }
@@ -3436,14 +3449,14 @@ const supervisorRuntime = createSupervisorRuntime({
     signatureCacheMaxSize: CONFIG.SIGNATURE_CACHE_MAX_SIZE,
     logStaleResubscribeMs: CONFIG.LOG_STALE_RESUBSCRIBE_MS,
     healthcheckIntervalMs: CONFIG.HEALTHCHECK_INTERVAL_MS,
-    programId: PUMPFUN_AMM_PROGRAM_ID,
+    programIds: listMonitoredProgramIds(),
     createConnection: createRuntimeConnection,
     initSdks,
     handleNewPool,
     checkDeferredNoWsolCandidate: async ({ tokenMint, poolAddress }) => {
         const observerUser = walletKeypair?.publicKey ?? Keypair.generate().publicKey;
         try {
-            const poolState = await onlineSdk.swapSolanaState(new PublicKey(poolAddress), observerUser);
+            const poolState = await ACTIVE_ADAPTER.fetchPoolState(new PublicKey(poolAddress), observerUser);
             const orientation = getPoolOrientation(poolState, tokenMint);
             if (!orientation.hasWsol) {
                 const dexFallback = await checkDexScreenerWsolPair(tokenMint, poolAddress);

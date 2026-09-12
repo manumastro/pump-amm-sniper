@@ -58,10 +58,20 @@ Finché il refactor non è completato:
 `src/services/paper-trade/quote.ts` e rimasto come facciata: instrada sull'adapter di default,
 cosi i call site esistenti non cambiano.
 
-**Stato:** l'interpretazione dello stato pool e completamente dietro l'adapter (zero accessi a
-`poolBaseAmount`, `coinCreator`, `feeConfig` fuori da `dex/`, escluso il path di trading live).
-Restano da instradare le ~9 `swapSolanaState()` di **fetch**: richiedono che l'evento porti con
-se il program di provenienza attraverso il dispatch al worker. E il prossimo incremento.
+**Stato: la pipeline e multi-DEX.** L'interpretazione dello stato pool e il fetch passano entrambi
+dall'adapter; fuori da `dex/` non resta nessun accesso ai campi dell'SDK, escluso il path di trading
+live (protetto da una guardia che rifiuta un DEX diverso da pumpswap).
+
+Propagazione del program, end to end:
+
+1. `subscribeToPoolLogs` apre una subscription **per ogni adapter registrato** e riconosce la
+   creazione pool con i marker di quel DEX (`createPoolLogMarkers`)
+2. il dispatch al worker etichetta il processo figlio con `WORKER_TASK_PROGRAM_ID`
+3. la coda dei pending porta la coppia `{signature, programId}`, non la sola signature
+4. il worker risolve `ACTIVE_ADAPTER` dal registro all'avvio e lo usa per tutta la sua vita
+   (un worker analizza una pool sola, quindi un solo DEX)
+
+Aggiungere un DEX ora e davvero solo: implementare l'interfaccia + una riga nel registro.
 
 **Il path di trading live** (`executeBuy`/`executeSell`) resta legato all'SDK Pump di proposito:
 costruire le istruzioni di swap e specifico per DEX ed e una preoccupazione separata dal quoting

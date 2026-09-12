@@ -1,3 +1,4 @@
+import { Connection } from "@solana/web3.js";
 import { DexAdapter } from "./types";
 import { pumpSwapAdapter, PUMPSWAP_PROGRAM_ID } from "./pumpswap";
 
@@ -21,6 +22,11 @@ const ADAPTERS: DexAdapter[] = [
 ];
 
 const BY_PROGRAM = new Map<string, DexAdapter>(ADAPTERS.map((a) => [a.programId, a]));
+
+/** lega tutti gli adapter registrati alla connection condivisa */
+export function initAdapters(connection: Connection) {
+    for (const a of ADAPTERS) a.init(connection);
+}
 
 export function getAdapterForProgram(programId: string): DexAdapter | undefined {
     return BY_PROGRAM.get(programId);
