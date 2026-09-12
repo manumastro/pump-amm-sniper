@@ -166,7 +166,14 @@ Due env var, entrambe provider-agnostiche:
 ```bash
 SVS_UNSTAKED_RPC=https://solana-rpc.publicnode.com                  # letture HTTP
 SVS_UNSTAKED_WS=wss://solana-mainnet.core.chainstack.com/<node-id>  # subscription (opzionale)
+SVS_HEAVY_RPC=https://solana-mainnet.g.alchemy.com/v2/<key>         # metodi strozzati (opzionale)
 ```
+
+⚠️ **`getTokenLargestAccounts` su publicnode: 32,5s poi 429.** E la chiamata del controllo top-10.
+Con `PRE_BUY_TOP10_FAIL_OPEN=false` un endpoint che non la serve fa scartare **ogni** token e
+`checksPassed` resta zero per sempre, senza nessun errore visibile. Alchemy risponde in 691ms ma
+regge 25 req/s e crolla sulle raffiche (55/60 in 429): da qui il terzo ruolo, che riceve solo una
+chiamata per valutazione. Vedi `docs/controls.md` sezione 28.
 
 Senza `SVS_UNSTAKED_WS` il WebSocket viene derivato dall'HTTP, come prima.
 

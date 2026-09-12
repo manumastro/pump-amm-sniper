@@ -1617,3 +1617,77 @@ QUEUE STATS  | pending=42 scadute=256 create_fallite=31 slot_liberi=0/2
 Emessa dall'healthcheck. `slot_liberi=0/2` per molti giri consecutivi e la firma del deadlock
 della sezione 26; `scadute` che cresce linearmente e saturazione; `create_fallite` misura quanto
 del flusso pump grezzo e rumore.
+
+---
+
+## 28. Nessun endpoint gratuito serve tutti i metodi: il terzo ruolo RPC
+
+**2026-09-12**, subito dopo le correzioni della sezione 26. Il bot non era piu in deadlock, ma
+restava fermo lo stesso: `slot_liberi=0/2` per otto minuti di fila, zero skip nuovi. I worker erano
+in `top10Service.runCheck()`, e stavolta **ritentavano** — la correzione precedente funzionava — ma
+ogni giro costava cinque minuti:
+
+```
+[17:20:20] TOP10 | retry 1/4 after error: largest accounts error (wait 400ms)
+[17:25:24] TOP10 | retry 2/4 after error: largest accounts error (wait 640ms)
+```
+
+L'attesa dichiarata era 400ms. A consumare il tempo era la chiamata sotto.
+
+### La misura
+
+`getTokenLargestAccounts` sullo stesso mint, tre endpoint:
+
+| Endpoint | Esito |
+|---|---|
+| publicnode | **32,5s → 429** |
+| Alchemy free | **691ms → OK** |
+| Chainstack | 939ms → 403, metodo non disponibile |
+
+Il metodo scandisce tutti i token account di un mint: e caro, e publicnode lo strozza. Otto
+tentativi interni x quattro esterni, a 16-32s l'uno, fanno oltre otto minuti di slot occupato.
+
+⚠️ **Con `PRE_BUY_TOP10_FAIL_OPEN=false` questo non e un degrado, e un blocco totale:** un endpoint
+che non serve `getTokenLargestAccounts` fa scartare **ogni** token al top-10, e `checksPassed` resta
+zero per sempre. Il bot sembra funzionare — valuta, logga, scarta — e non puo entrare mai.
+
+### Perche non basta cambiare endpoint
+
+Alchemy serve il metodo ma regge 25 req/s: nello smoke test **55 richieste su 60 finiscono in 429**.
+publicnode ne regge 218 su tutto il resto. Nessuno dei due gratuiti fa entrambe le cose.
+
+Da qui il terzo ruolo, accanto a HTTP e WebSocket:
+
+```bash
+SVS_UNSTAKED_RPC=https://solana-rpc.publicnode.com                  # il carico grosso
+SVS_UNSTAKED_WS=wss://solana-mainnet.core.chainstack.com/<node-id>  # le subscription
+SVS_HEAVY_RPC=https://solana-mainnet.g.alchemy.com/v2/<key>         # solo i metodi strozzati
+```
+
+`SVS_HEAVY_RPC` e opzionale: senza, si usa la connessione normale come prima. Passa di qui **solo**
+il controllo top-10, cioe una chiamata per valutazione — ben dentro i 25 req/s del piano free.
+
+All'avvio il bot dichiara quale sta usando, e se non e impostato lo dice esplicitamente.
+
+### Le due correzioni strutturali
+
+| Controllo | Default | Cosa impedisce |
+|---|---|---|
+| `RPC_REQUEST_TIMEOUT_MS` | `8000` | Che una singola richiesta HTTP duri all'infinito |
+| `PRE_BUY_TOP10_MAX_TOTAL_MS` | `20000` | Che il controllo top-10 sfori a orologio |
+
+**Il timeout per richiesta e la correzione piu importante delle due.** `@solana/web3.js` non impone
+alcun timeout: la richiesta resta aperta finche il server non risponde, e publicnode ci ha messo 32
+secondi per dire di no. Ora ogni `Connection` monta un `fetch` con `AbortController` a 8s. Verificato:
+la stessa chiamata passa da 32.552ms a 8.007ms.
+
+**Il tetto a orologio serve perche i tentativi non limitano il tempo.** `PRE_BUY_TOP10_MAX_ATTEMPTS=4`
+sembra un budget, ma 4 x 8 tentativi interni x 8s di timeout sono ancora oltre quattro minuti. Il
+deadline viene controllato sia nel giro esterno sia in `getLargestAccountsWithRetry`.
+
+### La lezione che si ripete
+
+E il quarto caso oggi di **guasto che non si presenta come guasto** (sezioni 26 e 27 per gli altri).
+Qui un endpoint che "funziona" ma e lentissimo su un metodo solo produceva esattamente gli stessi
+sintomi di un bot sano che scarta tutto. La difesa e sempre la stessa: un tetto a orologio su ogni
+attesa, e un contatore che dica quante volte e scattato.

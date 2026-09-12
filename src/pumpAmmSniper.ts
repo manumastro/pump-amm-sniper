@@ -257,6 +257,50 @@ function wsEndpoint(): string | undefined {
     return explicit && explicit.trim() ? explicit.trim() : undefined;
 }
 
+/**
+ * Endpoint per i metodi pesanti, separabile dagli altri due.
+ *
+ * `getTokenLargestAccounts` scandisce tutti i token account di un mint ed e la chiamata su
+ * cui si regge il controllo top-10. Misurato il 2026-09-12 sullo stesso mint:
+ *
+ *   publicnode     32,5s  ->  429          (non lo serve a questo ritmo)
+ *   Alchemy free     691ms ->  OK
+ *   Chainstack       939ms ->  403         (metodo non disponibile)
+ *
+ * Ma Alchemy free regge 25 req/s e crolla sulle raffiche (55/60 in 429 nello smoke test),
+ * mentre publicnode ne regge 218 su tutto il resto. Nessuno dei due fa entrambe le cose:
+ * il carico grosso resta su SVS_UNSTAKED_RPC, il singolo metodo strozzato va qui.
+ *
+ * Con PRE_BUY_TOP10_FAIL_OPEN=false, un endpoint che non serve questo metodo non e un
+ * degrado: scarta ogni token e checksPassed resta zero. Vedi controls.md 28.
+ *
+ * Senza SVS_HEAVY_RPC si usa la connessione normale, come prima.
+ */
+function heavyRpcEndpoint(): string | undefined {
+    const explicit = process.env.SVS_HEAVY_RPC;
+    return explicit && explicit.trim() ? explicit.trim() : undefined;
+}
+
+// Nessuna chiamata RPC deve poter durare all'infinito. web3.js non impone alcun timeout:
+// il 2026-09-12 publicnode ha tenuto aperta una getTokenLargestAccounts per 32 secondi
+// prima di rispondere 429, e con 8 tentativi interni x 4 esterni il controllo top-10
+// teneva uno slot worker occupato per oltre otto minuti. Vedi controls.md 28.
+const fetchWithTimeout: typeof fetch = async (input, init) => {
+    const timeoutMs = Math.max(1000, CONFIG.RPC_REQUEST_TIMEOUT_MS);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        return await fetch(input as any, { ...(init || {}), signal: controller.signal });
+    } catch (e: any) {
+        if (e?.name === "AbortError") {
+            throw new Error(`richiesta RPC oltre ${timeoutMs}ms (timeout locale)`);
+        }
+        throw e;
+    } finally {
+        clearTimeout(timer);
+    }
+};
+
 function createRuntimeConnection() {
     const ws = wsEndpoint();
     // disableRetryOnRateLimit: su 429 web3.js NON ritenta da solo. Il suo retry interno ha un
@@ -265,8 +309,28 @@ function createRuntimeConnection() {
     // hanno bloccato l'intero bot per due ore mentre la coda scadeva a vuoto. Le nostre retry
     // (top10, largest accounts, pool state) sono tutte limitate, ma non partivano mai perche
     // l'errore non arrivava. Meglio fallire in fretta e scartare la pool. Vedi controls.md 26.
-    const base = { commitment: "confirmed" as const, disableRetryOnRateLimit: true };
+    const base = {
+        commitment: "confirmed" as const,
+        disableRetryOnRateLimit: true,
+        fetch: fetchWithTimeout,
+    };
     return new Connection(rpcEndpoint(), ws ? { ...base, wsEndpoint: ws } : base);
+}
+
+let heavyConnection: Connection | null = null;
+
+/** Connessione per i metodi pesanti; ricade su quella normale se SVS_HEAVY_RPC non e impostata. */
+function getHeavyConnection(fallback: Connection): Connection {
+    const endpoint = heavyRpcEndpoint();
+    if (!endpoint) return fallback;
+    if (!heavyConnection) {
+        heavyConnection = new Connection(endpoint, {
+            commitment: "confirmed",
+            disableRetryOnRateLimit: true,
+            fetch: fetchWithTimeout,
+        });
+    }
+    return heavyConnection;
 }
 
 function describeEndpoint(url: string): string {
@@ -602,7 +666,7 @@ async function handleNewPool(connection: Connection, signature: string) {
             } else if (forceEntryNoWsolBypass && CONFIG.FORCE_ENTRY_ON_NO_WSOL_SIDE) {
                 stageLog(ctx, "WAIT", "force-entry no-WSOL bypass: skipping pre-entry guard");
             }
-            const top10 = await top10Service.runCheck(connection, tokenMint, poolAddress, ctx);
+            const top10 = await top10Service.runCheck(getHeavyConnection(connection), tokenMint, poolAddress, ctx);
             if (!top10.ok) {
                 console.log(`🛑 SKIP: pre-buy top10 (${top10.reason})`);
                 finalStatus = "SKIP: pre-buy top10";
@@ -991,7 +1055,7 @@ async function handleNewPool(connection: Connection, signature: string) {
         } else if (forceEntryNoWsolBypass && CONFIG.FORCE_ENTRY_ON_NO_WSOL_SIDE) {
             stageLog(ctx, "WAIT", "force-entry no-WSOL bypass: skipping pre-entry guard");
         }
-        const top10 = await top10Service.runCheck(connection, tokenMint, poolAddress, ctx);
+        const top10 = await top10Service.runCheck(getHeavyConnection(connection), tokenMint, poolAddress, ctx);
         if (!top10.ok) {
             console.log(`🛑 SKIP: pre-buy top10 (${top10.reason})`);
             finalStatus = "SKIP: pre-buy top10";
@@ -3491,6 +3555,12 @@ const supervisorRuntime = createSupervisorRuntime({
         console.log(`Mode: ${MONITOR_ONLY ? "MONITOR_ONLY" : "TRADING"}`);
         console.log(`Wallet: ${walletKeypair ? walletKeypair.publicKey.toBase58() : "N/A (no private key loaded)"}`);
         console.log(`RPC: ${describeRpcEndpoint()}`);
+        const heavy = heavyRpcEndpoint();
+        console.log(
+            heavy
+                ? `RPC pesante: ${describeEndpoint(heavy)}  (getTokenLargestAccounts / top-10)`
+                : `RPC pesante: non impostato, usa quello normale — se non serve getTokenLargestAccounts il top-10 scarta tutto`,
+        );
         console.log(`Min Liquidity: ${CONFIG.MIN_POOL_LIQUIDITY_SOL} SOL`);
         console.log(`Max Parallel Ops: ${workerCount}`);
         if (!MONITOR_ONLY) {

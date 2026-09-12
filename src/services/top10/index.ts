@@ -14,8 +14,10 @@ export function createTop10Service(deps: Top10Deps) {
         mintKey: PublicKey,
         maxAttempts: number,
         delayMs: number,
+        deadlineAtMs?: number,
     ) {
         for (let attempt = 1; attempt <= Math.max(1, maxAttempts); attempt++) {
+            if (deadlineAtMs !== undefined && Date.now() >= deadlineAtMs) return null;
             try {
                 return await connection.getTokenLargestAccounts(mintKey, "confirmed");
             } catch {
@@ -91,10 +93,16 @@ export function createTop10Service(deps: Top10Deps) {
         };
 
         const maxAttempts = Math.max(1, CONFIG.PRE_BUY_TOP10_MAX_ATTEMPTS);
+        // Tetto a orologio: i soli tentativi non limitano il tempo, perche ogni chiamata puo
+        // consumare fino al timeout RPC. Vedi controls.md 28.
+        const deadlineAtMs = Date.now() + Math.max(1000, CONFIG.PRE_BUY_TOP10_MAX_TOTAL_MS);
         const baseDelayMs = Math.max(0, CONFIG.PRE_BUY_TOP10_RETRY_BASE_MS);
         let lastUnavailableReason = "top10 check failed";
 
         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            if (Date.now() >= deadlineAtMs) {
+                return unavailableResult(`tetto di tempo superato (${CONFIG.PRE_BUY_TOP10_MAX_TOTAL_MS}ms): ${lastUnavailableReason}`);
+            }
             try {
                 const mintKey = await resolveMintKey(connection, tokenMint, poolAddress, ctx);
                 if (!mintKey) {
@@ -118,7 +126,7 @@ export function createTop10Service(deps: Top10Deps) {
                     throw new Error(lastUnavailableReason);
                 }
 
-                const largest = await getLargestAccountsWithRetry(connection, mintKey, 8, 350);
+                const largest = await getLargestAccountsWithRetry(connection, mintKey, 8, 350, deadlineAtMs);
                 if (!largest) {
                     lastUnavailableReason = "largest accounts error";
                     throw new Error(lastUnavailableReason);
