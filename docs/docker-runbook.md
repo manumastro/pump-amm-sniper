@@ -117,3 +117,28 @@ Per ogni pool creata sulla rete esegue il percorso completo che userebbe il bot 
 orientamento, liquidita e un round trip di 0,01 SOL. **Lo scarto del round trip deve essere circa il
 doppio della fee di swap.** Un pool quasi vuoto dara scarti enormi (−80%, −99%) ed e corretto che sia
 cosi: e il price impact reale, ed e la ragione per cui la soglia di liquidita esiste.
+
+## `./scripts/bot` — comando unico
+
+Tutto quello che serve per guardare e governare il bot senza ricordarsi le opzioni di
+`docker compose`. Senza argomenti segue i log in tempo reale.
+
+| comando | cosa fa |
+|---|---|
+| `live` (default) | tutti i log dello sniper, in coda |
+| `flusso` | solo le decisioni: dispatch, skip, trade, riga `SERIALE` |
+| `trade` | solo entrate, uscite e PnL |
+| `seriale` | solo la riga `SERIALE`, per tenere d'occhio `quota_vista` |
+| `errori` | errori, 429, worker uccisi, circuit breaker |
+| `worker` | il log del worker attivo adesso, dall'inizio |
+| `stato` | config attiva, contatori, report, ultime 10 valutazioni |
+| `rpc` | valutazioni/ora, richieste/ora, media per esito, proiezione mensile |
+| `shell` | entra nel container |
+| `su` `giu` `riavvia` `rebuild` | ciclo di vita |
+| `reset` | **backup del report**, azzera i log, riparte da zero |
+
+`reset` fa `cp logs/paper-report.json logs/paper-report-<data-ora>.json` prima di toccare
+qualunque cosa, come impone la sequenza di questo runbook.
+
+`rpc` legge i contatori `rpc=` / `429=` che ogni riga di `endStatus` porta con se, quindi
+risponde sui dati della sessione corrente senza bisogno di strumentazione aggiuntiva.

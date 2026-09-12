@@ -1,0 +1,159 @@
+#!/usr/bin/env bash
+# Comando unico per guardare e governare il bot. Vedi docs/docker-runbook.md.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+SNIPER=sniper
+REPORT=report
+
+uso() {
+    cat <<'EOF'
+uso: ./scripts/bot <comando>
+
+  live        tutti i log dello sniper in tempo reale (default)
+  flusso      solo le decisioni: dispatch, skip, trade, riga SERIALE
+  trade       solo i trade: entrate, uscite, PnL
+  seriale     solo la riga SERIALE, per vedere la quota_vista
+  errori      solo errori, 429 e worker uccisi
+  worker      il log del worker attivo in questo momento, dall'inizio
+  stato       fotografia: config attiva, contatori, ultime valutazioni
+  rpc         quante chiamate stiamo facendo, al minuto e per valutazione
+  shell       entra nel container
+  su | giu | riavvia | rebuild
+  reset       backup del report, azzera i log, riavvia da zero
+
+senza argomenti: live
+EOF
+}
+
+richiede_container() {
+    docker compose ps --status running --services 2>/dev/null | grep -qx "$SNIPER" || {
+        echo "Il container '$SNIPER' non gira. Avvialo con: ./scripts/bot su" >&2
+        exit 1
+    }
+}
+
+case "${1:-live}" in
+
+live)
+    richiede_container
+    docker compose logs -f --tail=100 "$SNIPER"
+    ;;
+
+flusso)
+    richiede_container
+    docker compose logs -f --tail=200 "$SNIPER" \
+        | grep --line-buffered -E "DISPATCH|SERIALE|STEP|SKIP:|PAPER (WIN|LOSS)|COMPLETED|BUY|SELL|🛑|✅"
+    ;;
+
+trade)
+    richiede_container
+    docker compose logs -f --tail=500 "$SNIPER" \
+        | grep --line-buffered -E "PAPER (WIN|LOSS)|COMPLETED|BUY |SELL |PnL|take profit|trailing|stop loss|rug"
+    ;;
+
+seriale)
+    richiede_container
+    docker compose logs -f --tail=50 "$SNIPER" | grep --line-buffered "SERIALE"
+    ;;
+
+errori)
+    richiede_container
+    docker compose logs -f --tail=200 "$SNIPER" \
+        | grep --line-buffered -iE "error|429|too many|ucciso|circuit breaker|fallita|❌|🚨"
+    ;;
+
+worker)
+    richiede_container
+    # Il worker attivo e' quello il cui log e' stato toccato piu' di recente.
+    ultimo=$(ls -t logs/paper-worker-*.log 2>/dev/null | head -1 || true)
+    [ -n "$ultimo" ] || { echo "Nessun log di worker in logs/." >&2; exit 1; }
+    echo "--- $ultimo ---"
+    tail -f -n +1 "$ultimo"
+    ;;
+
+stato)
+    richiede_container
+    echo "=== config attiva ==="
+    docker compose logs "$SNIPER" 2>/dev/null | grep -E "\[MAIN\]" | head -12
+    echo
+    echo "=== ultima riga SERIALE ==="
+    docker compose logs --tail=2000 "$SNIPER" 2>/dev/null | grep "SERIALE" | tail -1 || echo "(nessuna ancora)"
+    echo
+    echo "=== report ==="
+    node -e '
+      const fs=require("fs");
+      let d; try { d=JSON.parse(fs.readFileSync("logs/paper-report.json","utf8")); }
+      catch { console.log("(report non ancora generato)"); process.exit(0); }
+      console.log(`eventi=${d.eventsSeen} finiti=${d.finishedEvents} passati=${d.checksPassed} saltati=${d.skipped}`);
+      console.log(`trade: ${d.wins}W/${d.losses}L  win rate ${d.winRatePct}%  PnL ${d.totalPnlSol} SOL  rug ${d.rugLossCount}`);
+    '
+    echo
+    echo "=== ultime 10 valutazioni ==="
+    node -e '
+      const fs=require("fs");
+      let d; try { d=JSON.parse(fs.readFileSync("logs/paper-report.json","utf8")); } catch { process.exit(0); }
+      for (const o of (d.operations||[]).slice(-10))
+        console.log(`  ${o.startedAt}  ${(o.endStatus||"in corso").slice(0,72)}`);
+    '
+    ;;
+
+rpc)
+    richiede_container
+    node -e '
+      const fs=require("fs");
+      let d; try { d=JSON.parse(fs.readFileSync("logs/paper-report.json","utf8")); }
+      catch { console.log("(report non ancora generato)"); process.exit(0); }
+      const ops=d.operations||[];
+      const sec=s=>{const[h,m,r]=s.split(":");return +h*3600+ +m*60+parseFloat(r);};
+      const rows=[];let tot=0;
+      const per={};
+      for (const o of ops) {
+        const m=/\((\d+)ms, rpc=(\d+) 429=(\d+)\)$/.exec(o.endStatus||"");
+        if(!m) continue;
+        const rpc=+m[2];tot+=rpc;
+        const k=(o.endStatus||"").replace(/\s*\(\d+ms, rpc=.*$/,"").replace(/\(.*/,"").trim().slice(0,34);
+        (per[k]=per[k]||[0,0,0]);per[k][0]++;per[k][1]+=rpc;per[k][2]+=+m[3];
+        rows.push(sec(o.startedAt));
+      }
+      if(!rows.length){console.log("(nessuna valutazione conclusa)");process.exit(0);}
+      const span=(Math.max(...rows)-Math.min(...rows))/60||1;
+      console.log(`finestra ${span.toFixed(1)} min | ${rows.length} valutazioni | ${tot} richieste`);
+      console.log(`=> ${(rows.length/span*60).toFixed(0)} valutazioni/ora | ${(tot/span*60).toFixed(0)} richieste/ora | ${(tot/rows.length).toFixed(1)} per valutazione`);
+      console.log(`=> proiezione mensile: ${(tot/span*60*730/1e6).toFixed(1)}M richieste`);
+      console.log();
+      for (const [k,v] of Object.entries(per).sort((a,b)=>b[1][1]-a[1][1]))
+        console.log(`  ${k.padEnd(34)} n=${String(v[0]).padStart(4)} rpc=${String(v[1]).padStart(6)} media=${(v[1]/v[0]).toFixed(1).padStart(6)} 429=${v[2]}`);
+    '
+    ;;
+
+shell)
+    richiede_container
+    docker compose exec "$SNIPER" sh
+    ;;
+
+su)      docker compose up -d --build ;;
+giu)     docker compose stop "$SNIPER" "$REPORT" ;;
+riavvia) docker compose restart "$SNIPER" "$REPORT" ;;
+rebuild) npm run build && docker compose up -d --build ;;
+
+reset)
+    # docs/docker-runbook.md: il backup del report viene PRIMA di qualunque azzeramento.
+    stamp=$(date +%Y-%m-%d-%H%M)
+    if [ -s logs/paper-report.json ]; then
+        cp logs/paper-report.json "logs/paper-report-$stamp.json"
+        echo "backup -> logs/paper-report-$stamp.json"
+    fi
+    docker compose stop "$SNIPER" "$REPORT" >/dev/null 2>&1 || true
+    : > paper.log
+    : > logs/paper-report.json
+    : > logs/paper-report.txt
+    : > logs/paper-report-daemon.log
+    rm -f logs/paper-worker-*.log
+    docker compose up -d --build
+    echo "ripartito da zero."
+    ;;
+
+-h|--help|help) uso ;;
+*) echo "comando sconosciuto: $1" >&2; echo; uso; exit 1 ;;
+esac
