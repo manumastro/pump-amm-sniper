@@ -59,6 +59,18 @@ export interface DexAdapter {
     getOrientation(state: any, tokenMint: string): PoolOrientation;
     describePoolMints(state: any, tokenMint: string): string;
 
+    /**
+     * Le riserve sono utilizzabili per quotare?
+     *
+     * Serve al codice condiviso per aspettare che il pool sia indicizzato prima di simulare
+     * l'entrata. Prima quel controllo era scritto inline come
+     * `state.poolBaseAmount.gt(0) && state.poolQuoteAmount.gt(0)`, cioe vocabolario PumpSwap
+     * in codice che vale per tutti i DEX: su una bonding curve pump quei campi non esistono,
+     * `.gt()` lanciava su undefined e il `catch` vuoto del chiamante lo ingoiava 12 volte
+     * trasformando un errore di forma in "entry state unavailable". Vedi controls.md 29.
+     */
+    hasUsableReserves(state: any): boolean;
+
     /** SOL nel pool. null se il pool non ha lato WSOL. */
     getSolLiquidity(state: any, tokenMint: string): number | null;
     getSpotSolPerToken(state: any, tokenMint: string, tokenDecimals: number): number | null;

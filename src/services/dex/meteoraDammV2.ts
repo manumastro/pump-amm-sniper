@@ -160,6 +160,12 @@ export const meteoraDammV2Adapter: DexAdapter = {
         return `base=${state.tokenAMint || "-"} quote=${state.tokenBMint || "-"} token=${tokenMint}`;
     },
 
+    hasUsableReserves(state: any): boolean {
+        // su un CLMM la riserva utile e la liquidita in range, non i saldi dei vault
+        const liquidity = (state as DammPoolState)?.pool?.liquidity;
+        return !!liquidity && !liquidity.isZero?.();
+    },
+
     getSolLiquidity(state: DammPoolState, tokenMint: string): number | null {
         const { solIsBase, hasWsol } = this.getOrientation(state, tokenMint);
         if (!hasWsol) return null;

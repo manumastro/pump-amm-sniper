@@ -1691,3 +1691,71 @@ E il quarto caso oggi di **guasto che non si presenta come guasto** (sezioni 26 
 Qui un endpoint che "funziona" ma e lentissimo su un metodo solo produceva esattamente gli stessi
 sintomi di un bot sano che scarta tutto. La difesa e sempre la stessa: un tetto a orologio su ogni
 attesa, e un contatore che dica quante volte e scattato.
+
+---
+
+## 29. "entry state unavailable": vocabolario PumpSwap in codice condiviso
+
+**2026-09-12.** Con il top-10 finalmente funzionante (sezione 28), un token pump ha superato
+liquidita (2,96 SOL), token security, top-10 (10,81%) e **tutti e 30 i controlli creator-risk**
+(`cr_allPassed: true`), arrivando a `STEP 6/7 | paper simulation`. Li e morto:
+
+```
+🛑 SKIP: Paper simulation guard (entry state unavailable)
+```
+
+### La causa
+
+Il codice che aspetta che il pool sia indicizzato prima di simulare l'entrata faceva:
+
+```ts
+const state = await ACTIVE_ADAPTER.fetchPoolState(poolKey, observerUser);
+if (state.poolBaseAmount.gt(new BN(0)) && state.poolQuoteAmount.gt(new BN(0))) return state;
+```
+
+`poolBaseAmount` e `poolQuoteAmount` sono campi della **SDK PumpSwap**. Lo stato di una bonding
+curve pump non li ha: e `{ virtualTokenReserves, virtualSolReserves, realTokenReserves,
+realSolReserves, complete, creator, quoteMint }`. Quindi `.gt()` veniva chiamato su `undefined`,
+il `TypeError` finiva in un `catch {}` vuoto, il ciclo ripeteva **dodici volte** e restituiva
+`null` — che il chiamante traduce in "entry state unavailable", cioe un problema di indicizzazione.
+
+**Conseguenza: nessun token pump avrebbe mai potuto entrare.** Non alcuni, nessuno — e solo dopo
+aver superato ogni singolo filtro, cioe nei casi migliori.
+
+⚠️ Il difetto e mio, dell'adapter pump: l'interfaccia `DexAdapter` esiste proprio per impedire
+questo, ma questo controllo era rimasto scritto inline nel codice comune.
+
+### La correzione
+
+Nuovo metodo nel contratto `DexAdapter`:
+
+```ts
+/** Le riserve sono utilizzabili per quotare? */
+hasUsableReserves(state: any): boolean;
+```
+
+| Adapter | Implementazione |
+|---|---|
+| `pumpswap` | `poolBaseAmount > 0 && poolQuoteAmount > 0` |
+| `pump` | `!unusable(state)` — stessa condizione dei quote: non completa, denominata in SOL, riserve > 0 |
+| `ray_v4` | `baseReserve > 0 && quoteReserve > 0` |
+| `meteora_damm_v2` | liquidita in range diversa da zero (su un CLMM i saldi dei vault non bastano) |
+
+I due punti che aggiravano l'adapter — `src/pumpAmmSniper.ts` e `src/services/paper-trade/index.ts`
+— ora lo chiamano. Verificato sulla curva che era fallita: `hasUsableReserves = true`.
+
+**E stato tolto anche il `catch {}` vuoto.** Ora l'ultimo errore viene conservato e stampato:
+
+```
+STATE | pool non quotabile dopo 12 tentativi: <motivo>
+```
+
+Senza quella riga, un errore di forma e un pool davvero non indicizzato producono lo stesso identico
+messaggio — ed e esattamente il motivo per cui questo e costato mezza giornata.
+
+### Regola che si conferma
+
+Quinto caso in un giorno di guasto che non sembra un guasto. Qui il pattern e piu preciso dei
+precedenti: **un `catch` vuoto dentro un ciclo di retry converte un bug deterministico in un timeout
+apparentemente transitorio.** Se il codice riprova dodici volte, deve saper dire perche ha fallito
+l'ultima.

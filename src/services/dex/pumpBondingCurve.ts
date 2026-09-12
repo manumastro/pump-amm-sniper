@@ -140,6 +140,12 @@ export const pumpBondingCurveAdapter: DexAdapter = {
      * serve nessun offset di istruzione: basta trovare il mint e derivarla. E il motivo
      * per cui questo adapter e piu solido di quelli AMM su questo passaggio.
      */
+    hasUsableReserves(state: any): boolean {
+        // stessa condizione di unusable(): una curva completa o non denominata in SOL non
+        // e quotabile, e non lo diventa aspettando
+        return !unusable(state as CurveState);
+    },
+
     async resolvePoolFromCreateTx(tx: any): Promise<ResolvedPool | null> {
         if (!conn) throw new Error("pump adapter non inizializzato: chiamare init(connection)");
 

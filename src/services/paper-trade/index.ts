@@ -8,6 +8,7 @@ import { shortSig } from "../../utils/pubkeys";
 import { waitForExitStateWithLiquidityStop } from "./holdMonitor";
 import { validatePreBuyEntryState } from "./preBuyValidation";
 import { getExitQuoteSolFromState, getPoolOrientation, getSolLiquidityFromState, getSpotSolPerTokenFromState } from "./quote";
+import { getActiveAdapter } from "../dex";
 
 type PaperTradeDeps = {
     getObserverPublicKey: () => PublicKey;
@@ -111,7 +112,9 @@ export function createPaperTradeService(deps: PaperTradeDeps) {
         const fetchStateWithRetry = async () => {
             for (let i = 0; i < 12; i++) {
                 const state = await deps.fetchSwapState(poolAddress, observerUser);
-                if (state?.poolBaseAmount?.gt?.(new BN(0)) && state?.poolQuoteAmount?.gt?.(new BN(0))) {
+                // vedi nota gemella in pumpAmmSniper.ts: la condizione di "pool pronto" e
+                // specifica del DEX e la decide l'adapter attivo. controls.md 29.
+                if (state && getActiveAdapter().hasUsableReserves(state)) {
                     return state;
                 }
                 await new Promise((r) => setTimeout(r, 250));

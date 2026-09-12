@@ -87,6 +87,12 @@ export const pumpSwapAdapter: DexAdapter = {
         return await onlineSdk.swapSolanaState(poolAddress, user);
     },
 
+    hasUsableReserves(state: any): boolean {
+        const base = state?.poolBaseAmount;
+        const quote = state?.poolQuoteAmount;
+        return !!base?.gt?.(new BN(0)) && !!quote?.gt?.(new BN(0));
+    },
+
     /**
      * Ordine account di create_pool secondo l'IDL Pump:
      * pool=0, global_config=1, creator=2, base_mint=3, quote_mint=4.

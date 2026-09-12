@@ -1072,16 +1072,25 @@ async function handleNewPool(connection: Connection, signature: string) {
             const observerUser = walletKeypair?.publicKey ?? Keypair.generate().publicKey;
             const poolKey = new PublicKey(poolAddress);
             const buyAmountLamports = new BN(Math.floor(CONFIG.TRADE_AMOUNT_SOL * 1e9));
+            // Il "pool e pronto?" lo decide l'adapter: prima era scritto qui come
+            // `state.poolBaseAmount.gt(0) && state.poolQuoteAmount.gt(0)`, cioe vocabolario
+            // PumpSwap in codice comune a tutti i DEX. Su una curva pump quei campi non
+            // esistono, `.gt()` lanciava su undefined e il catch vuoto lo ingoiava dodici
+            // volte: ogni token pump che superava tutti i filtri moriva qui con
+            // "entry state unavailable". Vedi controls.md 29.
+            let lastStateError: string | null = null;
             const fetchStateWithRetry = async () => {
                 for (let i = 0; i < 12; i++) {
                     try {
                         const state = await ACTIVE_ADAPTER.fetchPoolState(poolKey, observerUser);
-                        if (state.poolBaseAmount.gt(new BN(0)) && state.poolQuoteAmount.gt(new BN(0))) return state;
-                    } catch {
-                        // wait and retry
+                        if (ACTIVE_ADAPTER.hasUsableReserves(state)) return state;
+                        lastStateError = "riserve non ancora utilizzabili";
+                    } catch (e: any) {
+                        lastStateError = e?.message || String(e);
                     }
                     await new Promise(r => setTimeout(r, 250));
                 }
+                stageLog(ctx, "STATE", `pool non quotabile dopo 12 tentativi: ${lastStateError ?? "motivo ignoto"}`);
                 return null;
             };
             const preBuy = await paperTradeService.validatePreBuy(

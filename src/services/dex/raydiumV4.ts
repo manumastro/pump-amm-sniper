@@ -168,6 +168,11 @@ export const raydiumV4Adapter: DexAdapter = {
         return `base=${state.baseMint || "-"} quote=${state.quoteMint || "-"} token=${tokenMint}`;
     },
 
+    hasUsableReserves(state: any): boolean {
+        const st = state as RayPoolState;
+        return !!st?.baseReserve?.gt?.(new BN(0)) && !!st?.quoteReserve?.gt?.(new BN(0));
+    },
+
     getSolLiquidity(state: RayPoolState, tokenMint: string): number | null {
         const { solIsBase, hasWsol } = this.getOrientation(state, tokenMint);
         if (!hasWsol) return null;
