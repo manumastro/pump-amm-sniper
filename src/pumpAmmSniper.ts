@@ -259,9 +259,14 @@ function wsEndpoint(): string | undefined {
 
 function createRuntimeConnection() {
     const ws = wsEndpoint();
-    return new Connection(rpcEndpoint(), ws
-        ? { commitment: "confirmed", wsEndpoint: ws }
-        : { commitment: "confirmed" });
+    // disableRetryOnRateLimit: su 429 web3.js NON ritenta da solo. Il suo retry interno ha un
+    // backoff illimitato (500ms, 1s, 2s, 4s, ...) e la chiamata non ritorna mai: il 2026-09-12
+    // due worker sono rimasti appesi nel controllo top-10 e, con MAX_CONCURRENT_OPERATIONS=2,
+    // hanno bloccato l'intero bot per due ore mentre la coda scadeva a vuoto. Le nostre retry
+    // (top10, largest accounts, pool state) sono tutte limitate, ma non partivano mai perche
+    // l'errore non arrivava. Meglio fallire in fretta e scartare la pool. Vedi controls.md 26.
+    const base = { commitment: "confirmed" as const, disableRetryOnRateLimit: true };
+    return new Connection(rpcEndpoint(), ws ? { ...base, wsEndpoint: ws } : base);
 }
 
 function describeEndpoint(url: string): string {
@@ -3414,6 +3419,7 @@ const supervisorRuntime = createSupervisorRuntime({
     maxConcurrentOperations: CONFIG.MAX_CONCURRENT_OPERATIONS,
     queueMaxPendingSignatures: CONFIG.QUEUE_MAX_PENDING_SIGNATURES,
     queueMaxAgeMs: CONFIG.QUEUE_MAX_AGE_MS,
+    workerMaxLifetimeMs: CONFIG.WORKER_MAX_LIFETIME_MS,
     queueOrder: CONFIG.QUEUE_ORDER,
     deferredNoWsolQueueEnabled: CONFIG.DEFERRED_NO_WSOL_QUEUE_ENABLED,
     deferredNoWsolQueueDir: DEFERRED_NO_WSOL_QUEUE_DIR,

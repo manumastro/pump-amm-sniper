@@ -59,16 +59,40 @@ export async function getAccountsChunked(
     connection: import("@solana/web3.js").Connection,
     addresses: string[],
     chunkSize = 10,
+    maxAttempts = 3,
+    retryBaseMs = 250,
 ): Promise<Array<any | null>> {
     const { PublicKey } = await import("@solana/web3.js");
     const out: Array<any | null> = [];
     for (let i = 0; i < addresses.length; i += chunkSize) {
         const chunk = addresses.slice(i, i + chunkSize).map((a) => new PublicKey(a));
-        try {
-            out.push(...(await connection.getMultipleAccountsInfo(chunk)));
-        } catch {
-            out.push(...chunk.map(() => null));
+        let lastError: any = null;
+        let got: Array<any | null> | null = null;
+
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                got = await connection.getMultipleAccountsInfo(chunk);
+                break;
+            } catch (e: any) {
+                lastError = e;
+                if (attempt < maxAttempts) {
+                    await new Promise((r) => setTimeout(r, retryBaseMs * attempt));
+                }
+            }
         }
+
+        // Prima questo catch faceva `push(null)` per ogni account del chunk, cioe traduceva
+        // "la chiamata e fallita" in "l'account non esiste". Un 429 diventava indistinguibile
+        // da una curva inesistente, e il bot riportava "Could not extract pool/token from TX"
+        // — un problema di parsing — per quello che era un rate limit. Il 2026-09-12 questo ha
+        // nascosto 15 creazioni pump perfettamente valide. Vedi controls.md 27.
+        if (!got) {
+            throw new Error(
+                `getMultipleAccountsInfo fallita dopo ${maxAttempts} tentativi su ${chunk.length} account: ` +
+                `${lastError?.message || String(lastError)}`,
+            );
+        }
+        out.push(...got);
     }
     return out;
 }

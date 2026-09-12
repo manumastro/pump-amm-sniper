@@ -1494,3 +1494,126 @@ avrebbe riportato **0 scadute proprio nella condizione che deve misurare**.
 
 `sweepExpiredPendingSignatures()` gira a ogni enqueue e svuota la testa. Verificato a runtime: senza
 la spazzata, con `pending` salito a 64 in cinque minuti, il log `expired` restava a zero.
+
+---
+
+## 26. Il deadlock da 429: due worker appesi fermano tutto
+
+**Successo il 2026-09-12**, alla prima sessione con `pump` registrata. Il bot si e fermato dopo
+circa un minuto di attivita ed e rimasto fermo **due ore**, senza errori e senza crash.
+
+### I sintomi
+
+Il supervisore continuava a ricevere eventi e a far scadere firme (`totale scadute=256`), ma
+`DISPATCH` e `WORKER done` erano **zero** da minuti. I due log dei worker si fermavano entrambi
+subito dopo `WAIT | pre-entry liquidity`, seguiti solo da una riga al minuto:
+
+```
+[W1] Server responded with 429 Too Many Requests.  Retrying after 4000ms delay...
+```
+
+### La causa
+
+Quella riga **non e del bot**: e il retry interno di `@solana/web3.js`. Su 429 la libreria ritenta
+da sola con backoff raddoppiante (500ms, 1s, 2s, 4s, ...) e **senza un tetto**: la chiamata non
+ritorna mai, ne come valore ne come errore.
+
+Il punto in cui si sono fermati e `top10Service.runCheck()`, che e la prima cosa dopo il gate di
+pre-entry e **non emette nessun log prima di partire** — per questo sembrava silenzio invece che
+blocco. Le retry del servizio top-10 sono limitate (`PRE_BUY_TOP10_MAX_ATTEMPTS=4` x 8 tentativi
+interni), ma **non partivano mai**, perche l'eccezione che le innesca non arrivava.
+
+Con `MAX_CONCURRENT_OPERATIONS=2` bastano due worker in questo stato: nessuno slot si libera mai,
+`drainPendingQueue()` non ha dove mandare le firme, e il bot resta vivo e inutile a guardare la
+coda scadere.
+
+⚠️ **Perche non si era mai visto:** con la sola pumpswap (204 creazioni/ora) il carico non
+produceva 429. Il deadlock non e stato introdotto dal 2026-09-12, e stato solo **reso raggiungibile**
+dal volume di pump.
+
+### Le due correzioni
+
+**1. `disableRetryOnRateLimit: true` su ogni `Connection`** (`createRuntimeConnection()`).
+Su 429 web3.js ora solleva subito, e le retry limitate del bot funzionano come previsto. Il costo
+e scartare qualche pool in piu sotto rate limit; il beneficio e che una chiamata ritorna sempre.
+
+**2. `WORKER_MAX_LIFETIME_MS` (default 1.200.000 = 20 minuti).** Il supervisore uccide con SIGKILL
+un worker che supera il tetto e ne libera lo slot. E una **rete di sicurezza, non una manopola di
+tuning**: copre qualunque futura chiamata che non ritorna, non solo i 429. Deve restare sopra
+`AUTO_SELL_DELAY_MS` (900s) piu il tempo di valutazione, altrimenti troncherebbe gli hold legittimi.
+
+Il log da cercare e:
+```
+WORKER | worker-N ucciso dopo 1200s <sig> (slot bloccato, vedi controls.md 26)
+```
+Se compare con regolarita non e il tetto a essere sbagliato: e un blocco da diagnosticare.
+
+### Cosa resta da guardare
+
+`top10Service.runCheck()` dovrebbe emettere un log di ingresso come tutti gli altri step. La sua
+assenza ha trasformato un blocco diagnosticabile in due ore di silenzio.
+
+---
+
+## 27. "Could not extract pool/token": un 429 travestito da transazione illeggibile
+
+**2026-09-12.** Dopo il deadlock della sezione 26, il motivo di skip piu frequente era
+`SKIP: pool/token unresolved` — 17 su 40 eventi. Il messaggio dice che la transazione non e
+interpretabile. **Non era vero in nessuno dei due casi che lo producevano.**
+
+Prendendo le 27 firme non risolte e rilanciandole a mano:
+
+| Causa | Eventi | Cosa sono davvero |
+|---|---|---|
+| errore RPC ingoiato | 15 | creazioni **valide**, che si risolvono tutte se richieste di nuovo |
+| transazione fallita on-chain | 12 | `Custom:6082` (7) e `Custom:1` (5) |
+
+### Causa 1: l'errore travestito da assenza
+
+`getAccountsChunked()` in `src/services/dex/txScan.ts` aveva:
+
+```ts
+} catch {
+    out.push(...chunk.map(() => null));   // "la chiamata e fallita" -> "l'account non esiste"
+}
+```
+
+`resolvePoolFromCreateTx()` deriva la PDA della curva per ogni mint candidato e chiede gli account:
+se tornano tutti `null` conclude che nessun candidato ha una curva e restituisce `null`. Un 429 su
+`getMultipleAccountsInfo` era quindi **indistinguibile da una curva inesistente**, e il bot
+riportava un problema di parsing per quello che era un rate limit.
+
+Verificato: tutte e 15 le firme "non interpretabili" si risolvono correttamente al primo tentativo
+quando l'RPC risponde.
+
+**Correzione:** `getAccountsChunked()` ritenta 3 volte con backoff e, se fallisce ancora, **solleva**
+invece di restituire null. Il costo e che l'evento finisce in `ERROR:` invece che in `SKIP:` — ed e
+esattamente la differenza che serve vedere.
+
+⚠️ **E il terzo caso identico in un giorno** (endpoint che rispondono ok senza dati, publicnode muto
+su Meteora, questo). Vale come regola: **in questo codice un `catch` che restituisce un valore neutro
+al posto di un errore e da considerare un bug finche non si dimostra il contrario.**
+
+### Causa 2: le creazioni fallite
+
+Una `CreateV2` che fallisce on-chain **emette comunque i log con il marker di create**, quindi il
+supervisore la trattava come una creazione: spawn di un worker, fetch della transazione, derivazione
+delle PDA, ~1,5s di RPC, per arrivare a "unresolved". Erano 12 eventi su 27.
+
+**Correzione:** il gestore di `onLogs` scarta `logs.err` senza consumare uno slot worker.
+
+Il controllo sta **dopo** `matchesCreateMarkers()`, non prima. Messo prima contava tutte le
+transazioni fallite del program — 27.000 in tre minuti, perche su pump la stragrande maggioranza
+delle swap fallisce per slippage — invece delle sole creazioni fallite. Il risparmio di lavoro e
+identico (il marker e una scansione di stringhe in memoria), ma il contatore torna a misurare
+quello che dice di misurare.
+
+### Nuova riga di diagnostica
+
+```
+QUEUE STATS  | pending=42 scadute=256 create_fallite=31 slot_liberi=0/2
+```
+
+Emessa dall'healthcheck. `slot_liberi=0/2` per molti giri consecutivi e la firma del deadlock
+della sezione 26; `scadute` che cresce linearmente e saturazione; `create_fallite` misura quanto
+del flusso pump grezzo e rumore.

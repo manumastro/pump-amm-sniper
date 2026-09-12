@@ -66,6 +66,7 @@ export function createSupervisorRuntime(options: {
     queueMaxPendingSignatures: number;
     queueMaxAgeMs: number;
     queueOrder: string;
+    workerMaxLifetimeMs: number;
     deferredNoWsolQueueEnabled: boolean;
     deferredNoWsolQueueDir: string;
     deferredNoWsolLogPath: string;
@@ -128,6 +129,7 @@ export function createSupervisorRuntime(options: {
     const activeSignatures = new Set<string>();
     const pendingSignatures: PendingSignature[] = [];
     let queueExpiredCount = 0;
+    let failedCreateTxCount = 0;
     const pendingSignatureSet = new Set<string>();
     const deferredNoWsolJobs = new Map<string, DeferredNoWsolJob>();
     const deferredNoWsolBySignature = new Set<string>();
@@ -434,7 +436,29 @@ export function createSupervisorRuntime(options: {
 
         slot.child = child;
 
+        // Rete di sicurezza: un worker appeso su una chiamata RPC che non ritorna tiene lo slot
+        // per sempre, e bastano MAX_CONCURRENT_OPERATIONS worker appesi per fermare tutto.
+        const lifetimeCapMs = Math.max(0, options.workerMaxLifetimeMs);
+        const killTimer = lifetimeCapMs > 0
+            ? setTimeout(() => {
+                  if (!slot.busy || slot.child !== child) return;
+                  console.error(
+                      `WORKER       | worker-${slot.slot} ucciso dopo ${(lifetimeCapMs / 1000).toFixed(0)}s ` +
+                      `${options.shortSig(signature)} (slot bloccato, vedi controls.md 26)`,
+                  );
+                  try {
+                      child.kill("SIGKILL");
+                  } catch {
+                      // il processo puo essere gia morto fra il check e la kill
+                  }
+              }, lifetimeCapMs)
+            : null;
+        const clearKillTimer = () => {
+            if (killTimer) clearTimeout(killTimer);
+        };
+
         child.on("exit", (code, signal) => {
+            clearKillTimer();
             console.log(
                 `WORKER       | worker-${slot.slot} done ${options.shortSig(signature)} ` +
                 `(code=${code ?? "null"} signal=${signal ?? "-"})`,
@@ -447,6 +471,7 @@ export function createSupervisorRuntime(options: {
         });
 
         child.on("error", (error) => {
+            clearKillTimer();
             console.error(`WORKER       | worker-${slot.slot} failed ${options.shortSig(signature)}: ${error.message}`);
             slot.busy = false;
             slot.signature = null;
@@ -818,6 +843,17 @@ export function createSupervisorRuntime(options: {
                         // ogni DEX nomina diversamente l'istruzione di creazione pool
                         if (!matchesCreateMarkers(adapter, logs.logs)) return;
 
+                        // Una creazione fallita on-chain non ha creato nessuna pool: i suoi log
+                        // contengono comunque il marker di create. Valutarla costa un worker e
+                        // ~1,5s di RPC per arrivare a "pool/token unresolved". Il 2026-09-12
+                        // erano 12 eventi su 27 non risolti. Vedi controls.md 27.
+                        // Il controllo sta DOPO il marker di proposito: prima contava tutte le
+                        // tx fallite del program (27.000 in tre minuti), non le creazioni.
+                        if (logs.err) {
+                            failedCreateTxCount += 1;
+                            return;
+                        }
+
                         if (!dispatchPoolToWorker(logs.signature, { WORKER_TASK_PROGRAM_ID: adapter.programId })) {
                             enqueuePendingSignature(logs.signature, adapter.programId);
                         }
@@ -849,6 +885,13 @@ export function createSupervisorRuntime(options: {
             const staleForMs = now - lastLogAtMs;
 
             drainPendingQueue();
+
+            // Salute della coda: senza questa riga la saturazione e gli scarti restano
+            // sepolti in mezzo ai log dei worker e non si vedono a colpo d'occhio.
+            console.log(
+                `QUEUE STATS  | pending=${pendingSignatures.length} scadute=${queueExpiredCount} ` +
+                `create_fallite=${failedCreateTxCount} slot_liberi=${workerSlots.filter((sl) => !sl.busy).length}/${workerSlots.length}`,
+            );
             if (staleForMs < options.logStaleResubscribeMs) return;
 
             consecutiveResubscribes++;

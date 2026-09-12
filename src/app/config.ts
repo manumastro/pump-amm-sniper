@@ -391,6 +391,12 @@ export const CONFIG = {
     // valore x MAX_CONCURRENT_OPERATIONS.
     RPC_MAX_CONCURRENT_TX_FETCH: Number(process.env.RPC_MAX_CONCURRENT_TX_FETCH || 6),
     QUEUE_MAX_PENDING_SIGNATURES: Number(300),
+    // Rete di sicurezza, non una manopola di tuning: un worker che supera questo tempo viene
+    // ucciso e il suo slot liberato. Senza, un solo worker appeso su una chiamata RPC che non
+    // ritorna mai tiene lo slot per sempre, e con MAX_CONCURRENT_OPERATIONS=2 ne bastano due
+    // per fermare l'intero bot (successo il 2026-09-12, vedi controls.md 26). Deve restare
+    // sopra AUTO_SELL_DELAY_MS (900s) piu il tempo di valutazione, altrimenti tronca gli hold.
+    WORKER_MAX_LIFETIME_MS: Number(process.env.WORKER_MAX_LIFETIME_MS || 1200000),
     // Con 2.856 creazioni/ora contro 360 di capacita la coda e sempre piena: senza TTL
     // il worker riceve pool vecchie di ~50 minuti, gia migrate o gia ruggate. Scartare
     // e corretto, non e una perdita: quella firma non era comunque valutabile in tempo.
@@ -483,6 +489,7 @@ export const CONFIG_GROUPS = {
         maxConcurrentOperations: CONFIG.MAX_CONCURRENT_OPERATIONS,
         queueMaxPendingSignatures: CONFIG.QUEUE_MAX_PENDING_SIGNATURES,
         queueMaxAgeMs: CONFIG.QUEUE_MAX_AGE_MS,
+        workerMaxLifetimeMs: CONFIG.WORKER_MAX_LIFETIME_MS,
         queueOrder: CONFIG.QUEUE_ORDER,
         deferredNoWsolQueueEnabled: CONFIG.DEFERRED_NO_WSOL_QUEUE_ENABLED,
         deferredNoWsolQueueMaxJobs: CONFIG.DEFERRED_NO_WSOL_QUEUE_MAX_JOBS,
