@@ -91,9 +91,9 @@ export const CONFIG = {
     // Price path recorder: campiona il quote di uscita durante l'hold per rendere
     // le sessioni paper ri-simulabili offline (trailing, floor, exit anticipate).
     HOLD_PRICE_PATH_RECORD_ENABLED: true,
-    HOLD_PRICE_PATH_MAX_SAMPLES: Number(3000),
+    HOLD_PRICE_PATH_MAX_SAMPLES: Number(process.env.HOLD_PRICE_PATH_MAX_SAMPLES || 3000),
     HOLD_PRICE_PATH_MIN_CHANGE_PCT: Number(0.05),
-    HOLD_PRICE_PATH_HEARTBEAT_MS: Number(5000),
+    HOLD_PRICE_PATH_HEARTBEAT_MS: Number(process.env.HOLD_PRICE_PATH_HEARTBEAT_MS || 5000),
     HOLD_PROBATION_CASHOUT_DELTA_MIN_SOL: Number(5),
     HOLD_PROBATION_INTERVAL_MULTIPLIER: Number(0.4),
     PRE_BUY_REVALIDATION_ENABLED: true,

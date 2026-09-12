@@ -2073,8 +2073,39 @@ Costo misurato per esito, dal contatore `rpc=` della sezione 31:
 l'hold monitor: nove controlli che pollano ogni 1-1,5 secondi per i 900s di `AUTO_SELL_DELAY_MS`.
 
 ⚠️ **Questa e la leva piu grossa sul costo, molto piu della soglia di liquidita.** E si combina con
-un fatto gia noto (punto 3 del CLAUDE.md): **il crash da `remove liquidity` e atomico**, quindi
+un fatto gia noto (punto 3 di `docs/regole.md`): **il crash da `remove liquidity` e atomico**, quindi
 pollare piu spesso non aiuta a intercettarlo. Se il polling veloce non serve a prendere i rug,
 raddoppiare gli intervalli di hold dimezza il costo di un trade con una perdita di informazione che
 riguarda solo la granularita del trailing stop. Da valutare con i dati di `pricePath` (sezione 19),
 che e esattamente cio che serve per rispondere.
+
+---
+
+## 34. Audit RPC e registrazione del pricePath a piena frequenza (2026-09-12)
+
+Rivalutazione completa dei controlli che fanno chiamate RPC: **`docs/rpc-audit-2026-09-12.md`**.
+Misure su 1.482 valutazioni (33.853 richieste) per il costo e su 386 trade di aprile per il valore.
+
+Risultati principali:
+- i 14 trade sono lo **0,9% delle valutazioni e il 41,4% della spesa RPC**;
+- l'hold costa **6,9 richieste/s**, di cui **5,0/s** è il solo poll di stato a 200ms;
+- 5 poller di hold (remove-liq, pool churn, close-account burst, creator outbound, inbound spray)
+  valgono complessivamente **6 uscite per +0,003 SOL** su 386 trade e pagano RPC ogni 1-1,5s;
+- di 30 regole creator-risk **ne sparano 4**, e una sola (unique counterparties) fa il 79% dei blocchi;
+- `PRE_BUY_TOP10_CHECK_ENABLED` blocca **1 token su 1.482** ed è l'unica ragione per cui serve
+  `SVS_HEAVY_RPC`; `ENFORCE_DEV_HOLDINGS_CHECK` blocca **0 su 1.482**.
+
+**Modifica applicata in questo ciclo.** `HOLD_PRICE_PATH_HEARTBEAT_MS` e `HOLD_PRICE_PATH_MAX_SAMPLES`
+diventano override da env (prima erano costanti a 5000 e 3000) e in `.env` valgono ora **200** e **6000**.
+
+| Controllo | prima | ora |
+|---|---|---|
+| `HOLD_PRICE_PATH_HEARTBEAT_MS` | 5000 | **200** |
+| `HOLD_PRICE_PATH_MAX_SAMPLES` | 3000 | **6000** |
+
+Perché: il recorder registrava un campione ogni 5s, quindi i dati non permettevano di simulare
+intervalli di poll più fitti di 5s — cioè esattamente la domanda da cui dipende il 72% del costo per
+trade. A 200ms il `pricePath` coincide con il poll di stato e ogni intervallo di hold diventa
+ri-simulabile offline. **Costo RPC: zero** — il recorder legge lo stato già scaricato dal loop, non
+aggiunge chiamate; cresce solo la dimensione del report (6.000 campioni per hold pieno invece di 180).
+Nessuna decisione di uscita cambia. Si torna al comportamento precedente togliendo le due env.
