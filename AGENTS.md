@@ -8,6 +8,7 @@
 - Worklog ultimo ciclo: `docs/worklog-2026-03-29.md`
 - Worklog ciclo precedente: `docs/worklog-2026-03-28.md`
 - Analisi creator/dev: `idea/creator-tx-analysis.md`
+- Fonti di eventi (cosa ascolta il bot vs gmgn): `docs/expansion-sources-2026-09-12.md`
 - **Analisi periodiche:** `analysis/` — contiene snapshot analitici completi con metriche, config e raccomandazioni
 - **Analisi rug:** `node scripts/rug-analysis.js` — mostra tabella completa pre-entry (tutti i 18+ controlli) e post-entry (triggers, guards, exit reason) per ogni rug loss.
 
