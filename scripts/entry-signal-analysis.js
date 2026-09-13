@@ -118,8 +118,21 @@ function analisiControfattuale() {
         return;
     }
 
+    // Un token i cui snapshot sono tutti vuoti non ha fatto "zero per cento": non lo
+    // sappiamo. Tenerli insieme ai veri zeri e' il modo piu' rapido per concludere il falso.
+    const senzaDati = tok.filter((t) => !(t.usableSnapshots > 0));
+    const validi = tok.filter((t) => t.usableSnapshots > 0);
+    if (senzaDati.length) {
+        console.log(`  ⚠️  ${senzaDati.length}/${tok.length} token senza un solo snapshot leggibile: esclusi.`);
+        console.log(`      (pool non leggibile dal supervisore: se sono tutti, e' un bug, non un dato)\n`);
+    }
+    if (!validi.length) {
+        console.log("  Nessun token con dati utilizzabili. Non si puo' concludere niente.");
+        return;
+    }
+
     const gruppi = new Map();
-    for (const t of tok) {
+    for (const t of validi) {
         const g = /low liquidity/i.test(t.skipReason || "") ? "low liquidity" : "creator risk";
         (gruppi.get(g) || gruppi.set(g, []).get(g)).push(t);
     }
@@ -140,8 +153,8 @@ function analisiControfattuale() {
     console.log(`  Se la colonna rug e' alta quanto i picchi, il filtro sta facendo il suo lavoro.`);
     console.log(`  Se i picchi dominano, la soglia e' troppo severa e stiamo lasciando soldi sul tavolo.`);
 
-    const completi = tok.filter((t) => t.completed).length;
-    console.log(`\n  ${completi}/${tok.length} job completi (gli altri sono ancora in corso, i numeri saliranno).`);
+    const completi = validi.filter((t) => t.completed).length;
+    console.log(`\n  ${completi}/${validi.length} job completi (gli altri sono ancora in corso, i numeri saliranno).`);
 }
 
 // ---------------------------------------------------------------------- main

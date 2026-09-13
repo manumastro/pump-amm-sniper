@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import bs58 from "bs58";
 import { OnlinePumpAmmSdk, PumpAmmSdk, buyQuoteInput, sellBaseInput } from "@pump-fun/pump-swap-sdk";
-import { getActiveAdapter, initAdapters, listAdapters, listMonitoredProgramIds } from "./services/dex";
+import { getActiveAdapter, getAdapterForProgram, initAdapters, listAdapters, listMonitoredProgramIds } from "./services/dex";
 
 // L'adapter del DEX su cui gira questo processo, risolto da WORKER_TASK_PROGRAM_ID.
 const ACTIVE_ADAPTER = getActiveAdapter();
@@ -207,6 +207,9 @@ function enqueueCcShadowCandidate(payload: {
     // "creator-risk" (storico) oppure "low-liq". Il campo distingue le due popolazioni
     // nell'analisi: hanno motivi di scarto diversi e vanno lette separatamente.
     kind?: string;
+    // Senza questo il campionatore gira nel supervisore, dove WORKER_TASK_PROGRAM_ID non
+    // esiste, e ricade sul default: leggerebbe la pool con la matematica del DEX sbagliato.
+    programId?: string;
     liqSol?: number;
     liqSlopeSolPerSec?: number;
 }) {
@@ -233,7 +236,11 @@ function enqueueCcShadowCandidate(payload: {
         const baseName = `${Date.now()}-${payload.eventId}-${randomSuffix}`;
         const tmpPath = path.join(CC_SHADOW_QUEUE_DIR, `${baseName}.tmp`);
         const outPath = path.join(CC_SHADOW_QUEUE_DIR, `${baseName}.json`);
-        fs.writeFileSync(tmpPath, JSON.stringify({ ...payload, kind }));
+        fs.writeFileSync(tmpPath, JSON.stringify({
+            ...payload,
+            kind,
+            programId: payload.programId || ACTIVE_ADAPTER.programId,
+        }));
         fs.renameSync(tmpPath, outPath);
     } catch (error) {
         console.error(`CCSHADOW    | enqueue failed ${payload.eventId}: ${(error as Error)?.message || "unknown"}`);
@@ -3388,8 +3395,12 @@ async function sampleCcShadowCandidate(candidate: {
     sampleIndex: number;
     elapsedMs: number;
     createPoolBlockTime?: number | null;
+    programId?: string | null;
     state: Record<string, any>;
 }): Promise<{ snapshot: Record<string, any>; nextState?: Record<string, any> }> {
+    // Questa funzione gira nel SUPERVISORE, che non ha WORKER_TASK_PROGRAM_ID: ACTIVE_ADAPTER
+    // qui e il default, non il DEX del token. Il program id viaggia nel job apposta.
+    const shadowAdapter = getAdapterForProgram(candidate.programId || "") || ACTIVE_ADAPTER;
     const observerUser = walletKeypair?.publicKey ?? Keypair.generate().publicKey;
     const poolKey = new PublicKey(candidate.poolAddress);
     const nextState: Record<string, any> = { ...candidate.state };
@@ -3400,7 +3411,7 @@ async function sampleCcShadowCandidate(candidate: {
     let poolState: any | null = null;
     let poolError: string | null = null;
     try {
-        poolState = await ACTIVE_ADAPTER.fetchPoolState(poolKey, observerUser);
+        poolState = await shadowAdapter.fetchPoolState(poolKey, observerUser);
     } catch (error: any) {
         poolError = error?.message || "state_unavailable";
     }

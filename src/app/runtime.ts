@@ -37,6 +37,7 @@ type CcShadowCandidatePayload = {
     startedAt?: string;
     createPoolBlockTime?: number | null;
     skipReason?: string;
+    programId?: string | null;
 };
 
 type CcShadowJob = {
@@ -54,6 +55,7 @@ type CcShadowJob = {
     expiresAtMs: number;
     sampleIndex: number;
     createPoolBlockTime: number | null;
+    programId: string | null;
     state: Record<string, any>;
 };
 
@@ -111,6 +113,7 @@ export function createSupervisorRuntime(options: {
         sampleIndex: number;
         elapsedMs: number;
         createPoolBlockTime?: number | null;
+        programId?: string | null;
         state: Record<string, any>;
     }) => Promise<{ snapshot: Record<string, any>; nextState?: Record<string, any> }>;
     onStartupLog: (workerCount: number) => void;
@@ -245,6 +248,8 @@ export function createSupervisorRuntime(options: {
             startedAtMs: job.startedAtMs,
             createdAtMs: job.createdAtMs,
             snapshots: 0,
+            // snapshot con dati veri, contro quelli in cui la pool non era leggibile
+            usableSnapshots: 0,
             peakPnlPct: null,
             maxAdversePnlPct: null,
             firstTrigger: null,
@@ -255,10 +260,17 @@ export function createSupervisorRuntime(options: {
             completed: false,
         };
 
-        const peakPnlPct = Number(snapshot.peakPnlPct);
-        const currentPnlPct = Number(snapshot.currentPnlPct);
+        // `Number(null)` vale 0 ed e finito: senza questa guardia uno snapshot vuoto
+        // diventa un picco dello 0%, indistinguibile da un token davvero fermo. E' quello
+        // che ha fatto sembrare buoni i dati della notte del 2026-09-12. Vedi controls.md 40.
+        const num = (v: any) => (v === null || v === undefined || v === "" ? NaN : Number(v));
+        const peakPnlPct = num(snapshot.peakPnlPct);
+        const currentPnlPct = num(snapshot.currentPnlPct);
         const trigger = snapshot.wouldExitReason || null;
         previous.snapshots += 1;
+        if (snapshot.solLiquidity !== null && snapshot.solLiquidity !== undefined) {
+            previous.usableSnapshots = (previous.usableSnapshots || 0) + 1;
+        }
         previous.lastSnapshot = snapshot;
         if (Number.isFinite(peakPnlPct)) {
             previous.peakPnlPct = previous.peakPnlPct === null ? peakPnlPct : Math.max(previous.peakPnlPct, peakPnlPct);
@@ -609,6 +621,7 @@ export function createSupervisorRuntime(options: {
             expiresAtMs: safeStartedAtMs + ttlMs,
             sampleIndex: 0,
             createPoolBlockTime: payload.createPoolBlockTime ?? null,
+            programId: payload.programId ?? null,
             state: {},
         };
     }
@@ -656,6 +669,10 @@ export function createSupervisorRuntime(options: {
         }
     }
 
+    // Tetto per singolo campione shadow. Deve restare ben sotto l'intervallo fast,
+    // altrimenti un campione lento mangia il turno del successivo.
+    const CC_SHADOW_SAMPLE_TIMEOUT_MS = 8000;
+
     async function runCcShadowQueueTick() {
         if (!options.ccShadowEnabled || ccShadowTickRunning) return;
         ccShadowTickRunning = true;
@@ -681,7 +698,11 @@ export function createSupervisorRuntime(options: {
                     continue;
                 }
 
-                const { snapshot, nextState } = await options.sampleCcShadowCandidate({
+                // Il tick e single-flight (ccShadowTickRunning): senza un tetto, un solo
+                // campione lento blocca TUTTO lo shadow tracking. Misurato il 2026-09-13:
+                // 1 campione in 15 minuti e la scadenza rilevata con 5,5 minuti di ritardo,
+                // perche il campionatore interroga l'RPC dentro il supervisore senza timeout.
+                const campionaConTetto = async () => await options.sampleCcShadowCandidate({
                     eventId: job.eventId,
                     signature: job.signature,
                     tokenMint: job.tokenMint,
@@ -691,8 +712,22 @@ export function createSupervisorRuntime(options: {
                     sampleIndex: job.sampleIndex,
                     elapsedMs,
                     createPoolBlockTime: job.createPoolBlockTime,
+                    programId: job.programId,
                     state: job.state,
                 });
+                const esito = await Promise.race([
+                    campionaConTetto().then((r) => ({ ok: true as const, r })),
+                    new Promise<{ ok: false }>((resolve) =>
+                        setTimeout(() => resolve({ ok: false }), CC_SHADOW_SAMPLE_TIMEOUT_MS),
+                    ),
+                ]);
+                if (!esito.ok) {
+                    appendCcShadowLog(`TIMEOUT event=${job.eventId} cc=${job.cc} sample=${job.sampleIndex}`);
+                    job.sampleIndex += 1;
+                    job.nextRunAtMs = nowMs + Math.max(1000, options.ccShadowFastIntervalMs);
+                    continue;
+                }
+                const { snapshot, nextState } = esito.r;
                 if (nextState) {
                     job.state = nextState;
                 }

@@ -69,8 +69,14 @@ export function listMonitoredProgramIds(): string[] {
 /**
  * Adapter di default: usato dal supervisore, che non e legato a nessun DEX, e come
  * ripiego quando un processo non ha un program assegnato.
+ *
+ * ⚠️ Viene dal REGISTRO, non da un import fisso. Era `pumpSwapAdapter` hardcoded: quando il
+ * 2026-09-12 pumpswap e stato tolto dal registro, il supervisore ha continuato a leggere le
+ * curve pump con la matematica di PumpSwap. Non ha dato errore — ha dato `null` a ogni campo
+ * per 26 snapshot per token, e lo shadow tracking ha girato un'intera notte registrando zeri.
+ * Legarlo al registro rende impossibile che il default sia un DEX non monitorato.
  */
-export const defaultAdapter: DexAdapter = pumpSwapAdapter;
+export const defaultAdapter: DexAdapter = ADAPTERS[0];
 
 let active: DexAdapter | null = null;
 

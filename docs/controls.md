@@ -2335,3 +2335,59 @@ Due tabelle: la prima incrocia pendenza d'ingresso ed esito, la seconda dice per
 skip quanti token scartati hanno poi fatto +10%, +25%, +50%, +100%, e quanti sono andati in rug.
 Se la colonna rug regge il confronto con i picchi, il filtro sta lavorando; se i picchi dominano,
 la soglia e' troppo severa.
+
+---
+
+## 40. Lo shadow tracking della notte 12→13 settembre era rumore (2026-09-13)
+
+La strumentazione della sezione 39 ha girato una notte e ha prodotto questa tabella:
+
+```
+motivo dello skip       n  picco>=10%   >=25%   >=50%  >=100%   rug  picco mediano
+low liquidity          13           0       0       0       0     0           0.0%
+creator risk            8           0       0       0       0     0           0.0%
+```
+
+Sembrava un risultato — "nessun token scartato e mai salito" — ed era un guasto. **Tre difetti
+sovrapposti, nessuno dei quali dava errore.**
+
+### 40.1 Il supervisore leggeva le curve pump con la matematica di PumpSwap
+
+`sampleCcShadowCandidate` usava `ACTIVE_ADAPTER`. Ma gira nel **supervisore**, che non ha
+`WORKER_TASK_PROGRAM_ID`: `getActiveAdapter()` ricadeva su `defaultAdapter`, che era
+`pumpSwapAdapter` **hardcoded** anche dopo che pumpswap era uscito dal registro (sezione 38).
+Risultato: `hasWsol`, `solLiquidity`, ogni campo a `null` per 26 snapshot per token, per 21 token.
+
+E' esattamente l'avvertimento in cima a `getActiveAdapter()` — *"quotare un pool con la matematica
+di un altro DEX non da errore, da un PnL sbagliato"* — applicato al supervisore invece che ai worker.
+
+| | prima | ora |
+|---|---|---|
+| `defaultAdapter` | `pumpSwapAdapter` (import fisso) | **`ADAPTERS[0]`** (dal registro) |
+| adapter del campionatore shadow | `ACTIVE_ADAPTER` | **`getAdapterForProgram(job.programId)`** |
+
+Il `programId` ora viaggia dentro il job shadow, quindi resta corretto anche con piu' adapter
+registrati. Legare `defaultAdapter` al registro rende impossibile che il default sia un DEX non
+monitorato.
+
+### 40.2 `Number(null)` vale 0, ed e finito
+
+`recordCcShadowSnapshot` faceva `Number(snapshot.peakPnlPct)` su un campo `null`, ottenendo `0`, che
+passa `Number.isFinite`. Ogni token senza dati risultava con un picco dello **0,0%**, indistinguibile
+da un token davvero fermo. Aggiunta la guardia, piu' un contatore `usableSnapshots`; l'analisi ora
+esclude i token senza un solo snapshot leggibile e lo dichiara invece di mediarli con gli altri.
+
+### 40.3 Un campione lento bloccava tutto lo shadow tracking
+
+`runCcShadowQueueTick` e single-flight (`ccShadowTickRunning`) e il campionatore interroga l'RPC
+dentro il supervisore **senza timeout**. Misurato: **1 campione in 15 minuti** e la scadenza del job
+rilevata con 5,5 minuti di ritardo, contro un intervallo fast configurato a 10s. Aggiunto un tetto di
+**8s per campione** (`CC_SHADOW_SAMPLE_TIMEOUT_MS`), ben sotto l'intervallo fast: al superamento il
+campione viene saltato e loggato come `TIMEOUT`, il job prosegue.
+
+### La lezione
+
+Una tabella piena di zeri e' indistinguibile da una tabella piena di dati mancanti, se non si conta
+separatamente quanti campioni erano leggibili. Prima di leggere qualunque risultato dello shadow
+tracking, controllare la riga `token senza un solo snapshot leggibile` che `./scripts/bot analisi`
+stampa in testa alla seconda tabella.
