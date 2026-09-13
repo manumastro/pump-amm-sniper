@@ -1,10 +1,10 @@
-Paper Trade Outcomes @ 2026-09-13T16:01:34.901Z
-operations with pnl: 0
+Paper Trade Outcomes @ 2026-09-13T16:21:19.614Z
+operations with pnl: 1
 invalid pnl excluded: 0
-total pnl (SOL): 0
-avg pnl (%): 0
-wins/losses: 0/0
-win rate: 0%
+total pnl (SOL): 0.001764
+avg pnl (%): 17.64
+wins/losses: 1/0
+win rate: 100%
 
 Operations with pnl:
-(none)
+0001. evt-000024 6T7a9BwjT1VPMoJP8tPTjY7haR5Vm1jbKWXu5iLnpump start=15:38:56.204 buy_ts=15:39:03.246 sell_ts=16:09:11.394 end=16:09:11.398 buy_spot=0.00003481 sell_spot=0.0000415 pnl=0.001764 (17.64%) pnl_valid=YES class=clean status=COMPLETED (1815187ms, rpc=5423 429=1225) skip=- rug_like=NO rug_loss=NO gmgn=https://gmgn.ai/sol/token/6T7a9BwjT1VPMoJP8tPTjY7haR5Vm1jbKWXu5iLnpump pnl_issue=-

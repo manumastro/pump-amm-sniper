@@ -3,3 +3,8 @@ dist/
 .env
 *.log
 logs/
+# script di analisi usa-e-getta: vivono nello scratchpad, non nel repo
+/*.js
+/*.json
+!package*.json
+!tsconfig*.json
