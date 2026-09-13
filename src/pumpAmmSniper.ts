@@ -621,7 +621,7 @@ async function handleNewPool(connection: Connection, signature: string) {
         // services/dex/pumpMigrato.ts e docs/controls.md 48.
         if (passaggioGraduata) {
             const seed = valutaSeedGraduata(liquiditySOL);
-            stageLog(ctx, "SEED", JSON.stringify({
+            stageLog(ctx, "SEEDPOOL", JSON.stringify({
                 seedSol: Number(liquiditySOL.toFixed(6)),
                 soglia: seed.soglia,
                 ok: seed.ok,

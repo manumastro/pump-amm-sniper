@@ -520,8 +520,11 @@ function parseLine(logPath, line) {
       return;
     }
 
-    if (stage === 'SEED') {
+    if (stage === 'SEEDPOOL') {
       // SOL nella pool graduata alla nascita: la variabile candidata a discriminare.
+      // Non 'SEED': quello stage esiste gia' e appartiene al seed del *creator*
+      // (services/creator-risk/index.ts). Due significati sullo stesso nome li
+      // renderebbe indistinguibili nel log e nel report.
       ev = ev || getCurrentEvent(logPath);
       if (!ev) return;
       const parsed = safeJsonParse(message);

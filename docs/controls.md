@@ -2604,7 +2604,7 @@ e' l'unica variabile osservabile all'ingresso che separa i vincitori: sopra 1.50
 $6M di mc, sotto 700 SOL 7 morti su 9. Ma **n=4**, tutti nati in quattro minuti, e due dei quattro
 condividono il payer: potrebbe essere un operatore solo, cioe' n=1. E' la stessa forma dell'errore
 gia' commesso col "seed 85 SOL" (`docs/mercato-2026-09-13.md`). Quindi per ora si **registra**
-(`SEED` nel log, `seedGraduata` nel report) senza bloccare. Alzare la soglia solo dopo un campione
+(`SEEDPOOL` nel log — non `SEED`, che appartiene gia' al seed del *creator* — e `seedGraduata` nel report) senza bloccare. Alzare la soglia solo dopo un campione
 nato in ore diverse. Il numero non costa chiamate: e' la liquidita' che il worker legge comunque, e a
 un secondo dalla creazione quella liquidita' **e'** il seed.
 

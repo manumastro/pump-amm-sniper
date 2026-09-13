@@ -1,0 +1,172 @@
+- generic [active] [ref=f3e1]:
+  - generic [ref=f3e2]:
+    - generic [ref=f3e3]:
+      - heading "GMGN.AI | The Fastest Multi-Chain Meme Trading Terminal" [level=2] [ref=f3e4]
+      - paragraph [ref=f3e5]: GMGN.AI is a MEME token trading platform supporting Solana, BSC, Base, and Ethereum — covering new token monitoring, security auditing, holder analysis, smart money copy trading, wallet P&L analytics, and automated trade execution, widely used for early-stage on-chain project discovery and quantitative trading.
+      - heading "Core Features" [level=3] [ref=f3e6]
+      - list [ref=f3e7]:
+        - listitem [ref=f3e8]:
+          - strong [ref=f3e9]: Real-Time New Token Monitoring
+          - paragraph [ref=f3e10]: Continuously scans launchpads including Pump.fun, FourMeme, Raydium, and letsbonk with filters for market cap, volume, and creation time — helping users enter positions at early low-cap stages.
+        - listitem [ref=f3e11]:
+          - strong [ref=f3e12]: Live Trending Token Rankings
+          - paragraph [ref=f3e13]: Leaderboard updated every minute based on buy/sell count, trading volume, price change, and holder growth — reflecting real-time market momentum and capital flow.
+        - listitem [ref=f3e14]:
+          - strong [ref=f3e15]: Token Holder Structure Analysis
+          - paragraph [ref=f3e16]: "Real-time calculation of four key metrics: insider/rat wallet ratio, bundle buy ratio, DEV holdings %, and Top 10 wallet concentration."
+        - listitem [ref=f3e17]:
+          - strong [ref=f3e18]: Automated Token Security Audit
+          - paragraph [ref=f3e19]: "Auto-checks every token for: LP burned status, honeypot detection, contract renounced status, and mintable flag."
+        - listitem [ref=f3e20]:
+          - strong [ref=f3e21]: Smart Money Copy Trading
+          - paragraph [ref=f3e22]: Identifies high-win-rate wallets on-chain and enables one-click copy trading that automatically mirrors their buy/sell actions and position sizing.
+        - listitem [ref=f3e23]:
+          - strong [ref=f3e24]: KOL & Wallet Tracker with Real-Time Alerts
+          - paragraph [ref=f3e25]: Custom watchlist with real-time push notifications for every on-chain event — buys, sells, position adds, and full exits — from tracked wallets and KOLs.
+        - listitem [ref=f3e26]:
+          - strong [ref=f3e27]: Zero-Latency Trading & Automated Strategies
+          - paragraph [ref=f3e28]: Zero-latency on-chain trade execution with Take Profit, Stop Loss, Trailing Take Profit / Trailing Stop Loss, and multi-wallet batch order support.
+        - listitem [ref=f3e29]:
+          - strong [ref=f3e30]: Wallet P&L Analytics
+          - paragraph [ref=f3e31]: "Enter any wallet address to instantly generate: realized/unrealized PnL, win rate and risk/reward ratio, current holdings valuation, full trade history, and developer wallet token creation records with all-time high (ATH) market cap per token."
+        - listitem [ref=f3e32]:
+          - strong [ref=f3e33]: Trading Data API & AI-Native Skills
+          - paragraph [ref=f3e34]: Five structured API categories — token data, wallet data, market data, trade execution, and signal tracking — packaged as standardized AI Skills directly callable by Claude, GPT, and other AI Agents via natural language for on-chain data queries and trade execution.
+    - generic [ref=f3e36]:
+      - banner [ref=f3e38]:
+        - generic [ref=f3e39]:
+          - link [ref=f3e41] [cursor=pointer]:
+            - /url: /?chain=sol
+            - img "logo" [ref=f3e42]
+          - navigation "Main navigation" [ref=f3e44]:
+            - link "Trenches" [ref=f3e45] [cursor=pointer]:
+              - /url: /?chain=sol
+            - link "In tendenza" [ref=f3e46] [cursor=pointer]:
+              - /url: /trend?chain=sol
+            - link "CopyTrade" [ref=f3e47] [cursor=pointer]:
+              - /url: /trade?chain=sol
+            - link "Monitor" [ref=f3e48] [cursor=pointer]:
+              - /url: /monitor?chain=sol
+            - link "Segui" [ref=f3e49] [cursor=pointer]:
+              - /url: /follow?chain=sol
+            - link "Portfolio" [ref=f3e50] [cursor=pointer]:
+              - /url: /portfolio?chain=sol
+            - link "Affiliare" [ref=f3e51] [cursor=pointer]:
+              - /url: /rewards?chain=sol
+            - link "Su/Giù" [ref=f3e52] [cursor=pointer]:
+              - /url: https://future.news/updown
+            - link "Perpetual" [ref=f3e53] [cursor=pointer]:
+              - /url: /perpetual/BTC.PERP_USDC
+              - generic [ref=f3e54]:
+                - text: Perpetual
+                - generic [aria-hidden]: Beta
+        - generic [ref=f3e55]:
+          - generic [ref=f3e58]:
+            - generic [ref=f3e59]:
+              - textbox "Search name, CA, wallet" [ref=f3e64]
+              - generic [ref=f3e65]: /
+            - group "Search name, CA, wallet"
+          - generic [ref=f3e69] [cursor=pointer]
+          - generic [ref=f3e75]:
+            - link [ref=f3e77] [cursor=pointer]:
+              - /url: /ai
+            - button [ref=f3e84] [cursor=pointer]:
+              - link [ref=f3e85]:
+                - /url: /app
+          - generic [ref=f3e87]:
+            - button "SOL" [ref=f3e88] [cursor=pointer]
+            - generic [ref=f3e95]:
+              - link [ref=f3e96] [cursor=pointer]:
+                - /url: /watchlists
+              - button [ref=f3e100] [cursor=pointer]
+      - main [ref=f3e104]:
+        - generic [ref=f3e105]:
+          - generic [ref=f3e106]:
+            - generic [ref=f3e109]:
+              - generic [ref=f3e117]:
+                - generic [ref=f3e118]:
+                  - generic [ref=f3e119] [cursor=pointer]: 1s
+                  - generic [ref=f3e120] [cursor=pointer]: 30s
+                  - generic [ref=f3e121] [cursor=pointer]: 1m
+                  - generic [ref=f3e122] [cursor=pointer]: 1O
+                  - generic [ref=f3e123] [cursor=pointer]: 4O
+                  - generic [ref=f3e124] [cursor=pointer]: 1G
+                  - button [ref=f3e125] [cursor=pointer]
+                - button "Multicharts" [ref=f3e127] [cursor=pointer]
+                - generic [ref=f3e132] [cursor=pointer]
+                - img [ref=f3e133] [cursor=pointer]
+                - button "Display" [ref=f3e136] [cursor=pointer]
+                - generic [ref=f3e142] [cursor=pointer]:
+                  - generic [ref=f3e143]: Prezzo
+                  - text: /
+                  - generic [ref=f3e144]: MC
+                - generic [ref=f3e146] [cursor=pointer]:
+                  - generic [ref=f3e147]: USD
+                  - text: /
+                  - generic [ref=f3e148]: SOL
+                - generic [ref=f3e150] [cursor=pointer]
+                - button [ref=f3e151] [cursor=pointer]
+                - generic [ref=f3e155] [cursor=pointer]
+              - generic [ref=f3e169]:
+                - tablist [ref=f3e170]:
+                  - generic [ref=f3e172]:
+                    - tab "Attività" [selected] [ref=f3e174] [cursor=pointer]
+                    - tab "Le mie posizioni" [ref=f3e182] [cursor=pointer]
+                    - tab "Detentori" [ref=f3e189] [cursor=pointer]
+                    - tab "Migliori Traders" [ref=f3e197] [cursor=pointer]
+                    - tab "Dev Token" [ref=f3e204] [cursor=pointer]
+                  - generic [ref=f3e212]:
+                    - button "Un Click" [ref=f3e213] [cursor=pointer]
+                    - button "GMGN Comunità" [ref=f3e217] [cursor=pointer]
+                    - generic "Bubble" [ref=f3e225] [cursor=pointer]
+                    - generic [ref=f3e228] [cursor=pointer]
+                    - generic [ref=f3e231] [cursor=pointer]
+                - tabpanel "Attività" [ref=f3e237]
+            - generic [ref=f3e239]:
+              - generic [ref=f3e241] [cursor=pointer]
+              - generic [ref=f3e244] [cursor=pointer]
+          - iframe [ref=f3e248]:
+            - generic [ref=f4e1]:
+              - contentinfo:
+                - paragraph: TradingView è interattivo e dispone di comandi da utilizzare con uno screen reader. Di seguito è riportato un elenco di comandi da tastiera disponibili per interagire con la piattaforma
+                - list:
+                  - listitem: Inizia a usare la modalità di navigazione da tastiera. Premere ⌥ + Z
+                  - listitem: Ricerca rapida. Premere ⌘ + K
+                  - listitem: Cambia simbolo. Iniziare a digitare il nome del simbolo
+                  - listitem: Modifica l'intervallo. Premere numero o virgola
+                  - listitem: Indicatori, metriche e strategie. Premere slash
+                  - listitem: Apri layout. Premi il punto
+              - generic [ref=f4e6]:
+                - progressbar [ref=f4e9]
+                - toolbar [ref=f4e11]:
+                  - button "Vai a" [ref=f4e14]
+                  - generic [ref=f4e18]:
+                    - button "Fuso orario" [ref=f4e21]
+                    - button "Seleziona/Deseleziona percentuale" [disabled] [ref=f4e25]
+                    - button "Seleziona/Deseleziona scala logaritmica" [ref=f4e33]:
+                      - generic [ref=f4e34]: log
+                    - button "Seleziona/deseleziona scala automatica" [ref=f4e36]:
+                      - generic [ref=f4e37]: auto
+              - alert
+      - contentinfo [ref=f3e249]:
+        - generic [ref=f3e251]:
+          - generic [ref=f3e252] [cursor=pointer]: Social Tracker
+          - generic [ref=f3e257] [cursor=pointer]: Holding
+          - generic [ref=f3e263] [cursor=pointer]: PnL
+          - button [ref=f3e270] [cursor=pointer]:
+            - generic [ref=f3e271]:
+              - img "Pump.fun Icon" [ref=f3e272]
+              - img "Pump.fun Icon" [ref=f3e273]
+              - img "Mayhem Icon" [ref=f3e274]
+          - button "$0.000" [ref=f3e276] [cursor=pointer]
+          - button "$0.000" [ref=f3e280] [cursor=pointer]
+          - button "$0.000" [ref=f3e284] [cursor=pointer]
+          - button "$0.000" [ref=f3e292] [cursor=pointer]
+  - alert [ref=f3e300]
+  - generic:
+    - region "Notifications-top"
+    - region "Notifications-top-left"
+    - region "Notifications-top-right"
+    - region "Notifications-bottom-left"
+    - region "Notifications-bottom"
+    - region "Notifications-bottom-right"

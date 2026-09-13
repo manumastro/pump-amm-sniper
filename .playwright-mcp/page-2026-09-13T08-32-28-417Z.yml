@@ -1,0 +1,1441 @@
+- generic [ref=e1]:
+  - generic [ref=e35]:
+    - generic [ref=e2]:
+      - heading "GMGN.AI | The Fastest Multi-Chain Meme Trading Terminal" [level=2] [ref=e3]
+      - paragraph [ref=e4]: GMGN.AI is a MEME token trading platform supporting Solana, BSC, Base, and Ethereum — covering new token monitoring, security auditing, holder analysis, smart money copy trading, wallet P&L analytics, and automated trade execution, widely used for early-stage on-chain project discovery and quantitative trading.
+      - heading "Core Features" [level=3] [ref=e5]
+      - list [ref=e6]:
+        - listitem [ref=e7]:
+          - strong [ref=e8]: Real-Time New Token Monitoring
+          - paragraph [ref=e9]: Continuously scans launchpads including Pump.fun, FourMeme, Raydium, and letsbonk with filters for market cap, volume, and creation time — helping users enter positions at early low-cap stages.
+        - listitem [ref=e10]:
+          - strong [ref=e11]: Live Trending Token Rankings
+          - paragraph [ref=e12]: Leaderboard updated every minute based on buy/sell count, trading volume, price change, and holder growth — reflecting real-time market momentum and capital flow.
+        - listitem [ref=e13]:
+          - strong [ref=e14]: Token Holder Structure Analysis
+          - paragraph [ref=e15]: "Real-time calculation of four key metrics: insider/rat wallet ratio, bundle buy ratio, DEV holdings %, and Top 10 wallet concentration."
+        - listitem [ref=e16]:
+          - strong [ref=e17]: Automated Token Security Audit
+          - paragraph [ref=e18]: "Auto-checks every token for: LP burned status, honeypot detection, contract renounced status, and mintable flag."
+        - listitem [ref=e19]:
+          - strong [ref=e20]: Smart Money Copy Trading
+          - paragraph [ref=e21]: Identifies high-win-rate wallets on-chain and enables one-click copy trading that automatically mirrors their buy/sell actions and position sizing.
+        - listitem [ref=e22]:
+          - strong [ref=e23]: KOL & Wallet Tracker with Real-Time Alerts
+          - paragraph [ref=e24]: Custom watchlist with real-time push notifications for every on-chain event — buys, sells, position adds, and full exits — from tracked wallets and KOLs.
+        - listitem [ref=e25]:
+          - strong [ref=e26]: Zero-Latency Trading & Automated Strategies
+          - paragraph [ref=e27]: Zero-latency on-chain trade execution with Take Profit, Stop Loss, Trailing Take Profit / Trailing Stop Loss, and multi-wallet batch order support.
+        - listitem [ref=e28]:
+          - strong [ref=e29]: Wallet P&L Analytics
+          - paragraph [ref=e30]: "Enter any wallet address to instantly generate: realized/unrealized PnL, win rate and risk/reward ratio, current holdings valuation, full trade history, and developer wallet token creation records with all-time high (ATH) market cap per token."
+        - listitem [ref=e31]:
+          - strong [ref=e32]: Trading Data API & AI-Native Skills
+          - paragraph [ref=e33]: Five structured API categories — token data, wallet data, market data, trade execution, and signal tracking — packaged as standardized AI Skills directly callable by Claude, GPT, and other AI Agents via natural language for on-chain data queries and trade execution.
+    - generic [ref=e37]:
+      - generic [ref=e38]:
+        - banner [ref=e39]:
+          - generic [ref=e40]:
+            - link [ref=e42] [cursor=pointer]:
+              - /url: /?chain=sol
+              - img "logo" [ref=e43]
+            - navigation "Main navigation" [ref=e45]:
+              - link "Trenches" [ref=e46] [cursor=pointer]:
+                - /url: /?chain=sol
+              - link "In tendenza" [ref=e47] [cursor=pointer]:
+                - /url: /trend?chain=sol
+              - link "CopyTrade" [ref=e48] [cursor=pointer]:
+                - /url: /trade?chain=sol
+              - link "Monitor" [ref=e49] [cursor=pointer]:
+                - /url: /monitor?chain=sol
+              - link "Segui" [ref=e50] [cursor=pointer]:
+                - /url: /follow?chain=sol
+              - link "Portfolio" [ref=e51] [cursor=pointer]:
+                - /url: /portfolio?chain=sol
+              - link "Affiliare" [ref=e52] [cursor=pointer]:
+                - /url: /rewards?chain=sol
+              - link "Su/Giù" [ref=e53] [cursor=pointer]:
+                - /url: https://future.news/updown
+              - link "Perpetual" [ref=e54] [cursor=pointer]:
+                - /url: /perpetual/BTC.PERP_USDC
+                - generic [ref=e55]:
+                  - text: Perpetual
+                  - generic [aria-hidden]: Beta
+          - generic [ref=e56]:
+            - generic [ref=e59]:
+              - generic [ref=e60]:
+                - textbox "Search name, CA, wallet" [ref=e65]
+                - generic [ref=e66]: /
+              - group "Search name, CA, wallet"
+            - generic [ref=e70] [cursor=pointer]
+            - generic [ref=e76]:
+              - link [ref=e78] [cursor=pointer]:
+                - /url: /ai
+              - button [ref=e85] [cursor=pointer]:
+                - link [ref=e86]:
+                  - /url: /app
+            - generic [ref=e88]:
+              - button "SOL" [ref=e89] [cursor=pointer]
+              - generic [ref=e96]:
+                - link [ref=e97] [cursor=pointer]:
+                  - /url: /watchlists
+                - button [ref=e101] [cursor=pointer]
+            - generic [ref=e106]:
+              - button "Registrati" [ref=e107] [cursor=pointer]
+              - button "Accedi" [ref=e109] [cursor=pointer]
+        - generic [ref=e111]:
+          - generic [ref=e112] [cursor=pointer]
+          - generic [ref=e117]:
+            - generic [ref=e118] [cursor=pointer]
+            - generic [ref=e121] [cursor=pointer]
+            - generic [ref=e125] [cursor=pointer]
+          - button [ref=e130] [cursor=pointer]
+          - generic [ref=e138]:
+            - generic [ref=e142] [cursor=pointer]:
+              - combobox [ref=e144]
+              - text: Tutti
+            - group
+      - main [ref=e148]:
+        - generic [ref=e150]:
+          - generic [ref=e151]:
+            - button "Segui P1 You are not logged in to GMGN Log in" [ref=e152] [cursor=pointer]:
+              - generic [ref=e164]:
+                - generic [ref=e165]:
+                  - generic [ref=e166]:
+                    - button [ref=e168]
+                    - generic [ref=e177]:
+                      - tablist [ref=e178]:
+                        - generic [ref=e180]:
+                          - tab "Portafoglio" [ref=e182]
+                          - tab "Segui" [selected] [ref=e184]
+                          - tab "Callout" [ref=e186]
+                          - tab "Monitor" [ref=e188]
+                          - tab "Renames" [ref=e190]
+                      - generic:
+                        - generic:
+                          - tabpanel "Segui"
+                  - generic [ref=e210]:
+                    - generic [ref=e211]:
+                      - button [ref=e215]:
+                        - button [ref=e216]
+                      - button [ref=e227]
+                    - generic [ref=e236]:
+                      - textbox "0" [ref=e242]
+                      - generic [ref=e243]: P1
+                - generic [ref=e248]:
+                  - text: You are not logged in to GMGN
+                  - generic [ref=e249]: Log in
+                - status [ref=e250]
+            - status [ref=e261]
+          - generic [ref=e262]:
+            - button "X Tracker Recommended APP Only CA 14 CA / Symbol / X URL You are not logged in to GMGN Log in No data" [ref=e263] [cursor=pointer]:
+              - generic [ref=e276]:
+                - generic [ref=e279]:
+                  - tablist [ref=e280]:
+                    - generic [ref=e282]:
+                      - tab "X Tracker" [selected] [ref=e284]
+                      - tab "TG Tracker" [ref=e286]
+                  - generic:
+                    - generic:
+                      - tabpanel "X Tracker"
+                - generic [ref=e316]:
+                  - generic [ref=e317]:
+                    - generic [ref=e318]:
+                      - generic [ref=e319]:
+                        - tablist [ref=e320]:
+                          - generic [ref=e322]:
+                            - tab "Mine" [ref=e324]
+                            - tab "Featured" [ref=e326]
+                            - tab "Recommended" [selected] [ref=e328]
+                        - generic:
+                          - generic:
+                            - tabpanel "Recommended"
+                      - button [ref=e329]:
+                        - link "APP" [ref=e330]:
+                          - /url: /app
+                    - generic [ref=e334]:
+                      - generic [ref=e335]: Only CA
+                      - generic [ref=e352]:
+                        - generic [ref=e353]: "14"
+                        - generic [ref=e358]:
+                          - textbox "CA / Symbol / X URL" [ref=e364]
+                          - group "CA / Symbol / X URL"
+                  - generic [ref=e365]:
+                    - text: You are not logged in to GMGN
+                    - generic [ref=e366]: Log in
+                  - generic: No data
+            - status [ref=e370]
+        - generic [ref=e371]:
+          - generic [ref=e372]:
+            - generic [ref=e373]:
+              - generic [ref=e375]:
+                - generic [ref=e376]:
+                  - generic [ref=e378] [cursor=pointer]
+                  - generic [ref=e381]:
+                    - generic [ref=e385]:
+                      - generic [ref=e386]:
+                        - link [ref=e387] [cursor=pointer]:
+                          - /url: https://lens.google.com/uploadbyurl?url=https://gmgn.ai/external-res/889ec97064ebf1fc0cba4f8d158e4bc7_v2.webp
+                        - generic [ref=e391]: 99+
+                      - generic [ref=e396]: 99+
+                      - img "logo" [ref=e401]
+                    - link [ref=e402] [cursor=pointer]:
+                      - /url: https://pump.fun/coin/GPynmfqNfk7atMhsFM4USyHDq4gzJVgN2bj9RUsMpump
+                      - img "Mayhem Icon" [ref=e408]
+                  - generic [ref=e409]:
+                    - generic [ref=e410]:
+                      - generic [ref=e411] [cursor=pointer]:
+                        - generic [ref=e412]: SXSN
+                        - generic [ref=e414]: 67%
+                      - generic [ref=e416]:
+                        - generic [ref=e417]:
+                          - generic [ref=e419] [cursor=pointer]
+                          - img [ref=e423] [cursor=pointer]
+                        - generic [ref=e427] [cursor=pointer]
+                        - generic [ref=e430] [cursor=pointer]: 23:54:15
+                    - generic [ref=e434]:
+                      - generic [ref=e435]: 5m
+                      - generic [ref=e436] [cursor=pointer]: GPyn...pump
+                      - link [ref=e439] [cursor=pointer]:
+                        - /url: https://solscan.io/token/GPynmfqNfk7atMhsFM4USyHDq4gzJVgN2bj9RUsMpump#metadata
+                      - img [ref=e447] [cursor=pointer]
+                      - generic [ref=e452] [cursor=pointer]
+                      - generic [ref=e456]:
+                        - generic [ref=e460]: 0.4%
+                        - generic [ref=e461]: 10h
+                      - link "1/11" [ref=e463] [cursor=pointer]:
+                        - /url: /sol/token/GPynmfqNfk7atMhsFM4USyHDq4gzJVgN2bj9RUsMpump?tab=dev_token
+                      - generic [ref=e468] [cursor=pointer]: "1"
+                - generic [ref=e472]:
+                  - generic [ref=e473]:
+                    - generic [ref=e476]:
+                      - generic [ref=e477]: $912.0226
+                      - img [ref=e479] [cursor=pointer]
+                    - generic [ref=e483]:
+                      - generic [ref=e484]: Prezzo
+                      - generic [ref=e486]: $0.0₆9119
+                    - generic [ref=e487]:
+                      - generic [ref=e488]: Liq
+                      - generic [ref=e490]: $6,03K
+                    - generic [ref=e492]:
+                      - generic [ref=e493]: 24h Vol
+                      - generic [ref=e495]: $180,87
+                    - generic [ref=e497] [cursor=pointer]:
+                      - generic [ref=e498]: Total Fees
+                      - generic [ref=e500]: "0.0053"
+                    - generic [ref=e504] [cursor=pointer]:
+                      - generic [ref=e505]: Offerta Totale
+                      - generic [ref=e509]: 1.01B
+                    - generic [ref=e513]:
+                      - generic [ref=e514]: Stato
+                      - generic [ref=e516]: 0.43%
+                    - generic [ref=e518]:
+                      - generic [ref=e521]:
+                        - generic [ref=e522] [cursor=pointer]: Total Tax
+                        - img [ref=e524] [cursor=pointer]
+                      - generic [ref=e532] [cursor=pointer]:
+                        - generic [ref=e533]: 1.25%
+                        - paragraph [ref=e534]: /
+                        - generic [ref=e535]: 1.25%
+                  - generic [ref=e537] [cursor=pointer]
+              - generic [ref=e540]:
+                - generic [ref=e550]:
+                  - generic [ref=e551]:
+                    - generic [ref=e552] [cursor=pointer]: 1s
+                    - generic [ref=e553] [cursor=pointer]: 30s
+                    - generic [ref=e554] [cursor=pointer]: 1m
+                    - generic [ref=e555] [cursor=pointer]: 1O
+                    - generic [ref=e556] [cursor=pointer]: 4O
+                    - generic [ref=e557] [cursor=pointer]: 1G
+                    - button [ref=e558] [cursor=pointer]
+                  - button "Multicharts" [ref=e560] [cursor=pointer]
+                  - generic [ref=e565] [cursor=pointer]
+                  - img [ref=e566] [cursor=pointer]
+                  - button "Display" [ref=e569] [cursor=pointer]
+                  - generic [ref=e575] [cursor=pointer]:
+                    - generic [ref=e576]: Prezzo
+                    - text: /
+                    - generic [ref=e577]: MC
+                  - generic [ref=e579] [cursor=pointer]:
+                    - generic [ref=e580]: USD
+                    - text: /
+                    - generic [ref=e581]: SOL
+                  - generic [ref=e582] [cursor=pointer]
+                  - button [ref=e583] [cursor=pointer]
+                  - generic [ref=e587] [cursor=pointer]
+                - generic [ref=e600]:
+                  - tablist [ref=e601]:
+                    - generic [ref=e603]:
+                      - tab "Attività" [selected] [ref=e605] [cursor=pointer]
+                      - tab "Le mie posizioni" [ref=e613] [cursor=pointer]
+                      - tab "Detentori 4" [ref=e620] [cursor=pointer]:
+                        - generic [ref=e623]:
+                          - text: Detentori
+                          - generic [ref=e624]: "4"
+                      - tab "Migliori Traders" [ref=e629] [cursor=pointer]
+                      - tab "Dev Token 11" [ref=e636] [cursor=pointer]
+                    - generic [ref=e644]:
+                      - button "Un Click" [ref=e645] [cursor=pointer]
+                      - button "GMGN Comunità" [ref=e649] [cursor=pointer]
+                      - generic "Bubble" [ref=e657] [cursor=pointer]
+                      - generic [ref=e660] [cursor=pointer]
+                      - generic [ref=e663] [cursor=pointer]
+                  - tabpanel "Attività" [ref=e669]:
+                    - generic [ref=e673]:
+                      - generic [ref=e674] [cursor=pointer]
+                      - generic [ref=e680]:
+                        - generic [ref=e682]:
+                          - generic [ref=e683]:
+                            - generic [ref=e684]:
+                              - generic [ref=e685] [cursor=pointer]
+                              - generic [ref=e689]: Età
+                            - generic [ref=e691]:
+                              - generic [ref=e692] [cursor=pointer]
+                              - generic [ref=e695] [cursor=pointer]
+                            - generic [ref=e698]:
+                              - generic [ref=e699] [cursor=pointer]
+                              - button [ref=e702] [cursor=pointer]
+                          - generic [ref=e707] [cursor=pointer]:
+                            - generic [ref=e708]: Tipo
+                            - button [ref=e709]:
+                              - button [ref=e710]
+                          - generic [ref=e714]: MC
+                          - generic [ref=e720]: Importo
+                          - generic [ref=e724]:
+                            - text: Totale
+                            - generic [ref=e725] [cursor=pointer]: USD
+                            - button [ref=e729] [cursor=pointer]:
+                              - button [ref=e730]
+                          - generic [ref=e734]: Gas
+                          - generic [ref=e737]:
+                            - generic [ref=e739] [cursor=pointer]:
+                              - text: Maker
+                              - button [ref=e740]:
+                                - button [ref=e741]
+                            - generic [ref=e745]: DEV
+                        - generic [ref=e748]:
+                          - generic [ref=e749]:
+                            - generic [ref=e753] [cursor=pointer]:
+                              - link "41s" [ref=e757]:
+                                - /url: https://solscan.io/tx/4WhT8sktLNbdTfh2acH8CimVCD6Y6jqe7ZndJCTZV1PrqCeBFvSL4pppJUNT2ymampKK5zustAFv827cmoJEae4L
+                              - generic [ref=e759]: Vendi
+                              - generic "$912" [ref=e762]
+                              - generic [ref=e763]: 1.4M
+                              - generic [ref=e765]: $1.281
+                              - generic [ref=e767]: $0.004
+                              - generic [ref=e770]:
+                                - link "MAYHEM Vault 50" [ref=e772]:
+                                  - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - link "MAYHEM Vault" [ref=e782]:
+                                    - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - generic [ref=e787]: "50"
+                                - link [ref=e793]:
+                                  - /url: https://solscan.io/tx/4WhT8sktLNbdTfh2acH8CimVCD6Y6jqe7ZndJCTZV1PrqCeBFvSL4pppJUNT2ymampKK5zustAFv827cmoJEae4L
+                            - generic [ref=e799] [cursor=pointer]:
+                              - link "42s" [ref=e803]:
+                                - /url: https://solscan.io/tx/4VjsLzW9A4bosyXwRradEWiy1nNPin9AYZt6Y7wo1NcLJ8psY6KWkuUcTbZ93mL9LRugjGMRatiT7xH2Z8Wm7LSX
+                              - generic [ref=e805]: Compra
+                              - generic "$781" [ref=e808]
+                              - generic [ref=e809]: 591.9K
+                              - generic [ref=e811]: $0.462
+                              - generic [ref=e813]: $0.004
+                              - generic [ref=e816]:
+                                - link "MAYHEM 43" [ref=e818]:
+                                  - /url: /sol/address/Gygj9QQby4j2jryqyqBHvLP7ctv2SaANgh4sCb69BUpA
+                                  - link "MAYHEM" [ref=e831]:
+                                    - /url: /sol/address/Gygj9QQby4j2jryqyqBHvLP7ctv2SaANgh4sCb69BUpA
+                                  - generic [ref=e836]: "43"
+                                - link [ref=e842]:
+                                  - /url: https://solscan.io/tx/4VjsLzW9A4bosyXwRradEWiy1nNPin9AYZt6Y7wo1NcLJ8psY6KWkuUcTbZ93mL9LRugjGMRatiT7xH2Z8Wm7LSX
+                            - generic [ref=e848] [cursor=pointer]:
+                              - link "43s" [ref=e852]:
+                                - /url: https://solscan.io/tx/5HyRiiY3FrzDfGhRMPsrbBGHraUfUqGpNnbhFmoS7oVHjjbPEA6sTNiGRqiSBwQE1ziTWf4HocG7QDvh1nfpC5Hk
+                              - generic [ref=e854]: Compra
+                              - generic "$716" [ref=e857]
+                              - generic [ref=e858]: 314K
+                              - generic [ref=e860]: $0.224
+                              - generic [ref=e862]: $0.004
+                              - generic [ref=e865]:
+                                - link "MAYHEM 43" [ref=e867]:
+                                  - /url: /sol/address/Gygj9QQby4j2jryqyqBHvLP7ctv2SaANgh4sCb69BUpA
+                                  - link "MAYHEM" [ref=e880]:
+                                    - /url: /sol/address/Gygj9QQby4j2jryqyqBHvLP7ctv2SaANgh4sCb69BUpA
+                                  - generic [ref=e885]: "43"
+                                - link [ref=e891]:
+                                  - /url: https://solscan.io/tx/5HyRiiY3FrzDfGhRMPsrbBGHraUfUqGpNnbhFmoS7oVHjjbPEA6sTNiGRqiSBwQE1ziTWf4HocG7QDvh1nfpC5Hk
+                            - generic [ref=e897] [cursor=pointer]:
+                              - link "43s" [ref=e901]:
+                                - /url: https://solscan.io/tx/2voADP6Rn5iaCLUqVTBFm4a9TxFh7XjDbobejhxErhxoeNL3m6Z6YPYDaa4xDt6UKJ7NdWEVBo8kN4Getasd629L
+                              - generic [ref=e903]: Vendi
+                              - generic "$1.00K" [ref=e906]
+                              - generic [ref=e907]: 1M
+                              - generic [ref=e909]: $1.013
+                              - generic [ref=e911]: $0.004
+                              - generic [ref=e914]:
+                                - link "MAYHEM Vault 50" [ref=e916]:
+                                  - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - link "MAYHEM Vault" [ref=e926]:
+                                    - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - generic [ref=e931]: "50"
+                                - link [ref=e937]:
+                                  - /url: https://solscan.io/tx/2voADP6Rn5iaCLUqVTBFm4a9TxFh7XjDbobejhxErhxoeNL3m6Z6YPYDaa4xDt6UKJ7NdWEVBo8kN4Getasd629L
+                            - generic [ref=e943] [cursor=pointer]:
+                              - link "43s" [ref=e947]:
+                                - /url: https://solscan.io/tx/2tDdDeMW5Yo8Y12vSxhavJ65HHmmyWfzgYBoi9VatxGaLyVU4NThn6iQd5MoHfSLysEUbwc4W8rAeSNrQ3ruWUu8
+                              - generic [ref=e949]: Compra
+                              - generic "$879" [ref=e952]
+                              - generic [ref=e953]: 506.9K
+                              - generic [ref=e955]: $0.445
+                              - generic [ref=e957]: $0.004
+                              - generic [ref=e960]:
+                                - link "MAYHEM 43" [ref=e962]:
+                                  - /url: /sol/address/Gygj9QQby4j2jryqyqBHvLP7ctv2SaANgh4sCb69BUpA
+                                  - link "MAYHEM" [ref=e975]:
+                                    - /url: /sol/address/Gygj9QQby4j2jryqyqBHvLP7ctv2SaANgh4sCb69BUpA
+                                  - generic [ref=e980]: "43"
+                                - link [ref=e986]:
+                                  - /url: https://solscan.io/tx/2tDdDeMW5Yo8Y12vSxhavJ65HHmmyWfzgYBoi9VatxGaLyVU4NThn6iQd5MoHfSLysEUbwc4W8rAeSNrQ3ruWUu8
+                            - generic [ref=e992] [cursor=pointer]:
+                              - link "44s" [ref=e996]:
+                                - /url: https://solscan.io/tx/2mGhfnfeLwYJvFCaTTZkvAQ4YyUtUG2jnA17YUfrUqsgFEoJqTpW2izKPL6nkptZG5aHBKJuWkitqhMBnz1aqovy
+                              - generic [ref=e998]: Compra
+                              - generic "$878" [ref=e1001]
+                              - generic [ref=e1002]: 11,28K
+                              - generic [ref=e1004]: $0.009
+                              - generic [ref=e1006]: $0.003
+                              - generic [ref=e1009]:
+                                - link "9nRc...6f49 1" [ref=e1011]:
+                                  - /url: /sol/address/9nRcTMvQ7xNxHQz9vQ8Xbt8wvXoKYLjk8vEZiG856f49
+                                  - link "9nRc...6f49" [ref=e1026]:
+                                    - /url: /sol/address/9nRcTMvQ7xNxHQz9vQ8Xbt8wvXoKYLjk8vEZiG856f49
+                                  - generic [ref=e1031]: "1"
+                                - link [ref=e1037]:
+                                  - /url: https://solscan.io/tx/2mGhfnfeLwYJvFCaTTZkvAQ4YyUtUG2jnA17YUfrUqsgFEoJqTpW2izKPL6nkptZG5aHBKJuWkitqhMBnz1aqovy
+                            - generic [ref=e1043] [cursor=pointer]:
+                              - link "45s" [ref=e1047]:
+                                - /url: https://solscan.io/tx/33MJ3TLfPB5ZiQm279VtxFZ1LuxEbn11STZAgHskcZpEamPwQ93c2bNhfMRHGzGJCmTQ8sBXmkc8YQna9f5nCnrN
+                              - generic [ref=e1049]: Compra
+                              - generic "$778" [ref=e1052]
+                              - generic [ref=e1053]: 451.5K
+                              - generic [ref=e1055]: $0.351
+                              - generic [ref=e1057]: $0.004
+                              - generic [ref=e1060]:
+                                - link "MAYHEM 43" [ref=e1062]:
+                                  - /url: /sol/address/Gygj9QQby4j2jryqyqBHvLP7ctv2SaANgh4sCb69BUpA
+                                  - link "MAYHEM" [ref=e1075]:
+                                    - /url: /sol/address/Gygj9QQby4j2jryqyqBHvLP7ctv2SaANgh4sCb69BUpA
+                                  - generic [ref=e1080]: "43"
+                                - link [ref=e1086]:
+                                  - /url: https://solscan.io/tx/33MJ3TLfPB5ZiQm279VtxFZ1LuxEbn11STZAgHskcZpEamPwQ93c2bNhfMRHGzGJCmTQ8sBXmkc8YQna9f5nCnrN
+                            - generic [ref=e1092] [cursor=pointer]:
+                              - link "56s" [ref=e1096]:
+                                - /url: https://solscan.io/tx/4a1QvPoreX8DVP8w4K7Dv1B5QNEDGA4ogYT7VBdXg6V1gZzBViBkzyKQktY88xu4G7oruEPHECGMNC5s4qnS6zqq
+                              - generic [ref=e1098]: Vendi
+                              - generic "$874" [ref=e1101]
+                              - generic [ref=e1102]: 384.8K
+                              - generic [ref=e1104]: $0.336
+                              - generic [ref=e1106]: $0.005
+                              - generic [ref=e1109]:
+                                - link "MAYHEM Vault 50" [ref=e1111]:
+                                  - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - link "MAYHEM Vault" [ref=e1121]:
+                                    - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - generic [ref=e1126]: "50"
+                                - link [ref=e1132]:
+                                  - /url: https://solscan.io/tx/4a1QvPoreX8DVP8w4K7Dv1B5QNEDGA4ogYT7VBdXg6V1gZzBViBkzyKQktY88xu4G7oruEPHECGMNC5s4qnS6zqq
+                            - generic [ref=e1138] [cursor=pointer]:
+                              - link "1m" [ref=e1142]:
+                                - /url: https://solscan.io/tx/5dVAbN4JKWicNkEzJzDsC47kXnQP6kdTQ3viRsbhK955MmThov8geAzYdku2uN95iV7YzRvEMnrHe97xpQHC5GLH
+                              - generic [ref=e1144]: Compra
+                              - generic "$813" [ref=e1147]
+                              - generic [ref=e1148]: 264K
+                              - generic [ref=e1150]: $0.214
+                              - generic [ref=e1152]: $0.005
+                              - generic [ref=e1155]:
+                                - link "MAYHEM 43" [ref=e1157]:
+                                  - /url: /sol/address/Gygj9QQby4j2jryqyqBHvLP7ctv2SaANgh4sCb69BUpA
+                                  - link "MAYHEM" [ref=e1170]:
+                                    - /url: /sol/address/Gygj9QQby4j2jryqyqBHvLP7ctv2SaANgh4sCb69BUpA
+                                  - generic [ref=e1175]: "43"
+                                - link [ref=e1181]:
+                                  - /url: https://solscan.io/tx/5dVAbN4JKWicNkEzJzDsC47kXnQP6kdTQ3viRsbhK955MmThov8geAzYdku2uN95iV7YzRvEMnrHe97xpQHC5GLH
+                            - generic [ref=e1187] [cursor=pointer]:
+                              - link "1m" [ref=e1191]:
+                                - /url: https://solscan.io/tx/5aqWbsbgG8ByMttaSD9xwBqf7ebXeQT1PCG5UeNfJFbWtd1FRdtw899opuYTVTt6C6s14Yjzjxe7Vnz6eSAQhtfj
+                              - generic [ref=e1193]: Vendi
+                              - generic "$899" [ref=e1196]
+                              - generic [ref=e1197]: 333.6K
+                              - generic [ref=e1199]: $0.299
+                              - generic [ref=e1201]: $0.005
+                              - generic [ref=e1204]:
+                                - link "MAYHEM Vault 50" [ref=e1206]:
+                                  - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - link "MAYHEM Vault" [ref=e1216]:
+                                    - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - generic [ref=e1221]: "50"
+                                - link [ref=e1227]:
+                                  - /url: https://solscan.io/tx/5aqWbsbgG8ByMttaSD9xwBqf7ebXeQT1PCG5UeNfJFbWtd1FRdtw899opuYTVTt6C6s14Yjzjxe7Vnz6eSAQhtfj
+                            - generic [ref=e1233] [cursor=pointer]:
+                              - link "1m" [ref=e1237]:
+                                - /url: https://solscan.io/tx/2QfLvndGWYyd8LJqjYDuSPAQvMeW1b3aTeBu22mwgbK32dvLjAVLDPTVJAFRe1beANwsWkCXdUZ5b7xEf23AWBPF
+                              - generic [ref=e1239]: Vendi
+                              - generic "$1.04K" [ref=e1242]
+                              - generic [ref=e1243]: 493.2K
+                              - generic [ref=e1245]: $0.516
+                              - generic [ref=e1247]: $0.005
+                              - generic [ref=e1250]:
+                                - link "MAYHEM Vault 50" [ref=e1252]:
+                                  - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - link "MAYHEM Vault" [ref=e1262]:
+                                    - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - generic [ref=e1267]: "50"
+                                - link [ref=e1273]:
+                                  - /url: https://solscan.io/tx/2QfLvndGWYyd8LJqjYDuSPAQvMeW1b3aTeBu22mwgbK32dvLjAVLDPTVJAFRe1beANwsWkCXdUZ5b7xEf23AWBPF
+                            - generic [ref=e1279] [cursor=pointer]:
+                              - link "1m" [ref=e1283]:
+                                - /url: https://solscan.io/tx/2zS5buU7bp1ec4LuPrHhQMPmwx5pjD8bnowswVyKUZHajnBKk9FZgEvLdyjo19gukM1D34kApC96SSe2R8tTqG1j
+                              - generic [ref=e1285]: Compra
+                              - generic "$772" [ref=e1288]
+                              - generic [ref=e1289]: 1.2M
+                              - generic [ref=e1291]: $0.96
+                              - generic [ref=e1293]: $0.005
+                              - generic [ref=e1296]:
+                                - link "MAYHEM 43" [ref=e1298]:
+                                  - /url: /sol/address/Gygj9QQby4j2jryqyqBHvLP7ctv2SaANgh4sCb69BUpA
+                                  - link "MAYHEM" [ref=e1311]:
+                                    - /url: /sol/address/Gygj9QQby4j2jryqyqBHvLP7ctv2SaANgh4sCb69BUpA
+                                  - generic [ref=e1316]: "43"
+                                - link [ref=e1322]:
+                                  - /url: https://solscan.io/tx/2zS5buU7bp1ec4LuPrHhQMPmwx5pjD8bnowswVyKUZHajnBKk9FZgEvLdyjo19gukM1D34kApC96SSe2R8tTqG1j
+                            - generic [ref=e1328] [cursor=pointer]:
+                              - link "1m" [ref=e1332]:
+                                - /url: https://solscan.io/tx/2cn64uBjEX3KMboHK6k9eGpXCjBwf5XjRTvyd9hkUJuTmvJnQLUd7dmb3xAcMsZompEvrTQ7D6u94mcWo3xu6X55
+                              - generic [ref=e1334]: Compra
+                              - generic "$657" [ref=e1337]
+                              - generic [ref=e1338]: 603.9K
+                              - generic [ref=e1340]: $0.397
+                              - generic [ref=e1342]: $0.005
+                              - generic [ref=e1345]:
+                                - link "MAYHEM 43" [ref=e1347]:
+                                  - /url: /sol/address/Gygj9QQby4j2jryqyqBHvLP7ctv2SaANgh4sCb69BUpA
+                                  - link "MAYHEM" [ref=e1360]:
+                                    - /url: /sol/address/Gygj9QQby4j2jryqyqBHvLP7ctv2SaANgh4sCb69BUpA
+                                  - generic [ref=e1365]: "43"
+                                - link [ref=e1371]:
+                                  - /url: https://solscan.io/tx/2cn64uBjEX3KMboHK6k9eGpXCjBwf5XjRTvyd9hkUJuTmvJnQLUd7dmb3xAcMsZompEvrTQ7D6u94mcWo3xu6X55
+                            - generic [ref=e1377] [cursor=pointer]:
+                              - link "1m" [ref=e1381]:
+                                - /url: https://solscan.io/tx/3YNQ8GDqyt16Fqcyy6n8wvU21pzAsqywYSzJapFcHsWd7ngfcwjPrGq3VtBVZUThhcpciXUSigAq3pTfLqqMwxAK
+                              - generic [ref=e1383]: Vendi
+                              - generic "$951" [ref=e1386]
+                              - generic [ref=e1387]: 1.1M
+                              - generic [ref=e1389]: $1.026
+                              - generic [ref=e1391]: $0.005
+                              - generic [ref=e1394]:
+                                - link "MAYHEM Vault 50" [ref=e1396]:
+                                  - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - link "MAYHEM Vault" [ref=e1406]:
+                                    - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - generic [ref=e1411]: "50"
+                                - link [ref=e1417]:
+                                  - /url: https://solscan.io/tx/3YNQ8GDqyt16Fqcyy6n8wvU21pzAsqywYSzJapFcHsWd7ngfcwjPrGq3VtBVZUThhcpciXUSigAq3pTfLqqMwxAK
+                            - generic [ref=e1423] [cursor=pointer]:
+                              - link "1m" [ref=e1427]:
+                                - /url: https://solscan.io/tx/5PGSNhK4XAkfJrfo56Zk8wXty6HGSoaFj27qX8qEjg97uqkXaHYe7yAubMSnwsFWmkB2UgGLFDvZAEz2k1MkLV7N
+                              - generic [ref=e1429]: Compra
+                              - generic "$709" [ref=e1432]
+                              - generic [ref=e1433]: 1.2M
+                              - generic [ref=e1435]: $0.848
+                              - generic [ref=e1437]: $0.005
+                              - generic [ref=e1440]:
+                                - link "MAYHEM 43" [ref=e1442]:
+                                  - /url: /sol/address/Gygj9QQby4j2jryqyqBHvLP7ctv2SaANgh4sCb69BUpA
+                                  - link "MAYHEM" [ref=e1455]:
+                                    - /url: /sol/address/Gygj9QQby4j2jryqyqBHvLP7ctv2SaANgh4sCb69BUpA
+                                  - generic [ref=e1460]: "43"
+                                - link [ref=e1466]:
+                                  - /url: https://solscan.io/tx/5PGSNhK4XAkfJrfo56Zk8wXty6HGSoaFj27qX8qEjg97uqkXaHYe7yAubMSnwsFWmkB2UgGLFDvZAEz2k1MkLV7N
+                            - generic [ref=e1472] [cursor=pointer]:
+                              - link "1m" [ref=e1476]:
+                                - /url: https://solscan.io/tx/3N9xvMfq6FkLBrB9n4r8BGEUpQY6R7oE5ziRSMif7TMmxFhoBDhfSRBamsFFB7BZgenSe4herjvsrjDU2NheXMRE
+                              - generic [ref=e1478]: Vendi
+                              - generic "$766" [ref=e1481]
+                              - generic [ref=e1482]: 262.4K
+                              - generic [ref=e1484]: $0.201
+                              - generic [ref=e1486]: $0.005
+                              - generic [ref=e1489]:
+                                - link "MAYHEM Vault 50" [ref=e1491]:
+                                  - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - link "MAYHEM Vault" [ref=e1501]:
+                                    - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - generic [ref=e1506]: "50"
+                                - link [ref=e1512]:
+                                  - /url: https://solscan.io/tx/3N9xvMfq6FkLBrB9n4r8BGEUpQY6R7oE5ziRSMif7TMmxFhoBDhfSRBamsFFB7BZgenSe4herjvsrjDU2NheXMRE
+                            - generic [ref=e1518] [cursor=pointer]:
+                              - link "2m" [ref=e1522]:
+                                - /url: https://solscan.io/tx/5Sb7Qj8moMszq6vfVJkWGMCGV3tzDfAfmdLy5xwBx1t1tSQ28h9JHMU3KCBUSJedbAUzJ5GJP4PwMXaj7m4BrnxM
+                              - generic [ref=e1524]: Vendi
+                              - generic "$929" [ref=e1527]
+                              - generic [ref=e1528]: 610.8K
+                              - generic [ref=e1530]: $0.567
+                              - generic [ref=e1532]: $0.005
+                              - generic [ref=e1535]:
+                                - link "MAYHEM Vault 50" [ref=e1537]:
+                                  - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - link "MAYHEM Vault" [ref=e1547]:
+                                    - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - generic [ref=e1552]: "50"
+                                - link [ref=e1558]:
+                                  - /url: https://solscan.io/tx/5Sb7Qj8moMszq6vfVJkWGMCGV3tzDfAfmdLy5xwBx1t1tSQ28h9JHMU3KCBUSJedbAUzJ5GJP4PwMXaj7m4BrnxM
+                            - generic [ref=e1564] [cursor=pointer]:
+                              - link "2m" [ref=e1568]:
+                                - /url: https://solscan.io/tx/4fxATirrqNyEj6q1Mv923rTtiEm1RU49XqKGZPM4LFkhBSJk5j8w75FHq7MK2eYSbZ79bDgWq2NHJZAGqtjKVPx1
+                              - generic [ref=e1570]: Vendi
+                              - generic "$1.24K" [ref=e1573]
+                              - generic [ref=e1574]: 882.9K
+                              - generic [ref=e1576]: $1.099
+                              - generic [ref=e1578]: $0.005
+                              - generic [ref=e1581]:
+                                - link "MAYHEM Vault 50" [ref=e1583]:
+                                  - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - link "MAYHEM Vault" [ref=e1593]:
+                                    - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - generic [ref=e1598]: "50"
+                                - link [ref=e1604]:
+                                  - /url: https://solscan.io/tx/4fxATirrqNyEj6q1Mv923rTtiEm1RU49XqKGZPM4LFkhBSJk5j8w75FHq7MK2eYSbZ79bDgWq2NHJZAGqtjKVPx1
+                            - generic [ref=e1610] [cursor=pointer]:
+                              - link "2m" [ref=e1614]:
+                                - /url: https://solscan.io/tx/6oGcvu2ThkCDt7LLob1UNFnuL2DNscAn6SWV2jbb3M315tN5FGyj3GE921i8BmHFrGQLzSzAW6Nh5mVQxAuxePX
+                              - generic [ref=e1616]: Vendi
+                              - generic "$1.53K" [ref=e1619]
+                              - generic [ref=e1620]: 649.4K
+                              - generic [ref=e1622]: $0.994
+                              - generic [ref=e1624]: $0.005
+                              - generic [ref=e1627]:
+                                - link "MAYHEM Vault 50" [ref=e1629]:
+                                  - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - link "MAYHEM Vault" [ref=e1639]:
+                                    - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - generic [ref=e1644]: "50"
+                                - link [ref=e1650]:
+                                  - /url: https://solscan.io/tx/6oGcvu2ThkCDt7LLob1UNFnuL2DNscAn6SWV2jbb3M315tN5FGyj3GE921i8BmHFrGQLzSzAW6Nh5mVQxAuxePX
+                            - generic [ref=e1656] [cursor=pointer]:
+                              - link "2m" [ref=e1660]:
+                                - /url: https://solscan.io/tx/2cEtfTjwWeA5YVynyAL5XsHsDyt2CqNV6k31Zn3PmCLQBpswmHvs9q8xLoG8hGr6D6S1bzdx6uFUqqp3Vfmut3su
+                              - generic [ref=e1662]: Compra
+                              - generic "$1.11K" [ref=e1665]
+                              - generic [ref=e1666]: 1.3M
+                              - generic [ref=e1668]: $1.448
+                              - generic [ref=e1670]: $0.005
+                              - generic [ref=e1673]:
+                                - link "MAYHEM 43" [ref=e1675]:
+                                  - /url: /sol/address/Gygj9QQby4j2jryqyqBHvLP7ctv2SaANgh4sCb69BUpA
+                                  - link "MAYHEM" [ref=e1688]:
+                                    - /url: /sol/address/Gygj9QQby4j2jryqyqBHvLP7ctv2SaANgh4sCb69BUpA
+                                  - generic [ref=e1693]: "43"
+                                - link [ref=e1699]:
+                                  - /url: https://solscan.io/tx/2cEtfTjwWeA5YVynyAL5XsHsDyt2CqNV6k31Zn3PmCLQBpswmHvs9q8xLoG8hGr6D6S1bzdx6uFUqqp3Vfmut3su
+                            - generic [ref=e1705] [cursor=pointer]:
+                              - link "2m" [ref=e1709]:
+                                - /url: https://solscan.io/tx/2d1tP2SDpMG57Xi8ei3apfWVgLtZF4sL9XTyDtAQzstE9mTqrePFy8YDeVacoSekLPhvcdTjby4vP2orytTD9a76
+                              - generic [ref=e1711]: Compra
+                              - generic "$984" [ref=e1714]
+                              - generic [ref=e1715]: 467.1K
+                              - generic [ref=e1717]: $0.459
+                              - generic [ref=e1719]: $0.004
+                              - generic [ref=e1722]:
+                                - link "MAYHEM 43" [ref=e1724]:
+                                  - /url: /sol/address/Gygj9QQby4j2jryqyqBHvLP7ctv2SaANgh4sCb69BUpA
+                                  - link "MAYHEM" [ref=e1737]:
+                                    - /url: /sol/address/Gygj9QQby4j2jryqyqBHvLP7ctv2SaANgh4sCb69BUpA
+                                  - generic [ref=e1742]: "43"
+                                - link [ref=e1748]:
+                                  - /url: https://solscan.io/tx/2d1tP2SDpMG57Xi8ei3apfWVgLtZF4sL9XTyDtAQzstE9mTqrePFy8YDeVacoSekLPhvcdTjby4vP2orytTD9a76
+                            - generic [ref=e1754] [cursor=pointer]:
+                              - link "2m" [ref=e1758]:
+                                - /url: https://solscan.io/tx/5fVM948MaLpmFx64cit4fHmKNA6zALCQ6N1iuLp7p42od9n2GEMQ9RbosS6LLSAyx6EQtUJP8sRrmkuAnX9SwGd
+                              - generic [ref=e1760]: Vendi
+                              - generic "$1.59K" [ref=e1763]
+                              - generic [ref=e1764]: 1.3M
+                              - generic [ref=e1766]: $2.112
+                              - generic [ref=e1768]: $0.004
+                              - generic [ref=e1771]:
+                                - link "MAYHEM Vault 50" [ref=e1773]:
+                                  - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - link "MAYHEM Vault" [ref=e1783]:
+                                    - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - generic [ref=e1788]: "50"
+                                - link [ref=e1794]:
+                                  - /url: https://solscan.io/tx/5fVM948MaLpmFx64cit4fHmKNA6zALCQ6N1iuLp7p42od9n2GEMQ9RbosS6LLSAyx6EQtUJP8sRrmkuAnX9SwGd
+                            - generic [ref=e1800] [cursor=pointer]:
+                              - link "2m" [ref=e1804]:
+                                - /url: https://solscan.io/tx/4ZWt39fBmTdDfo92Cq2NBQQbioVRr2wxPie5ShNsHiG5cP7fABc7BqmcNToAtV6t14WZq2e6jXKKAHTjFXY6hzt8
+                              - generic [ref=e1806]: Compra
+                              - generic "$1.49K" [ref=e1809]
+                              - generic [ref=e1810]: 235.9K
+                              - generic [ref=e1812]: $0.351
+                              - generic [ref=e1814]: $0.004
+                              - generic [ref=e1817]:
+                                - link "MAYHEM 43" [ref=e1819]:
+                                  - /url: /sol/address/Gygj9QQby4j2jryqyqBHvLP7ctv2SaANgh4sCb69BUpA
+                                  - link "MAYHEM" [ref=e1832]:
+                                    - /url: /sol/address/Gygj9QQby4j2jryqyqBHvLP7ctv2SaANgh4sCb69BUpA
+                                  - generic [ref=e1837]: "43"
+                                - link [ref=e1843]:
+                                  - /url: https://solscan.io/tx/4ZWt39fBmTdDfo92Cq2NBQQbioVRr2wxPie5ShNsHiG5cP7fABc7BqmcNToAtV6t14WZq2e6jXKKAHTjFXY6hzt8
+                            - generic [ref=e1849] [cursor=pointer]:
+                              - link "2m" [ref=e1853]:
+                                - /url: https://solscan.io/tx/48WpCbm2wW3PKDzaxNMDbhom3ptEz6BqhtqKAB3pdDddoJWtpUGSHvLkFicZqYazf3CVophrfwmFMQq32p1DPr8Y
+                              - generic [ref=e1855]: Compra
+                              - generic "$1.38K" [ref=e1858]
+                              - generic [ref=e1859]: 261.2K
+                              - generic [ref=e1861]: $0.362
+                              - generic [ref=e1863]: $0.004
+                              - generic [ref=e1866]:
+                                - link "MAYHEM 43" [ref=e1868]:
+                                  - /url: /sol/address/Gygj9QQby4j2jryqyqBHvLP7ctv2SaANgh4sCb69BUpA
+                                  - link "MAYHEM" [ref=e1881]:
+                                    - /url: /sol/address/Gygj9QQby4j2jryqyqBHvLP7ctv2SaANgh4sCb69BUpA
+                                  - generic [ref=e1886]: "43"
+                                - link [ref=e1892]:
+                                  - /url: https://solscan.io/tx/48WpCbm2wW3PKDzaxNMDbhom3ptEz6BqhtqKAB3pdDddoJWtpUGSHvLkFicZqYazf3CVophrfwmFMQq32p1DPr8Y
+                            - generic [ref=e1898] [cursor=pointer]:
+                              - link "2m" [ref=e1902]:
+                                - /url: https://solscan.io/tx/4CxL74wRnAiiXWHG6EgSRFgyrDTDs6MbZ8B8bMaKYmDQAGqMn6m9zLMvxVPM13Z3BJ7bT11ApvpzjZdN3uwW81Fv
+                              - generic [ref=e1904]: Vendi
+                              - generic "$1.63K" [ref=e1907]
+                              - generic [ref=e1908]: 535.3K
+                              - generic [ref=e1910]: $0.877
+                              - generic [ref=e1912]: $0.004
+                              - generic [ref=e1915]:
+                                - link "MAYHEM Vault 50" [ref=e1917]:
+                                  - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - link "MAYHEM Vault" [ref=e1927]:
+                                    - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - generic [ref=e1932]: "50"
+                                - link [ref=e1938]:
+                                  - /url: https://solscan.io/tx/4CxL74wRnAiiXWHG6EgSRFgyrDTDs6MbZ8B8bMaKYmDQAGqMn6m9zLMvxVPM13Z3BJ7bT11ApvpzjZdN3uwW81Fv
+                            - generic [ref=e1944] [cursor=pointer]:
+                              - link "2m" [ref=e1948]:
+                                - /url: https://solscan.io/tx/c2mtEZS52ACPgMMCPGkMKSeBTYkmQKi2wcf3ssfmuSJxkqvPQ5RTmruz9NLwGzasaKzVLE9oKBYcRLp4qqDKwwb
+                              - generic [ref=e1950]: Compra
+                              - generic "$1.29K" [ref=e1953]
+                              - generic [ref=e1954]: 933.8K
+                              - generic [ref=e1956]: $1.207
+                              - generic [ref=e1958]: $0.004
+                              - generic [ref=e1961]:
+                                - link "MAYHEM 43" [ref=e1963]:
+                                  - /url: /sol/address/Gygj9QQby4j2jryqyqBHvLP7ctv2SaANgh4sCb69BUpA
+                                  - link "MAYHEM" [ref=e1976]:
+                                    - /url: /sol/address/Gygj9QQby4j2jryqyqBHvLP7ctv2SaANgh4sCb69BUpA
+                                  - generic [ref=e1981]: "43"
+                                - link [ref=e1987]:
+                                  - /url: https://solscan.io/tx/c2mtEZS52ACPgMMCPGkMKSeBTYkmQKi2wcf3ssfmuSJxkqvPQ5RTmruz9NLwGzasaKzVLE9oKBYcRLp4qqDKwwb
+                            - generic [ref=e1993] [cursor=pointer]:
+                              - link "2m" [ref=e1997]:
+                                - /url: https://solscan.io/tx/3GWfFfjyNfxyJCqEfpDGE5pkfbEj1fUb995zwoTVGbnQEN25BfxQcsovi2NgJNTGQjJ59yRF6ixPnjYvyZLxTc4H
+                              - generic [ref=e1999]: Compra
+                              - generic "$1.06K" [ref=e2002]
+                              - generic [ref=e2003]: 752K
+                              - generic [ref=e2005]: $0.798
+                              - generic [ref=e2007]: $0.004
+                              - generic [ref=e2010]:
+                                - link "MAYHEM 43" [ref=e2012]:
+                                  - /url: /sol/address/Gygj9QQby4j2jryqyqBHvLP7ctv2SaANgh4sCb69BUpA
+                                  - link "MAYHEM" [ref=e2025]:
+                                    - /url: /sol/address/Gygj9QQby4j2jryqyqBHvLP7ctv2SaANgh4sCb69BUpA
+                                  - generic [ref=e2030]: "43"
+                                - link [ref=e2036]:
+                                  - /url: https://solscan.io/tx/3GWfFfjyNfxyJCqEfpDGE5pkfbEj1fUb995zwoTVGbnQEN25BfxQcsovi2NgJNTGQjJ59yRF6ixPnjYvyZLxTc4H
+                            - generic [ref=e2042] [cursor=pointer]:
+                              - link "2m" [ref=e2046]:
+                                - /url: https://solscan.io/tx/5bay7oEdiGUJMuCjWRaTgqZkofvHnKcxVBknPMmwra31dRoeBAvEd8AA5C6GZcVsCj1FGcqZBsm59oT2jrK2j5Fq
+                              - generic [ref=e2048]: Vendi
+                              - generic "$1.37K" [ref=e2051]
+                              - generic [ref=e2052]: 794.1K
+                              - generic [ref=e2054]: $1.091
+                              - generic [ref=e2056]: $0.004
+                              - generic [ref=e2059]:
+                                - link "MAYHEM Vault 50" [ref=e2061]:
+                                  - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - link "MAYHEM Vault" [ref=e2071]:
+                                    - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - generic [ref=e2076]: "50"
+                                - link [ref=e2082]:
+                                  - /url: https://solscan.io/tx/5bay7oEdiGUJMuCjWRaTgqZkofvHnKcxVBknPMmwra31dRoeBAvEd8AA5C6GZcVsCj1FGcqZBsm59oT2jrK2j5Fq
+                            - generic [ref=e2088] [cursor=pointer]:
+                              - link "3m" [ref=e2092]:
+                                - /url: https://solscan.io/tx/3AKKdjpUkayJryBYTCwpopXDAPYziKc2wTWH2aMj6oG15dK4951HxfQm5AqnWMyvrFG8dt98aekVfUb57YLT6P4v
+                              - generic [ref=e2094]: Vendi
+                              - generic "$1.50K" [ref=e2097]
+                              - generic [ref=e2098]: 290.2K
+                              - generic [ref=e2100]: $0.435
+                              - generic [ref=e2102]: $0.004
+                              - generic [ref=e2105]:
+                                - link "MAYHEM Vault 50" [ref=e2107]:
+                                  - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - link "MAYHEM Vault" [ref=e2117]:
+                                    - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - generic [ref=e2122]: "50"
+                                - link [ref=e2128]:
+                                  - /url: https://solscan.io/tx/3AKKdjpUkayJryBYTCwpopXDAPYziKc2wTWH2aMj6oG15dK4951HxfQm5AqnWMyvrFG8dt98aekVfUb57YLT6P4v
+                            - generic [ref=e2134] [cursor=pointer]:
+                              - link "3m" [ref=e2138]:
+                                - /url: https://solscan.io/tx/22zAomit3UEUc1BkANc9H44tNBZqAkKS2baY19feQNRj57LUaFKUPxYqs2Gdq9MjsH5RirXtpByeRLxa7QfF3ki2
+                              - generic [ref=e2140]: Vendi
+                              - generic "$1.58K" [ref=e2143]
+                              - generic [ref=e2144]: 193.2K
+                              - generic [ref=e2146]: $0.307
+                              - generic [ref=e2148]: $0.003
+                              - generic [ref=e2151]:
+                                - link "MAYHEM Vault 50" [ref=e2153]:
+                                  - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - link "MAYHEM Vault" [ref=e2163]:
+                                    - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - generic [ref=e2168]: "50"
+                                - link [ref=e2174]:
+                                  - /url: https://solscan.io/tx/22zAomit3UEUc1BkANc9H44tNBZqAkKS2baY19feQNRj57LUaFKUPxYqs2Gdq9MjsH5RirXtpByeRLxa7QfF3ki2
+                            - generic [ref=e2180] [cursor=pointer]:
+                              - link "3m" [ref=e2184]:
+                                - /url: https://solscan.io/tx/5JBiXT6cTeHnythZjevfgtcnoodunZyEFftgxCXy1Ucnw7cYEtRs3BJ7PvHLQLQUqdszzkWasmLf23FAvYzrMVv7
+                              - generic [ref=e2186]: Compra
+                              - generic "$1.45K" [ref=e2189]
+                              - generic [ref=e2190]: 325.8K
+                              - generic [ref=e2192]: $0.473
+                              - generic [ref=e2194]: $0.003
+                              - generic [ref=e2197]:
+                                - link "MAYHEM 43" [ref=e2199]:
+                                  - /url: /sol/address/Gygj9QQby4j2jryqyqBHvLP7ctv2SaANgh4sCb69BUpA
+                                  - link "MAYHEM" [ref=e2212]:
+                                    - /url: /sol/address/Gygj9QQby4j2jryqyqBHvLP7ctv2SaANgh4sCb69BUpA
+                                  - generic [ref=e2217]: "43"
+                                - link [ref=e2223]:
+                                  - /url: https://solscan.io/tx/5JBiXT6cTeHnythZjevfgtcnoodunZyEFftgxCXy1Ucnw7cYEtRs3BJ7PvHLQLQUqdszzkWasmLf23FAvYzrMVv7
+                            - generic [ref=e2229] [cursor=pointer]:
+                              - link "3m" [ref=e2233]:
+                                - /url: https://solscan.io/tx/4SG211apKWtMxKqwC8jk5z7kmYfmZs9JcZz7HSg3CSfcqAvyjCpZweXz7BEun85rgiNxcjCW2gLbkiZFWuZya7mK
+                              - generic [ref=e2235]: Vendi
+                              - generic "$1.53K" [ref=e2238]
+                              - generic [ref=e2239]: 180.7K
+                              - generic [ref=e2241]: $0.276
+                              - generic [ref=e2243]: $0.003
+                              - generic [ref=e2246]:
+                                - link "MAYHEM Vault 50" [ref=e2248]:
+                                  - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - link "MAYHEM Vault" [ref=e2258]:
+                                    - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - generic [ref=e2263]: "50"
+                                - link [ref=e2269]:
+                                  - /url: https://solscan.io/tx/4SG211apKWtMxKqwC8jk5z7kmYfmZs9JcZz7HSg3CSfcqAvyjCpZweXz7BEun85rgiNxcjCW2gLbkiZFWuZya7mK
+                            - generic [ref=e2275] [cursor=pointer]:
+                              - link "3m" [ref=e2279]:
+                                - /url: https://solscan.io/tx/5YtFEjfs4UV26S1r3CN216rs68VFKgjPB8PGp8nGjiPG8szigdJVbwuLGVn6m6JP8iCG7cu1MfCEyp8woa2PDPHk
+                              - generic [ref=e2281]: Vendi
+                              - generic "$1.75K" [ref=e2284]
+                              - generic [ref=e2285]: 445.6K
+                              - generic [ref=e2287]: $0.782
+                              - generic [ref=e2289]: $0.003
+                              - generic [ref=e2292]:
+                                - link "MAYHEM Vault 50" [ref=e2294]:
+                                  - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - link "MAYHEM Vault" [ref=e2304]:
+                                    - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - generic [ref=e2309]: "50"
+                                - link [ref=e2315]:
+                                  - /url: https://solscan.io/tx/5YtFEjfs4UV26S1r3CN216rs68VFKgjPB8PGp8nGjiPG8szigdJVbwuLGVn6m6JP8iCG7cu1MfCEyp8woa2PDPHk
+                            - generic [ref=e2321] [cursor=pointer]:
+                              - link "3m" [ref=e2325]:
+                                - /url: https://solscan.io/tx/2noJd2ncu49v3bAUvR15wrTicXqHCWnxUY9Xxq6seirk4BoBdGDHdavBCHvi4aHMkAgVY5rwYpgxWRpec29rR553
+                              - generic [ref=e2327]: Vendi
+                              - generic "$2.15K" [ref=e2330]
+                              - generic [ref=e2331]: 638.3K
+                              - generic [ref=e2333]: $1.373
+                              - generic [ref=e2335]: $0.003
+                              - generic [ref=e2338]:
+                                - link "MAYHEM Vault 50" [ref=e2340]:
+                                  - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - link "MAYHEM Vault" [ref=e2350]:
+                                    - /url: /sol/address/BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s
+                                  - generic [ref=e2355]: "50"
+                                - link [ref=e2361]:
+                                  - /url: https://solscan.io/tx/2noJd2ncu49v3bAUvR15wrTicXqHCWnxUY9Xxq6seirk4BoBdGDHdavBCHvi4aHMkAgVY5rwYpgxWRpec29rR553
+                            - generic [ref=e2367] [cursor=pointer]:
+                              - link "3m" [ref=e2371]:
+                                - /url: https://solscan.io/tx/5SZ9L5J9pGWQvfXRVCb5JpiU1vY92sJaorXFGXHR5HV99g3Eg9xp1pSb73Zrzdo69FSe4TqeStHMSePfbnsmJjhb
+                              - generic [ref=e2373]: Compra
+                              - generic "$1.56K" [ref=e2376]
+                              - generic [ref=e2377]: 1.3M
+                              - generic [ref=e2379]: $2.036
+                              - generic [ref=e2381]: $0.003
+                              - generic [ref=e2384]:
+                                - link "MAYHEM 43" [ref=e2386]:
+                                  - /url: /sol/address/Gygj9QQby4j2jryqyqBHvLP7ctv2SaANgh4sCb69BUpA
+                                  - link "MAYHEM" [ref=e2399]:
+                                    - /url: /sol/address/Gygj9QQby4j2jryqyqBHvLP7ctv2SaANgh4sCb69BUpA
+                                  - generic [ref=e2404]: "43"
+                                - link [ref=e2410]:
+                                  - /url: https://solscan.io/tx/5SZ9L5J9pGWQvfXRVCb5JpiU1vY92sJaorXFGXHR5HV99g3Eg9xp1pSb73Zrzdo69FSe4TqeStHMSePfbnsmJjhb
+                            - generic [ref=e2416] [cursor=pointer]:
+                              - link "3m" [ref=e2420]:
+                                - /url: https://solscan.io/tx/3ozE1SaQjRpURfj38AmWR93CsM8CsoPr7NK3eA8owUw14h1X8t7DTTb5daUoubmEa7YRLgccni97hGvRbVjbaUCu
+                              - generic [ref=e2422]: Compra
+                              - generic "$1.22K" [ref=e2425]
+                              - generic [ref=e2426]: 992.4K
+                              - generic [ref=e2428]: $1.21
+                              - generic [ref=e2430]: $0.004
+                              - generic [ref=e2433]:
+                                - link "MAYHEM 43" [ref=e2435]:
+                                  - /url: /sol/address/Gygj9QQby4j2jryqyqBHvLP7ctv2SaANgh4sCb69BUpA
+                                  - link "MAYHEM" [ref=e2448]:
+                                    - /url: /sol/address/Gygj9QQby4j2jryqyqBHvLP7ctv2SaANgh4sCb69BUpA
+                                  - generic [ref=e2453]: "43"
+                                - link [ref=e2459]:
+                                  - /url: https://solscan.io/tx/3ozE1SaQjRpURfj38AmWR93CsM8CsoPr7NK3eA8owUw14h1X8t7DTTb5daUoubmEa7YRLgccni97hGvRbVjbaUCu
+                          - generic [ref=e2462] [cursor=pointer]: Caricamento...
+            - generic [ref=e2463]:
+              - generic [ref=e2466]:
+                - generic [ref=e2467]:
+                  - generic [ref=e2468]:
+                    - generic [ref=e2469] [cursor=pointer]:
+                      - generic [ref=e2470]: 1m
+                      - generic [ref=e2471]: +12.16%
+                    - generic [ref=e2472] [cursor=pointer]:
+                      - generic [ref=e2473]: 5m
+                      - generic [ref=e2474]: "-80.46%"
+                    - generic [ref=e2475] [cursor=pointer]:
+                      - generic [ref=e2476]: 1h
+                      - generic [ref=e2477]: "-67.64%"
+                    - generic [ref=e2478] [cursor=pointer]:
+                      - generic [ref=e2479]: 24h
+                      - generic [ref=e2480]: "-67.64%"
+                  - generic [ref=e2481]:
+                    - generic [ref=e2482]:
+                      - generic [ref=e2483]: Vol
+                      - generic [ref=e2484]: $82.33
+                    - generic [ref=e2485]:
+                      - generic [ref=e2486]: Acquisti
+                      - generic [ref=e2487]:
+                        - text: "31"
+                        - generic [ref=e2488]: /
+                        - text: $37.74
+                    - generic [ref=e2489]:
+                      - generic [ref=e2490]: Vendite
+                      - generic [ref=e2491]:
+                        - text: "36"
+                        - generic [ref=e2492]: /
+                        - text: $44.59
+                    - generic [ref=e2493]:
+                      - generic [ref=e2494]: Acquisto netto
+                      - generic [ref=e2495]: "-$6.85"
+                - generic [ref=e2497] [cursor=pointer]:
+                  - generic [ref=e2498]: Dev's Best Token
+                  - generic [ref=e2503]:
+                    - generic [ref=e2509]: HALH
+                    - generic [ref=e2510]:
+                      - generic [ref=e2511]: (
+                      - generic [ref=e2512]:
+                        - generic [ref=e2513]: ATH MC
+                        - generic [ref=e2514]: $64K
+                      - generic [ref=e2515]: )
+                - generic [ref=e2516] [cursor=pointer]:
+                  - generic [ref=e2517]: Trading in secondi 🚀
+                  - button "Login GMGN" [ref=e2522]
+                - generic [ref=e2525]:
+                  - generic [ref=e2526]:
+                    - generic [ref=e2529]:
+                      - generic [ref=e2530] [cursor=pointer]: P1
+                      - generic [ref=e2532] [cursor=pointer]: P2
+                      - generic [ref=e2534] [cursor=pointer]: P3
+                    - generic [ref=e2537] [cursor=pointer]
+                  - generic [ref=e2541]:
+                    - generic [ref=e2542]:
+                      - generic [ref=e2543] [cursor=pointer]: Compra
+                      - generic [ref=e2544] [cursor=pointer]: Vendi
+                      - generic [ref=e2545] [cursor=pointer]: Auto
+                    - generic [ref=e2547]:
+                      - generic [ref=e2548]: "0"
+                      - generic [ref=e2549]: SOL
+                    - generic [ref=e2551]:
+                      - generic [ref=e2552]:
+                        - generic [ref=e2554]:
+                          - generic [ref=e2555]:
+                            - generic [ref=e2556]: Importo
+                            - spinbutton [ref=e2558]
+                            - generic [ref=e2559]: SOL
+                          - generic [ref=e2561]:
+                            - generic [ref=e2562] [cursor=pointer]: "0.01"
+                            - generic [ref=e2563] [cursor=pointer]: "0.1"
+                            - generic [ref=e2564] [cursor=pointer]: "0.5"
+                            - generic [ref=e2565] [cursor=pointer]: "1"
+                            - generic [ref=e2566] [cursor=pointer]
+                        - generic [ref=e2570]:
+                          - generic [ref=e2571]: 1 SOL ≈ 110M SXSN
+                          - generic [ref=e2572] [cursor=pointer]
+                      - button "Compra" [ref=e2578]
+                      - generic [ref=e2583] [cursor=pointer]:
+                        - generic [ref=e2584]: Auto
+                        - generic [ref=e2592]: "0.0001"
+                        - generic [ref=e2599]: <0.01
+                        - generic [ref=e2607]: Red.
+                - generic [ref=e2616]:
+                  - generic [ref=e2617]:
+                    - generic [ref=e2619] [cursor=pointer]:
+                      - generic [ref=e2620]: Top 10
+                      - generic [ref=e2622]: 0.35%
+                    - generic [ref=e2628] [cursor=pointer]:
+                      - generic [ref=e2629]: DEV
+                      - generic [ref=e2631]: 0.35%
+                    - generic [ref=e2637] [cursor=pointer]:
+                      - generic [ref=e2638]: Detentori
+                      - generic [ref=e2640]: "4"
+                    - generic [ref=e2644] [cursor=pointer]:
+                      - generic [ref=e2645]: Cecchino
+                      - generic [ref=e2647]: 0.35%
+                  - generic [ref=e2656]:
+                    - generic [ref=e2659] [cursor=pointer]:
+                      - generic [ref=e2660]: Insiders
+                      - generic [ref=e2662]: 0%
+                    - generic [ref=e2665] [cursor=pointer]:
+                      - generic [ref=e2666]: Portafoglio di phishing
+                      - generic [ref=e2668]: 0%
+                    - generic [ref=e2671] [cursor=pointer]:
+                      - generic [ref=e2672]: Bundler
+                      - generic [ref=e2674]: 0%
+                    - generic [ref=e2677] [cursor=pointer]:
+                      - generic [ref=e2678]: Dex Paid
+                      - generic [ref=e2680]: Unpaid
+                  - generic [ref=e2682]:
+                    - generic [ref=e2683]: NoMint
+                    - generic [ref=e2692]: No Blacklist
+                    - generic [ref=e2702]:
+                      - generic [ref=e2703]: Bruciato
+                      - generic [ref=e2705]: 🔥 100%
+                    - generic [ref=e2707] [cursor=pointer]:
+                      - generic [ref=e2708]: La Probabilità di rug
+                      - generic [ref=e2710]: 50%
+                  - generic [ref=e2716]: I nuovi token potrebbero non essere rilevati accuratamente e contenere metodi dannosi. Scambia con cautela.
+                - generic [ref=e2722]:
+                  - generic [ref=e2723]:
+                    - generic [ref=e2724]:
+                      - text: PUMP Pool info
+                      - generic [ref=e2725] [cursor=pointer]
+                    - link [ref=e2728] [cursor=pointer]:
+                      - /url: https://solscan.io/account/F55h2x6X8rUDqHSWQA2RHoTH7TkVrJtq4eKrA9Eecszb
+                  - generic [ref=e2731]:
+                    - generic [ref=e2732]: Total liq
+                    - generic [ref=e2733]: $6,03K(0.02 SOL)
+                  - generic [ref=e2742]:
+                    - generic [ref=e2743]: Coppia
+                    - generic [ref=e2744]: LIQ. TOT/Iniziale
+                    - generic [ref=e2745]: Valore
+                    - generic [ref=e2746]: SXSN
+                    - generic [ref=e2747]:
+                      - text: 996.6M
+                      - generic [ref=e2748]:
+                        - text: / 1B
+                        - generic [ref=e2749]: (99.99%)
+                    - generic [ref=e2750]: $908,83
+                    - generic [ref=e2751]: SOL
+                    - generic [ref=e2752]:
+                      - text: "0.02"
+                      - generic [ref=e2753]:
+                        - text: / 0.0₃80264
+                        - generic [ref=e2754]: (+2.4K%)
+                    - generic [ref=e2755]: $2.04
+                - generic [ref=e2756]:
+                  - generic [ref=e2757]:
+                    - text: DEV Info
+                    - generic [ref=e2758] [cursor=pointer]
+                  - generic [ref=e2761]:
+                    - generic [ref=e2762]: DEV
+                    - generic [ref=e2763]:
+                      - link "FSg9...15es (0.02 SOL)" [ref=e2764] [cursor=pointer]:
+                        - /url: /sol/address/FSg9VbQpdSVpwnaYAKyNpKAtnA1B3pTAQMZinzDz15es
+                        - generic [ref=e2765]: FSg9...15es
+                        - text: (0.02 SOL)
+                      - generic [ref=e2767]:
+                        - img [ref=e2768] [cursor=pointer]
+                        - img [ref=e2772] [cursor=pointer]
+                        - link [ref=e2776] [cursor=pointer]:
+                          - /url: https://x.com/search?q=FSg9VbQpdSVpwnaYAKyNpKAtnA1B3pTAQMZinzDz15es
+                        - link [ref=e2782] [cursor=pointer]:
+                          - /url: https://solscan.io/account/FSg9VbQpdSVpwnaYAKyNpKAtnA1B3pTAQMZinzDz15es
+                  - generic [ref=e2785]:
+                    - generic [ref=e2786]: Fonte
+                    - generic [ref=e2789]:
+                      - link "F7p3...gmNe" [ref=e2794] [cursor=pointer]:
+                        - /url: https://solscan.io/account/F7p3dFrjRTbtRp8FRF6qHLomXbKRBzpvBLjtQcfcgmNe
+                      - generic [ref=e2797]:
+                        - generic [ref=e2798]: "0.032"
+                        - link "10h" [ref=e2800] [cursor=pointer]:
+                          - /url: https://solscan.io/tx/Mg7ZeaWgVwcjvXJoF3DJKcKAtTa8wu3EKK8fgtp5eCtkL53Pt4TCHHxmW6n2RvFzcUatvvtzLkUrKZzPtWrDCCq
+                - generic [ref=e2802]:
+                  - generic [ref=e2803]:
+                    - text: Basic Data
+                    - generic [ref=e2804] [cursor=pointer]
+                  - generic [ref=e2807]:
+                    - generic [ref=e2808]: Market cap
+                    - generic [ref=e2809]: $912.0226
+                  - generic [ref=e2810]:
+                    - generic [ref=e2811]: Detentori
+                    - generic [ref=e2812]: "4"
+                  - generic [ref=e2813]:
+                    - generic [ref=e2814]: Offerta Totale
+                    - generic [ref=e2815]: 1.01B
+                  - generic [ref=e2816]:
+                    - generic [ref=e2817]: Coppia
+                    - generic [ref=e2818]:
+                      - text: F55h...cszb
+                      - img [ref=e2819] [cursor=pointer]
+                  - generic [ref=e2822]:
+                    - generic [ref=e2823]: Token created
+                    - generic [ref=e2824]: 09/13/2026 10:26:43
+                  - generic [ref=e2825]:
+                    - generic [ref=e2826]: Pool creato
+                    - generic [ref=e2827]: 09/13/2026 10:26:43
+                - generic [ref=e2828]:
+                  - generic [ref=e2830]:
+                    - text: Token Audit
+                    - generic [ref=e2831] [cursor=pointer]
+                  - generic [ref=e2834]: NoMint
+                  - generic [ref=e2843]: No Blacklist
+                  - generic [ref=e2852]: Bruciato
+                  - generic [ref=e2862]:
+                    - generic [ref=e2863]: Top 10
+                    - generic [ref=e2865]: 0%
+                  - link "GoPlus" [ref=e2871] [cursor=pointer]:
+                    - /url: https://gopluslabs.io/token-security/solana/GPynmfqNfk7atMhsFM4USyHDq4gzJVgN2bj9RUsMpump
+                - generic [ref=e2873]:
+                  - generic [ref=e2875]:
+                    - generic [ref=e2876]:
+                      - text: Avatar Reused Tokens
+                      - generic [ref=e2877] [cursor=pointer]
+                    - generic [ref=e2880]: MC
+                  - generic [ref=e2882]:
+                    - generic [ref=e2883] [cursor=pointer]:
+                      - generic [ref=e2884]:
+                        - generic [ref=e2885]:
+                          - generic [ref=e2888]:
+                            - link [ref=e2889]:
+                              - /url: https://lens.google.com/uploadbyurl?url=https://gmgn.ai/external-res/889ec97064ebf1fc0cba4f8d158e4bc7_v2.webp
+                            - img "logo" [ref=e2893]
+                          - generic [ref=e2894]: SXSN
+                        - generic [ref=e2896]: $27K
+                      - generic [ref=e2898]:
+                        - generic [ref=e2899]: DdzA...pump
+                        - generic [ref=e2900]: 10d
+                    - generic [ref=e2901] [cursor=pointer]:
+                      - generic [ref=e2902]:
+                        - generic [ref=e2903]:
+                          - generic [ref=e2906]:
+                            - link [ref=e2907]:
+                              - /url: https://lens.google.com/uploadbyurl?url=https://gmgn.ai/external-res/889ec97064ebf1fc0cba4f8d158e4bc7_v2.webp
+                            - img "logo" [ref=e2911]
+                          - generic [ref=e2912]: SXSN
+                        - generic [ref=e2914]: $25.9K
+                      - generic [ref=e2916]:
+                        - generic [ref=e2917]: ENcc...pump
+                        - generic [ref=e2918]: 11d
+                    - generic [ref=e2919] [cursor=pointer]:
+                      - generic [ref=e2920]:
+                        - generic [ref=e2921]:
+                          - generic [ref=e2924]:
+                            - link [ref=e2925]:
+                              - /url: https://lens.google.com/uploadbyurl?url=https://gmgn.ai/external-res/889ec97064ebf1fc0cba4f8d158e4bc7_v2.webp
+                            - img "logo" [ref=e2929]
+                          - generic [ref=e2930]: SXSN
+                        - generic [ref=e2932]: $18.4K
+                      - generic [ref=e2934]:
+                        - generic [ref=e2935]: L99G...pump
+                        - generic [ref=e2936]: 10d
+                    - generic [ref=e2937] [cursor=pointer]:
+                      - generic [ref=e2938]:
+                        - generic [ref=e2939]:
+                          - generic [ref=e2942]:
+                            - link [ref=e2943]:
+                              - /url: https://lens.google.com/uploadbyurl?url=https://gmgn.ai/external-res/889ec97064ebf1fc0cba4f8d158e4bc7_v2.webp
+                            - img "logo" [ref=e2947]
+                          - generic [ref=e2948]: SXSN
+                        - generic [ref=e2950]: $11.9K
+                      - generic [ref=e2952]:
+                        - generic [ref=e2953]: 83tJ...pump
+                        - generic [ref=e2954]: 10d
+                    - generic [ref=e2955] [cursor=pointer]:
+                      - generic [ref=e2956]:
+                        - generic [ref=e2957]:
+                          - generic [ref=e2960]:
+                            - link [ref=e2961]:
+                              - /url: https://lens.google.com/uploadbyurl?url=https://gmgn.ai/external-res/889ec97064ebf1fc0cba4f8d158e4bc7_v2.webp
+                            - img "logo" [ref=e2965]
+                          - generic [ref=e2966]: SXSN
+                        - generic [ref=e2968]: $9,93K
+                      - generic [ref=e2970]:
+                        - generic [ref=e2971]: FDt1...pump
+                        - generic [ref=e2972]: 9d
+                - generic [ref=e2973]:
+                  - generic [ref=e2974]:
+                    - generic [ref=e2975]:
+                      - text: Same Name Tokens
+                      - generic [ref=e2976] [cursor=pointer]
+                    - generic [ref=e2979] [cursor=pointer]: MC
+                  - generic [ref=e2985]:
+                    - 'link "logo SXSN 67% 8d TX: 6d $199K" [ref=e2986] [cursor=pointer]':
+                      - /url: /sol/token/Bw63htRP6TrPAwPYDvzpZ1mBPBqrAJppg25EKVG4pump
+                      - generic [ref=e2987]:
+                        - generic [ref=e2988]:
+                          - generic [ref=e2991]:
+                            - link [ref=e2992]:
+                              - /url: https://lens.google.com/uploadbyurl?url=https://gmgn.ai/external-res/889ec97064ebf1fc0cba4f8d158e4bc7_v2.webp
+                            - img "logo" [ref=e2996]
+                          - generic [ref=e2997]:
+                            - generic [ref=e2998]: SXSN
+                            - generic [ref=e2999]: 67%
+                        - generic [ref=e3000]: 8d
+                      - generic [ref=e3001]:
+                        - generic [ref=e3002]:
+                          - generic [ref=e3003]: "TX:"
+                          - generic [ref=e3004]: 6d
+                        - generic [ref=e3005]: $199K
+                    - 'link "logo SXSN 67% 8d TX: 7d $192.1K" [ref=e3007] [cursor=pointer]':
+                      - /url: /sol/token/CTEHTdkeXM7mE4BGkdWPUXXBrq2cFvk41kGXKiGBpump
+                      - generic [ref=e3008]:
+                        - generic [ref=e3009]:
+                          - generic [ref=e3012]:
+                            - link [ref=e3013]:
+                              - /url: https://lens.google.com/uploadbyurl?url=https://gmgn.ai/external-res/889ec97064ebf1fc0cba4f8d158e4bc7_v2.webp
+                            - img "logo" [ref=e3017]
+                          - generic [ref=e3018]:
+                            - generic [ref=e3019]: SXSN
+                            - generic [ref=e3020]: 67%
+                        - generic [ref=e3021]: 8d
+                      - generic [ref=e3022]:
+                        - generic [ref=e3023]:
+                          - generic [ref=e3024]: "TX:"
+                          - generic [ref=e3025]: 7d
+                        - generic [ref=e3026]: $192.1K
+                    - 'link "logo SXSN 67% 3d TX: 2d $36.2K" [ref=e3028] [cursor=pointer]':
+                      - /url: /sol/token/GZ5JbEwUCRbQn5QazWXim4jJpWkC4vqx91ZkHGXHpump
+                      - generic [ref=e3029]:
+                        - generic [ref=e3030]:
+                          - generic [ref=e3033]:
+                            - link [ref=e3034]:
+                              - /url: https://lens.google.com/uploadbyurl?url=https://gmgn.ai/external-res/889ec97064ebf1fc0cba4f8d158e4bc7_v2.webp
+                            - img "logo" [ref=e3038]
+                          - generic [ref=e3039]:
+                            - generic [ref=e3040]: SXSN
+                            - generic [ref=e3041]: 67%
+                        - generic [ref=e3042]: 3d
+                      - generic [ref=e3043]:
+                        - generic [ref=e3044]:
+                          - generic [ref=e3045]: "TX:"
+                          - generic [ref=e3046]: 2d
+                        - generic [ref=e3047]: $36.2K
+                    - 'link "logo SXSN 67% 9d TX: 8d $31.4K" [ref=e3049] [cursor=pointer]':
+                      - /url: /sol/token/81pRJv69wgmswKes1g1hjFEC65eigdMuXV5E2nf7pump
+                      - generic [ref=e3050]:
+                        - generic [ref=e3051]:
+                          - generic [ref=e3054]:
+                            - link [ref=e3055]:
+                              - /url: https://lens.google.com/uploadbyurl?url=https://gmgn.ai/external-res/889ec97064ebf1fc0cba4f8d158e4bc7_v2.webp
+                            - img "logo" [ref=e3059]
+                          - generic [ref=e3060]:
+                            - generic [ref=e3061]: SXSN
+                            - generic [ref=e3062]: 67%
+                        - generic [ref=e3063]: 9d
+                      - generic [ref=e3064]:
+                        - generic [ref=e3065]:
+                          - generic [ref=e3066]: "TX:"
+                          - generic [ref=e3067]: 8d
+                        - generic [ref=e3068]: $31.4K
+                    - 'link "logo SXSN 67% 11d TX: 2d $30K" [ref=e3070] [cursor=pointer]':
+                      - /url: /sol/token/ENccWVpxzkpcMYAM11hCDpjUGorf3q3QNw8G6riypump
+                      - generic [ref=e3071]:
+                        - generic [ref=e3072]:
+                          - generic [ref=e3075]:
+                            - link [ref=e3076]:
+                              - /url: https://lens.google.com/uploadbyurl?url=https://gmgn.ai/external-res/889ec97064ebf1fc0cba4f8d158e4bc7_v2.webp
+                            - img "logo" [ref=e3080]
+                          - generic [ref=e3081]:
+                            - generic [ref=e3082]: SXSN
+                            - generic [ref=e3083]: 67%
+                        - generic [ref=e3084]: 11d
+                      - generic [ref=e3085]:
+                        - generic [ref=e3086]:
+                          - generic [ref=e3087]: "TX:"
+                          - generic [ref=e3088]: 2d
+                        - generic [ref=e3089]: $30K
+              - generic [ref=e3091] [cursor=pointer]
+              - generic [ref=e3094] [cursor=pointer]
+          - iframe [ref=e3100]:
+            - generic [ref=f1e1]:
+              - contentinfo:
+                - paragraph: TradingView è interattivo e dispone di comandi da utilizzare con uno screen reader. Di seguito è riportato un elenco di comandi da tastiera disponibili per interagire con la piattaforma
+                - list:
+                  - listitem: Inizia a usare la modalità di navigazione da tastiera. Premere ⌥ + Z
+                  - listitem: Ricerca rapida. Premere ⌘ + K
+                  - listitem: Cambia simbolo. Iniziare a digitare il nome del simbolo
+                  - listitem: Modifica l'intervallo. Premere numero o virgola
+                  - listitem: Indicatori, metriche e strategie. Premere slash
+                  - listitem: Apri layout. Premi il punto
+              - generic [ref=f1e2]:
+                - generic [ref=f1e3]:
+                  - toolbar [ref=f1e4]:
+                    - generic [ref=f1e8]:
+                      - generic [ref=f1e9]:
+                        - generic [ref=f1e12]:
+                          - button "Croce" [ref=f1e14]
+                          - button "Cursori" [pressed] [ref=f1e20]
+                        - generic [ref=f1e26]:
+                          - button "Trendline" [ref=f1e28]
+                          - button "Strumenti lineari" [ref=f1e34]
+                        - generic [ref=f1e40]:
+                          - button "Ritracciamento Fib" [ref=f1e42]
+                          - button "Strumenti di Gann e Fibonacci" [ref=f1e51]
+                        - generic [ref=f1e57]:
+                          - button "Pattern XABCD" [ref=f1e59]
+                          - button "Pattern" [ref=f1e65]
+                        - generic [ref=f1e71]:
+                          - button "Posizione long" [ref=f1e73]
+                          - button "Strumenti di misurazione e previsione" [ref=f1e77]
+                        - generic [ref=f1e83]:
+                          - button "Pennello" [ref=f1e85]
+                          - button "Forme geometriche" [ref=f1e91]
+                        - generic [ref=f1e97]:
+                          - button "Testo" [ref=f1e99]
+                          - button "Strumenti di annotazione" [ref=f1e103]
+                        - generic [ref=f1e108]:
+                          - button "Icona" [ref=f1e110]
+                          - button "Icone" [ref=f1e114]
+                      - generic [ref=f1e118]:
+                        - button "Misura" [ref=f1e119]
+                        - button "Ingrandisci" [ref=f1e123]
+                      - generic [ref=f1e130]:
+                        - generic [ref=f1e133]:
+                          - button "La modalità magnete aggancia i disegni posizionati vicino alle barre dei prezzi al valore OHLC più vicino" [ref=f1e135]
+                          - button "Calamite" [ref=f1e141]
+                        - button "Continua a disegnare" [ref=f1e145]
+                        - button "Blocca tutti gli strumenti di disegno" [ref=f1e149]
+                        - generic [ref=f1e154]:
+                          - button "Nascondi tutti gli strumenti di disegno" [ref=f1e156]
+                          - button "Nascondi opzioni" [ref=f1e160]
+                        - generic [ref=f1e165]:
+                          - button "I nuovi disegni vengono replicati in tutti i grafici del layout e mostrati quando si seleziona lo stesso ticker" [pressed] [ref=f1e167]
+                          - button "Opzioni di sincronizzazione dei disegni" [pressed] [ref=f1e171]
+                      - generic [ref=f1e177]:
+                        - button "Rimuovi 0 disegni" [ref=f1e179]
+                        - button "Rimuovi opzioni" [ref=f1e183]
+                  - button "Nascondi barra strumenti di disegno" [ref=f1e189]
+                - generic [ref=f1e194]:
+                  - 'region "Grafico #1" [ref=f1e197]':
+                    - generic [ref=f1e201]:
+                      - generic:
+                        - generic:
+                          - toolbar:
+                            - generic:
+                              - generic [ref=f1e202]:
+                                - generic [ref=f1e203]: SXSN
+                                - generic [ref=f1e205]:
+                                  - text: ·
+                                  - generic [ref=f1e206]: "1"
+                                - generic [ref=f1e207]:
+                                  - text: ·
+                                  - generic [ref=f1e208]: GMGN
+                              - generic:
+                                - generic:
+                                  - button "Altro"
+                            - generic [ref=f1e210]:
+                              - generic [ref=f1e211]:
+                                - generic [ref=f1e212]: O - Aper.
+                                - generic [ref=f1e213]: "657.70"
+                              - generic [ref=f1e214]:
+                                - generic [ref=f1e215]: H - Max.
+                                - generic [ref=f1e216]: 1.04K
+                              - generic [ref=f1e217]:
+                                - generic [ref=f1e218]: L - Min.
+                                - generic [ref=f1e219]: "657.70"
+                              - generic [ref=f1e220]:
+                                - generic [ref=f1e221]: C - Chius.
+                                - generic [ref=f1e222]: "912.02"
+                              - generic [ref=f1e223]: +254.31 (+38,67%)
+                        - generic:
+                          - button "Nascondi legenda indicatore" [ref=f1e225]
+                          - generic:
+                            - toolbar:
+                              - generic:
+                                - generic [ref=f1e229]: Volume
+                                - generic:
+                                  - generic:
+                                    - button "Nascondi"
+                                    - button "Impostazioni"
+                                    - button "Elimina"
+                                    - button "Altro"
+                              - generic "Volume" [ref=f1e235]: "6"
+                      - generic "Grafico di sol/GPynmfqNfk7atMhsFM4USyHDq4gzJVgN2bj9RUsMpump/USD/MCAP, 1 minuto" [ref=f1e237]
+                  - toolbar [ref=f1e251]:
+                    - button [ref=f1e254]
+                    - generic [ref=f1e260]:
+                      - button "Fuso orario" [ref=f1e263]:
+                        - generic [ref=f1e264]: 10:32:27 UTC+2
+                      - button "Seleziona/Deseleziona percentuale" [ref=f1e268]
+                      - button "Seleziona/Deseleziona scala logaritmica" [ref=f1e276]:
+                        - generic [ref=f1e277]: log
+                      - button "Seleziona/deseleziona scala automatica" [pressed] [ref=f1e279]:
+                        - generic [ref=f1e280]: auto
+              - alert
+      - contentinfo [ref=e3101]:
+        - generic [ref=e3103]:
+          - generic [ref=e3104] [cursor=pointer]
+          - generic [ref=e3108] [cursor=pointer]: Trenches
+          - generic [ref=e3111] [cursor=pointer]: Wallet Tracker
+          - generic [ref=e3116] [cursor=pointer]: Social Tracker
+          - generic [ref=e3121] [cursor=pointer]: Holding
+          - generic [ref=e3127] [cursor=pointer]: Watchlist
+          - generic [ref=e3131] [cursor=pointer]: In tendenza
+          - generic [ref=e3135] [cursor=pointer]: Rank
+          - generic [ref=e3139] [cursor=pointer]: PnL
+          - generic [ref=e3145] [cursor=pointer]: Segnale
+          - generic [ref=e3152] [cursor=pointer]: Callout
+          - button [ref=e3161] [cursor=pointer]:
+            - generic [ref=e3162]:
+              - img "Pump.fun Icon" [ref=e3163]
+              - img "Bonk Icon" [ref=e3164]
+        - generic [ref=e3166]:
+          - generic [ref=e3168]:
+            - generic [ref=e3171]: Stable
+            - generic [ref=e3172]: 155 MS
+            - generic [ref=e3174]: 60 FPS
+          - generic [ref=e3175] [cursor=pointer]
+          - button "About" [ref=e3178] [cursor=pointer]
+  - alert [ref=e34]: GMGN.AI | The Fastest Multi-Chain Meme Trading Terminal
+  - generic:
+    - region "Notifications-top"
+    - region "Notifications-top-left"
+    - region "Notifications-top-right"
+    - region "Notifications-bottom-left"
+    - region "Notifications-bottom"
+    - region "Notifications-bottom-right"
+  - iframe [aria-hidden] [ref=e3189]
+  - generic [ref=e3191]:
+    - dialog:
+      - generic [ref=e3194]:
+        - generic [ref=e3196]:
+          - generic [ref=e3200]:
+            - generic [ref=e3201]: Clean Layout Mode
+            - generic [ref=e3202]: Too many fields? Switch on Clean Mode — less noise, more gains!
+          - generic [ref=e3206]:
+            - generic [ref=e3207]: GMGN APP V3.0 is live!
+            - generic [ref=e3208]: Officially launching the Online Callout! Real-time multi-chain wallet tracking & aggregation of Smart Money/KOL buy signals — Grab on-chain Alpha one step ahead!
+          - generic [ref=e3212]:
+            - generic [ref=e3213]: GMGN Agent Skills Market is officially LIVE
+            - generic [ref=e3214]: Best Crypto Trading Skills, Built for Agents — fam, every Meme trading skill you need, want, or haven't even thought of yet — it's all here (and submissions for other Skills are welcome too)
+          - generic [ref=e3218]:
+            - generic [ref=e3219]: Fusion Wallet Tracker
+            - generic [ref=e3220]: Multi-chain wallet tracker is live. No matter how fast the trending moves, the Degen trade is in your feed instantly — no chain switching, nothing missed
+        - generic [ref=e3221]:
+          - generic [ref=e3222] [cursor=pointer]
+          - generic [ref=e3224] [cursor=pointer]
+          - generic [ref=e3226] [cursor=pointer]
+          - generic [ref=e3228] [cursor=pointer]
+        - generic [ref=e3230]:
+          - generic [ref=e3231]: GMGN just Updated!
+          - button "Next" [ref=e3237] [cursor=pointer]

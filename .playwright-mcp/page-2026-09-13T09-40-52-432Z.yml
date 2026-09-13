@@ -1,0 +1,3165 @@
+- generic [ref=f9e1]:
+  - navigation [ref=f9e2]:
+    - generic [ref=f9e4]:
+      - link [ref=f9e5] [cursor=pointer]:
+        - /url: /
+        - heading [level=1] [ref=f9e6]
+      - button "Collapse menu" [ref=f9e21] [cursor=pointer]
+    - button "Search /" [ref=f9e26] [cursor=pointer]:
+      - generic [ref=f9e29]:
+        - generic [ref=f9e30]: Search
+        - generic [ref=f9e31]: /
+    - generic [ref=f9e34]:
+      - button "Get the App!" [ref=f9e35] [cursor=pointer]
+      - list [ref=f9e41]:
+        - listitem [ref=f9e42]:
+          - link "Watchlist" [ref=f9e43] [cursor=pointer]:
+            - /url: /watchlist
+        - listitem [ref=f9e47]:
+          - button "Alerts" [disabled] [ref=f9e48]
+        - listitem
+        - listitem [ref=f9e52]:
+          - link "Multicharts" [ref=f9e53] [cursor=pointer]:
+            - /url: /multicharts
+        - listitem [ref=f9e57]:
+          - link "New Pairs" [ref=f9e58] [cursor=pointer]:
+            - /url: /new-pairs
+        - listitem [ref=f9e62]:
+          - link "Gainers & Losers" [ref=f9e63] [cursor=pointer]:
+            - /url: /gainers
+        - listitem [ref=f9e68]:
+          - link "API" [ref=f9e69] [cursor=pointer]:
+            - /url: https://docs.dexscreener.com/api/reference
+        - listitem [ref=f9e73]:
+          - link "Advertise" [ref=f9e74] [cursor=pointer]:
+            - /url: https://marketplace.dexscreener.com/product/ad
+      - separator [ref=f9e78]
+      - list [ref=f9e79]:
+        - listitem [ref=f9e80]:
+          - link "Robinhood Robinhood" [ref=f9e81] [cursor=pointer]:
+            - /url: /robinhood
+            - img "Robinhood" [ref=f9e82]
+            - generic [ref=f9e83]: Robinhood
+        - listitem [ref=f9e84]:
+          - link "Solana Solana" [ref=f9e85] [cursor=pointer]:
+            - /url: /solana
+            - img "Solana" [ref=f9e86]
+            - generic [ref=f9e87]: Solana
+        - listitem [ref=f9e88]:
+          - link "BSC BSC" [ref=f9e89] [cursor=pointer]:
+            - /url: /bsc
+            - img "BSC" [ref=f9e90]
+            - generic [ref=f9e91]: BSC
+        - listitem [ref=f9e92]:
+          - link "Base Base" [ref=f9e93] [cursor=pointer]:
+            - /url: /base
+            - img "Base" [ref=f9e94]
+            - generic [ref=f9e95]: Base
+        - listitem [ref=f9e96]:
+          - link "Ethereum Ethereum" [ref=f9e97] [cursor=pointer]:
+            - /url: /ethereum
+            - img "Ethereum" [ref=f9e98]
+            - generic [ref=f9e99]: Ethereum
+        - listitem [ref=f9e100]:
+          - link "Polygon Polygon" [ref=f9e101] [cursor=pointer]:
+            - /url: /polygon
+            - img "Polygon" [ref=f9e102]
+            - generic [ref=f9e103]: Polygon
+        - listitem [ref=f9e104]:
+          - link "PulseChain PulseChain" [ref=f9e105] [cursor=pointer]:
+            - /url: /pulsechain
+            - img "PulseChain" [ref=f9e106]
+            - generic [ref=f9e107]: PulseChain
+        - listitem [ref=f9e108]:
+          - link "HyperEVM HyperEVM" [ref=f9e109] [cursor=pointer]:
+            - /url: /hyperevm
+            - img "HyperEVM" [ref=f9e110]
+            - generic [ref=f9e111]: HyperEVM
+        - listitem [ref=f9e112]:
+          - link "Sui Sui" [ref=f9e113] [cursor=pointer]:
+            - /url: /sui
+            - img "Sui" [ref=f9e114]
+            - generic [ref=f9e115]: Sui
+        - listitem [ref=f9e116]:
+          - link "TON TON" [ref=f9e117] [cursor=pointer]:
+            - /url: /ton
+            - img "TON" [ref=f9e118]
+            - generic [ref=f9e119]: TON
+        - listitem [ref=f9e120]:
+          - link "Ink Ink" [ref=f9e121] [cursor=pointer]:
+            - /url: /ink
+            - img "Ink" [ref=f9e122]
+            - generic [ref=f9e123]: Ink
+        - listitem [ref=f9e124]:
+          - link "Arbitrum Arbitrum" [ref=f9e125] [cursor=pointer]:
+            - /url: /arbitrum
+            - img "Arbitrum" [ref=f9e126]
+            - generic [ref=f9e127]: Arbitrum
+        - listitem [ref=f9e128]:
+          - link "Monad Monad" [ref=f9e129] [cursor=pointer]:
+            - /url: /monad
+            - img "Monad" [ref=f9e130]
+            - generic [ref=f9e131]: Monad
+        - listitem [ref=f9e132]:
+          - link "XRPL XRPL" [ref=f9e133] [cursor=pointer]:
+            - /url: /xrpl
+            - img "XRPL" [ref=f9e134]
+            - generic [ref=f9e135]: XRPL
+        - listitem [ref=f9e136]:
+          - link "Cronos Cronos" [ref=f9e137] [cursor=pointer]:
+            - /url: /cronos
+            - img "Cronos" [ref=f9e138]
+            - generic [ref=f9e139]: Cronos
+        - listitem [ref=f9e140]:
+          - link "Avalanche Avalanche" [ref=f9e141] [cursor=pointer]:
+            - /url: /avalanche
+            - img "Avalanche" [ref=f9e142]
+            - generic [ref=f9e143]: Avalanche
+        - listitem [ref=f9e144]:
+          - link "World Chain World Chain" [ref=f9e145] [cursor=pointer]:
+            - /url: /worldchain
+            - img "World Chain" [ref=f9e146]
+            - generic [ref=f9e147]: World Chain
+        - listitem [ref=f9e148]:
+          - link "NEAR NEAR" [ref=f9e149] [cursor=pointer]:
+            - /url: /near
+            - img "NEAR" [ref=f9e150]
+            - generic [ref=f9e151]: NEAR
+        - listitem [ref=f9e152]:
+          - link "Hyperliquid Hyperliquid" [ref=f9e153] [cursor=pointer]:
+            - /url: /hyperliquid
+            - img "Hyperliquid" [ref=f9e154]
+            - generic [ref=f9e155]: Hyperliquid
+        - listitem [ref=f9e156]:
+          - link "Sonic Sonic" [ref=f9e157] [cursor=pointer]:
+            - /url: /sonic
+            - img "Sonic" [ref=f9e158]
+            - generic [ref=f9e159]: Sonic
+        - listitem [ref=f9e160]:
+          - link "Tron Tron" [ref=f9e161] [cursor=pointer]:
+            - /url: /tron
+            - img "Tron" [ref=f9e162]
+            - generic [ref=f9e163]: Tron
+        - listitem [ref=f9e164]:
+          - link "Abstract Abstract" [ref=f9e165] [cursor=pointer]:
+            - /url: /abstract
+            - img "Abstract" [ref=f9e166]
+            - generic [ref=f9e167]: Abstract
+        - listitem [ref=f9e168]:
+          - link "Hedera Hedera" [ref=f9e169] [cursor=pointer]:
+            - /url: /hedera
+            - img "Hedera" [ref=f9e170]
+            - generic [ref=f9e171]: Hedera
+        - listitem [ref=f9e172]:
+          - link "Stable Stable" [ref=f9e173] [cursor=pointer]:
+            - /url: /stable
+            - img "Stable" [ref=f9e174]
+            - generic [ref=f9e175]: Stable
+        - listitem [ref=f9e176]:
+          - link "Flare Flare" [ref=f9e177] [cursor=pointer]:
+            - /url: /flare
+            - img "Flare" [ref=f9e178]
+            - generic [ref=f9e179]: Flare
+        - listitem [ref=f9e180]:
+          - link "MultiversX MultiversX" [ref=f9e181] [cursor=pointer]:
+            - /url: /multiversx
+            - img "MultiversX" [ref=f9e182]
+            - generic [ref=f9e183]: MultiversX
+        - listitem [ref=f9e184]:
+          - link "Linea Linea" [ref=f9e185] [cursor=pointer]:
+            - /url: /linea
+            - img "Linea" [ref=f9e186]
+            - generic [ref=f9e187]: Linea
+        - listitem [ref=f9e188]:
+          - link "Mantle Mantle" [ref=f9e189] [cursor=pointer]:
+            - /url: /mantle
+            - img "Mantle" [ref=f9e190]
+            - generic [ref=f9e191]: Mantle
+        - listitem [ref=f9e192]:
+          - link "Optimism Optimism" [ref=f9e193] [cursor=pointer]:
+            - /url: /optimism
+            - img "Optimism" [ref=f9e194]
+            - generic [ref=f9e195]: Optimism
+        - listitem [ref=f9e196]:
+          - link "Berachain Berachain" [ref=f9e197] [cursor=pointer]:
+            - /url: /berachain
+            - img "Berachain" [ref=f9e198]
+            - generic [ref=f9e199]: Berachain
+        - listitem [ref=f9e200]:
+          - link "Plasma Plasma" [ref=f9e201] [cursor=pointer]:
+            - /url: /plasma
+            - img "Plasma" [ref=f9e202]
+            - generic [ref=f9e203]: Plasma
+        - listitem [ref=f9e204]:
+          - link "Injective Injective" [ref=f9e205] [cursor=pointer]:
+            - /url: /injective
+            - img "Injective" [ref=f9e206]
+            - generic [ref=f9e207]: Injective
+        - listitem [ref=f9e208]:
+          - link "Fantom Fantom" [ref=f9e209] [cursor=pointer]:
+            - /url: /fantom
+            - img "Fantom" [ref=f9e210]
+            - generic [ref=f9e211]: Fantom
+        - listitem [ref=f9e212]:
+          - link "ICP ICP" [ref=f9e213] [cursor=pointer]:
+            - /url: /icp
+            - img "ICP" [ref=f9e214]
+            - generic [ref=f9e215]: ICP
+        - listitem [ref=f9e216]:
+          - link "Algorand Algorand" [ref=f9e217] [cursor=pointer]:
+            - /url: /algorand
+            - img "Algorand" [ref=f9e218]
+            - generic [ref=f9e219]: Algorand
+        - listitem [ref=f9e220]:
+          - link "Sei V2 Sei V2" [ref=f9e221] [cursor=pointer]:
+            - /url: /seiv2
+            - img "Sei V2" [ref=f9e222]
+            - generic [ref=f9e223]: Sei V2
+        - listitem [ref=f9e224]:
+          - link "MegaETH MegaETH" [ref=f9e225] [cursor=pointer]:
+            - /url: /megaeth
+            - img "MegaETH" [ref=f9e226]
+            - generic [ref=f9e227]: MegaETH
+        - listitem [ref=f9e228]:
+          - link "Aptos Aptos" [ref=f9e229] [cursor=pointer]:
+            - /url: /aptos
+            - img "Aptos" [ref=f9e230]
+            - generic [ref=f9e231]: Aptos
+        - listitem [ref=f9e232]:
+          - link "zkSync zkSync" [ref=f9e233] [cursor=pointer]:
+            - /url: /zksync
+            - img "zkSync" [ref=f9e234]
+            - generic [ref=f9e235]: zkSync
+        - listitem [ref=f9e236]:
+          - link "Starknet Starknet" [ref=f9e237] [cursor=pointer]:
+            - /url: /starknet
+            - img "Starknet" [ref=f9e238]
+            - generic [ref=f9e239]: Starknet
+        - listitem [ref=f9e240]:
+          - link "Blast Blast" [ref=f9e241] [cursor=pointer]:
+            - /url: /blast
+            - img "Blast" [ref=f9e242]
+            - generic [ref=f9e243]: Blast
+        - listitem [ref=f9e244]:
+          - link "ApeChain ApeChain" [ref=f9e245] [cursor=pointer]:
+            - /url: /apechain
+            - img "ApeChain" [ref=f9e246]
+            - generic [ref=f9e247]: ApeChain
+        - listitem [ref=f9e248]:
+          - link "Celo Celo" [ref=f9e249] [cursor=pointer]:
+            - /url: /celo
+            - img "Celo" [ref=f9e250]
+            - generic [ref=f9e251]: Celo
+        - listitem [ref=f9e252]:
+          - link "Metis Metis" [ref=f9e253] [cursor=pointer]:
+            - /url: /metis
+            - img "Metis" [ref=f9e254]
+            - generic [ref=f9e255]: Metis
+        - listitem [ref=f9e256]:
+          - link "Stacks Stacks" [ref=f9e257] [cursor=pointer]:
+            - /url: /stacks
+            - img "Stacks" [ref=f9e258]
+            - generic [ref=f9e259]: Stacks
+        - listitem [ref=f9e260]:
+          - link "Cardano Cardano" [ref=f9e261] [cursor=pointer]:
+            - /url: /cardano
+            - img "Cardano" [ref=f9e262]
+            - generic [ref=f9e263]: Cardano
+        - listitem [ref=f9e264]:
+          - link "Unichain Unichain" [ref=f9e265] [cursor=pointer]:
+            - /url: /unichain
+            - img "Unichain" [ref=f9e266]
+            - generic [ref=f9e267]: Unichain
+        - listitem [ref=f9e268]:
+          - link "Flow EVM Flow EVM" [ref=f9e269] [cursor=pointer]:
+            - /url: /flowevm
+            - img "Flow EVM" [ref=f9e270]
+            - generic [ref=f9e271]: Flow EVM
+        - listitem [ref=f9e272]:
+          - link "opBNB opBNB" [ref=f9e273] [cursor=pointer]:
+            - /url: /opbnb
+            - img "opBNB" [ref=f9e274]
+            - generic [ref=f9e275]: opBNB
+        - listitem [ref=f9e276]:
+          - link "Soneium Soneium" [ref=f9e277] [cursor=pointer]:
+            - /url: /soneium
+            - img "Soneium" [ref=f9e278]
+            - generic [ref=f9e279]: Soneium
+        - listitem [ref=f9e280]:
+          - link "Kava Kava" [ref=f9e281] [cursor=pointer]:
+            - /url: /kava
+            - img "Kava" [ref=f9e282]
+            - generic [ref=f9e283]: Kava
+        - listitem [ref=f9e284]:
+          - link "Beam Beam" [ref=f9e285] [cursor=pointer]:
+            - /url: /beam
+            - img "Beam" [ref=f9e286]
+            - generic [ref=f9e287]: Beam
+        - listitem [ref=f9e288]:
+          - link "Fuse Fuse" [ref=f9e289] [cursor=pointer]:
+            - /url: /fuse
+            - img "Fuse" [ref=f9e290]
+            - generic [ref=f9e291]: Fuse
+        - listitem [ref=f9e292]:
+          - link "Scroll Scroll" [ref=f9e293] [cursor=pointer]:
+            - /url: /scroll
+            - img "Scroll" [ref=f9e294]
+            - generic [ref=f9e295]: Scroll
+        - listitem [ref=f9e296]:
+          - link "Conflux Conflux" [ref=f9e297] [cursor=pointer]:
+            - /url: /conflux
+            - img "Conflux" [ref=f9e298]
+            - generic [ref=f9e299]: Conflux
+        - listitem [ref=f9e300]:
+          - link "Katana Katana" [ref=f9e301] [cursor=pointer]:
+            - /url: /katana
+            - img "Katana" [ref=f9e302]
+            - generic [ref=f9e303]: Katana
+        - listitem [ref=f9e304]:
+          - link "Merlin Chain Merlin Chain" [ref=f9e305] [cursor=pointer]:
+            - /url: /merlinchain
+            - img "Merlin Chain" [ref=f9e306]
+            - generic [ref=f9e307]: Merlin Chain
+        - listitem [ref=f9e308]:
+          - link "Story Story" [ref=f9e309] [cursor=pointer]:
+            - /url: /story
+            - img "Story" [ref=f9e310]
+            - generic [ref=f9e311]: Story
+        - listitem [ref=f9e312]:
+          - link "Manta Manta" [ref=f9e313] [cursor=pointer]:
+            - /url: /manta
+            - img "Manta" [ref=f9e314]
+            - generic [ref=f9e315]: Manta
+        - listitem [ref=f9e316]:
+          - link "Movement Movement" [ref=f9e317] [cursor=pointer]:
+            - /url: /movement
+            - img "Movement" [ref=f9e318]
+            - generic [ref=f9e319]: Movement
+        - listitem [ref=f9e320]:
+          - link "Telos Telos" [ref=f9e321] [cursor=pointer]:
+            - /url: /telos
+            - img "Telos" [ref=f9e322]
+            - generic [ref=f9e323]: Telos
+        - listitem [ref=f9e324]:
+          - link "Polkadot Polkadot" [ref=f9e325] [cursor=pointer]:
+            - /url: /polkadot
+            - img "Polkadot" [ref=f9e326]
+            - generic [ref=f9e327]: Polkadot
+        - listitem [ref=f9e328]:
+          - link "Step Network Step Network" [ref=f9e329] [cursor=pointer]:
+            - /url: /stepnetwork
+            - img "Step Network" [ref=f9e330]
+            - generic [ref=f9e331]: Step Network
+    - generic [ref=f9e333]:
+      - link "Twitter" [ref=f9e334] [cursor=pointer]:
+        - /url: https://twitter.com/dexscreener
+      - link "Telegram" [ref=f9e337] [cursor=pointer]:
+        - /url: https://telegram.me/dexscreenerchat
+      - link "Telegram" [ref=f9e340] [cursor=pointer]:
+        - /url: https://discord.gg/XNgMb5tQN7
+      - button "Lights on" [ref=f9e343] [cursor=pointer]
+  - main [ref=f9e346]:
+    - generic [ref=f9e347]:
+      - list [ref=f9e349]:
+        - listitem [ref=f9e350]:
+          - link "All DEXes" [ref=f9e351] [cursor=pointer]:
+            - /url: /solana
+        - listitem [ref=f9e352]:
+          - link [ref=f9e353] [cursor=pointer]:
+            - /url: /solana/pumpswap
+            - img "PumpSwap" [ref=f9e354]
+            - text: PumpSwap
+        - listitem [ref=f9e355]:
+          - link [ref=f9e356] [cursor=pointer]:
+            - /url: /solana/meteora
+            - img "Meteora" [ref=f9e357]
+            - text: Meteora
+        - listitem [ref=f9e358]:
+          - link [ref=f9e359] [cursor=pointer]:
+            - /url: /solana/raydium
+            - img "Raydium" [ref=f9e360]
+            - text: Raydium
+        - listitem [ref=f9e361]:
+          - link [ref=f9e362] [cursor=pointer]:
+            - /url: /solana/orca
+            - img "Orca" [ref=f9e363]
+            - text: Orca
+        - listitem [ref=f9e364]:
+          - link [ref=f9e365] [cursor=pointer]:
+            - /url: /solana/pumpfun
+            - img "Pump.fun" [ref=f9e366]
+            - text: Pump.fun
+        - listitem [ref=f9e367]:
+          - link [ref=f9e368] [cursor=pointer]:
+            - /url: /solana/meteoradbc
+            - img "Meteora DBC" [ref=f9e369]
+            - text: Meteora DBC
+        - listitem [ref=f9e370]:
+          - link [ref=f9e371] [cursor=pointer]:
+            - /url: /solana/fluxbeam
+            - img "FluxBeam" [ref=f9e372]
+            - text: FluxBeam
+        - listitem [ref=f9e373]:
+          - link [ref=f9e374] [cursor=pointer]:
+            - /url: /solana/metadao
+            - img "MetaDAO" [ref=f9e375]
+            - text: MetaDAO
+        - listitem [ref=f9e376]:
+          - link [ref=f9e377] [cursor=pointer]:
+            - /url: /solana/rise
+            - img "Rise" [ref=f9e378]
+            - text: Rise
+        - listitem [ref=f9e379]:
+          - link [ref=f9e380] [cursor=pointer]:
+            - /url: /solana/bags
+            - img "Bags" [ref=f9e381]
+            - text: Bags
+        - listitem [ref=f9e382]:
+          - link [ref=f9e383] [cursor=pointer]:
+            - /url: /solana/printr
+            - img "Printr" [ref=f9e384]
+            - text: Printr
+        - listitem [ref=f9e385]:
+          - link [ref=f9e386] [cursor=pointer]:
+            - /url: /solana/dexlab
+            - img "Dexlab" [ref=f9e387]
+            - text: Dexlab
+        - listitem [ref=f9e388]:
+          - link [ref=f9e389] [cursor=pointer]:
+            - /url: /solana/zora
+            - img "Zora" [ref=f9e390]
+            - text: Zora
+        - listitem [ref=f9e391]:
+          - link [ref=f9e392] [cursor=pointer]:
+            - /url: /solana/moonit
+            - img "Moonit" [ref=f9e393]
+            - text: Moonit
+        - listitem [ref=f9e394]:
+          - link [ref=f9e395] [cursor=pointer]:
+            - /url: /solana/heaven
+            - img "Heaven" [ref=f9e396]
+            - text: Heaven
+      - generic [ref=f9e397]:
+        - generic [ref=f9e402]:
+          - link "Metas" [ref=f9e403] [cursor=pointer]:
+            - /url: /metas
+          - link "🏆 Meme Hall of Fame $1.86B" [ref=f9e407] [cursor=pointer]:
+            - /url: /metas/solana/meme-hall-of-fame
+            - generic [ref=f9e408]: 🏆
+            - generic [ref=f9e409]: Meme Hall of Fame
+            - generic [ref=f9e410]: $1.86B
+          - link "🐈 Cat $349.0M" [ref=f9e413] [cursor=pointer]:
+            - /url: /metas/solana/cat
+            - generic [ref=f9e414]: 🐈
+            - generic [ref=f9e415]: Cat
+            - generic [ref=f9e416]: $349.0M
+          - link "🐶 Dog $577.5M" [ref=f9e419] [cursor=pointer]:
+            - /url: /metas/solana/dog
+            - generic [ref=f9e420]: 🐶
+            - generic [ref=f9e421]: Dog
+            - generic [ref=f9e422]: $577.5M
+          - link "🐻‍❄️ Character $604.7M" [ref=f9e425] [cursor=pointer]:
+            - /url: /metas/solana/character
+            - generic [ref=f9e426]: 🐻‍❄️
+            - generic [ref=f9e427]: Character
+            - generic [ref=f9e428]: $604.7M
+          - link "😈 Degen $388.3M" [ref=f9e431] [cursor=pointer]:
+            - /url: /metas/solana/degen
+            - generic [ref=f9e432]: 😈
+            - generic [ref=f9e433]: Degen
+            - generic [ref=f9e434]: $388.3M
+          - link "🤖 AI $331.0M" [ref=f9e437] [cursor=pointer]:
+            - /url: /metas/solana/ai
+            - generic [ref=f9e438]: 🤖
+            - generic [ref=f9e439]: AI
+            - generic [ref=f9e440]: $331.0M
+          - link "🎬 TikTok $16.1M" [ref=f9e443] [cursor=pointer]:
+            - /url: /metas/solana/tiktok
+            - generic [ref=f9e444]: 🎬
+            - generic [ref=f9e445]: TikTok
+            - generic [ref=f9e446]: $16.1M
+          - link "🐾 Internet Animals $95.3M" [ref=f9e449] [cursor=pointer]:
+            - /url: /metas/solana/internet-animals
+            - generic [ref=f9e450]: 🐾
+            - generic [ref=f9e451]: Internet Animals
+            - generic [ref=f9e452]: $95.3M
+          - link "🧠 Brainrot $10.4M" [ref=f9e455] [cursor=pointer]:
+            - /url: /metas/solana/brainrot
+            - generic [ref=f9e456]: 🧠
+            - generic [ref=f9e457]: Brainrot
+            - generic [ref=f9e458]: $10.4M
+          - link "🌟 Celebrity $936.5M" [ref=f9e461] [cursor=pointer]:
+            - /url: /metas/solana/celebrity
+            - generic [ref=f9e462]: 🌟
+            - generic [ref=f9e463]: Celebrity
+            - generic [ref=f9e464]: $936.5M
+          - link "🍊 Trump $639.1M" [ref=f9e467] [cursor=pointer]:
+            - /url: /metas/solana/trump
+            - generic [ref=f9e468]: 🍊
+            - generic [ref=f9e469]: Trump
+            - generic [ref=f9e470]: $639.1M
+          - link "💸 x402 $16.0M" [ref=f9e473] [cursor=pointer]:
+            - /url: /metas/solana/x402
+            - generic [ref=f9e474]: 💸
+            - generic [ref=f9e475]: x402
+            - generic [ref=f9e476]: $16.0M
+          - link "🖼️ NFT $611.1M" [ref=f9e479] [cursor=pointer]:
+            - /url: /metas/solana/nft
+            - generic [ref=f9e480]: 🖼️
+            - generic [ref=f9e481]: NFT
+            - generic [ref=f9e482]: $611.1M
+          - link "🎨 Knockoff Legends $3.4M" [ref=f9e485] [cursor=pointer]:
+            - /url: /metas/solana/knockoff-legends
+            - generic [ref=f9e486]: 🎨
+            - generic [ref=f9e487]: Knockoff Legends
+            - generic [ref=f9e488]: $3.4M
+          - link "🤙 Slang $2.6M" [ref=f9e491] [cursor=pointer]:
+            - /url: /metas/solana/slang
+            - generic [ref=f9e492]: 🤙
+            - generic [ref=f9e493]: Slang
+            - generic [ref=f9e494]: $2.6M
+          - link "📈 Stonks $9.5M" [ref=f9e497] [cursor=pointer]:
+            - /url: /metas/solana/stonks
+            - generic [ref=f9e498]: 📈
+            - generic [ref=f9e499]: Stonks
+            - generic [ref=f9e500]: $9.5M
+          - link "👨‍🚀 Elon Musk $2.1M" [ref=f9e503] [cursor=pointer]:
+            - /url: /metas/solana/elon-musk
+            - generic [ref=f9e504]: 👨‍🚀
+            - generic [ref=f9e505]: Elon Musk
+            - generic [ref=f9e506]: $2.1M
+          - link "🇨🇳 Chinese $797K" [ref=f9e509] [cursor=pointer]:
+            - /url: /metas/solana/chinese
+            - generic [ref=f9e510]: 🇨🇳
+            - generic [ref=f9e511]: Chinese
+            - generic [ref=f9e512]: $797K
+        - generic [ref=f9e519]:
+          - generic [ref=f9e520]: Loading...
+          - generic [ref=f9e523]: Loading...
+        - generic [ref=f9e525]:
+          - generic [ref=f9e526]:
+            - generic [ref=f9e527]: "24H Volume:"
+            - generic [ref=f9e529]: $5.080B
+          - generic [ref=f9e532]:
+            - generic [ref=f9e533]: "24H Txns:"
+            - generic [ref=f9e535]: 34,754,900
+          - generic [ref=f9e537]:
+            - generic [ref=f9e538]: "Latest Block:"
+            - generic [ref=f9e541]:
+              - generic [ref=f9e542]: 446,671,066
+              - generic [ref=f9e543]: 2s ago
+        - generic [ref=f9e548]:
+          - group [ref=f9e550]:
+            - button [ref=f9e551] [cursor=pointer]
+            - button [ref=f9e555] [cursor=pointer]
+          - button [ref=f9e561] [cursor=pointer]
+          - generic [ref=f9e568]:
+            - button [ref=f9e570] [cursor=pointer]
+            - button [ref=f9e575] [cursor=pointer]
+            - button [ref=f9e580] [cursor=pointer]
+            - generic [ref=f9e585]:
+              - generic [ref=f9e586]: New Pairs
+              - generic [ref=f9e591]:
+                - button "Newest" [ref=f9e592] [cursor=pointer]
+                - button "1H" [ref=f9e593] [cursor=pointer]
+                - button "6H" [ref=f9e594] [cursor=pointer]
+                - button "24H" [ref=f9e595] [cursor=pointer]
+                - button "3D" [ref=f9e596] [cursor=pointer]
+                - button "7D" [ref=f9e597] [cursor=pointer]
+          - generic [ref=f9e598]:
+            - group [ref=f9e599] [cursor=pointer]
+            - group [ref=f9e604] [cursor=pointer]
+            - group [ref=f9e609] [cursor=pointer]
+            - group [ref=f9e614] [cursor=pointer]
+          - group [ref=f9e619]:
+            - 'button "Rank by: Pair age" [ref=f9e620] [cursor=pointer]':
+              - generic:
+                - generic:
+                  - generic: "Rank by:"
+                  - generic: Pair age
+            - button "Filters" [ref=f9e621] [cursor=pointer]
+            - button [ref=f9e626] [cursor=pointer]
+        - generic [ref=f9e630]:
+          - generic [ref=f9e631]:
+            - button "Token" [ref=f9e633] [cursor=pointer]
+            - generic [ref=f9e634]:
+              - button "Price" [ref=f9e635] [cursor=pointer]
+              - button "Toggle USD/native price" [ref=f9e637] [cursor=pointer]
+            - button "Age" [ref=f9e641] [cursor=pointer]
+            - button "Buys" [ref=f9e646] [cursor=pointer]
+            - button "Sells" [ref=f9e648] [cursor=pointer]
+            - button "Volume" [ref=f9e650] [cursor=pointer]
+            - button "Traders" [ref=f9e652] [cursor=pointer]
+            - button "5M" [ref=f9e655] [cursor=pointer]
+            - button "1H" [ref=f9e657] [cursor=pointer]
+            - button "6H" [ref=f9e659] [cursor=pointer]
+            - button "24H" [ref=f9e661] [cursor=pointer]
+            - button "Liquidity" [ref=f9e663] [cursor=pointer]
+            - button "MCAP" [ref=f9e665] [cursor=pointer]
+          - 'link "Hide pair #1 PumpSwap ? vrl / SOL VRL $0.071739 18s 10 4 $9 10 165% 165% 165% 165% $5 $35" [ref=f9e667] [cursor=pointer]':
+            - /url: /solana/c25qyxy5m9dwsaiqp61pneivqeqktnhgq3mbsgtfpfqr
+            - generic: Hide pair
+            - generic [ref=f9e670]:
+              - generic [ref=f9e671]:
+                - generic [ref=f9e672]: "#1"
+                - img "PumpSwap" [ref=f9e674]
+                - generic [ref=f9e675]: "?"
+                - generic [ref=f9e677]:
+                  - generic [ref=f9e678]: vrl
+                  - generic [ref=f9e679]: /
+                  - generic [ref=f9e680]: SOL
+                  - generic [ref=f9e681]: VRL
+              - generic "$0.00000001739" [ref=f9e685]: $0.071739
+              - generic [ref=f9e686]: 18s
+              - generic [ref=f9e688]: "10"
+              - generic [ref=f9e690]: "4"
+              - generic [ref=f9e692]: $9
+              - generic [ref=f9e694]: "10"
+              - generic [ref=f9e696]: 165%
+              - generic [ref=f9e698]: 165%
+              - generic [ref=f9e700]: 165%
+              - generic [ref=f9e702]: 165%
+              - generic [ref=f9e704]: $5
+              - generic [ref=f9e706]: $35
+          - 'link "Hide pair #2 PumpSwap ? Pkpuff / SOL Pokémon Pocket Pufferfish $0.09118 33s 28 4 $6.0K 28 14.65% 14.65% 14.65% 14.65% $101K $91K" [ref=f9e709] [cursor=pointer]':
+            - /url: /solana/eeyokugkqtqfmplxrirhnamnvxrpe9gnb9g5mzm5y73w
+            - generic: Hide pair
+            - generic [ref=f9e712]:
+              - generic [ref=f9e713]:
+                - generic [ref=f9e714]: "#2"
+                - img "PumpSwap" [ref=f9e716]
+                - generic [ref=f9e717]: "?"
+                - generic [ref=f9e719]:
+                  - generic [ref=f9e720]: Pkpuff
+                  - generic [ref=f9e721]: /
+                  - generic [ref=f9e722]: SOL
+                  - generic [ref=f9e723]: Pokémon Pocket Pufferfish
+              - generic [ref=f9e725]: $0.09118
+              - generic [ref=f9e727]: 33s
+              - generic [ref=f9e729]: "28"
+              - generic [ref=f9e731]: "4"
+              - generic [ref=f9e733]: $6.0K
+              - generic [ref=f9e735]: "28"
+              - generic [ref=f9e737]: 14.65%
+              - generic [ref=f9e739]: 14.65%
+              - generic [ref=f9e741]: 14.65%
+              - generic [ref=f9e743]: 14.65%
+              - generic [ref=f9e745]: $101K
+              - generic [ref=f9e747]: $91K
+          - 'link "Hide pair #3 Meteora ? DYN2 MIZO / SOL Mizo $0.096454 36s 8 3 $120 9 -99.52% -99.52% -99.52% -99.52% <$1 $1" [ref=f9e750] [cursor=pointer]':
+            - /url: /solana/54zwzxwtzrzvwxeq7slvsmdvjhbl486337n1uvmrh3z7
+            - generic: Hide pair
+            - generic [ref=f9e753]:
+              - generic [ref=f9e754]:
+                - generic [ref=f9e755]: "#3"
+                - img "Meteora" [ref=f9e757]
+                - generic [ref=f9e758]: "?"
+                - generic [ref=f9e760]:
+                  - generic [ref=f9e761]: DYN2
+                  - generic [ref=f9e762]: MIZO
+                  - generic [ref=f9e763]: /
+                  - generic [ref=f9e764]: SOL
+                  - generic [ref=f9e765]: Mizo
+              - generic "$0.0000000006454" [ref=f9e769]: $0.096454
+              - generic [ref=f9e770]: 36s
+              - generic [ref=f9e772]: "8"
+              - generic [ref=f9e774]: "3"
+              - generic [ref=f9e776]: $120
+              - generic [ref=f9e778]: "9"
+              - generic [ref=f9e780]: "-99.52%"
+              - generic [ref=f9e782]: "-99.52%"
+              - generic [ref=f9e784]: "-99.52%"
+              - generic [ref=f9e786]: "-99.52%"
+              - generic [ref=f9e788]: <$1
+              - generic [ref=f9e790]: $1
+          - 'link "Hide pair #4 Meteora ? DYN2 VIF / SOL Vitalik Wif Hat $0.094216 51s 9 3 $120 10 -99.68% -99.68% -99.68% -99.68% <$1 0" [ref=f9e793] [cursor=pointer]':
+            - /url: /solana/bs7u782yubieghzhe89ejsde8rxa2gdcovc3gqjxzt1g
+            - generic: Hide pair
+            - generic [ref=f9e796]:
+              - generic [ref=f9e797]:
+                - generic [ref=f9e798]: "#4"
+                - img "Meteora" [ref=f9e800]
+                - generic [ref=f9e801]: "?"
+                - generic [ref=f9e803]:
+                  - generic [ref=f9e804]: DYN2
+                  - generic [ref=f9e805]: VIF
+                  - generic [ref=f9e806]: /
+                  - generic [ref=f9e807]: SOL
+                  - generic [ref=f9e808]: Vitalik Wif Hat
+              - generic "$0.0000000004216" [ref=f9e812]: $0.094216
+              - generic [ref=f9e813]: 51s
+              - generic [ref=f9e815]: "9"
+              - generic [ref=f9e817]: "3"
+              - generic [ref=f9e819]: $120
+              - generic [ref=f9e821]: "10"
+              - generic [ref=f9e823]: "-99.68%"
+              - generic [ref=f9e825]: "-99.68%"
+              - generic [ref=f9e827]: "-99.68%"
+              - generic [ref=f9e829]: "-99.68%"
+              - generic [ref=f9e831]: <$1
+              - generic [ref=f9e833]: "0"
+          - 'link "Hide pair #5 PumpSwap ? HOUSEFLY / SOL House Fly $0.047956 54s 77 2 $62 78 0.70% 0.70% 0.70% 0.70% $31K $79K" [ref=f9e835] [cursor=pointer]':
+            - /url: /solana/rjmjgaytb1lugk74tkmaybsthzsmxc4tjybkcdaqzwh
+            - generic: Hide pair
+            - generic [ref=f9e838]:
+              - generic [ref=f9e839]:
+                - generic [ref=f9e840]: "#5"
+                - img "PumpSwap" [ref=f9e842]
+                - generic [ref=f9e843]: "?"
+                - generic [ref=f9e845]:
+                  - generic [ref=f9e846]: HOUSEFLY
+                  - generic [ref=f9e847]: /
+                  - generic [ref=f9e848]: SOL
+                  - generic [ref=f9e849]: House Fly
+              - generic "$0.00007956" [ref=f9e853]: $0.047956
+              - generic [ref=f9e854]: 54s
+              - generic [ref=f9e856]: "77"
+              - generic [ref=f9e858]: "2"
+              - generic [ref=f9e860]: $62
+              - generic [ref=f9e862]: "78"
+              - generic [ref=f9e864]: 0.70%
+              - generic [ref=f9e866]: 0.70%
+              - generic [ref=f9e868]: 0.70%
+              - generic [ref=f9e870]: 0.70%
+              - generic [ref=f9e872]: $31K
+              - generic [ref=f9e874]: $79K
+          - 'link "Hide pair #6 Meteora ? DYN2 HOUSEFLY / SOL House Fly $0.048451 1m 7 2 <$1 9 3,457% 3,457% 3,457% 3,457% <$1 $84K" [ref=f9e877] [cursor=pointer]':
+            - /url: /solana/5sz5v7tt2okuaegmarepouelbmukap2g9b4xwyf3srxh
+            - generic: Hide pair
+            - generic [ref=f9e880]:
+              - generic [ref=f9e881]:
+                - generic [ref=f9e882]: "#6"
+                - img "Meteora" [ref=f9e884]
+                - generic [ref=f9e885]: "?"
+                - generic [ref=f9e887]:
+                  - generic [ref=f9e888]: DYN2
+                  - generic [ref=f9e889]: HOUSEFLY
+                  - generic [ref=f9e890]: /
+                  - generic [ref=f9e891]: SOL
+                  - generic [ref=f9e892]: House Fly
+              - generic "$0.00008451" [ref=f9e896]: $0.048451
+              - generic [ref=f9e897]: 1m
+              - generic [ref=f9e899]: "7"
+              - generic [ref=f9e901]: "2"
+              - generic [ref=f9e903]: <$1
+              - generic [ref=f9e905]: "9"
+              - generic [ref=f9e907]: 3,457%
+              - generic [ref=f9e909]: 3,457%
+              - generic [ref=f9e911]: 3,457%
+              - generic [ref=f9e913]: 3,457%
+              - generic [ref=f9e915]: <$1
+              - generic [ref=f9e917]: $84K
+          - 'link "Hide pair #7 PumpSwap ? 💎BALLS / SOL 💎 Diamond Balls 💎 $0.085092 1m 81 72 $74 21 -55.74% -55.74% -55.74% -55.74% $2 $10" [ref=f9e920] [cursor=pointer]':
+            - /url: /solana/4r45zukhwa3pyxacahfrrbgk6uqmg4n1jwnqql5gj8zm
+            - generic: Hide pair
+            - generic [ref=f9e923]:
+              - generic [ref=f9e924]:
+                - generic [ref=f9e925]: "#7"
+                - img "PumpSwap" [ref=f9e927]
+                - generic [ref=f9e928]: "?"
+                - generic [ref=f9e930]:
+                  - generic [ref=f9e931]: 💎BALLS
+                  - generic [ref=f9e932]: /
+                  - generic [ref=f9e933]: SOL
+                  - generic [ref=f9e934]: 💎 Diamond Balls 💎
+              - generic "$0.000000005092" [ref=f9e938]: $0.085092
+              - generic [ref=f9e939]: 1m
+              - generic [ref=f9e941]: "81"
+              - generic [ref=f9e943]: "72"
+              - generic [ref=f9e945]: $74
+              - generic [ref=f9e947]: "21"
+              - generic [ref=f9e949]: "-55.74%"
+              - generic [ref=f9e951]: "-55.74%"
+              - generic [ref=f9e953]: "-55.74%"
+              - generic [ref=f9e955]: "-55.74%"
+              - generic [ref=f9e957]: $2
+              - generic [ref=f9e959]: $10
+          - 'link "Hide pair #8 Meteora ? DYN2 CTO / SOL Clanker Takeover $0.0001390 1m 260 326 $11K 192 24.30% 24.30% 24.30% 24.30% $2.4K $139K" [ref=f9e962] [cursor=pointer]':
+            - /url: /solana/454gszhmaxpd5p6fy1nfvjhdmsybtff6ugk8rcqsjsec
+            - generic: Hide pair
+            - generic [ref=f9e965]:
+              - generic [ref=f9e966]:
+                - generic [ref=f9e967]: "#8"
+                - img "Meteora" [ref=f9e969]
+                - generic [ref=f9e970]: "?"
+                - generic [ref=f9e972]:
+                  - generic [ref=f9e973]: DYN2
+                  - generic [ref=f9e974]: CTO
+                  - generic [ref=f9e975]: /
+                  - generic [ref=f9e976]: SOL
+                  - generic [ref=f9e977]: Clanker Takeover
+              - generic [ref=f9e979]: $0.0001390
+              - generic [ref=f9e981]: 1m
+              - generic [ref=f9e983]: "260"
+              - generic [ref=f9e985]: "326"
+              - generic [ref=f9e987]: $11K
+              - generic [ref=f9e989]: "192"
+              - generic [ref=f9e991]: 24.30%
+              - generic [ref=f9e993]: 24.30%
+              - generic [ref=f9e995]: 24.30%
+              - generic [ref=f9e997]: 24.30%
+              - generic [ref=f9e999]: $2.4K
+              - generic [ref=f9e1001]: $139K
+          - 'link "Hide pair #9 PumpSwap ? MIZO / SOL Mizo $0.048567 1m 185 2 $169 186 2.00% 2.00% 2.00% 2.00% $33K $85K" [ref=f9e1004] [cursor=pointer]':
+            - /url: /solana/21kdm7jhgbbgtmscwgpsi32ryfhz2sncuzcqpdjzstjz
+            - generic: Hide pair
+            - generic [ref=f9e1007]:
+              - generic [ref=f9e1008]:
+                - generic [ref=f9e1009]: "#9"
+                - img "PumpSwap" [ref=f9e1011]
+                - generic [ref=f9e1012]: "?"
+                - generic [ref=f9e1014]:
+                  - generic [ref=f9e1015]: MIZO
+                  - generic [ref=f9e1016]: /
+                  - generic [ref=f9e1017]: SOL
+                  - generic [ref=f9e1018]: Mizo
+              - generic "$0.00008567" [ref=f9e1022]: $0.048567
+              - generic [ref=f9e1023]: 1m
+              - generic [ref=f9e1025]: "185"
+              - generic [ref=f9e1027]: "2"
+              - generic [ref=f9e1029]: $169
+              - generic [ref=f9e1031]: "186"
+              - generic [ref=f9e1033]: 2.00%
+              - generic [ref=f9e1035]: 2.00%
+              - generic [ref=f9e1037]: 2.00%
+              - generic [ref=f9e1039]: 2.00%
+              - generic [ref=f9e1041]: $33K
+              - generic [ref=f9e1043]: $85K
+          - 'link "Hide pair #10 Meteora ? DYN2 MIZO / SOL Mizo $0.049422 1m 6 1 <$1 7 4,229% 4,229% 4,229% 4,229% <$1 $94K" [ref=f9e1046] [cursor=pointer]':
+            - /url: /solana/mqugm6rt56szp1razaqg9kejylrxjr7g5voipkjww4h
+            - generic: Hide pair
+            - generic [ref=f9e1049]:
+              - generic [ref=f9e1050]:
+                - generic [ref=f9e1051]: "#10"
+                - img "Meteora" [ref=f9e1053]
+                - generic [ref=f9e1054]: "?"
+                - generic [ref=f9e1056]:
+                  - generic [ref=f9e1057]: DYN2
+                  - generic [ref=f9e1058]: MIZO
+                  - generic [ref=f9e1059]: /
+                  - generic [ref=f9e1060]: SOL
+                  - generic [ref=f9e1061]: Mizo
+              - generic "$0.00009422" [ref=f9e1065]: $0.049422
+              - generic [ref=f9e1066]: 1m
+              - generic [ref=f9e1068]: "6"
+              - generic [ref=f9e1070]: "1"
+              - generic [ref=f9e1072]: <$1
+              - generic [ref=f9e1074]: "7"
+              - generic [ref=f9e1076]: 4,229%
+              - generic [ref=f9e1078]: 4,229%
+              - generic [ref=f9e1080]: 4,229%
+              - generic [ref=f9e1082]: 4,229%
+              - generic [ref=f9e1084]: <$1
+              - generic [ref=f9e1086]: $94K
+          - 'link "Hide pair #11 PumpSwap ? HEV / SOL Heavier $0.045644 1m 505 13 $202 474 2.65% 2.65% 2.65% 2.65% $22K $56K" [ref=f9e1089] [cursor=pointer]':
+            - /url: /solana/mnn2tkdzivutibx1fwz8ceskgdegbpadfjzrfwnvcgt
+            - generic: Hide pair
+            - generic [ref=f9e1092]:
+              - generic [ref=f9e1093]:
+                - generic [ref=f9e1094]: "#11"
+                - img "PumpSwap" [ref=f9e1096]
+                - generic [ref=f9e1097]: "?"
+                - generic [ref=f9e1099]:
+                  - generic [ref=f9e1100]: HEV
+                  - generic [ref=f9e1101]: /
+                  - generic [ref=f9e1102]: SOL
+                  - generic [ref=f9e1103]: Heavier
+              - generic "$0.00005644" [ref=f9e1107]: $0.045644
+              - generic [ref=f9e1108]: 1m
+              - generic [ref=f9e1110]: "505"
+              - generic [ref=f9e1112]: "13"
+              - generic [ref=f9e1114]: $202
+              - generic [ref=f9e1116]: "474"
+              - generic [ref=f9e1118]: 2.65%
+              - generic [ref=f9e1120]: 2.65%
+              - generic [ref=f9e1122]: 2.65%
+              - generic [ref=f9e1124]: 2.65%
+              - generic [ref=f9e1126]: $22K
+              - generic [ref=f9e1128]: $56K
+          - 'link "Hide pair #12 Meteora ? DYN2 HEV / SOL Heavier $0.002114 1m 15 8 <$1 12 11,101% 11,101% 11,101% 11,101% <$1 $2.1M" [ref=f9e1131] [cursor=pointer]':
+            - /url: /solana/ekzzwxkw3tcs1scywmf2couksc7ytuxvxgl7cukyvjyp
+            - generic: Hide pair
+            - generic [ref=f9e1134]:
+              - generic [ref=f9e1135]:
+                - generic [ref=f9e1136]: "#12"
+                - img "Meteora" [ref=f9e1138]
+                - generic [ref=f9e1139]: "?"
+                - generic [ref=f9e1141]:
+                  - generic [ref=f9e1142]: DYN2
+                  - generic [ref=f9e1143]: HEV
+                  - generic [ref=f9e1144]: /
+                  - generic [ref=f9e1145]: SOL
+                  - generic [ref=f9e1146]: Heavier
+              - generic [ref=f9e1148]: $0.002114
+              - generic [ref=f9e1150]: 1m
+              - generic [ref=f9e1152]: "15"
+              - generic [ref=f9e1154]: "8"
+              - generic [ref=f9e1156]: <$1
+              - generic [ref=f9e1158]: "12"
+              - generic [ref=f9e1160]: 11,101%
+              - generic [ref=f9e1162]: 11,101%
+              - generic [ref=f9e1164]: 11,101%
+              - generic [ref=f9e1166]: 11,101%
+              - generic [ref=f9e1168]: <$1
+              - generic [ref=f9e1170]: $2.1M
+          - 'link "Hide pair #13 PumpSwap ? Kalshi / SOL Kalshi $0.045628 1m 131 3 $132 132 2.32% 2.32% 2.32% 2.32% $22K $56K" [ref=f9e1173] [cursor=pointer]':
+            - /url: /solana/2hsmkpqg8n4tknuywoxnlw49jwqgfsvyx9piczpgyplx
+            - generic: Hide pair
+            - generic [ref=f9e1176]:
+              - generic [ref=f9e1177]:
+                - generic [ref=f9e1178]: "#13"
+                - img "PumpSwap" [ref=f9e1180]
+                - generic [ref=f9e1181]: "?"
+                - generic [ref=f9e1183]:
+                  - generic [ref=f9e1184]: Kalshi
+                  - generic [ref=f9e1185]: /
+                  - generic [ref=f9e1186]: SOL
+                  - generic [ref=f9e1187]: Kalshi
+              - generic "$0.00005628" [ref=f9e1191]: $0.045628
+              - generic [ref=f9e1192]: 1m
+              - generic [ref=f9e1194]: "131"
+              - generic [ref=f9e1196]: "3"
+              - generic [ref=f9e1198]: $132
+              - generic [ref=f9e1200]: "132"
+              - generic [ref=f9e1202]: 2.32%
+              - generic [ref=f9e1204]: 2.32%
+              - generic [ref=f9e1206]: 2.32%
+              - generic [ref=f9e1208]: 2.32%
+              - generic [ref=f9e1210]: $22K
+              - generic [ref=f9e1212]: $56K
+          - 'link "Hide pair #14 Meteora ? DYN2 Kalshi / SOL Kalshi $0.045921 1m 7 2 <$1 9 2,033% 2,033% 2,033% 2,033% <$1 $59K" [ref=f9e1215] [cursor=pointer]':
+            - /url: /solana/2zccqnhtezfwzbadm3jvhmgqrkqruhmdiv6u5fqquteq
+            - generic: Hide pair
+            - generic [ref=f9e1218]:
+              - generic [ref=f9e1219]:
+                - generic [ref=f9e1220]: "#14"
+                - img "Meteora" [ref=f9e1222]
+                - generic [ref=f9e1223]: "?"
+                - generic [ref=f9e1225]:
+                  - generic [ref=f9e1226]: DYN2
+                  - generic [ref=f9e1227]: Kalshi
+                  - generic [ref=f9e1228]: /
+                  - generic [ref=f9e1229]: SOL
+                  - generic [ref=f9e1230]: Kalshi
+              - generic "$0.00005921" [ref=f9e1234]: $0.045921
+              - generic [ref=f9e1235]: 1m
+              - generic [ref=f9e1237]: "7"
+              - generic [ref=f9e1239]: "2"
+              - generic [ref=f9e1241]: <$1
+              - generic [ref=f9e1243]: "9"
+              - generic [ref=f9e1245]: 2,033%
+              - generic [ref=f9e1247]: 2,033%
+              - generic [ref=f9e1249]: 2,033%
+              - generic [ref=f9e1251]: 2,033%
+              - generic [ref=f9e1253]: <$1
+              - generic [ref=f9e1255]: $59K
+          - 'link "Hide pair #15 Meteora ? DYN2 ETF / SOL Ember The Fox $0.094143 1m 9 3 $120 10 -99.69% -99.69% -99.69% -99.69% <$1 0" [ref=f9e1258] [cursor=pointer]':
+            - /url: /solana/2mhgdibqvjh1qw38iahlawq4aa9bji8jryqx2xohoi3c
+            - generic: Hide pair
+            - generic [ref=f9e1261]:
+              - generic [ref=f9e1262]:
+                - generic [ref=f9e1263]: "#15"
+                - img "Meteora" [ref=f9e1265]
+                - generic [ref=f9e1266]: "?"
+                - generic [ref=f9e1268]:
+                  - generic [ref=f9e1269]: DYN2
+                  - generic [ref=f9e1270]: ETF
+                  - generic [ref=f9e1271]: /
+                  - generic [ref=f9e1272]: SOL
+                  - generic [ref=f9e1273]: Ember The Fox
+              - generic "$0.0000000004143" [ref=f9e1277]: $0.094143
+              - generic [ref=f9e1278]: 1m
+              - generic [ref=f9e1280]: "9"
+              - generic [ref=f9e1282]: "3"
+              - generic [ref=f9e1284]: $120
+              - generic [ref=f9e1286]: "10"
+              - generic [ref=f9e1288]: "-99.69%"
+              - generic [ref=f9e1290]: "-99.69%"
+              - generic [ref=f9e1292]: "-99.69%"
+              - generic [ref=f9e1294]: "-99.69%"
+              - generic [ref=f9e1296]: <$1
+              - generic [ref=f9e1298]: "0"
+          - 'link "Hide pair #16 PumpSwap ? 天意 / SOL 天意 $0.041316 2m 567 395 $95K 310 54.96% 54.96% 54.96% 54.96% $21K $13K" [ref=f9e1300] [cursor=pointer]':
+            - /url: /solana/hkvgmesfgdq7kv6jzxr8yurg9qbbjwcn7gxxtpjfj4mn
+            - generic: Hide pair
+            - generic [ref=f9e1303]:
+              - generic [ref=f9e1304]:
+                - generic [ref=f9e1305]: "#16"
+                - img "PumpSwap" [ref=f9e1307]
+                - generic [ref=f9e1308]: "?"
+                - generic [ref=f9e1310]:
+                  - generic [ref=f9e1311]: 天意
+                  - generic [ref=f9e1312]: /
+                  - generic [ref=f9e1313]: SOL
+                  - generic [ref=f9e1314]: 天意
+              - generic "$0.00001316" [ref=f9e1318]: $0.041316
+              - generic [ref=f9e1319]: 2m
+              - generic [ref=f9e1321]: "567"
+              - generic [ref=f9e1323]: "395"
+              - generic [ref=f9e1325]: $95K
+              - generic [ref=f9e1327]: "310"
+              - generic [ref=f9e1329]: 54.96%
+              - generic [ref=f9e1331]: 54.96%
+              - generic [ref=f9e1333]: 54.96%
+              - generic [ref=f9e1335]: 54.96%
+              - generic [ref=f9e1337]: $21K
+              - generic [ref=f9e1339]: $13K
+          - 'link "Hide pair #17 Meteora ? DYN2 ETF / EMBER Ember The Fox $0.044088 2m 40 17 $3.7K 32 6.15% 6.15% 6.15% 6.15% $18K $40K" [ref=f9e1342] [cursor=pointer]':
+            - /url: /solana/deuchaggndxmafchzckb7j1aspxej5xscvyhb1rvwzlu
+            - generic: Hide pair
+            - generic [ref=f9e1345]:
+              - generic [ref=f9e1346]:
+                - generic [ref=f9e1347]: "#17"
+                - img "Meteora" [ref=f9e1349]
+                - generic [ref=f9e1350]: "?"
+                - generic [ref=f9e1352]:
+                  - generic [ref=f9e1353]: DYN2
+                  - generic [ref=f9e1354]: ETF
+                  - generic [ref=f9e1355]: /
+                  - generic [ref=f9e1356]: EMBER
+                  - generic [ref=f9e1357]: Ember The Fox
+              - generic "$0.00004088" [ref=f9e1361]: $0.044088
+              - generic [ref=f9e1362]: 2m
+              - generic [ref=f9e1364]: "40"
+              - generic [ref=f9e1366]: "17"
+              - generic [ref=f9e1368]: $3.7K
+              - generic [ref=f9e1370]: "32"
+              - generic [ref=f9e1372]: 6.15%
+              - generic [ref=f9e1374]: 6.15%
+              - generic [ref=f9e1376]: 6.15%
+              - generic [ref=f9e1378]: 6.15%
+              - generic [ref=f9e1380]: $18K
+              - generic [ref=f9e1382]: $40K
+          - 'link "Hide pair #18 PumpSwap ? PUMP / SOL ONE $0.087567 2m 242 201 $433 52 -74.17% -74.17% -74.17% -74.17% $6 $15" [ref=f9e1385] [cursor=pointer]':
+            - /url: /solana/3gxyr2kirqjtoyrvvprrmwwaeqevh81epqth3a1nkpsf
+            - generic: Hide pair
+            - generic [ref=f9e1388]:
+              - generic [ref=f9e1389]:
+                - generic [ref=f9e1390]: "#18"
+                - img "PumpSwap" [ref=f9e1392]
+                - generic [ref=f9e1393]: "?"
+                - generic [ref=f9e1395]:
+                  - generic [ref=f9e1396]: PUMP
+                  - generic [ref=f9e1397]: /
+                  - generic [ref=f9e1398]: SOL
+                  - generic [ref=f9e1399]: ONE
+              - generic "$0.000000007567" [ref=f9e1403]: $0.087567
+              - generic [ref=f9e1404]: 2m
+              - generic [ref=f9e1406]: "242"
+              - generic [ref=f9e1408]: "201"
+              - generic [ref=f9e1410]: $433
+              - generic [ref=f9e1412]: "52"
+              - generic [ref=f9e1414]: "-74.17%"
+              - generic [ref=f9e1416]: "-74.17%"
+              - generic [ref=f9e1418]: "-74.17%"
+              - generic [ref=f9e1420]: "-74.17%"
+              - generic [ref=f9e1422]: $6
+              - generic [ref=f9e1424]: $15
+          - 'link "Hide pair #19 Meteora ? DYN2 popcat / SOL popcat $0.093847 2m 469 595 $24K 232 -100% -100% -100% -100% <$1 0" [ref=f9e1427] [cursor=pointer]':
+            - /url: /solana/j8acbzkmpea72rqbwamwq57fqeb4jgroh6c6wn8lqkyg
+            - generic: Hide pair
+            - generic [ref=f9e1430]:
+              - generic [ref=f9e1431]:
+                - generic [ref=f9e1432]: "#19"
+                - img "Meteora" [ref=f9e1434]
+                - generic [ref=f9e1435]: "?"
+                - generic [ref=f9e1437]:
+                  - generic [ref=f9e1438]: DYN2
+                  - generic [ref=f9e1439]: popcat
+                  - generic [ref=f9e1440]: /
+                  - generic [ref=f9e1441]: SOL
+                  - generic [ref=f9e1442]: popcat
+              - generic "$0.0000000003847" [ref=f9e1446]: $0.093847
+              - generic [ref=f9e1447]: 2m
+              - generic [ref=f9e1449]: "469"
+              - generic [ref=f9e1451]: "595"
+              - generic [ref=f9e1453]: $24K
+              - generic [ref=f9e1455]: "232"
+              - generic [ref=f9e1457]: "-100%"
+              - generic [ref=f9e1459]: "-100%"
+              - generic [ref=f9e1461]: "-100%"
+              - generic [ref=f9e1463]: "-100%"
+              - generic [ref=f9e1465]: <$1
+              - generic [ref=f9e1467]: "0"
+          - 'link "Hide pair #20 Meteora ? DYN2 MIZO / SOL Mizo $0.094217 3m 9 2 $120 9 -99.68% -99.68% -99.68% -99.68% <$1 0" [ref=f9e1469] [cursor=pointer]':
+            - /url: /solana/8dnxvphqtgr7jcn3ioys6sb93sl6dg6sgcvzfjrx13nh
+            - generic: Hide pair
+            - generic [ref=f9e1472]:
+              - generic [ref=f9e1473]:
+                - generic [ref=f9e1474]: "#20"
+                - img "Meteora" [ref=f9e1476]
+                - generic [ref=f9e1477]: "?"
+                - generic [ref=f9e1479]:
+                  - generic [ref=f9e1480]: DYN2
+                  - generic [ref=f9e1481]: MIZO
+                  - generic [ref=f9e1482]: /
+                  - generic [ref=f9e1483]: SOL
+                  - generic [ref=f9e1484]: Mizo
+              - generic "$0.0000000004217" [ref=f9e1488]: $0.094217
+              - generic [ref=f9e1489]: 3m
+              - generic [ref=f9e1491]: "9"
+              - generic [ref=f9e1493]: "2"
+              - generic [ref=f9e1495]: $120
+              - generic [ref=f9e1497]: "9"
+              - generic [ref=f9e1499]: "-99.68%"
+              - generic [ref=f9e1501]: "-99.68%"
+              - generic [ref=f9e1503]: "-99.68%"
+              - generic [ref=f9e1505]: "-99.68%"
+              - generic [ref=f9e1507]: <$1
+              - generic [ref=f9e1509]: "0"
+          - 'link "Hide pair #21 PumpSwap ? GTA6 / SOL Gta6 $0.01585 3m 5 3 <$1 7 -6.03% -6.03% -6.03% -6.03% <$1 $951" [ref=f9e1511] [cursor=pointer]':
+            - /url: /solana/bbsbz2yto5zzy6lzwrxx17nrb7pj46f54pnwzntbrgfd
+            - generic: Hide pair
+            - generic [ref=f9e1514]:
+              - generic [ref=f9e1515]:
+                - generic [ref=f9e1516]: "#21"
+                - img "PumpSwap" [ref=f9e1518]
+                - generic [ref=f9e1519]: "?"
+                - generic [ref=f9e1521]:
+                  - generic [ref=f9e1522]: GTA6
+                  - generic [ref=f9e1523]: /
+                  - generic [ref=f9e1524]: SOL
+                  - generic [ref=f9e1525]: Gta6
+              - generic [ref=f9e1527]: $0.01585
+              - generic [ref=f9e1529]: 3m
+              - generic [ref=f9e1531]: "5"
+              - generic [ref=f9e1533]: "3"
+              - generic [ref=f9e1535]: <$1
+              - generic [ref=f9e1537]: "7"
+              - generic [ref=f9e1539]: "-6.03%"
+              - generic [ref=f9e1541]: "-6.03%"
+              - generic [ref=f9e1543]: "-6.03%"
+              - generic [ref=f9e1545]: "-6.03%"
+              - generic [ref=f9e1547]: <$1
+              - generic [ref=f9e1549]: $951
+          - 'link "Hide pair #22 Meteora ? DYN2 VIF / SOL Vitalik Wif Hat $0.094148 3m 9 7 $120 14 -99.69% -99.69% -99.69% -99.69% <$1 0" [ref=f9e1552] [cursor=pointer]':
+            - /url: /solana/2n68s5zbzjd8sjkybukqldgs7ypnusnutw5f5kgbwmpx
+            - generic: Hide pair
+            - generic [ref=f9e1555]:
+              - generic [ref=f9e1556]:
+                - generic [ref=f9e1557]: "#22"
+                - img "Meteora" [ref=f9e1559]
+                - generic [ref=f9e1560]: "?"
+                - generic [ref=f9e1562]:
+                  - generic [ref=f9e1563]: DYN2
+                  - generic [ref=f9e1564]: VIF
+                  - generic [ref=f9e1565]: /
+                  - generic [ref=f9e1566]: SOL
+                  - generic [ref=f9e1567]: Vitalik Wif Hat
+              - generic "$0.0000000004148" [ref=f9e1571]: $0.094148
+              - generic [ref=f9e1572]: 3m
+              - generic [ref=f9e1574]: "9"
+              - generic [ref=f9e1576]: "7"
+              - generic [ref=f9e1578]: $120
+              - generic [ref=f9e1580]: "14"
+              - generic [ref=f9e1582]: "-99.69%"
+              - generic [ref=f9e1584]: "-99.69%"
+              - generic [ref=f9e1586]: "-99.69%"
+              - generic [ref=f9e1588]: "-99.69%"
+              - generic [ref=f9e1590]: <$1
+              - generic [ref=f9e1592]: "0"
+          - 'link "Hide pair #23 Meteora ? DYN2 PECCY / SOL Peccy $0.094974 3m 407 471 $11K 211 -100% -100% -100% -100% <$1 0" [ref=f9e1594] [cursor=pointer]':
+            - /url: /solana/e8gmk4pcotsc3qma71dnyfs245ywsqgyt8segrcurc3w
+            - generic: Hide pair
+            - generic [ref=f9e1597]:
+              - generic [ref=f9e1598]:
+                - generic [ref=f9e1599]: "#23"
+                - img "Meteora" [ref=f9e1601]
+                - generic [ref=f9e1602]: "?"
+                - generic [ref=f9e1604]:
+                  - generic [ref=f9e1605]: DYN2
+                  - generic [ref=f9e1606]: PECCY
+                  - generic [ref=f9e1607]: /
+                  - generic [ref=f9e1608]: SOL
+                  - generic [ref=f9e1609]: Peccy
+              - generic "$0.0000000004974" [ref=f9e1613]: $0.094974
+              - generic [ref=f9e1614]: 3m
+              - generic [ref=f9e1616]: "407"
+              - generic [ref=f9e1618]: "471"
+              - generic [ref=f9e1620]: $11K
+              - generic [ref=f9e1622]: "211"
+              - generic [ref=f9e1624]: "-100%"
+              - generic [ref=f9e1626]: "-100%"
+              - generic [ref=f9e1628]: "-100%"
+              - generic [ref=f9e1630]: "-100%"
+              - generic [ref=f9e1632]: <$1
+              - generic [ref=f9e1634]: "0"
+          - 'link "Hide pair #24 Meteora ? DYN2 BLAST / SOL BLAST $0.094006 3m 304 356 $8.7K 199 -100% -100% -100% -100% <$1 0" [ref=f9e1636] [cursor=pointer]':
+            - /url: /solana/zexv56xn3aadqdbnaweqjzcxjf7b5eyteyqqhjuagdv
+            - generic: Hide pair
+            - generic [ref=f9e1639]:
+              - generic [ref=f9e1640]:
+                - generic [ref=f9e1641]: "#24"
+                - img "Meteora" [ref=f9e1643]
+                - generic [ref=f9e1644]: "?"
+                - generic [ref=f9e1646]:
+                  - generic [ref=f9e1647]: DYN2
+                  - generic [ref=f9e1648]: BLAST
+                  - generic [ref=f9e1649]: /
+                  - generic [ref=f9e1650]: SOL
+                  - generic [ref=f9e1651]: BLAST
+              - generic "$0.0000000004006" [ref=f9e1655]: $0.094006
+              - generic [ref=f9e1656]: 3m
+              - generic [ref=f9e1658]: "304"
+              - generic [ref=f9e1660]: "356"
+              - generic [ref=f9e1662]: $8.7K
+              - generic [ref=f9e1664]: "199"
+              - generic [ref=f9e1666]: "-100%"
+              - generic [ref=f9e1668]: "-100%"
+              - generic [ref=f9e1670]: "-100%"
+              - generic [ref=f9e1672]: "-100%"
+              - generic [ref=f9e1674]: <$1
+              - generic [ref=f9e1676]: "0"
+          - 'link "Hide pair #25 Meteora ? DYN2 HEPE / SOL HELIUS PEPE $0.044306 4m 621 717 $15K 200 -12.51% -12.51% -12.51% -12.51% $2.0K $43K" [ref=f9e1678] [cursor=pointer]':
+            - /url: /solana/2lbk7wl4hwfwgun2evnnzbxh2jgkhvuq4tjanm1owxst
+            - generic: Hide pair
+            - generic [ref=f9e1681]:
+              - generic [ref=f9e1682]:
+                - generic [ref=f9e1683]: "#25"
+                - img "Meteora" [ref=f9e1685]
+                - generic [ref=f9e1686]: "?"
+                - generic [ref=f9e1688]:
+                  - generic [ref=f9e1689]: DYN2
+                  - generic [ref=f9e1690]: HEPE
+                  - generic [ref=f9e1691]: /
+                  - generic [ref=f9e1692]: SOL
+                  - generic [ref=f9e1693]: HELIUS PEPE
+              - generic "$0.00004306" [ref=f9e1697]: $0.044306
+              - generic [ref=f9e1698]: 4m
+              - generic [ref=f9e1700]: "621"
+              - generic [ref=f9e1702]: "717"
+              - generic [ref=f9e1704]: $15K
+              - generic [ref=f9e1706]: "200"
+              - generic [ref=f9e1708]: "-12.51%"
+              - generic [ref=f9e1710]: "-12.51%"
+              - generic [ref=f9e1712]: "-12.51%"
+              - generic [ref=f9e1714]: "-12.51%"
+              - generic [ref=f9e1716]: $2.0K
+              - generic [ref=f9e1718]: $43K
+          - 'link "Hide pair #26 Meteora ? DYN2 天意 / SOL 天意 $0.041451 4m 1,216 374 $76K 954 71.19% 71.19% 71.19% 71.19% $22K $14K" [ref=f9e1721] [cursor=pointer]':
+            - /url: /solana/3snmp5ptbnpcp2oyzrcoeqhithb6wmyfzxvceajw53wp
+            - generic: Hide pair
+            - generic [ref=f9e1724]:
+              - generic [ref=f9e1725]:
+                - generic [ref=f9e1726]: "#26"
+                - img "Meteora" [ref=f9e1728]
+                - generic [ref=f9e1729]: "?"
+                - generic [ref=f9e1731]:
+                  - generic [ref=f9e1732]: DYN2
+                  - generic [ref=f9e1733]: 天意
+                  - generic [ref=f9e1734]: /
+                  - generic [ref=f9e1735]: SOL
+                  - generic [ref=f9e1736]: 天意
+              - generic "$0.00001451" [ref=f9e1740]: $0.041451
+              - generic [ref=f9e1741]: 4m
+              - generic [ref=f9e1743]: 1,216
+              - generic [ref=f9e1745]: "374"
+              - generic [ref=f9e1747]: $76K
+              - generic [ref=f9e1749]: "954"
+              - generic [ref=f9e1751]: 71.19%
+              - generic [ref=f9e1753]: 71.19%
+              - generic [ref=f9e1755]: 71.19%
+              - generic [ref=f9e1757]: 71.19%
+              - generic [ref=f9e1759]: $22K
+              - generic [ref=f9e1761]: $14K
+          - 'link "Hide pair #27 Meteora ? DYN2 ETF / SOL Ember The Fox $0.094480 4m 9 3 $120 10 -99.66% -99.66% -99.66% -99.66% <$1 0" [ref=f9e1764] [cursor=pointer]':
+            - /url: /solana/2efg4ax91yrdqzf7nna9teufbhrmxu48cx3tlhl1d4w9
+            - generic: Hide pair
+            - generic [ref=f9e1767]:
+              - generic [ref=f9e1768]:
+                - generic [ref=f9e1769]: "#27"
+                - img "Meteora" [ref=f9e1771]
+                - generic [ref=f9e1772]: "?"
+                - generic [ref=f9e1774]:
+                  - generic [ref=f9e1775]: DYN2
+                  - generic [ref=f9e1776]: ETF
+                  - generic [ref=f9e1777]: /
+                  - generic [ref=f9e1778]: SOL
+                  - generic [ref=f9e1779]: Ember The Fox
+              - generic "$0.0000000004480" [ref=f9e1783]: $0.094480
+              - generic [ref=f9e1784]: 4m
+              - generic [ref=f9e1786]: "9"
+              - generic [ref=f9e1788]: "3"
+              - generic [ref=f9e1790]: $120
+              - generic [ref=f9e1792]: "10"
+              - generic [ref=f9e1794]: "-99.66%"
+              - generic [ref=f9e1796]: "-99.66%"
+              - generic [ref=f9e1798]: "-99.66%"
+              - generic [ref=f9e1800]: "-99.66%"
+              - generic [ref=f9e1802]: <$1
+              - generic [ref=f9e1804]: "0"
+          - 'link "Hide pair #28 PumpSwap ? MC / SOL Market Cap $0.044470 4m 582 37 $1.0K 559 27.72% 27.72% 27.72% 27.72% $15K $44K" [ref=f9e1806] [cursor=pointer]':
+            - /url: /solana/b87kk6jyswnznufxann9vjr4hhkdi15ozcy6n28ay6w7
+            - generic: Hide pair
+            - generic [ref=f9e1809]:
+              - generic [ref=f9e1810]:
+                - generic [ref=f9e1811]: "#28"
+                - img "PumpSwap" [ref=f9e1813]
+                - generic [ref=f9e1814]: "?"
+                - generic [ref=f9e1816]:
+                  - generic [ref=f9e1817]: MC
+                  - generic [ref=f9e1818]: /
+                  - generic [ref=f9e1819]: SOL
+                  - generic [ref=f9e1820]: Market Cap
+              - generic "$0.00004470" [ref=f9e1824]: $0.044470
+              - generic [ref=f9e1825]: 4m
+              - generic [ref=f9e1827]: "582"
+              - generic [ref=f9e1829]: "37"
+              - generic [ref=f9e1831]: $1.0K
+              - generic [ref=f9e1833]: "559"
+              - generic [ref=f9e1835]: 27.72%
+              - generic [ref=f9e1837]: 27.72%
+              - generic [ref=f9e1839]: 27.72%
+              - generic [ref=f9e1841]: 27.72%
+              - generic [ref=f9e1843]: $15K
+              - generic [ref=f9e1845]: $44K
+          - 'link "Hide pair #29 Meteora ? DYN2 MC / SOL Market Cap $0.043715 4m 13 4 <$1 14 1,607% 1,607% 1,607% 1,607% <$1 $37K" [ref=f9e1848] [cursor=pointer]':
+            - /url: /solana/14a4hdkkvcdh9swrmevmzeerun6rkszknqafjenib2de
+            - generic: Hide pair
+            - generic [ref=f9e1851]:
+              - generic [ref=f9e1852]:
+                - generic [ref=f9e1853]: "#29"
+                - img "Meteora" [ref=f9e1855]
+                - generic [ref=f9e1856]: "?"
+                - generic [ref=f9e1858]:
+                  - generic [ref=f9e1859]: DYN2
+                  - generic [ref=f9e1860]: MC
+                  - generic [ref=f9e1861]: /
+                  - generic [ref=f9e1862]: SOL
+                  - generic [ref=f9e1863]: Market Cap
+              - generic "$0.00003715" [ref=f9e1867]: $0.043715
+              - generic [ref=f9e1868]: 4m
+              - generic [ref=f9e1870]: "13"
+              - generic [ref=f9e1872]: "4"
+              - generic [ref=f9e1874]: <$1
+              - generic [ref=f9e1876]: "14"
+              - generic [ref=f9e1878]: 1,607%
+              - generic [ref=f9e1880]: 1,607%
+              - generic [ref=f9e1882]: 1,607%
+              - generic [ref=f9e1884]: 1,607%
+              - generic [ref=f9e1886]: <$1
+              - generic [ref=f9e1888]: $37K
+          - 'link "Hide pair #30 PumpSwap ? HEV / SOL Heavier $0.049045 5m 648 18 $636 645 7.00% 7.70% 7.70% 7.70% <$1 $90K" [ref=f9e1891] [cursor=pointer]':
+            - /url: /solana/e45ijbn6crqymgmltjbwh84h7mhb8ywcpq5qyt1ksofv
+            - generic: Hide pair
+            - generic [ref=f9e1894]:
+              - generic [ref=f9e1895]:
+                - generic [ref=f9e1896]: "#30"
+                - img "PumpSwap" [ref=f9e1898]
+                - generic [ref=f9e1899]: "?"
+                - generic [ref=f9e1901]:
+                  - generic [ref=f9e1902]: HEV
+                  - generic [ref=f9e1903]: /
+                  - generic [ref=f9e1904]: SOL
+                  - generic [ref=f9e1905]: Heavier
+              - generic "$0.00009045" [ref=f9e1909]: $0.049045
+              - generic [ref=f9e1910]: 5m
+              - generic [ref=f9e1912]: "648"
+              - generic [ref=f9e1914]: "18"
+              - generic [ref=f9e1916]: $636
+              - generic [ref=f9e1918]: "645"
+              - generic [ref=f9e1920]: 7.00%
+              - generic [ref=f9e1922]: 7.70%
+              - generic [ref=f9e1924]: 7.70%
+              - generic [ref=f9e1926]: 7.70%
+              - generic [ref=f9e1928]: <$1
+              - generic [ref=f9e1930]: $90K
+          - 'link "Hide pair #31 Meteora ? DYN2 HEV / SOL Heavier $0.0001513 5m 12 3 <$1 13 60.95% 6,867% 6,867% 6,867% <$1 $151K" [ref=f9e1933] [cursor=pointer]':
+            - /url: /solana/a2aqubqksnlcqwhicyzabzmzacmwvgbe6jopjbhee2vd
+            - generic: Hide pair
+            - generic [ref=f9e1936]:
+              - generic [ref=f9e1937]:
+                - generic [ref=f9e1938]: "#31"
+                - img "Meteora" [ref=f9e1940]
+                - generic [ref=f9e1941]: "?"
+                - generic [ref=f9e1943]:
+                  - generic [ref=f9e1944]: DYN2
+                  - generic [ref=f9e1945]: HEV
+                  - generic [ref=f9e1946]: /
+                  - generic [ref=f9e1947]: SOL
+                  - generic [ref=f9e1948]: Heavier
+              - generic [ref=f9e1950]: $0.0001513
+              - generic [ref=f9e1952]: 5m
+              - generic [ref=f9e1954]: "12"
+              - generic [ref=f9e1956]: "3"
+              - generic [ref=f9e1958]: <$1
+              - generic [ref=f9e1960]: "13"
+              - generic [ref=f9e1962]: 60.95%
+              - generic [ref=f9e1964]: 6,867%
+              - generic [ref=f9e1966]: 6,867%
+              - generic [ref=f9e1968]: 6,867%
+              - generic [ref=f9e1970]: <$1
+              - generic [ref=f9e1972]: $151K
+          - 'link "Hide pair #32 Raydium ? CPMM SCF / SOL Smoking Chicken Fish $0.075135 5m 9 2 $37 7 229% -39.92% -39.92% -39.92% <$1 $51" [ref=f9e1975] [cursor=pointer]':
+            - /url: /solana/6do5qmwpmokqrqurqcpzz7tfxhiune8uy4yamjzsn4za
+            - generic: Hide pair
+            - generic [ref=f9e1978]:
+              - generic [ref=f9e1979]:
+                - generic [ref=f9e1980]: "#32"
+                - img "Raydium" [ref=f9e1982]
+                - generic [ref=f9e1983]: "?"
+                - generic [ref=f9e1985]:
+                  - generic [ref=f9e1986]: CPMM
+                  - generic [ref=f9e1987]: SCF
+                  - generic [ref=f9e1988]: /
+                  - generic [ref=f9e1989]: SOL
+                  - generic [ref=f9e1990]: Smoking Chicken Fish
+              - generic "$0.00000005135" [ref=f9e1994]: $0.075135
+              - generic [ref=f9e1995]: 5m
+              - generic [ref=f9e1997]: "9"
+              - generic [ref=f9e1999]: "2"
+              - generic [ref=f9e2001]: $37
+              - generic [ref=f9e2003]: "7"
+              - generic [ref=f9e2005]: 229%
+              - generic [ref=f9e2007]: "-39.92%"
+              - generic [ref=f9e2009]: "-39.92%"
+              - generic [ref=f9e2011]: "-39.92%"
+              - generic [ref=f9e2013]: <$1
+              - generic [ref=f9e2015]: $51
+          - 'link "Hide pair #33 Meteora ? DYN2 LONGGPTCAT / SOL LongGptCat $0.092500 5m 716 799 $76K 217 -100% -100% -100% -100% <$1 0" [ref=f9e2018] [cursor=pointer]':
+            - /url: /solana/hbme36wq5hnojkwby6jn6ng3mfnnpfd92sgzh5sbvqqv
+            - generic: Hide pair
+            - generic [ref=f9e2021]:
+              - generic [ref=f9e2022]:
+                - generic [ref=f9e2023]: "#33"
+                - img "Meteora" [ref=f9e2025]
+                - generic [ref=f9e2026]: "?"
+                - generic [ref=f9e2028]:
+                  - generic [ref=f9e2029]: DYN2
+                  - generic [ref=f9e2030]: LONGGPTCAT
+                  - generic [ref=f9e2031]: /
+                  - generic [ref=f9e2032]: SOL
+                  - generic [ref=f9e2033]: LongGptCat
+              - generic "$0.0000000002500" [ref=f9e2037]: $0.092500
+              - generic [ref=f9e2038]: 5m
+              - generic [ref=f9e2040]: "716"
+              - generic [ref=f9e2042]: "799"
+              - generic [ref=f9e2044]: $76K
+              - generic [ref=f9e2046]: "217"
+              - generic [ref=f9e2048]: "-100%"
+              - generic [ref=f9e2050]: "-100%"
+              - generic [ref=f9e2052]: "-100%"
+              - generic [ref=f9e2054]: "-100%"
+              - generic [ref=f9e2056]: <$1
+              - generic [ref=f9e2058]: "0"
+          - 'link "Hide pair #34 Meteora ? DYN2 CTO / SOL Clanker Takeover $0.092804 5m 13 4 $120 13 2.76% -99.79% -99.79% -99.79% <$1 0" [ref=f9e2060] [cursor=pointer]':
+            - /url: /solana/ctgl3n3h6bwgmvzh62pvtjndb9xqj4m8xcxvc3pnypzt
+            - generic: Hide pair
+            - generic [ref=f9e2063]:
+              - generic [ref=f9e2064]:
+                - generic [ref=f9e2065]: "#34"
+                - img "Meteora" [ref=f9e2067]
+                - generic [ref=f9e2068]: "?"
+                - generic [ref=f9e2070]:
+                  - generic [ref=f9e2071]: DYN2
+                  - generic [ref=f9e2072]: CTO
+                  - generic [ref=f9e2073]: /
+                  - generic [ref=f9e2074]: SOL
+                  - generic [ref=f9e2075]: Clanker Takeover
+              - generic "$0.0000000002804" [ref=f9e2079]: $0.092804
+              - generic [ref=f9e2080]: 5m
+              - generic [ref=f9e2082]: "13"
+              - generic [ref=f9e2084]: "4"
+              - generic [ref=f9e2086]: $120
+              - generic [ref=f9e2088]: "13"
+              - generic [ref=f9e2090]: 2.76%
+              - generic [ref=f9e2092]: "-99.79%"
+              - generic [ref=f9e2094]: "-99.79%"
+              - generic [ref=f9e2096]: "-99.79%"
+              - generic [ref=f9e2098]: <$1
+              - generic [ref=f9e2100]: "0"
+          - 'link "Hide pair #35 PumpSwap ? CTO / SOL Clanker Takeover $0.042941 5m 436 34 $464 439 -65.42% -64.80% -64.80% -64.80% <$1 $29K" [ref=f9e2102] [cursor=pointer]':
+            - /url: /solana/62rhtc5p3ahethwlrnbw9kptcvdvuxnjtkvfrqicdf5u
+            - generic: Hide pair
+            - generic [ref=f9e2105]:
+              - generic [ref=f9e2106]:
+                - generic [ref=f9e2107]: "#35"
+                - img "PumpSwap" [ref=f9e2109]
+                - generic [ref=f9e2110]: "?"
+                - generic [ref=f9e2112]:
+                  - generic [ref=f9e2113]: CTO
+                  - generic [ref=f9e2114]: /
+                  - generic [ref=f9e2115]: SOL
+                  - generic [ref=f9e2116]: Clanker Takeover
+              - generic "$0.00002941" [ref=f9e2120]: $0.042941
+              - generic [ref=f9e2121]: 5m
+              - generic [ref=f9e2123]: "436"
+              - generic [ref=f9e2125]: "34"
+              - generic [ref=f9e2127]: $464
+              - generic [ref=f9e2129]: "439"
+              - generic [ref=f9e2131]: "-65.42%"
+              - generic [ref=f9e2133]: "-64.80%"
+              - generic [ref=f9e2135]: "-64.80%"
+              - generic [ref=f9e2137]: "-64.80%"
+              - generic [ref=f9e2139]: <$1
+              - generic [ref=f9e2141]: $29K
+          - 'link "Hide pair #36 Meteora ? DYN2 CTO / SOL Clanker Takeover $0.048991 5m 6 0 <$1 6 0% 4,042% 4,042% 4,042% <$1 $89K" [ref=f9e2144] [cursor=pointer]':
+            - /url: /solana/75jm54eu76f6jy7w7ppc47z9uhn9kfawh9ybfrfnbxpf
+            - generic: Hide pair
+            - generic [ref=f9e2147]:
+              - generic [ref=f9e2148]:
+                - generic [ref=f9e2149]: "#36"
+                - img "Meteora" [ref=f9e2151]
+                - generic [ref=f9e2152]: "?"
+                - generic [ref=f9e2154]:
+                  - generic [ref=f9e2155]: DYN2
+                  - generic [ref=f9e2156]: CTO
+                  - generic [ref=f9e2157]: /
+                  - generic [ref=f9e2158]: SOL
+                  - generic [ref=f9e2159]: Clanker Takeover
+              - generic "$0.00008991" [ref=f9e2163]: $0.048991
+              - generic [ref=f9e2164]: 5m
+              - generic [ref=f9e2166]: "6"
+              - generic [ref=f9e2168]: "0"
+              - generic [ref=f9e2170]: <$1
+              - generic [ref=f9e2172]: "6"
+              - generic [ref=f9e2174]: 0%
+              - generic [ref=f9e2176]: 4,042%
+              - generic [ref=f9e2178]: 4,042%
+              - generic [ref=f9e2180]: 4,042%
+              - generic [ref=f9e2182]: <$1
+              - generic [ref=f9e2184]: $89K
+          - 'link "Hide pair #37 PumpSwap ? KuCoin / SOL kucoincom $0.042765 6m 735 34 $893 639 -60.84% -59.93% -59.93% -59.93% <$1 $27K" [ref=f9e2187] [cursor=pointer]':
+            - /url: /solana/hisvc6sapck2tzmvts3w7js34zfx1dqb4teh71xx6vrr
+            - generic: Hide pair
+            - generic [ref=f9e2190]:
+              - generic [ref=f9e2191]:
+                - generic [ref=f9e2192]: "#37"
+                - img "PumpSwap" [ref=f9e2194]
+                - generic [ref=f9e2195]: "?"
+                - generic [ref=f9e2197]:
+                  - generic [ref=f9e2198]: KuCoin
+                  - generic [ref=f9e2199]: /
+                  - generic [ref=f9e2200]: SOL
+                  - generic [ref=f9e2201]: kucoincom
+              - generic "$0.00002765" [ref=f9e2205]: $0.042765
+              - generic [ref=f9e2206]: 6m
+              - generic [ref=f9e2208]: "735"
+              - generic [ref=f9e2210]: "34"
+              - generic [ref=f9e2212]: $893
+              - generic [ref=f9e2214]: "639"
+              - generic [ref=f9e2216]: "-60.84%"
+              - generic [ref=f9e2218]: "-59.93%"
+              - generic [ref=f9e2220]: "-59.93%"
+              - generic [ref=f9e2222]: "-59.93%"
+              - generic [ref=f9e2224]: <$1
+              - generic [ref=f9e2226]: $27K
+          - 'link "Hide pair #38 Meteora ? DYN2 KuCoin / SOL kucoincom $0.047088 6m 7 2 <$1 9 0% 2,659% 2,659% 2,659% <$1 $70K" [ref=f9e2229] [cursor=pointer]':
+            - /url: /solana/4i6xyyrnxgzfcd2sqx38sf5f2pmnzxwqbwkpqbsyjfgj
+            - generic: Hide pair
+            - generic [ref=f9e2232]:
+              - generic [ref=f9e2233]:
+                - generic [ref=f9e2234]: "#38"
+                - img "Meteora" [ref=f9e2236]
+                - generic [ref=f9e2237]: "?"
+                - generic [ref=f9e2239]:
+                  - generic [ref=f9e2240]: DYN2
+                  - generic [ref=f9e2241]: KuCoin
+                  - generic [ref=f9e2242]: /
+                  - generic [ref=f9e2243]: SOL
+                  - generic [ref=f9e2244]: kucoincom
+              - generic "$0.00007088" [ref=f9e2248]: $0.047088
+              - generic [ref=f9e2249]: 6m
+              - generic [ref=f9e2251]: "7"
+              - generic [ref=f9e2253]: "2"
+              - generic [ref=f9e2255]: <$1
+              - generic [ref=f9e2257]: "9"
+              - generic [ref=f9e2259]: 0%
+              - generic [ref=f9e2261]: 2,659%
+              - generic [ref=f9e2263]: 2,659%
+              - generic [ref=f9e2265]: 2,659%
+              - generic [ref=f9e2267]: <$1
+              - generic [ref=f9e2269]: $70K
+          - 'link "Hide pair #39 Meteora ? DYN2 KFC / SOL KFC $0.093993 6m 1,202 1,425 $34K 230 -100% -100% -100% -100% <$1 0" [ref=f9e2272] [cursor=pointer]':
+            - /url: /solana/8yor6xxw6y6f1ltusivc1tpnzzzwt46p5kkpeijezlv1
+            - generic: Hide pair
+            - generic [ref=f9e2275]:
+              - generic [ref=f9e2276]:
+                - generic [ref=f9e2277]: "#39"
+                - img "Meteora" [ref=f9e2279]
+                - generic [ref=f9e2280]: "?"
+                - generic [ref=f9e2282]:
+                  - generic [ref=f9e2283]: DYN2
+                  - generic [ref=f9e2284]: KFC
+                  - generic [ref=f9e2285]: /
+                  - generic [ref=f9e2286]: SOL
+                  - generic [ref=f9e2287]: KFC
+              - generic "$0.0000000003993" [ref=f9e2291]: $0.093993
+              - generic [ref=f9e2292]: 6m
+              - generic [ref=f9e2294]: 1,202
+              - generic [ref=f9e2296]: 1,425
+              - generic [ref=f9e2298]: $34K
+              - generic [ref=f9e2300]: "230"
+              - generic [ref=f9e2302]: "-100%"
+              - generic [ref=f9e2304]: "-100%"
+              - generic [ref=f9e2306]: "-100%"
+              - generic [ref=f9e2308]: "-100%"
+              - generic [ref=f9e2310]: <$1
+              - generic [ref=f9e2312]: "0"
+          - 'link "Hide pair #40 Meteora ? DYN2 MIZO / SOL Mizo $0.095088 6m 365 382 $7.3K 210 3.37% -100% -100% -100% <$1 $1" [ref=f9e2314] [cursor=pointer]':
+            - /url: /solana/amvmhnxv772dmqqyucjvijc2jvgxbriwkzfgcqsce1b
+            - generic: Hide pair
+            - generic [ref=f9e2317]:
+              - generic [ref=f9e2318]:
+                - generic [ref=f9e2319]: "#40"
+                - img "Meteora" [ref=f9e2321]
+                - generic [ref=f9e2322]: "?"
+                - generic [ref=f9e2324]:
+                  - generic [ref=f9e2325]: DYN2
+                  - generic [ref=f9e2326]: MIZO
+                  - generic [ref=f9e2327]: /
+                  - generic [ref=f9e2328]: SOL
+                  - generic [ref=f9e2329]: Mizo
+              - generic "$0.0000000005088" [ref=f9e2333]: $0.095088
+              - generic [ref=f9e2334]: 6m
+              - generic [ref=f9e2336]: "365"
+              - generic [ref=f9e2338]: "382"
+              - generic [ref=f9e2340]: $7.3K
+              - generic [ref=f9e2342]: "210"
+              - generic [ref=f9e2344]: 3.37%
+              - generic [ref=f9e2346]: "-100%"
+              - generic [ref=f9e2348]: "-100%"
+              - generic [ref=f9e2350]: "-100%"
+              - generic [ref=f9e2352]: <$1
+              - generic [ref=f9e2354]: $1
+          - 'link "Hide pair #41 PumpSwap ? 佩佩 / SOL PeiPei $0.059733 7m 864 200 $26K 781 6.13% 11.91% 11.91% 11.91% $18K $9.7K" [ref=f9e2357] [cursor=pointer]':
+            - /url: /solana/fayfpdbb9q5ywdjainpqrewj9fve8ysvk8psyapaffx9
+            - generic: Hide pair
+            - generic [ref=f9e2360]:
+              - generic [ref=f9e2361]:
+                - generic [ref=f9e2362]: "#41"
+                - img "PumpSwap" [ref=f9e2364]
+                - generic [ref=f9e2365]: "?"
+                - generic [ref=f9e2367]:
+                  - generic [ref=f9e2368]: 佩佩
+                  - generic [ref=f9e2369]: /
+                  - generic [ref=f9e2370]: SOL
+                  - generic [ref=f9e2371]: PeiPei
+              - generic "$0.000009733" [ref=f9e2375]: $0.059733
+              - generic [ref=f9e2376]: 7m
+              - generic [ref=f9e2378]: "864"
+              - generic [ref=f9e2380]: "200"
+              - generic [ref=f9e2382]: $26K
+              - generic [ref=f9e2384]: "781"
+              - generic [ref=f9e2386]: 6.13%
+              - generic [ref=f9e2388]: 11.91%
+              - generic [ref=f9e2390]: 11.91%
+              - generic [ref=f9e2392]: 11.91%
+              - generic [ref=f9e2394]: $18K
+              - generic [ref=f9e2396]: $9.7K
+          - 'link "Hide pair #42 Meteora ? DYN2 佩佩 / SOL PeiPei $0.041184 7m 288 98 $14K 282 0% 40.04% 40.04% 40.04% <$1 $11K" [ref=f9e2399] [cursor=pointer]':
+            - /url: /solana/8tnvtves9xvoz2eran7mgb4iugkwxwv65o8z5cf7yrhd
+            - generic: Hide pair
+            - generic [ref=f9e2402]:
+              - generic [ref=f9e2403]:
+                - generic [ref=f9e2404]: "#42"
+                - img "Meteora" [ref=f9e2406]
+                - generic [ref=f9e2407]: "?"
+                - generic [ref=f9e2409]:
+                  - generic [ref=f9e2410]: DYN2
+                  - generic [ref=f9e2411]: 佩佩
+                  - generic [ref=f9e2412]: /
+                  - generic [ref=f9e2413]: SOL
+                  - generic [ref=f9e2414]: PeiPei
+              - generic "$0.00001184" [ref=f9e2418]: $0.041184
+              - generic [ref=f9e2419]: 7m
+              - generic [ref=f9e2421]: "288"
+              - generic [ref=f9e2423]: "98"
+              - generic [ref=f9e2425]: $14K
+              - generic [ref=f9e2427]: "282"
+              - generic [ref=f9e2429]: 0%
+              - generic [ref=f9e2431]: 40.04%
+              - generic [ref=f9e2433]: 40.04%
+              - generic [ref=f9e2435]: 40.04%
+              - generic [ref=f9e2437]: <$1
+              - generic [ref=f9e2439]: $11K
+          - 'link "Hide pair #43 Meteora ? DYN2 ETF / SOL Ember The Fox $0.094806 7m 17 7 $122 17 0% -99.64% -99.64% -99.64% <$1 0" [ref=f9e2442] [cursor=pointer]':
+            - /url: /solana/7vbfobzzhgosp1kq2itnrn6kc4isjcfbdamcjjrcglvz
+            - generic: Hide pair
+            - generic [ref=f9e2445]:
+              - generic [ref=f9e2446]:
+                - generic [ref=f9e2447]: "#43"
+                - img "Meteora" [ref=f9e2449]
+                - generic [ref=f9e2450]: "?"
+                - generic [ref=f9e2452]:
+                  - generic [ref=f9e2453]: DYN2
+                  - generic [ref=f9e2454]: ETF
+                  - generic [ref=f9e2455]: /
+                  - generic [ref=f9e2456]: SOL
+                  - generic [ref=f9e2457]: Ember The Fox
+              - generic "$0.0000000004806" [ref=f9e2461]: $0.094806
+              - generic [ref=f9e2462]: 7m
+              - generic [ref=f9e2464]: "17"
+              - generic [ref=f9e2466]: "7"
+              - generic [ref=f9e2468]: $122
+              - generic [ref=f9e2470]: "17"
+              - generic [ref=f9e2472]: 0%
+              - generic [ref=f9e2474]: "-99.64%"
+              - generic [ref=f9e2476]: "-99.64%"
+              - generic [ref=f9e2478]: "-99.64%"
+              - generic [ref=f9e2480]: <$1
+              - generic [ref=f9e2482]: "0"
+          - 'link "Hide pair #44 Meteora ? DYN2 佩佩 / SOL PeiPei $0.058463 7m 7 6 $9 8 0% 0.03% 0.03% 0.03% <$1 $8.4K" [ref=f9e2484] [cursor=pointer]':
+            - /url: /solana/d4f2rhnpfkp4kxnvqjxd8vdwgm3n612houzgqqdxbcmv
+            - generic: Hide pair
+            - generic [ref=f9e2487]:
+              - generic [ref=f9e2488]:
+                - generic [ref=f9e2489]: "#44"
+                - img "Meteora" [ref=f9e2491]
+                - generic [ref=f9e2492]: "?"
+                - generic [ref=f9e2494]:
+                  - generic [ref=f9e2495]: DYN2
+                  - generic [ref=f9e2496]: 佩佩
+                  - generic [ref=f9e2497]: /
+                  - generic [ref=f9e2498]: SOL
+                  - generic [ref=f9e2499]: PeiPei
+              - generic "$0.000008463" [ref=f9e2503]: $0.058463
+              - generic [ref=f9e2504]: 7m
+              - generic [ref=f9e2506]: "7"
+              - generic [ref=f9e2508]: "6"
+              - generic [ref=f9e2510]: $9
+              - generic [ref=f9e2512]: "8"
+              - generic [ref=f9e2514]: 0%
+              - generic [ref=f9e2516]: 0.03%
+              - generic [ref=f9e2518]: 0.03%
+              - generic [ref=f9e2520]: 0.03%
+              - generic [ref=f9e2522]: <$1
+              - generic [ref=f9e2524]: $8.4K
+          - 'link "Hide pair #45 Meteora ? DYN2 CTO / SOL Clanker Takeover $0.094258 7m 15 5 $120 15 0% -99.66% -99.66% -99.66% <$1 0" [ref=f9e2527] [cursor=pointer]':
+            - /url: /solana/3p35ix3fzhhqvekhrs4hg6bvudacehzzb1y3mixwsmuw
+            - generic: Hide pair
+            - generic [ref=f9e2530]:
+              - generic [ref=f9e2531]:
+                - generic [ref=f9e2532]: "#45"
+                - img "Meteora" [ref=f9e2534]
+                - generic [ref=f9e2535]: "?"
+                - generic [ref=f9e2537]:
+                  - generic [ref=f9e2538]: DYN2
+                  - generic [ref=f9e2539]: CTO
+                  - generic [ref=f9e2540]: /
+                  - generic [ref=f9e2541]: SOL
+                  - generic [ref=f9e2542]: Clanker Takeover
+              - generic "$0.0000000004258" [ref=f9e2546]: $0.094258
+              - generic [ref=f9e2547]: 7m
+              - generic [ref=f9e2549]: "15"
+              - generic [ref=f9e2551]: "5"
+              - generic [ref=f9e2553]: $120
+              - generic [ref=f9e2555]: "15"
+              - generic [ref=f9e2557]: 0%
+              - generic [ref=f9e2559]: "-99.66%"
+              - generic [ref=f9e2561]: "-99.66%"
+              - generic [ref=f9e2563]: "-99.66%"
+              - generic [ref=f9e2565]: <$1
+              - generic [ref=f9e2567]: "0"
+          - 'link "Hide pair #46 FluxBeam ? JubJub / SOL Zcash Official Mascot $0.0003401 7m 58 0 $1.7K 20 58.71% 173% 173% 173% $340K $340K" [ref=f9e2569] [cursor=pointer]':
+            - /url: /solana/9kwwtcdw73jukdbafmqefxcux2mpgzrzcrzezjrjnxf1
+            - generic: Hide pair
+            - generic [ref=f9e2572]:
+              - generic [ref=f9e2573]:
+                - generic [ref=f9e2574]: "#46"
+                - img "FluxBeam" [ref=f9e2576]
+                - generic [ref=f9e2577]: "?"
+                - generic [ref=f9e2579]:
+                  - generic [ref=f9e2580]: JubJub
+                  - generic [ref=f9e2581]: /
+                  - generic [ref=f9e2582]: SOL
+                  - generic [ref=f9e2583]: Zcash Official Mascot
+              - generic [ref=f9e2585]: $0.0003401
+              - generic [ref=f9e2587]: 7m
+              - generic [ref=f9e2589]: "58"
+              - generic [ref=f9e2591]: "0"
+              - generic [ref=f9e2593]: $1.7K
+              - generic [ref=f9e2595]: "20"
+              - generic [ref=f9e2597]: 58.71%
+              - generic [ref=f9e2599]: 173%
+              - generic [ref=f9e2601]: 173%
+              - generic [ref=f9e2603]: 173%
+              - generic [ref=f9e2605]: $340K
+              - generic [ref=f9e2607]: $340K
+          - 'link "Hide pair #47 Raydium ? CLMM BIT / USDC BITcoinex $0.02991 8m 0 3 $3 3 0% 0% 0% 0% $51.0M $29.9M" [ref=f9e2610] [cursor=pointer]':
+            - /url: /solana/7hglgs2odz3yitc62ucjjyxyagiqwbkv5c8tawq9zhjg
+            - generic: Hide pair
+            - generic [ref=f9e2613]:
+              - generic [ref=f9e2614]:
+                - generic [ref=f9e2615]: "#47"
+                - img "Raydium" [ref=f9e2617]
+                - generic [ref=f9e2618]: "?"
+                - generic [ref=f9e2620]:
+                  - generic [ref=f9e2621]: CLMM
+                  - generic [ref=f9e2622]: BIT
+                  - generic [ref=f9e2623]: /
+                  - generic [ref=f9e2624]: USDC
+                  - generic [ref=f9e2625]: BITcoinex
+              - generic [ref=f9e2627]: $0.02991
+              - generic [ref=f9e2629]: 8m
+              - generic [ref=f9e2631]: "0"
+              - generic [ref=f9e2633]: "3"
+              - generic [ref=f9e2635]: $3
+              - generic [ref=f9e2637]: "3"
+              - generic [ref=f9e2639]: 0%
+              - generic [ref=f9e2641]: 0%
+              - generic [ref=f9e2643]: 0%
+              - generic [ref=f9e2645]: 0%
+              - generic [ref=f9e2647]: $51.0M
+              - generic [ref=f9e2649]: $29.9M
+          - 'link "Hide pair #48 Raydium ? CLMM USDC / USDC USDC $0.9798 8m 0 3 $5 3 -0.58% -1.29% -1.29% -1.29% $1.0K $979.8M" [ref=f9e2652] [cursor=pointer]':
+            - /url: /solana/9j4ik7bvtst53e5nxcm29wj52qkxwquuu2qz1rmfytm6
+            - generic: Hide pair
+            - generic [ref=f9e2655]:
+              - generic [ref=f9e2656]:
+                - generic [ref=f9e2657]: "#48"
+                - img "Raydium" [ref=f9e2659]
+                - generic [ref=f9e2660]: "?"
+                - generic [ref=f9e2662]:
+                  - generic [ref=f9e2663]: CLMM
+                  - generic [ref=f9e2664]: USDC
+                  - generic [ref=f9e2665]: /
+                  - generic [ref=f9e2666]: USDC
+                  - generic [ref=f9e2667]: USDC
+              - generic [ref=f9e2669]: $0.9798
+              - generic [ref=f9e2671]: 8m
+              - generic [ref=f9e2673]: "0"
+              - generic [ref=f9e2675]: "3"
+              - generic [ref=f9e2677]: $5
+              - generic [ref=f9e2679]: "3"
+              - generic [ref=f9e2681]: "-0.58%"
+              - generic [ref=f9e2683]: "-1.29%"
+              - generic [ref=f9e2685]: "-1.29%"
+              - generic [ref=f9e2687]: "-1.29%"
+              - generic [ref=f9e2689]: $1.0K
+              - generic [ref=f9e2691]: $979.8M
+          - 'link "Hide pair #49 Meteora ? DYN2 佩佩 / SOL PeiPei $0.058465 8m 7 4 $7 8 0% 0.07% 0.07% 0.07% <$1 $8.4K" [ref=f9e2694] [cursor=pointer]':
+            - /url: /solana/6nbu7rzbcdhuj2pjsgtdyzjzysyp1t8cxujssofeypxf
+            - generic: Hide pair
+            - generic [ref=f9e2697]:
+              - generic [ref=f9e2698]:
+                - generic [ref=f9e2699]: "#49"
+                - img "Meteora" [ref=f9e2701]
+                - generic [ref=f9e2702]: "?"
+                - generic [ref=f9e2704]:
+                  - generic [ref=f9e2705]: DYN2
+                  - generic [ref=f9e2706]: 佩佩
+                  - generic [ref=f9e2707]: /
+                  - generic [ref=f9e2708]: SOL
+                  - generic [ref=f9e2709]: PeiPei
+              - generic "$0.000008465" [ref=f9e2713]: $0.058465
+              - generic [ref=f9e2714]: 8m
+              - generic [ref=f9e2716]: "7"
+              - generic [ref=f9e2718]: "4"
+              - generic [ref=f9e2720]: $7
+              - generic [ref=f9e2722]: "8"
+              - generic [ref=f9e2724]: 0%
+              - generic [ref=f9e2726]: 0.07%
+              - generic [ref=f9e2728]: 0.07%
+              - generic [ref=f9e2730]: 0.07%
+              - generic [ref=f9e2732]: <$1
+              - generic [ref=f9e2734]: $8.4K
+          - 'link "Hide pair #50 PumpSwap ? CTO / SOL Clanker Takeover $0.042586 8m 680 47 $3.0K 564 -48.69% -26.11% -26.11% -26.11% <$1 $25K" [ref=f9e2737] [cursor=pointer]':
+            - /url: /solana/byh25ankvbckwk1rg9ysbktlyz1bljhp77yltxwr5xkp
+            - generic: Hide pair
+            - generic [ref=f9e2740]:
+              - generic [ref=f9e2741]:
+                - generic [ref=f9e2742]: "#50"
+                - img "PumpSwap" [ref=f9e2744]
+                - generic [ref=f9e2745]: "?"
+                - generic [ref=f9e2747]:
+                  - generic [ref=f9e2748]: CTO
+                  - generic [ref=f9e2749]: /
+                  - generic [ref=f9e2750]: SOL
+                  - generic [ref=f9e2751]: Clanker Takeover
+              - generic "$0.00002586" [ref=f9e2755]: $0.042586
+              - generic [ref=f9e2756]: 8m
+              - generic [ref=f9e2758]: "680"
+              - generic [ref=f9e2760]: "47"
+              - generic [ref=f9e2762]: $3.0K
+              - generic [ref=f9e2764]: "564"
+              - generic [ref=f9e2766]: "-48.69%"
+              - generic [ref=f9e2768]: "-26.11%"
+              - generic [ref=f9e2770]: "-26.11%"
+              - generic [ref=f9e2772]: "-26.11%"
+              - generic [ref=f9e2774]: <$1
+              - generic [ref=f9e2776]: $25K
+          - 'link "Hide pair #51 Meteora ? DYN2 CTO / SOL Clanker Takeover $0.045913 8m 11 2 <$1 11 28.64% 3,235% 3,235% 3,235% <$1 $59K" [ref=f9e2779] [cursor=pointer]':
+            - /url: /solana/6ufqjmlqmrdhzhi5tsrrrxbl17jmd3fywpqptzvfhvbl
+            - generic: Hide pair
+            - generic [ref=f9e2782]:
+              - generic [ref=f9e2783]:
+                - generic [ref=f9e2784]: "#51"
+                - img "Meteora" [ref=f9e2786]
+                - generic [ref=f9e2787]: "?"
+                - generic [ref=f9e2789]:
+                  - generic [ref=f9e2790]: DYN2
+                  - generic [ref=f9e2791]: CTO
+                  - generic [ref=f9e2792]: /
+                  - generic [ref=f9e2793]: SOL
+                  - generic [ref=f9e2794]: Clanker Takeover
+              - generic "$0.00005913" [ref=f9e2798]: $0.045913
+              - generic [ref=f9e2799]: 8m
+              - generic [ref=f9e2801]: "11"
+              - generic [ref=f9e2803]: "2"
+              - generic [ref=f9e2805]: <$1
+              - generic [ref=f9e2807]: "11"
+              - generic [ref=f9e2809]: 28.64%
+              - generic [ref=f9e2811]: 3,235%
+              - generic [ref=f9e2813]: 3,235%
+              - generic [ref=f9e2815]: 3,235%
+              - generic [ref=f9e2817]: <$1
+              - generic [ref=f9e2819]: $59K
+          - 'link "Hide pair #52 PumpSwap ? 佩佩 / SOL PeiPei $0.059215 8m 75 16 $2.1K 70 0% 5.95% 5.95% 5.95% <$1 $9.2K" [ref=f9e2822] [cursor=pointer]':
+            - /url: /solana/hqxxjcketgn18fm8o3sum4czmawzh8zvtvcxyjaahnt
+            - generic: Hide pair
+            - generic [ref=f9e2825]:
+              - generic [ref=f9e2826]:
+                - generic [ref=f9e2827]: "#52"
+                - img "PumpSwap" [ref=f9e2829]
+                - generic [ref=f9e2830]: "?"
+                - generic [ref=f9e2832]:
+                  - generic [ref=f9e2833]: 佩佩
+                  - generic [ref=f9e2834]: /
+                  - generic [ref=f9e2835]: SOL
+                  - generic [ref=f9e2836]: PeiPei
+              - generic "$0.000009215" [ref=f9e2840]: $0.059215
+              - generic [ref=f9e2841]: 8m
+              - generic [ref=f9e2843]: "75"
+              - generic [ref=f9e2845]: "16"
+              - generic [ref=f9e2847]: $2.1K
+              - generic [ref=f9e2849]: "70"
+              - generic [ref=f9e2851]: 0%
+              - generic [ref=f9e2853]: 5.95%
+              - generic [ref=f9e2855]: 5.95%
+              - generic [ref=f9e2857]: 5.95%
+              - generic [ref=f9e2859]: <$1
+              - generic [ref=f9e2861]: $9.2K
+          - 'link "Hide pair #53 Meteora ? DYN2 baton / SOL baton $0.041077 8m 2,480 1,222 $245K 1,795 -23.05% 27.39% 27.39% 27.39% $19K $10K" [ref=f9e2864] [cursor=pointer]':
+            - /url: /solana/7kyjhp5ovi6eedgmfxf2uunedbnez5u7pps2juukmenf
+            - generic: Hide pair
+            - generic [ref=f9e2867]:
+              - generic [ref=f9e2868]:
+                - generic [ref=f9e2869]: "#53"
+                - img "Meteora" [ref=f9e2871]
+                - generic [ref=f9e2872]: "?"
+                - generic [ref=f9e2874]:
+                  - generic [ref=f9e2875]: DYN2
+                  - generic [ref=f9e2876]: baton
+                  - generic [ref=f9e2877]: /
+                  - generic [ref=f9e2878]: SOL
+                  - generic [ref=f9e2879]: baton
+              - generic "$0.00001077" [ref=f9e2883]: $0.041077
+              - generic [ref=f9e2884]: 8m
+              - generic [ref=f9e2886]: 2,480
+              - generic [ref=f9e2888]: 1,222
+              - generic [ref=f9e2890]: $245K
+              - generic [ref=f9e2892]: 1,795
+              - generic [ref=f9e2894]: "-23.05%"
+              - generic [ref=f9e2896]: 27.39%
+              - generic [ref=f9e2898]: 27.39%
+              - generic [ref=f9e2900]: 27.39%
+              - generic [ref=f9e2902]: $19K
+              - generic [ref=f9e2904]: $10K
+          - 'link "Hide pair #54 Meteora ? DYN2 SOLANA / SOL DRUGS MC158k $0.081674 8m 17 7 $122 16 0% -98.67% -98.67% -98.67% $1 $2" [ref=f9e2907] [cursor=pointer]':
+            - /url: /solana/5z556tm7kc7xqhxjk9biepubwgtuvayvebagks9ctba9
+            - generic: Hide pair
+            - generic [ref=f9e2910]:
+              - generic [ref=f9e2911]:
+                - generic [ref=f9e2912]: "#54"
+                - img "Meteora" [ref=f9e2914]
+                - generic [ref=f9e2915]: "?"
+                - generic [ref=f9e2917]:
+                  - generic [ref=f9e2918]: DYN2
+                  - generic [ref=f9e2919]: SOLANA
+                  - generic [ref=f9e2920]: /
+                  - generic [ref=f9e2921]: SOL
+                  - generic [ref=f9e2922]: DRUGS MC158k
+              - generic "$0.000000001674" [ref=f9e2926]: $0.081674
+              - generic [ref=f9e2927]: 8m
+              - generic [ref=f9e2929]: "17"
+              - generic [ref=f9e2931]: "7"
+              - generic [ref=f9e2933]: $122
+              - generic [ref=f9e2935]: "16"
+              - generic [ref=f9e2937]: 0%
+              - generic [ref=f9e2939]: "-98.67%"
+              - generic [ref=f9e2941]: "-98.67%"
+              - generic [ref=f9e2943]: "-98.67%"
+              - generic [ref=f9e2945]: $1
+              - generic [ref=f9e2947]: $2
+          - 'link "Hide pair #55 Raydium CLMM JubJub / SOL Zcash Official Mascot $0.002446 9m 15 21 $636 28 5.75% -3.75% -3.75% -3.75% $1.7K $2.4M" [ref=f9e2950] [cursor=pointer]':
+            - /url: /solana/cvrh1pvp4rqsarzwx2bw2qepkrtezkqousgyhsx8nhsx
+            - generic: Hide pair
+            - generic [ref=f9e2953]:
+              - generic [ref=f9e2954]:
+                - generic [ref=f9e2955]: "#55"
+                - img "Raydium" [ref=f9e2957]
+                - generic [ref=f9e2960]:
+                  - generic [ref=f9e2961]: CLMM
+                  - generic [ref=f9e2962]: JubJub
+                  - generic [ref=f9e2963]: /
+                  - generic [ref=f9e2964]: SOL
+                  - generic [ref=f9e2965]: Zcash Official Mascot
+              - generic [ref=f9e2967]: $0.002446
+              - generic [ref=f9e2969]: 9m
+              - generic [ref=f9e2971]: "15"
+              - generic [ref=f9e2973]: "21"
+              - generic [ref=f9e2975]: $636
+              - generic [ref=f9e2977]: "28"
+              - generic [ref=f9e2979]: 5.75%
+              - generic [ref=f9e2981]: "-3.75%"
+              - generic [ref=f9e2983]: "-3.75%"
+              - generic [ref=f9e2985]: "-3.75%"
+              - generic [ref=f9e2987]: $1.7K
+              - generic [ref=f9e2989]: $2.4M
+          - 'link "Hide pair #56 PumpSwap ? Redbull / SOL RedBull official $0.042301 9m 548 29 $952 531 0% -48.85% -48.85% -48.85% <$1 $23K" [ref=f9e2992] [cursor=pointer]':
+            - /url: /solana/3hqznpznsvq7rhq2pjtnmeohv3ufggynyojf8sdsjcby
+            - generic: Hide pair
+            - generic [ref=f9e2995]:
+              - generic [ref=f9e2996]:
+                - generic [ref=f9e2997]: "#56"
+                - img "PumpSwap" [ref=f9e2999]
+                - generic [ref=f9e3000]: "?"
+                - generic [ref=f9e3002]:
+                  - generic [ref=f9e3003]: Redbull
+                  - generic [ref=f9e3004]: /
+                  - generic [ref=f9e3005]: SOL
+                  - generic [ref=f9e3006]: RedBull official
+              - generic "$0.00002301" [ref=f9e3010]: $0.042301
+              - generic [ref=f9e3011]: 9m
+              - generic [ref=f9e3013]: "548"
+              - generic [ref=f9e3015]: "29"
+              - generic [ref=f9e3017]: $952
+              - generic [ref=f9e3019]: "531"
+              - generic [ref=f9e3021]: 0%
+              - generic [ref=f9e3023]: "-48.85%"
+              - generic [ref=f9e3025]: "-48.85%"
+              - generic [ref=f9e3027]: "-48.85%"
+              - generic [ref=f9e3029]: <$1
+              - generic [ref=f9e3031]: $23K
+          - 'link "Hide pair #57 Meteora ? DYN2 Redbull / SOL RedBull official $0.044843 9m 9 3 <$1 10 0% 2,626% 2,626% 2,626% <$1 $48K" [ref=f9e3034] [cursor=pointer]':
+            - /url: /solana/87j9ulyy9vo1deqzm8hh6vaxywavknt4hxrcv6hhcma7
+            - generic: Hide pair
+            - generic [ref=f9e3037]:
+              - generic [ref=f9e3038]:
+                - generic [ref=f9e3039]: "#57"
+                - img "Meteora" [ref=f9e3041]
+                - generic [ref=f9e3042]: "?"
+                - generic [ref=f9e3044]:
+                  - generic [ref=f9e3045]: DYN2
+                  - generic [ref=f9e3046]: Redbull
+                  - generic [ref=f9e3047]: /
+                  - generic [ref=f9e3048]: SOL
+                  - generic [ref=f9e3049]: RedBull official
+              - generic "$0.00004843" [ref=f9e3053]: $0.044843
+              - generic [ref=f9e3054]: 9m
+              - generic [ref=f9e3056]: "9"
+              - generic [ref=f9e3058]: "3"
+              - generic [ref=f9e3060]: <$1
+              - generic [ref=f9e3062]: "10"
+              - generic [ref=f9e3064]: 0%
+              - generic [ref=f9e3066]: 2,626%
+              - generic [ref=f9e3068]: 2,626%
+              - generic [ref=f9e3070]: 2,626%
+              - generic [ref=f9e3072]: <$1
+              - generic [ref=f9e3074]: $48K
+          - 'link "Hide pair #58 Meteora ? DYN2 CTO / SOL Clanker Takeover $0.094730 9m 1,286 1,514 $57K 238 -100% -100% -100% -100% <$1 0" [ref=f9e3077] [cursor=pointer]':
+            - /url: /solana/9pg2rtg5tuqqys8hqhmrwtteh9bswhfsghyelebjcsoc
+            - generic: Hide pair
+            - generic [ref=f9e3080]:
+              - generic [ref=f9e3081]:
+                - generic [ref=f9e3082]: "#58"
+                - img "Meteora" [ref=f9e3084]
+                - generic [ref=f9e3085]: "?"
+                - generic [ref=f9e3087]:
+                  - generic [ref=f9e3088]: DYN2
+                  - generic [ref=f9e3089]: CTO
+                  - generic [ref=f9e3090]: /
+                  - generic [ref=f9e3091]: SOL
+                  - generic [ref=f9e3092]: Clanker Takeover
+              - generic "$0.0000000004730" [ref=f9e3096]: $0.094730
+              - generic [ref=f9e3097]: 9m
+              - generic [ref=f9e3099]: 1,286
+              - generic [ref=f9e3101]: 1,514
+              - generic [ref=f9e3103]: $57K
+              - generic [ref=f9e3105]: "238"
+              - generic [ref=f9e3107]: "-100%"
+              - generic [ref=f9e3109]: "-100%"
+              - generic [ref=f9e3111]: "-100%"
+              - generic [ref=f9e3113]: "-100%"
+              - generic [ref=f9e3115]: <$1
+              - generic [ref=f9e3117]: "0"
+          - 'link "Hide pair #59 PumpSwap ? Batonbu / SOL The Spirit of Baton $0.052342 10m 231 247 $22K 178 -78.96% -94.29% -94.29% -94.29% $2.3K $2.3K" [ref=f9e3119] [cursor=pointer]':
+            - /url: /solana/difys53xk9rvxucdjkc43rlys2owreack1uyf5ybtauh
+            - generic: Hide pair
+            - generic [ref=f9e3122]:
+              - generic [ref=f9e3123]:
+                - generic [ref=f9e3124]: "#59"
+                - img "PumpSwap" [ref=f9e3126]
+                - generic [ref=f9e3127]: "?"
+                - generic [ref=f9e3129]:
+                  - generic [ref=f9e3130]: Batonbu
+                  - generic [ref=f9e3131]: /
+                  - generic [ref=f9e3132]: SOL
+                  - generic [ref=f9e3133]: The Spirit of Baton
+              - generic "$0.000002342" [ref=f9e3137]: $0.052342
+              - generic [ref=f9e3138]: 10m
+              - generic [ref=f9e3140]: "231"
+              - generic [ref=f9e3142]: "247"
+              - generic [ref=f9e3144]: $22K
+              - generic [ref=f9e3146]: "178"
+              - generic [ref=f9e3148]: "-78.96%"
+              - generic [ref=f9e3150]: "-94.29%"
+              - generic [ref=f9e3152]: "-94.29%"
+              - generic [ref=f9e3154]: "-94.29%"
+              - generic [ref=f9e3156]: $2.3K
+              - generic [ref=f9e3158]: $2.3K
+          - 'link "Hide pair #60 Meteora ? DYN2 TWICE / SOL twice.fun $0.045442 10m 1,286 588 $77K 633 2.98% 277% 277% 277% $42K $54K" [ref=f9e3161] [cursor=pointer]':
+            - /url: /solana/husrbk2kzn5xbzabycdji9upbq5jyaxuay5xtvauzyre
+            - generic: Hide pair
+            - generic [ref=f9e3164]:
+              - generic [ref=f9e3165]:
+                - generic [ref=f9e3166]: "#60"
+                - img "Meteora" [ref=f9e3168]
+                - generic [ref=f9e3169]: "?"
+                - generic [ref=f9e3171]:
+                  - generic [ref=f9e3172]: DYN2
+                  - generic [ref=f9e3173]: TWICE
+                  - generic [ref=f9e3174]: /
+                  - generic [ref=f9e3175]: SOL
+                  - generic [ref=f9e3176]: twice.fun
+              - generic "$0.00005442" [ref=f9e3180]: $0.045442
+              - generic [ref=f9e3181]: 10m
+              - generic [ref=f9e3183]: 1,286
+              - generic [ref=f9e3185]: "588"
+              - generic [ref=f9e3187]: $77K
+              - generic [ref=f9e3189]: "633"
+              - generic [ref=f9e3191]: 2.98%
+              - generic [ref=f9e3193]: 277%
+              - generic [ref=f9e3195]: 277%
+              - generic [ref=f9e3197]: 277%
+              - generic [ref=f9e3199]: $42K
+              - generic [ref=f9e3201]: $54K
+          - 'link "Hide pair #61 PumpSwap ? KFC / SOL KFC $0.001586 10m 2,989 2,852 $46K 839 4.16% 3,729% 3,729% 3,729% $103K $1.5M" [ref=f9e3204] [cursor=pointer]':
+            - /url: /solana/6yt8w2ddorbbbb4nicb8d5a6vsa7dgmvazvbnprq2gft
+            - generic: Hide pair
+            - generic [ref=f9e3207]:
+              - generic [ref=f9e3208]:
+                - generic [ref=f9e3209]: "#61"
+                - img "PumpSwap" [ref=f9e3211]
+                - generic [ref=f9e3212]: "?"
+                - generic [ref=f9e3214]:
+                  - generic [ref=f9e3215]: KFC
+                  - generic [ref=f9e3216]: /
+                  - generic [ref=f9e3217]: SOL
+                  - generic [ref=f9e3218]: KFC
+              - generic [ref=f9e3220]: $0.001586
+              - generic [ref=f9e3222]: 10m
+              - generic [ref=f9e3224]: 2,989
+              - generic [ref=f9e3226]: 2,852
+              - generic [ref=f9e3228]: $46K
+              - generic [ref=f9e3230]: "839"
+              - generic [ref=f9e3232]: 4.16%
+              - generic [ref=f9e3234]: 3,729%
+              - generic [ref=f9e3236]: 3,729%
+              - generic [ref=f9e3238]: 3,729%
+              - generic [ref=f9e3240]: $103K
+              - generic [ref=f9e3242]: $1.5M
+          - 'link "Hide pair #62 Meteora ? DYN2 疯狂水世界 / SOL 疯狂水世界 $0.094508 10m 559 642 $6.5K 214 0% -100% -100% -100% <$1 0" [ref=f9e3245] [cursor=pointer]':
+            - /url: /solana/4t1f8usqbdz9gwg5ehxjyobuutvpufvj8bpwffayhenx
+            - generic: Hide pair
+            - generic [ref=f9e3248]:
+              - generic [ref=f9e3249]:
+                - generic [ref=f9e3250]: "#62"
+                - img "Meteora" [ref=f9e3252]
+                - generic [ref=f9e3253]: "?"
+                - generic [ref=f9e3255]:
+                  - generic [ref=f9e3256]: DYN2
+                  - generic [ref=f9e3257]: 疯狂水世界
+                  - generic [ref=f9e3258]: /
+                  - generic [ref=f9e3259]: SOL
+                  - generic [ref=f9e3260]: 疯狂水世界
+              - generic "$0.0000000004508" [ref=f9e3264]: $0.094508
+              - generic [ref=f9e3265]: 10m
+              - generic [ref=f9e3267]: "559"
+              - generic [ref=f9e3269]: "642"
+              - generic [ref=f9e3271]: $6.5K
+              - generic [ref=f9e3273]: "214"
+              - generic [ref=f9e3275]: 0%
+              - generic [ref=f9e3277]: "-100%"
+              - generic [ref=f9e3279]: "-100%"
+              - generic [ref=f9e3281]: "-100%"
+              - generic [ref=f9e3283]: <$1
+              - generic [ref=f9e3285]: "0"
+          - 'link "Hide pair #63 Meteora ? DYN2 CTO / SOL Clanker Takeover $0.094447 10m 64 61 $1.0K 98 0% -100% -100% -100% <$1 0" [ref=f9e3287] [cursor=pointer]':
+            - /url: /solana/4dsnam9kcjdvkavu7auuq3vkra2czgymfn6m7ay24wzn
+            - generic: Hide pair
+            - generic [ref=f9e3290]:
+              - generic [ref=f9e3291]:
+                - generic [ref=f9e3292]: "#63"
+                - img "Meteora" [ref=f9e3294]
+                - generic [ref=f9e3295]: "?"
+                - generic [ref=f9e3297]:
+                  - generic [ref=f9e3298]: DYN2
+                  - generic [ref=f9e3299]: CTO
+                  - generic [ref=f9e3300]: /
+                  - generic [ref=f9e3301]: SOL
+                  - generic [ref=f9e3302]: Clanker Takeover
+              - generic "$0.0000000004447" [ref=f9e3306]: $0.094447
+              - generic [ref=f9e3307]: 10m
+              - generic [ref=f9e3309]: "64"
+              - generic [ref=f9e3311]: "61"
+              - generic [ref=f9e3313]: $1.0K
+              - generic [ref=f9e3315]: "98"
+              - generic [ref=f9e3317]: 0%
+              - generic [ref=f9e3319]: "-100%"
+              - generic [ref=f9e3321]: "-100%"
+              - generic [ref=f9e3323]: "-100%"
+              - generic [ref=f9e3325]: <$1
+              - generic [ref=f9e3327]: "0"
+          - 'link "Hide pair #64 PumpSwap ? CATE / SOL Catecoin $0.049245 10m 973 18 $828 964 0% 10.09% 10.09% 10.09% <$1 $92K" [ref=f9e3329] [cursor=pointer]':
+            - /url: /solana/2najforypan75hasyggyw1pehbsxgergetd31uf9pgij
+            - generic: Hide pair
+            - generic [ref=f9e3332]:
+              - generic [ref=f9e3333]:
+                - generic [ref=f9e3334]: "#64"
+                - img "PumpSwap" [ref=f9e3336]
+                - generic [ref=f9e3337]: "?"
+                - generic [ref=f9e3339]:
+                  - generic [ref=f9e3340]: CATE
+                  - generic [ref=f9e3341]: /
+                  - generic [ref=f9e3342]: SOL
+                  - generic [ref=f9e3343]: Catecoin
+              - generic "$0.00009245" [ref=f9e3347]: $0.049245
+              - generic [ref=f9e3348]: 10m
+              - generic [ref=f9e3350]: "973"
+              - generic [ref=f9e3352]: "18"
+              - generic [ref=f9e3354]: $828
+              - generic [ref=f9e3356]: "964"
+              - generic [ref=f9e3358]: 0%
+              - generic [ref=f9e3360]: 10.09%
+              - generic [ref=f9e3362]: 10.09%
+              - generic [ref=f9e3364]: 10.09%
+              - generic [ref=f9e3366]: <$1
+              - generic [ref=f9e3368]: $92K
+          - 'link "Hide pair #65 Meteora ? DYN2 CATE / SOL Catecoin $0.0001514 10m 12 3 <$1 13 67.63% 6,863% 6,863% 6,863% <$1 $151K" [ref=f9e3371] [cursor=pointer]':
+            - /url: /solana/cjdurorxqtd6dwowni5yb15dax2bvmaynijxff8zzpfo
+            - generic: Hide pair
+            - generic [ref=f9e3374]:
+              - generic [ref=f9e3375]:
+                - generic [ref=f9e3376]: "#65"
+                - img "Meteora" [ref=f9e3378]
+                - generic [ref=f9e3379]: "?"
+                - generic [ref=f9e3381]:
+                  - generic [ref=f9e3382]: DYN2
+                  - generic [ref=f9e3383]: CATE
+                  - generic [ref=f9e3384]: /
+                  - generic [ref=f9e3385]: SOL
+                  - generic [ref=f9e3386]: Catecoin
+              - generic [ref=f9e3388]: $0.0001514
+              - generic [ref=f9e3390]: 10m
+              - generic [ref=f9e3392]: "12"
+              - generic [ref=f9e3394]: "3"
+              - generic [ref=f9e3396]: <$1
+              - generic [ref=f9e3398]: "13"
+              - generic [ref=f9e3400]: 67.63%
+              - generic [ref=f9e3402]: 6,863%
+              - generic [ref=f9e3404]: 6,863%
+              - generic [ref=f9e3406]: 6,863%
+              - generic [ref=f9e3408]: <$1
+              - generic [ref=f9e3410]: $151K
+          - 'link "Hide pair #66 Meteora ? DYN2 TWICE / SOL twice.fun $0.041441 10m 52 35 $8.0K 47 0% 70.11% 70.11% 70.11% <$1 $14K" [ref=f9e3413] [cursor=pointer]':
+            - /url: /solana/bwavyfheycqwsctxcmc7ob2ef4cvtxkqfzksoqp9xskb
+            - generic: Hide pair
+            - generic [ref=f9e3416]:
+              - generic [ref=f9e3417]:
+                - generic [ref=f9e3418]: "#66"
+                - img "Meteora" [ref=f9e3420]
+                - generic [ref=f9e3421]: "?"
+                - generic [ref=f9e3423]:
+                  - generic [ref=f9e3424]: DYN2
+                  - generic [ref=f9e3425]: TWICE
+                  - generic [ref=f9e3426]: /
+                  - generic [ref=f9e3427]: SOL
+                  - generic [ref=f9e3428]: twice.fun
+              - generic "$0.00001441" [ref=f9e3432]: $0.041441
+              - generic [ref=f9e3433]: 10m
+              - generic [ref=f9e3435]: "52"
+              - generic [ref=f9e3437]: "35"
+              - generic [ref=f9e3439]: $8.0K
+              - generic [ref=f9e3441]: "47"
+              - generic [ref=f9e3443]: 0%
+              - generic [ref=f9e3445]: 70.11%
+              - generic [ref=f9e3447]: 70.11%
+              - generic [ref=f9e3449]: 70.11%
+              - generic [ref=f9e3451]: <$1
+              - generic [ref=f9e3453]: $14K
+          - 'link "Hide pair #67 Meteora ? DYN2 $DRUGS / SOL DRUGS $0.094799 10m 463 544 $12K 174 0% -100% -100% -100% <$1 0" [ref=f9e3456] [cursor=pointer]':
+            - /url: /solana/9rbx7wf7hok4hst69zjepqw2z2f1faja9ablf9dh5wsp
+            - generic: Hide pair
+            - generic [ref=f9e3459]:
+              - generic [ref=f9e3460]:
+                - generic [ref=f9e3461]: "#67"
+                - img "Meteora" [ref=f9e3463]
+                - generic [ref=f9e3464]: "?"
+                - generic [ref=f9e3466]:
+                  - generic [ref=f9e3467]: DYN2
+                  - generic [ref=f9e3468]: $DRUGS
+                  - generic [ref=f9e3469]: /
+                  - generic [ref=f9e3470]: SOL
+                  - generic [ref=f9e3471]: DRUGS
+              - generic "$0.0000000004799" [ref=f9e3475]: $0.094799
+              - generic [ref=f9e3476]: 10m
+              - generic [ref=f9e3478]: "463"
+              - generic [ref=f9e3480]: "544"
+              - generic [ref=f9e3482]: $12K
+              - generic [ref=f9e3484]: "174"
+              - generic [ref=f9e3486]: 0%
+              - generic [ref=f9e3488]: "-100%"
+              - generic [ref=f9e3490]: "-100%"
+              - generic [ref=f9e3492]: "-100%"
+              - generic [ref=f9e3494]: <$1
+              - generic [ref=f9e3496]: "0"
+          - 'link "Hide pair #68 Meteora ? DYN2 MIZO / SOL Mizo $0.044169 11m 887 554 $65K 295 16.35% 170% 170% 170% $37K $41K" [ref=f9e3498] [cursor=pointer]':
+            - /url: /solana/34ecocicct25ufwpuw3azbzfaphfcddbdase1lbzy6dh
+            - generic: Hide pair
+            - generic [ref=f9e3501]:
+              - generic [ref=f9e3502]:
+                - generic [ref=f9e3503]: "#68"
+                - img "Meteora" [ref=f9e3505]
+                - generic [ref=f9e3506]: "?"
+                - generic [ref=f9e3508]:
+                  - generic [ref=f9e3509]: DYN2
+                  - generic [ref=f9e3510]: MIZO
+                  - generic [ref=f9e3511]: /
+                  - generic [ref=f9e3512]: SOL
+                  - generic [ref=f9e3513]: Mizo
+              - generic "$0.00004169" [ref=f9e3517]: $0.044169
+              - generic [ref=f9e3518]: 11m
+              - generic [ref=f9e3520]: "887"
+              - generic [ref=f9e3522]: "554"
+              - generic [ref=f9e3524]: $65K
+              - generic [ref=f9e3526]: "295"
+              - generic [ref=f9e3528]: 16.35%
+              - generic [ref=f9e3530]: 170%
+              - generic [ref=f9e3532]: 170%
+              - generic [ref=f9e3534]: 170%
+              - generic [ref=f9e3536]: $37K
+              - generic [ref=f9e3538]: $41K
+          - 'link "Hide pair #69 Meteora ? DLMM CHILLBATON / SOL Just a Chill Baton $0.045852 11m 79 75 $558 40 0% -27.01% -27.01% -27.01% $88 $57K" [ref=f9e3541] [cursor=pointer]':
+            - /url: /solana/ecjhcr2kri4pf2hzy7envdi7hmtxovtfv1u9r3navacn
+            - generic: Hide pair
+            - generic [ref=f9e3544]:
+              - generic [ref=f9e3545]:
+                - generic [ref=f9e3546]: "#69"
+                - img "Meteora" [ref=f9e3548]
+                - generic [ref=f9e3549]: "?"
+                - generic [ref=f9e3551]:
+                  - generic [ref=f9e3552]: DLMM
+                  - generic [ref=f9e3553]: CHILLBATON
+                  - generic [ref=f9e3554]: /
+                  - generic [ref=f9e3555]: SOL
+                  - generic [ref=f9e3556]: Just a Chill Baton
+              - generic "$0.00005852" [ref=f9e3560]: $0.045852
+              - generic [ref=f9e3561]: 11m
+              - generic [ref=f9e3563]: "79"
+              - generic [ref=f9e3565]: "75"
+              - generic [ref=f9e3567]: $558
+              - generic [ref=f9e3569]: "40"
+              - generic [ref=f9e3571]: 0%
+              - generic [ref=f9e3573]: "-27.01%"
+              - generic [ref=f9e3575]: "-27.01%"
+              - generic [ref=f9e3577]: "-27.01%"
+              - generic [ref=f9e3579]: $88
+              - generic [ref=f9e3581]: $57K
+          - 'link "Hide pair #70 PumpSwap ? WOFI / SOL WOFI $0.6973 11m 759 60 $1.1M 699 0.32% 1M% 1M% 1M% $2.2M $697.3M" [ref=f9e3584] [cursor=pointer]':
+            - /url: /solana/ahdawsf4fmzynybi7atlttsvziea8cy9ptafpfirmlnq
+            - generic: Hide pair
+            - generic [ref=f9e3587]:
+              - generic [ref=f9e3588]:
+                - generic [ref=f9e3589]: "#70"
+                - img "PumpSwap" [ref=f9e3591]
+                - generic [ref=f9e3592]: "?"
+                - generic [ref=f9e3594]:
+                  - generic [ref=f9e3595]: WOFI
+                  - generic [ref=f9e3596]: /
+                  - generic [ref=f9e3597]: SOL
+                  - generic [ref=f9e3598]: WOFI
+              - generic [ref=f9e3600]: $0.6973
+              - generic [ref=f9e3602]: 11m
+              - generic [ref=f9e3604]: "759"
+              - generic [ref=f9e3606]: "60"
+              - generic [ref=f9e3608]: $1.1M
+              - generic [ref=f9e3610]: "699"
+              - generic [ref=f9e3612]: 0.32%
+              - generic [ref=f9e3614]: 1M%
+              - generic [ref=f9e3616]: 1M%
+              - generic [ref=f9e3618]: 1M%
+              - generic [ref=f9e3620]: $2.2M
+              - generic [ref=f9e3622]: $697.3M
+          - 'link "Hide pair #71 PumpSwap ? Gtashark / SOL Gta Shark $0.08264 11m 233 58 $37K 233 1.37% 88.33% 88.33% 88.33% <$1 $82K" [ref=f9e3625] [cursor=pointer]':
+            - /url: /solana/a3qzjsjvhdusqth1vjhgewyyjeqoeoovekkbgqnitgfv
+            - generic: Hide pair
+            - generic [ref=f9e3628]:
+              - generic [ref=f9e3629]:
+                - generic [ref=f9e3630]: "#71"
+                - img "PumpSwap" [ref=f9e3632]
+                - generic [ref=f9e3633]: "?"
+                - generic [ref=f9e3635]:
+                  - generic [ref=f9e3636]: Gtashark
+                  - generic [ref=f9e3637]: /
+                  - generic [ref=f9e3638]: SOL
+                  - generic [ref=f9e3639]: Gta Shark
+              - generic [ref=f9e3641]: $0.08264
+              - generic [ref=f9e3643]: 11m
+              - generic [ref=f9e3645]: "233"
+              - generic [ref=f9e3647]: "58"
+              - generic [ref=f9e3649]: $37K
+              - generic [ref=f9e3651]: "233"
+              - generic [ref=f9e3653]: 1.37%
+              - generic [ref=f9e3655]: 88.33%
+              - generic [ref=f9e3657]: 88.33%
+              - generic [ref=f9e3659]: 88.33%
+              - generic [ref=f9e3661]: <$1
+              - generic [ref=f9e3663]: $82K
+          - 'link "Hide pair #72 Meteora ? DYN2 BABYPUMP / SOL BabyPump $0.094276 12m 1,381 1,638 $32K 223 0% -100% -100% -100% <$1 0" [ref=f9e3666] [cursor=pointer]':
+            - /url: /solana/azsbkxtz1dke4pqcl2bwxajfur2hwst1yhg6ynegxnca
+            - generic: Hide pair
+            - generic [ref=f9e3669]:
+              - generic [ref=f9e3670]:
+                - generic [ref=f9e3671]: "#72"
+                - img "Meteora" [ref=f9e3673]
+                - generic [ref=f9e3674]: "?"
+                - generic [ref=f9e3676]:
+                  - generic [ref=f9e3677]: DYN2
+                  - generic [ref=f9e3678]: BABYPUMP
+                  - generic [ref=f9e3679]: /
+                  - generic [ref=f9e3680]: SOL
+                  - generic [ref=f9e3681]: BabyPump
+              - generic "$0.0000000004276" [ref=f9e3685]: $0.094276
+              - generic [ref=f9e3686]: 12m
+              - generic [ref=f9e3688]: 1,381
+              - generic [ref=f9e3690]: 1,638
+              - generic [ref=f9e3692]: $32K
+              - generic [ref=f9e3694]: "223"
+              - generic [ref=f9e3696]: 0%
+              - generic [ref=f9e3698]: "-100%"
+              - generic [ref=f9e3700]: "-100%"
+              - generic [ref=f9e3702]: "-100%"
+              - generic [ref=f9e3704]: <$1
+              - generic [ref=f9e3706]: "0"
+          - 'link "Hide pair #73 PumpSwap ? OpenAI / SOL OpenAI $0.042536 12m 516 33 $2.5K 423 0% -32.37% -32.37% -32.37% <$1 $25K" [ref=f9e3708] [cursor=pointer]':
+            - /url: /solana/7e827vdyuhvsiahl5p3yzqvyfenx8nebdzqgpzhtbp9v
+            - generic: Hide pair
+            - generic [ref=f9e3711]:
+              - generic [ref=f9e3712]:
+                - generic [ref=f9e3713]: "#73"
+                - img "PumpSwap" [ref=f9e3715]
+                - generic [ref=f9e3716]: "?"
+                - generic [ref=f9e3718]:
+                  - generic [ref=f9e3719]: OpenAI
+                  - generic [ref=f9e3720]: /
+                  - generic [ref=f9e3721]: SOL
+                  - generic [ref=f9e3722]: OpenAI
+              - generic "$0.00002536" [ref=f9e3726]: $0.042536
+              - generic [ref=f9e3727]: 12m
+              - generic [ref=f9e3729]: "516"
+              - generic [ref=f9e3731]: "33"
+              - generic [ref=f9e3733]: $2.5K
+              - generic [ref=f9e3735]: "423"
+              - generic [ref=f9e3737]: 0%
+              - generic [ref=f9e3739]: "-32.37%"
+              - generic [ref=f9e3741]: "-32.37%"
+              - generic [ref=f9e3743]: "-32.37%"
+              - generic [ref=f9e3745]: <$1
+              - generic [ref=f9e3747]: $25K
+          - 'link "Hide pair #74 Meteora ? DYN2 OpenAI / SOL OpenAI $0.046578 12m 15 3 <$1 14 0% 2,666% 2,666% 2,666% <$1 $65K" [ref=f9e3750] [cursor=pointer]':
+            - /url: /solana/8gbgvteevcwhhgw9yd5ctdcbc3tygct1wpxibhew6a5c
+            - generic: Hide pair
+            - generic [ref=f9e3753]:
+              - generic [ref=f9e3754]:
+                - generic [ref=f9e3755]: "#74"
+                - img "Meteora" [ref=f9e3757]
+                - generic [ref=f9e3758]: "?"
+                - generic [ref=f9e3760]:
+                  - generic [ref=f9e3761]: DYN2
+                  - generic [ref=f9e3762]: OpenAI
+                  - generic [ref=f9e3763]: /
+                  - generic [ref=f9e3764]: SOL
+                  - generic [ref=f9e3765]: OpenAI
+              - generic "$0.00006578" [ref=f9e3769]: $0.046578
+              - generic [ref=f9e3770]: 12m
+              - generic [ref=f9e3772]: "15"
+              - generic [ref=f9e3774]: "3"
+              - generic [ref=f9e3776]: <$1
+              - generic [ref=f9e3778]: "14"
+              - generic [ref=f9e3780]: 0%
+              - generic [ref=f9e3782]: 2,666%
+              - generic [ref=f9e3784]: 2,666%
+              - generic [ref=f9e3786]: 2,666%
+              - generic [ref=f9e3788]: <$1
+              - generic [ref=f9e3790]: $65K
+          - 'link "Hide pair #75 PumpSwap ? LONGGPTCAT / SOL LongGptCat $0.0001222 12m 2,601 1,908 $564K 989 77.05% 197% 197% 197% $28K $122K" [ref=f9e3793] [cursor=pointer]':
+            - /url: /solana/zdwwatvpmtywb18whdxkcrhff3m7uivcmnkzvtsjart
+            - generic: Hide pair
+            - generic [ref=f9e3796]:
+              - generic [ref=f9e3797]:
+                - generic [ref=f9e3798]: "#75"
+                - img "PumpSwap" [ref=f9e3800]
+                - generic [ref=f9e3801]: "?"
+                - generic [ref=f9e3803]:
+                  - generic [ref=f9e3804]: LONGGPTCAT
+                  - generic [ref=f9e3805]: /
+                  - generic [ref=f9e3806]: SOL
+                  - generic [ref=f9e3807]: LongGptCat
+              - generic [ref=f9e3809]: $0.0001222
+              - generic [ref=f9e3811]: 12m
+              - generic [ref=f9e3813]: 2,601
+              - generic [ref=f9e3815]: 1,908
+              - generic [ref=f9e3817]: $564K
+              - generic [ref=f9e3819]: "989"
+              - generic [ref=f9e3821]: 77.05%
+              - generic [ref=f9e3823]: 197%
+              - generic [ref=f9e3825]: 197%
+              - generic [ref=f9e3827]: 197%
+              - generic [ref=f9e3829]: $28K
+              - generic [ref=f9e3831]: $122K
+          - 'link "Hide pair #76 PumpSwap ? $DRUGS / SOL DRUGS $0.083552 12m 130 126 $110 37 38.22% -70.38% -70.38% -70.38% $2 $7" [ref=f9e3834] [cursor=pointer]':
+            - /url: /solana/j47gsqmujv9apyma5elhssbiz7qfcdxsxocp7rxihlzr
+            - generic: Hide pair
+            - generic [ref=f9e3837]:
+              - generic [ref=f9e3838]:
+                - generic [ref=f9e3839]: "#76"
+                - img "PumpSwap" [ref=f9e3841]
+                - generic [ref=f9e3842]: "?"
+                - generic [ref=f9e3844]:
+                  - generic [ref=f9e3845]: $DRUGS
+                  - generic [ref=f9e3846]: /
+                  - generic [ref=f9e3847]: SOL
+                  - generic [ref=f9e3848]: DRUGS
+              - generic "$0.000000003552" [ref=f9e3852]: $0.083552
+              - generic [ref=f9e3853]: 12m
+              - generic [ref=f9e3855]: "130"
+              - generic [ref=f9e3857]: "126"
+              - generic [ref=f9e3859]: $110
+              - generic [ref=f9e3861]: "37"
+              - generic [ref=f9e3863]: 38.22%
+              - generic [ref=f9e3865]: "-70.38%"
+              - generic [ref=f9e3867]: "-70.38%"
+              - generic [ref=f9e3869]: "-70.38%"
+              - generic [ref=f9e3871]: $2
+              - generic [ref=f9e3873]: $7
+          - 'link "Hide pair #77 Meteora ? DYN2 TWICE / SOL twice.fun $0.058486 13m 7 6 $9 8 0% 0.03% 0.03% 0.03% <$1 $8.4K" [ref=f9e3876] [cursor=pointer]':
+            - /url: /solana/3nam5vnobdtfgjdmevamgpphz3xgdx1hk39ccgvxmmmx
+            - generic: Hide pair
+            - generic [ref=f9e3879]:
+              - generic [ref=f9e3880]:
+                - generic [ref=f9e3881]: "#77"
+                - img "Meteora" [ref=f9e3883]
+                - generic [ref=f9e3884]: "?"
+                - generic [ref=f9e3886]:
+                  - generic [ref=f9e3887]: DYN2
+                  - generic [ref=f9e3888]: TWICE
+                  - generic [ref=f9e3889]: /
+                  - generic [ref=f9e3890]: SOL
+                  - generic [ref=f9e3891]: twice.fun
+              - generic "$0.000008486" [ref=f9e3895]: $0.058486
+              - generic [ref=f9e3896]: 13m
+              - generic [ref=f9e3898]: "7"
+              - generic [ref=f9e3900]: "6"
+              - generic [ref=f9e3902]: $9
+              - generic [ref=f9e3904]: "8"
+              - generic [ref=f9e3906]: 0%
+              - generic [ref=f9e3908]: 0.03%
+              - generic [ref=f9e3910]: 0.03%
+              - generic [ref=f9e3912]: 0.03%
+              - generic [ref=f9e3914]: <$1
+              - generic [ref=f9e3916]: $8.4K
+          - 'link "Hide pair #78 PumpSwap ? MSFT / SOL Microsoft $0.002312 13m 5,063 783 $61K 2,731 4.30% 5,482% 5,482% 5,482% $125K $2.3M" [ref=f9e3919] [cursor=pointer]':
+            - /url: /solana/94cbtsvtsnz18qdpc9qkigqywpgfewgo6ly58sfxkfvn
+            - generic: Hide pair
+            - generic [ref=f9e3922]:
+              - generic [ref=f9e3923]:
+                - generic [ref=f9e3924]: "#78"
+                - img "PumpSwap" [ref=f9e3926]
+                - generic [ref=f9e3927]: "?"
+                - generic [ref=f9e3929]:
+                  - generic [ref=f9e3930]: MSFT
+                  - generic [ref=f9e3931]: /
+                  - generic [ref=f9e3932]: SOL
+                  - generic [ref=f9e3933]: Microsoft
+              - generic [ref=f9e3935]: $0.002312
+              - generic [ref=f9e3937]: 13m
+              - generic [ref=f9e3939]: 5,063
+              - generic [ref=f9e3941]: "783"
+              - generic [ref=f9e3943]: $61K
+              - generic [ref=f9e3945]: 2,731
+              - generic [ref=f9e3947]: 4.30%
+              - generic [ref=f9e3949]: 5,482%
+              - generic [ref=f9e3951]: 5,482%
+              - generic [ref=f9e3953]: 5,482%
+              - generic [ref=f9e3955]: $125K
+              - generic [ref=f9e3957]: $2.3M
+          - 'link "Hide pair #79 Meteora ? DYN2 TWICE / SOL twice.fun $0.058488 13m 7 4 $7 8 0% 0.05% 0.05% 0.05% <$1 $8.4K" [ref=f9e3960] [cursor=pointer]':
+            - /url: /solana/c2dnk5dufphtrq6vr5mwovhjlbctn1wqa692nxrt54ji
+            - generic: Hide pair
+            - generic [ref=f9e3963]:
+              - generic [ref=f9e3964]:
+                - generic [ref=f9e3965]: "#79"
+                - img "Meteora" [ref=f9e3967]
+                - generic [ref=f9e3968]: "?"
+                - generic [ref=f9e3970]:
+                  - generic [ref=f9e3971]: DYN2
+                  - generic [ref=f9e3972]: TWICE
+                  - generic [ref=f9e3973]: /
+                  - generic [ref=f9e3974]: SOL
+                  - generic [ref=f9e3975]: twice.fun
+              - generic "$0.000008488" [ref=f9e3979]: $0.058488
+              - generic [ref=f9e3980]: 13m
+              - generic [ref=f9e3982]: "7"
+              - generic [ref=f9e3984]: "4"
+              - generic [ref=f9e3986]: $7
+              - generic [ref=f9e3988]: "8"
+              - generic [ref=f9e3990]: 0%
+              - generic [ref=f9e3992]: 0.05%
+              - generic [ref=f9e3994]: 0.05%
+              - generic [ref=f9e3996]: 0.05%
+              - generic [ref=f9e3998]: <$1
+              - generic [ref=f9e4000]: $8.4K
+          - 'link "Hide pair #80 Meteora ? DYN2 Barty / SOL Barttman $0.094210 13m 9 3 $120 10 0% -99.68% -99.68% -99.68% <$1 0" [ref=f9e4003] [cursor=pointer]':
+            - /url: /solana/8yaswwyghpvdxnqhgsenqjw9pija3kraan9mkxznb5wy
+            - generic: Hide pair
+            - generic [ref=f9e4006]:
+              - generic [ref=f9e4007]:
+                - generic [ref=f9e4008]: "#80"
+                - img "Meteora" [ref=f9e4010]
+                - generic [ref=f9e4011]: "?"
+                - generic [ref=f9e4013]:
+                  - generic [ref=f9e4014]: DYN2
+                  - generic [ref=f9e4015]: Barty
+                  - generic [ref=f9e4016]: /
+                  - generic [ref=f9e4017]: SOL
+                  - generic [ref=f9e4018]: Barttman
+              - generic "$0.0000000004210" [ref=f9e4022]: $0.094210
+              - generic [ref=f9e4023]: 13m
+              - generic [ref=f9e4025]: "9"
+              - generic [ref=f9e4027]: "3"
+              - generic [ref=f9e4029]: $120
+              - generic [ref=f9e4031]: "10"
+              - generic [ref=f9e4033]: 0%
+              - generic [ref=f9e4035]: "-99.68%"
+              - generic [ref=f9e4037]: "-99.68%"
+              - generic [ref=f9e4039]: "-99.68%"
+              - generic [ref=f9e4041]: <$1
+              - generic [ref=f9e4043]: "0"
+          - 'link "Hide pair #81 Meteora ? DYN2 CATE / SOL Catecoin $0.082621 14m 223 309 $11K 183 0% -100% -100% -100% $1 $3" [ref=f9e4045] [cursor=pointer]':
+            - /url: /solana/9onm7ltpzav3dbeqmdajuetxoe8yghyhvymewky4yrzc
+            - generic: Hide pair
+            - generic [ref=f9e4048]:
+              - generic [ref=f9e4049]:
+                - generic [ref=f9e4050]: "#81"
+                - img "Meteora" [ref=f9e4052]
+                - generic [ref=f9e4053]: "?"
+                - generic [ref=f9e4055]:
+                  - generic [ref=f9e4056]: DYN2
+                  - generic [ref=f9e4057]: CATE
+                  - generic [ref=f9e4058]: /
+                  - generic [ref=f9e4059]: SOL
+                  - generic [ref=f9e4060]: Catecoin
+              - generic "$0.000000002621" [ref=f9e4064]: $0.082621
+              - generic [ref=f9e4065]: 14m
+              - generic [ref=f9e4067]: "223"
+              - generic [ref=f9e4069]: "309"
+              - generic [ref=f9e4071]: $11K
+              - generic [ref=f9e4073]: "183"
+              - generic [ref=f9e4075]: 0%
+              - generic [ref=f9e4077]: "-100%"
+              - generic [ref=f9e4079]: "-100%"
+              - generic [ref=f9e4081]: "-100%"
+              - generic [ref=f9e4083]: $1
+              - generic [ref=f9e4085]: $3
+          - 'link "Hide pair #82 Meteora ? DYN2 ETF / SOL Ember The Fox $0.094352 14m 9 4 $120 11 0% -99.67% -99.67% -99.67% <$1 0" [ref=f9e4088] [cursor=pointer]':
+            - /url: /solana/6bozxif6zas5km4gpxpzzjmkvqdrbybjtfvgynorvxc7
+            - generic: Hide pair
+            - generic [ref=f9e4091]:
+              - generic [ref=f9e4092]:
+                - generic [ref=f9e4093]: "#82"
+                - img "Meteora" [ref=f9e4095]
+                - generic [ref=f9e4096]: "?"
+                - generic [ref=f9e4098]:
+                  - generic [ref=f9e4099]: DYN2
+                  - generic [ref=f9e4100]: ETF
+                  - generic [ref=f9e4101]: /
+                  - generic [ref=f9e4102]: SOL
+                  - generic [ref=f9e4103]: Ember The Fox
+              - generic "$0.0000000004352" [ref=f9e4107]: $0.094352
+              - generic [ref=f9e4108]: 14m
+              - generic [ref=f9e4110]: "9"
+              - generic [ref=f9e4112]: "4"
+              - generic [ref=f9e4114]: $120
+              - generic [ref=f9e4116]: "11"
+              - generic [ref=f9e4118]: 0%
+              - generic [ref=f9e4120]: "-99.67%"
+              - generic [ref=f9e4122]: "-99.67%"
+              - generic [ref=f9e4124]: "-99.67%"
+              - generic [ref=f9e4126]: <$1
+              - generic [ref=f9e4128]: "0"
+          - 'link "Hide pair #83 PumpSwap ? Claude / SOL Claude Ai $0.0009461 14m 4,654 390 $32K 2,055 2.34% 2,184% 2,184% 2,184% $79K $946K" [ref=f9e4130] [cursor=pointer]':
+            - /url: /solana/gs82mqsnxzmnsz9gewj9scofbmzlyjsswuhfa9emdeas
+            - generic: Hide pair
+            - generic [ref=f9e4133]:
+              - generic [ref=f9e4134]:
+                - generic [ref=f9e4135]: "#83"
+                - img "PumpSwap" [ref=f9e4137]
+                - generic [ref=f9e4138]: "?"
+                - generic [ref=f9e4140]:
+                  - generic [ref=f9e4141]: Claude
+                  - generic [ref=f9e4142]: /
+                  - generic [ref=f9e4143]: SOL
+                  - generic [ref=f9e4144]: Claude Ai
+              - generic [ref=f9e4146]: $0.0009461
+              - generic [ref=f9e4148]: 14m
+              - generic [ref=f9e4150]: 4,654
+              - generic [ref=f9e4152]: "390"
+              - generic [ref=f9e4154]: $32K
+              - generic [ref=f9e4156]: 2,055
+              - generic [ref=f9e4158]: 2.34%
+              - generic [ref=f9e4160]: 2,184%
+              - generic [ref=f9e4162]: 2,184%
+              - generic [ref=f9e4164]: 2,184%
+              - generic [ref=f9e4166]: $79K
+              - generic [ref=f9e4168]: $946K
+          - 'link "Hide pair #84 Meteora ? DYN2 TWICE / SOL twice.fun $0.058476 14m 7 6 $9 8 0% 0.02% 0.02% 0.02% <$1 $8.4K" [ref=f9e4171] [cursor=pointer]':
+            - /url: /solana/ak9m8emk87cjr2jvfhxrkvtbpeepwdg5kmc3jtfwpnmk
+            - generic: Hide pair
+            - generic [ref=f9e4174]:
+              - generic [ref=f9e4175]:
+                - generic [ref=f9e4176]: "#84"
+                - img "Meteora" [ref=f9e4178]
+                - generic [ref=f9e4179]: "?"
+                - generic [ref=f9e4181]:
+                  - generic [ref=f9e4182]: DYN2
+                  - generic [ref=f9e4183]: TWICE
+                  - generic [ref=f9e4184]: /
+                  - generic [ref=f9e4185]: SOL
+                  - generic [ref=f9e4186]: twice.fun
+              - generic "$0.000008476" [ref=f9e4190]: $0.058476
+              - generic [ref=f9e4191]: 14m
+              - generic [ref=f9e4193]: "7"
+              - generic [ref=f9e4195]: "6"
+              - generic [ref=f9e4197]: $9
+              - generic [ref=f9e4199]: "8"
+              - generic [ref=f9e4201]: 0%
+              - generic [ref=f9e4203]: 0.02%
+              - generic [ref=f9e4205]: 0.02%
+              - generic [ref=f9e4207]: 0.02%
+              - generic [ref=f9e4209]: <$1
+              - generic [ref=f9e4211]: $8.4K
+          - 'link "Hide pair #85 Meteora ? DYN2 SOLANA / SOL DRUGS MC158k $0.095280 14m 962 1,065 $21K 229 0% -100% -100% -100% <$1 $1" [ref=f9e4214] [cursor=pointer]':
+            - /url: /solana/481n5wnywzx6rjqr3zd4qdckhwa9d8lyyiztxlwp2g88
+            - generic: Hide pair
+            - generic [ref=f9e4217]:
+              - generic [ref=f9e4218]:
+                - generic [ref=f9e4219]: "#85"
+                - img "Meteora" [ref=f9e4221]
+                - generic [ref=f9e4222]: "?"
+                - generic [ref=f9e4224]:
+                  - generic [ref=f9e4225]: DYN2
+                  - generic [ref=f9e4226]: SOLANA
+                  - generic [ref=f9e4227]: /
+                  - generic [ref=f9e4228]: SOL
+                  - generic [ref=f9e4229]: DRUGS MC158k
+              - generic "$0.0000000005280" [ref=f9e4233]: $0.095280
+              - generic [ref=f9e4234]: 14m
+              - generic [ref=f9e4236]: "962"
+              - generic [ref=f9e4238]: 1,065
+              - generic [ref=f9e4240]: $21K
+              - generic [ref=f9e4242]: "229"
+              - generic [ref=f9e4244]: 0%
+              - generic [ref=f9e4246]: "-100%"
+              - generic [ref=f9e4248]: "-100%"
+              - generic [ref=f9e4250]: "-100%"
+              - generic [ref=f9e4252]: <$1
+              - generic [ref=f9e4254]: $1
+          - 'link "Hide pair #86 Meteora ? DYN2 Copytrador / SOL The Copytrador $0.093750 15m 1,492 1,730 $22K 231 0% -100% -100% -100% <$1 0" [ref=f9e4257] [cursor=pointer]':
+            - /url: /solana/appedqq2nuzgppvggqwxtpx2yjjpt158l4gn8t7mqv5k
+            - generic: Hide pair
+            - generic [ref=f9e4260]:
+              - generic [ref=f9e4261]:
+                - generic [ref=f9e4262]: "#86"
+                - img "Meteora" [ref=f9e4264]
+                - generic [ref=f9e4265]: "?"
+                - generic [ref=f9e4267]:
+                  - generic [ref=f9e4268]: DYN2
+                  - generic [ref=f9e4269]: Copytrador
+                  - generic [ref=f9e4270]: /
+                  - generic [ref=f9e4271]: SOL
+                  - generic [ref=f9e4272]: The Copytrador
+              - generic "$0.0000000003750" [ref=f9e4276]: $0.093750
+              - generic [ref=f9e4277]: 15m
+              - generic [ref=f9e4279]: 1,492
+              - generic [ref=f9e4281]: 1,730
+              - generic [ref=f9e4283]: $22K
+              - generic [ref=f9e4285]: "231"
+              - generic [ref=f9e4287]: 0%
+              - generic [ref=f9e4289]: "-100%"
+              - generic [ref=f9e4291]: "-100%"
+              - generic [ref=f9e4293]: "-100%"
+              - generic [ref=f9e4295]: <$1
+              - generic [ref=f9e4297]: "0"
+          - 'link "Hide pair #87 PumpSwap ? CTO / SOL Clanker Takeover $0.045660 15m 2,736 766 $428K 2,077 167% 564% 564% 564% $45K $56K" [ref=f9e4299] [cursor=pointer]':
+            - /url: /solana/cng8ecwtouwfgyfp4k99arpmgfr1z6w3btdowhytpbaz
+            - generic: Hide pair
+            - generic [ref=f9e4302]:
+              - generic [ref=f9e4303]:
+                - generic [ref=f9e4304]: "#87"
+                - img "PumpSwap" [ref=f9e4306]
+                - generic [ref=f9e4307]: "?"
+                - generic [ref=f9e4309]:
+                  - generic [ref=f9e4310]: CTO
+                  - generic [ref=f9e4311]: /
+                  - generic [ref=f9e4312]: SOL
+                  - generic [ref=f9e4313]: Clanker Takeover
+              - generic "$0.00005660" [ref=f9e4317]: $0.045660
+              - generic [ref=f9e4318]: 15m
+              - generic [ref=f9e4320]: 2,736
+              - generic [ref=f9e4322]: "766"
+              - generic [ref=f9e4324]: $428K
+              - generic [ref=f9e4326]: 2,077
+              - generic [ref=f9e4328]: 167%
+              - generic [ref=f9e4330]: 564%
+              - generic [ref=f9e4332]: 564%
+              - generic [ref=f9e4334]: 564%
+              - generic [ref=f9e4336]: $45K
+              - generic [ref=f9e4338]: $56K
+          - 'link "Hide pair #88 PumpSwap ? NIKE / SOL Just Do It $0.0001016 15m 849 777 $1.2M 127 6.25% 34.20% 34.20% 34.20% $351K $1.0M" [ref=f9e4341] [cursor=pointer]':
+            - /url: /solana/ahnobkjtesznwqmugunptyjhu4ax1txnxe1c8t8swsuf
+            - generic: Hide pair
+            - generic [ref=f9e4344]:
+              - generic [ref=f9e4345]:
+                - generic [ref=f9e4346]: "#88"
+                - img "PumpSwap" [ref=f9e4348]
+                - generic [ref=f9e4349]: "?"
+                - generic [ref=f9e4351]:
+                  - generic [ref=f9e4352]: NIKE
+                  - generic [ref=f9e4353]: /
+                  - generic [ref=f9e4354]: SOL
+                  - generic [ref=f9e4355]: Just Do It
+              - generic [ref=f9e4357]: $0.0001016
+              - generic [ref=f9e4359]: 15m
+              - generic [ref=f9e4361]: "849"
+              - generic [ref=f9e4363]: "777"
+              - generic [ref=f9e4365]: $1.2M
+              - generic [ref=f9e4367]: "127"
+              - generic [ref=f9e4369]: 6.25%
+              - generic [ref=f9e4371]: 34.20%
+              - generic [ref=f9e4373]: 34.20%
+              - generic [ref=f9e4375]: 34.20%
+              - generic [ref=f9e4377]: $351K
+              - generic [ref=f9e4379]: $1.0M
+          - 'link "Hide pair #89 Meteora ? DYN2 TWICE / SOL twice.fun $0.058487 15m 7 4 $7 8 0% 0.06% 0.06% 0.06% <$1 $8.4K" [ref=f9e4382] [cursor=pointer]':
+            - /url: /solana/cpirlhhfye8nauprsabthbw1ut2yphwsz9ydazxdkina
+            - generic: Hide pair
+            - generic [ref=f9e4385]:
+              - generic [ref=f9e4386]:
+                - generic [ref=f9e4387]: "#89"
+                - img "Meteora" [ref=f9e4389]
+                - generic [ref=f9e4390]: "?"
+                - generic [ref=f9e4392]:
+                  - generic [ref=f9e4393]: DYN2
+                  - generic [ref=f9e4394]: TWICE
+                  - generic [ref=f9e4395]: /
+                  - generic [ref=f9e4396]: SOL
+                  - generic [ref=f9e4397]: twice.fun
+              - generic "$0.000008487" [ref=f9e4401]: $0.058487
+              - generic [ref=f9e4402]: 15m
+              - generic [ref=f9e4404]: "7"
+              - generic [ref=f9e4406]: "4"
+              - generic [ref=f9e4408]: $7
+              - generic [ref=f9e4410]: "8"
+              - generic [ref=f9e4412]: 0%
+              - generic [ref=f9e4414]: 0.06%
+              - generic [ref=f9e4416]: 0.06%
+              - generic [ref=f9e4418]: 0.06%
+              - generic [ref=f9e4420]: <$1
+              - generic [ref=f9e4422]: $8.4K
+          - 'link "Hide pair #90 Meteora ? DYN2 NIKE / SOL Just Do It $0.0001120 15m 11 9 <$1 14 0% 5,295% 5,295% 5,295% <$1 $1.1M" [ref=f9e4425] [cursor=pointer]':
+            - /url: /solana/cir5dg2vx1jlmg2q7r8wcnkbxy7b4847cshhvxbde95i
+            - generic: Hide pair
+            - generic [ref=f9e4428]:
+              - generic [ref=f9e4429]:
+                - generic [ref=f9e4430]: "#90"
+                - img "Meteora" [ref=f9e4432]
+                - generic [ref=f9e4433]: "?"
+                - generic [ref=f9e4435]:
+                  - generic [ref=f9e4436]: DYN2
+                  - generic [ref=f9e4437]: NIKE
+                  - generic [ref=f9e4438]: /
+                  - generic [ref=f9e4439]: SOL
+                  - generic [ref=f9e4440]: Just Do It
+              - generic [ref=f9e4442]: $0.0001120
+              - generic [ref=f9e4444]: 15m
+              - generic [ref=f9e4446]: "11"
+              - generic [ref=f9e4448]: "9"
+              - generic [ref=f9e4450]: <$1
+              - generic [ref=f9e4452]: "14"
+              - generic [ref=f9e4454]: 0%
+              - generic [ref=f9e4456]: 5,295%
+              - generic [ref=f9e4458]: 5,295%
+              - generic [ref=f9e4460]: 5,295%
+              - generic [ref=f9e4462]: <$1
+              - generic [ref=f9e4464]: $1.1M
+          - 'link "Hide pair #91 Meteora ? DYN2 TWICE / SOL twice.fun $0.094201 15m 9 4 $120 11 0% -99.69% -99.69% -99.69% <$1 0" [ref=f9e4467] [cursor=pointer]':
+            - /url: /solana/49t9g5faakugunapsykp2gdyixhqumdzps6jn5qvv5cg
+            - generic: Hide pair
+            - generic [ref=f9e4470]:
+              - generic [ref=f9e4471]:
+                - generic [ref=f9e4472]: "#91"
+                - img "Meteora" [ref=f9e4474]
+                - generic [ref=f9e4475]: "?"
+                - generic [ref=f9e4477]:
+                  - generic [ref=f9e4478]: DYN2
+                  - generic [ref=f9e4479]: TWICE
+                  - generic [ref=f9e4480]: /
+                  - generic [ref=f9e4481]: SOL
+                  - generic [ref=f9e4482]: twice.fun
+              - generic "$0.0000000004201" [ref=f9e4486]: $0.094201
+              - generic [ref=f9e4487]: 15m
+              - generic [ref=f9e4489]: "9"
+              - generic [ref=f9e4491]: "4"
+              - generic [ref=f9e4493]: $120
+              - generic [ref=f9e4495]: "11"
+              - generic [ref=f9e4497]: 0%
+              - generic [ref=f9e4499]: "-99.69%"
+              - generic [ref=f9e4501]: "-99.69%"
+              - generic [ref=f9e4503]: "-99.69%"
+              - generic [ref=f9e4505]: <$1
+              - generic [ref=f9e4507]: "0"
+          - 'link "Hide pair #92 PumpSwap ? TWICE / SOL twice.fun $0.059472 16m 717 184 $26K 629 0% 8.60% 8.60% 8.60% <$1 $9.4K" [ref=f9e4509] [cursor=pointer]':
+            - /url: /solana/fjgmmy2j2rpvkdsnmeffmb8ray4oxkpointurnaymzm2
+            - generic: Hide pair
+            - generic [ref=f9e4512]:
+              - generic [ref=f9e4513]:
+                - generic [ref=f9e4514]: "#92"
+                - img "PumpSwap" [ref=f9e4516]
+                - generic [ref=f9e4517]: "?"
+                - generic [ref=f9e4519]:
+                  - generic [ref=f9e4520]: TWICE
+                  - generic [ref=f9e4521]: /
+                  - generic [ref=f9e4522]: SOL
+                  - generic [ref=f9e4523]: twice.fun
+              - generic "$0.000009472" [ref=f9e4527]: $0.059472
+              - generic [ref=f9e4528]: 16m
+              - generic [ref=f9e4530]: "717"
+              - generic [ref=f9e4532]: "184"
+              - generic [ref=f9e4534]: $26K
+              - generic [ref=f9e4536]: "629"
+              - generic [ref=f9e4538]: 0%
+              - generic [ref=f9e4540]: 8.60%
+              - generic [ref=f9e4542]: 8.60%
+              - generic [ref=f9e4544]: 8.60%
+              - generic [ref=f9e4546]: <$1
+              - generic [ref=f9e4548]: $9.4K
+          - 'link "Hide pair #93 PumpSwap ? CHILLBATON / SOL Just a Chill Baton $0.052026 16m 1,765 1,715 $358K 937 -20.77% -95.09% -95.09% -95.09% $2.1K $2.0K" [ref=f9e4551] [cursor=pointer]':
+            - /url: /solana/2lucyfdybiqrebvvqnro9ytipxvf37bwgfaaej1rta5m
+            - generic: Hide pair
+            - generic [ref=f9e4554]:
+              - generic [ref=f9e4555]:
+                - generic [ref=f9e4556]: "#93"
+                - img "PumpSwap" [ref=f9e4558]
+                - generic [ref=f9e4559]: "?"
+                - generic [ref=f9e4561]:
+                  - generic [ref=f9e4562]: CHILLBATON
+                  - generic [ref=f9e4563]: /
+                  - generic [ref=f9e4564]: SOL
+                  - generic [ref=f9e4565]: Just a Chill Baton
+              - generic "$0.000002026" [ref=f9e4569]: $0.052026
+              - generic [ref=f9e4570]: 16m
+              - generic [ref=f9e4572]: 1,765
+              - generic [ref=f9e4574]: 1,715
+              - generic [ref=f9e4576]: $358K
+              - generic [ref=f9e4578]: "937"
+              - generic [ref=f9e4580]: "-20.77%"
+              - generic [ref=f9e4582]: "-95.09%"
+              - generic [ref=f9e4584]: "-95.09%"
+              - generic [ref=f9e4586]: "-95.09%"
+              - generic [ref=f9e4588]: $2.1K
+              - generic [ref=f9e4590]: $2.0K
+          - 'link "Hide pair #94 Meteora ? DYN2 PONS / SOL Pons $0.094154 16m 10 7 $120 14 0% -99.69% -99.69% -99.69% <$1 0" [ref=f9e4593] [cursor=pointer]':
+            - /url: /solana/72ycwpcb373xo7qx1k8qx2gvb9ztjupwvflvvv1qu8qh
+            - generic: Hide pair
+            - generic [ref=f9e4596]:
+              - generic [ref=f9e4597]:
+                - generic [ref=f9e4598]: "#94"
+                - img "Meteora" [ref=f9e4600]
+                - generic [ref=f9e4601]: "?"
+                - generic [ref=f9e4603]:
+                  - generic [ref=f9e4604]: DYN2
+                  - generic [ref=f9e4605]: PONS
+                  - generic [ref=f9e4606]: /
+                  - generic [ref=f9e4607]: SOL
+                  - generic [ref=f9e4608]: Pons
+              - generic "$0.0000000004154" [ref=f9e4612]: $0.094154
+              - generic [ref=f9e4613]: 16m
+              - generic [ref=f9e4615]: "10"
+              - generic [ref=f9e4617]: "7"
+              - generic [ref=f9e4619]: $120
+              - generic [ref=f9e4621]: "14"
+              - generic [ref=f9e4623]: 0%
+              - generic [ref=f9e4625]: "-99.69%"
+              - generic [ref=f9e4627]: "-99.69%"
+              - generic [ref=f9e4629]: "-99.69%"
+              - generic [ref=f9e4631]: <$1
+              - generic [ref=f9e4633]: "0"
+          - 'link "Hide pair #95 PumpSwap ? GTA 6 Coin / SOL GTA6 $0.043687 16m 879 188 $15K 747 0% -63.23% -63.23% -63.23% <$1 $36K" [ref=f9e4635] [cursor=pointer]':
+            - /url: /solana/7u8vfjluubbsnibxskye1jk7b7jhjeisvbzwtvfeqdea
+            - generic: Hide pair
+            - generic [ref=f9e4638]:
+              - generic [ref=f9e4639]:
+                - generic [ref=f9e4640]: "#95"
+                - img "PumpSwap" [ref=f9e4642]
+                - generic [ref=f9e4643]: "?"
+                - generic [ref=f9e4645]:
+                  - generic [ref=f9e4646]: GTA 6 Coin
+                  - generic [ref=f9e4647]: /
+                  - generic [ref=f9e4648]: SOL
+                  - generic [ref=f9e4649]: GTA6
+              - generic "$0.00003687" [ref=f9e4653]: $0.043687
+              - generic [ref=f9e4654]: 16m
+              - generic [ref=f9e4656]: "879"
+              - generic [ref=f9e4658]: "188"
+              - generic [ref=f9e4660]: $15K
+              - generic [ref=f9e4662]: "747"
+              - generic [ref=f9e4664]: 0%
+              - generic [ref=f9e4666]: "-63.23%"
+              - generic [ref=f9e4668]: "-63.23%"
+              - generic [ref=f9e4670]: "-63.23%"
+              - generic [ref=f9e4672]: <$1
+              - generic [ref=f9e4674]: $36K
+          - 'link "Hide pair #96 Meteora ? DYN2 Copytrador / SOL Copytrador $0.094913 16m 972 1,081 $4.4K 218 0% -100% -100% -100% <$1 0" [ref=f9e4677] [cursor=pointer]':
+            - /url: /solana/5wyavi1byjn9pv97eqkjafbbtymqkyl38iezrbrqh3g6
+            - generic: Hide pair
+            - generic [ref=f9e4680]:
+              - generic [ref=f9e4681]:
+                - generic [ref=f9e4682]: "#96"
+                - img "Meteora" [ref=f9e4684]
+                - generic [ref=f9e4685]: "?"
+                - generic [ref=f9e4687]:
+                  - generic [ref=f9e4688]: DYN2
+                  - generic [ref=f9e4689]: Copytrador
+                  - generic [ref=f9e4690]: /
+                  - generic [ref=f9e4691]: SOL
+                  - generic [ref=f9e4692]: Copytrador
+              - generic "$0.0000000004913" [ref=f9e4696]: $0.094913
+              - generic [ref=f9e4697]: 16m
+              - generic [ref=f9e4699]: "972"
+              - generic [ref=f9e4701]: 1,081
+              - generic [ref=f9e4703]: $4.4K
+              - generic [ref=f9e4705]: "218"
+              - generic [ref=f9e4707]: 0%
+              - generic [ref=f9e4709]: "-100%"
+              - generic [ref=f9e4711]: "-100%"
+              - generic [ref=f9e4713]: "-100%"
+              - generic [ref=f9e4715]: <$1
+              - generic [ref=f9e4717]: "0"
+          - 'link "Hide pair #97 Meteora ? DYN2 GTA 6 Coin / SOL GTA6 $0.0001224 16m 9 2 <$1 10 0% 5,511% 5,511% 5,511% <$1 0" [ref=f9e4719] [cursor=pointer]':
+            - /url: /solana/6f5vdsfw7dupjyfvckirrjjwkrf85gliqeyshezvjk4d
+            - generic: Hide pair
+            - generic [ref=f9e4722]:
+              - generic [ref=f9e4723]:
+                - generic [ref=f9e4724]: "#97"
+                - img "Meteora" [ref=f9e4726]
+                - generic [ref=f9e4727]: "?"
+                - generic [ref=f9e4729]:
+                  - generic [ref=f9e4730]: DYN2
+                  - generic [ref=f9e4731]: GTA 6 Coin
+                  - generic [ref=f9e4732]: /
+                  - generic [ref=f9e4733]: SOL
+                  - generic [ref=f9e4734]: GTA6
+              - generic [ref=f9e4736]: $0.0001224
+              - generic [ref=f9e4738]: 16m
+              - generic [ref=f9e4740]: "9"
+              - generic [ref=f9e4742]: "2"
+              - generic [ref=f9e4744]: <$1
+              - generic [ref=f9e4746]: "10"
+              - generic [ref=f9e4748]: 0%
+              - generic [ref=f9e4750]: 5,511%
+              - generic [ref=f9e4752]: 5,511%
+              - generic [ref=f9e4754]: 5,511%
+              - generic [ref=f9e4756]: <$1
+              - generic [ref=f9e4758]: "0"
+          - 'link "Hide pair #98 PumpSwap ? CTM / SOL Catman $0.052055 16m 820 705 $168K 167 6.57% -95.61% -95.61% -95.61% $2.0K $2.0K" [ref=f9e4760] [cursor=pointer]':
+            - /url: /solana/cd8mfvuxa6bdzavw52wv63rhrh2eqphzpstjgydgyylj
+            - generic: Hide pair
+            - generic [ref=f9e4763]:
+              - generic [ref=f9e4764]:
+                - generic [ref=f9e4765]: "#98"
+                - img "PumpSwap" [ref=f9e4767]
+                - generic [ref=f9e4768]: "?"
+                - generic [ref=f9e4770]:
+                  - generic [ref=f9e4771]: CTM
+                  - generic [ref=f9e4772]: /
+                  - generic [ref=f9e4773]: SOL
+                  - generic [ref=f9e4774]: Catman
+              - generic "$0.000002055" [ref=f9e4778]: $0.052055
+              - generic [ref=f9e4779]: 16m
+              - generic [ref=f9e4781]: "820"
+              - generic [ref=f9e4783]: "705"
+              - generic [ref=f9e4785]: $168K
+              - generic [ref=f9e4787]: "167"
+              - generic [ref=f9e4789]: 6.57%
+              - generic [ref=f9e4791]: "-95.61%"
+              - generic [ref=f9e4793]: "-95.61%"
+              - generic [ref=f9e4795]: "-95.61%"
+              - generic [ref=f9e4797]: $2.0K
+              - generic [ref=f9e4799]: $2.0K
+          - 'link "Hide pair #99 PumpSwap ? MIZO / SOL Mizo $0.048167 17m 3,404 1,948 $1.2M 1,507 199% 1,455% 1,455% 1,455% $46K $81K" [ref=f9e4802] [cursor=pointer]':
+            - /url: /solana/gplcthe5bw7uzdn4nsn1cn9ugwisd4uchvgjjflqh6jk
+            - generic: Hide pair
+            - generic [ref=f9e4805]:
+              - generic [ref=f9e4806]:
+                - generic [ref=f9e4807]: "#99"
+                - img "PumpSwap" [ref=f9e4809]
+                - generic [ref=f9e4810]: "?"
+                - generic [ref=f9e4812]:
+                  - generic [ref=f9e4813]: MIZO
+                  - generic [ref=f9e4814]: /
+                  - generic [ref=f9e4815]: SOL
+                  - generic [ref=f9e4816]: Mizo
+              - generic "$0.00008167" [ref=f9e4820]: $0.048167
+              - generic [ref=f9e4821]: 17m
+              - generic [ref=f9e4823]: 3,404
+              - generic [ref=f9e4825]: 1,948
+              - generic [ref=f9e4827]: $1.2M
+              - generic [ref=f9e4829]: 1,507
+              - generic [ref=f9e4831]: 199%
+              - generic [ref=f9e4833]: 1,455%
+              - generic [ref=f9e4835]: 1,455%
+              - generic [ref=f9e4837]: 1,455%
+              - generic [ref=f9e4839]: $46K
+              - generic [ref=f9e4841]: $81K
+          - 'link "Hide pair #100 Meteora ? DYN2 TWICE / SOL twice.fun $0.045668 17m 5,422 3,211 $912K 1,627 24.51% 567% 567% 567% $43K $56K" [ref=f9e4844] [cursor=pointer]':
+            - /url: /solana/9h6byinijkm6w8uegiaocyrgcenzceid3psvv7oup1am
+            - generic: Hide pair
+            - generic [ref=f9e4847]:
+              - generic [ref=f9e4848]:
+                - generic [ref=f9e4849]: "#100"
+                - img "Meteora" [ref=f9e4851]
+                - generic [ref=f9e4852]: "?"
+                - generic [ref=f9e4854]:
+                  - generic [ref=f9e4855]: DYN2
+                  - generic [ref=f9e4856]: TWICE
+                  - generic [ref=f9e4857]: /
+                  - generic [ref=f9e4858]: SOL
+                  - generic [ref=f9e4859]: twice.fun
+              - generic "$0.00005668" [ref=f9e4863]: $0.045668
+              - generic [ref=f9e4864]: 17m
+              - generic [ref=f9e4866]: 5,422
+              - generic [ref=f9e4868]: 3,211
+              - generic [ref=f9e4870]: $912K
+              - generic [ref=f9e4872]: 1,627
+              - generic [ref=f9e4874]: 24.51%
+              - generic [ref=f9e4876]: 567%
+              - generic [ref=f9e4878]: 567%
+              - generic [ref=f9e4880]: 567%
+              - generic [ref=f9e4882]: $43K
+              - generic [ref=f9e4884]: $56K
+        - generic [ref=f9e4888]:
+          - generic [ref=f9e4889]: Showing pairs 1-100 of 59,040
+          - link [ref=f9e4890] [cursor=pointer]:
+            - /url: /solana/page-2?order=asc&rankBy=pairAge
