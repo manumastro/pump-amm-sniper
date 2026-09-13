@@ -1,10 +1,10 @@
-Paper Trade Outcomes @ 2026-09-13T10:53:54.761Z
+Paper Trade Outcomes @ 2026-09-13T10:55:19.427Z
 operations with pnl: 1
 invalid pnl excluded: 0
-total pnl (SOL): -0.001557
-avg pnl (%): -15.57
+total pnl (SOL): -0.002538
+avg pnl (%): -25.38
 wins/losses: 0/1
 win rate: 0%
 
 Operations with pnl:
-0001. evt-000004 D8dZLZi8sRx72EBYJLWRcbzmDQ3kJRc8qDX5WBJZpump start=10:52:55.247 buy_ts=10:53:02.354 sell_ts=10:53:06.257 end=10:53:06.261 buy_spot=7.858e-8 sell_spot=6.806e-8 pnl=-0.001557 (-15.57%) pnl_valid=YES class=clean status=COMPLETED (11009ms, rpc=35 429=0) skip=- rug_like=NO rug_loss=NO gmgn=https://gmgn.ai/sol/token/D8dZLZi8sRx72EBYJLWRcbzmDQ3kJRc8qDX5WBJZpump pnl_issue=-
+0001. evt-000001 CwqL7fHZmJDfwTpssHwQY6WDyH1eckPkEZz63bBepump start=10:54:11.553 buy_ts=10:54:18.234 sell_ts=10:54:34.928 end=10:54:34.930 buy_spot=5.233e-8 sell_spot=4.006e-8 pnl=-0.002538 (-25.38%) pnl_valid=YES class=clean status=COMPLETED (23373ms, rpc=163 429=0) skip=- rug_like=NO rug_loss=NO gmgn=https://gmgn.ai/sol/token/CwqL7fHZmJDfwTpssHwQY6WDyH1eckPkEZz63bBepump pnl_issue=-

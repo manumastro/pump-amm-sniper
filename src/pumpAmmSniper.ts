@@ -384,10 +384,24 @@ function getHeavyConnection(fallback: Connection): Connection {
     return heavyConnection;
 }
 
+/**
+ * L'endpoint come si puo' mostrare: host e forma del path, mai la credenziale.
+ *
+ * Togliere la query non basta. Alchemy mette la chiave **nel path** (`/v2/<chiave>`),
+ * quindi il banner d'avvio la stampava in chiaro dentro `logs/paper.log`, che e' fuori
+ * da git ma resta un file sul disco e finisce a schermo a ogni riavvio. Qui si
+ * sostituisce ogni segmento di path che assomiglia a un segreto — lungo e senza senso
+ * compiuto — e la basic auth. Vedi la regola sulle credenziali in CLAUDE.md.
+ */
 function describeEndpoint(url: string): string {
     try {
         const parsed = new URL(url);
-        return `${parsed.protocol}//${parsed.host}${parsed.pathname}`;
+        const path = parsed.pathname
+            .split("/")
+            .map((seg) => (seg.length >= 16 && /^[A-Za-z0-9_-]+$/.test(seg) ? "***" : seg))
+            .join("/");
+        const host = parsed.username || parsed.password ? `***:***@${parsed.host}` : parsed.host;
+        return `${parsed.protocol}//${host}${path}`;
     } catch {
         return url;
     }

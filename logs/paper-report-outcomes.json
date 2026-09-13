@@ -1,32 +1,32 @@
 {
-  "generatedAt": "2026-09-13T10:53:54.761Z",
+  "generatedAt": "2026-09-13T10:55:19.427Z",
   "outcomeOperationCount": 1,
   "invalidPnlCount": 0,
-  "totalPnlSol": -0.001557,
-  "avgPnlPct": -15.57,
+  "totalPnlSol": -0.002538,
+  "avgPnlPct": -25.38,
   "wins": 0,
   "losses": 1,
   "winRatePct": 0,
   "outcomeOperations": [
     {
-      "id": "evt-000004",
-      "startedAt": "10:52:55.247",
-      "buyAt": "10:53:02.354",
-      "sellAt": "10:53:06.257",
-      "pnlAt": "10:53:06.258",
-      "endedAt": "10:53:06.261",
-      "signature": "JwjdrmuCm7wP77E9Tbqs3FwfMbJjAcgQnbPgMD465GPeeZRr95N4E1SnAbka9jdnGUJtMU5ArDwe15thhPmi9EB",
-      "tokenMint": "D8dZLZi8sRx72EBYJLWRcbzmDQ3kJRc8qDX5WBJZpump",
-      "pool": "CCPUPuNwfRqhLK2dBgWtNGtnWFGKqowtR4BQkrVrD63H",
-      "gmgn": "https://gmgn.ai/sol/token/D8dZLZi8sRx72EBYJLWRcbzmDQ3kJRc8qDX5WBJZpump",
-      "buySpotSolPerToken": 7.858e-8,
-      "sellSpotSolPerToken": 6.806e-8,
-      "pnlSol": -0.001557,
-      "pnlPct": -15.57,
+      "id": "evt-000001",
+      "startedAt": "10:54:11.553",
+      "buyAt": "10:54:18.234",
+      "sellAt": "10:54:34.928",
+      "pnlAt": "10:54:34.929",
+      "endedAt": "10:54:34.930",
+      "signature": "219dpcQZf6egHfbAUXLTZYTQXEFMxoyTapFoc1YtwxZseEp3Ugkz7zGbxpfZG7PXwgZMaKpAFhfAPUoVGh2QZ6u1",
+      "tokenMint": "CwqL7fHZmJDfwTpssHwQY6WDyH1eckPkEZz63bBepump",
+      "pool": "fFDq98DomssAcDevLH213UFvSptbizMrK4RE8PwYv5G",
+      "gmgn": "https://gmgn.ai/sol/token/CwqL7fHZmJDfwTpssHwQY6WDyH1eckPkEZz63bBepump",
+      "buySpotSolPerToken": 5.233e-8,
+      "sellSpotSolPerToken": 4.006e-8,
+      "pnlSol": -0.002538,
+      "pnlPct": -25.38,
       "inferredPnl": false,
       "checksPassed": true,
       "skipReason": null,
-      "endStatus": "COMPLETED (11009ms, rpc=35 429=0)",
+      "endStatus": "COMPLETED (23373ms, rpc=163 429=0)",
       "durationMs": null,
       "rugPull": false,
       "rugLoss": false,
@@ -35,7 +35,7 @@
       "entryFilters": {
         "liquidity": {
           "pass": true,
-          "observed": 22.337941,
+          "observed": 12.683716,
           "threshold": 1,
           "sign": ">="
         },
@@ -229,8 +229,8 @@
         "cr_reason": null
       },
       "preBuyUltraGuard": {
-        "maxObservedLiqDropPct": 13.69,
-        "maxObservedQuoteDropPct": 0,
+        "maxObservedLiqDropPct": 40.89,
+        "maxObservedQuoteDropPct": 14.02,
         "maxLiqDropPct": 35,
         "maxQuoteDropPct": 35,
         "windowMs": 2500,
@@ -239,30 +239,36 @@
       "holdLog": {
         "exitReason": "hard stop loss",
         "holdMs": 90000,
-        "actualDurationMs": 3899,
-        "timeToPeakMs": 0,
-        "entryBaselineQuoteSol": 0.00974926,
-        "entrySolLiquidity": 20.2966,
-        "peakExitQuoteSol": 0.00974926,
-        "peakPnlPct": -2.5074,
+        "actualDurationMs": 16689,
+        "timeToPeakMs": 11688,
+        "entryBaselineQuoteSol": 0.00974839,
+        "entrySolLiquidity": 11.0463,
+        "peakExitQuoteSol": 0.0107858,
+        "peakPnlPct": 7.858,
         "winnerArmed": false,
         "trailingActive": false,
         "pricePath": {
           "t": [
             1,
-            3897
+            4056,
+            7733,
+            11688,
+            16688
           ],
           "q": [
-            0.00974926,
-            0.00844328
+            0.00974839,
+            0.01062578,
+            0.00974723,
+            0.0107858,
+            0.00746227
           ],
-          "samples": 2,
+          "samples": 5,
           "dropped": 0
         },
         "triggers": {
           "hardStopLoss": {
             "triggered": true,
-            "detail": "0.008443SOL(-15.57%) <= -15.00%"
+            "detail": "0.007462SOL(-25.38%) <= -15.00%"
           }
         },
         "guards": {
@@ -316,8 +322,16 @@
       },
       "bypassedFilters": [
         {
-          "filtro": "pre-entry guard",
-          "motivo": "liquidity dropped 27.66 -> 22.34 SOL"
+          "filtro": "ultra-short rug guard",
+          "motivo": "liquidity drop 40.89%"
+        },
+        {
+          "filtro": "ultra-short rug guard",
+          "motivo": "liquidity drop 37.62%"
+        },
+        {
+          "filtro": "ultra-short rug guard",
+          "motivo": "liquidity drop 36.45%"
         }
       ],
       "poolGraduata": null,
