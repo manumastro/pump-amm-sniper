@@ -168,9 +168,32 @@ export async function waitForExitStateWithLiquidityStop(
         pricePathLastAtMs = startedAtMs + tMs;
     }
 
+    // Battito visibile dell'hold. Senza, il log resta muto per tutta la durata della
+    // posizione — 90 secondi in cui a schermo non succede niente pur essendo l'unico
+    // momento in cui il bot ha soldi a rischio. Non costa chiamate: il quote e gia in mano.
+    let ultimoBattitoAtMs = 0;
+    let piccoQuoteSol = 0;
+    function battitoHold(quoteSol: number) {
+        if (quoteSol > piccoQuoteSol) piccoQuoteSol = quoteSol;
+        const ogniMs = Math.max(1000, CONFIG.HOLD_LOG_HEARTBEAT_MS);
+        const nowMs = Date.now();
+        if (nowMs - ultimoBattitoAtMs < ogniMs) return;
+        ultimoBattitoAtMs = nowMs;
+        const pnl = ((quoteSol - CONFIG.TRADE_AMOUNT_SOL) / CONFIG.TRADE_AMOUNT_SOL) * 100;
+        const picco = ((piccoQuoteSol - CONFIG.TRADE_AMOUNT_SOL) / CONFIG.TRADE_AMOUNT_SOL) * 100;
+        const segno = (v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`;
+        stageLog(
+            logPrefix,
+            "HOLD",
+            `${Math.round((nowMs - startedAtMs) / 1000)}s  quote ${quoteSol.toFixed(6)} SOL  ` +
+            `pnl ${segno(pnl)}  picco ${segno(picco)}`,
+        );
+    }
+
     function observeExitQuote(quoteSol: number | null, isPeak = false) {
         if (quoteSol === null || !Number.isFinite(quoteSol) || quoteSol < 0) return;
         lastObservedExitQuoteSol = quoteSol;
+        battitoHold(quoteSol);
         if (!CONFIG.HOLD_PRICE_PATH_RECORD_ENABLED) return;
 
         const nowMs = Date.now();

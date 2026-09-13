@@ -2452,3 +2452,28 @@ Aggiunta inoltre una riga nel worker quando un token scartato finisce sotto shad
 
 Senza, lo skip sembrava un vicolo cieco anche quando il token veniva seguito, perche' il
 campionamento vive nel supervisore e scrive su file suoi (sezione 39.3).
+
+---
+
+## 43. Battito dell'hold e cruscotto per token (2026-09-13)
+
+**Il problema.** Durante un hold il log del worker taceva: fra `BUY_QUOTE` e l'uscita passavano 90
+secondi in cui comparivano solo `CRISK`/`RREPEAT`/`CRISKT` ripetuti, cioe' rumore. Era l'unico
+momento in cui il bot ha soldi a rischio, e a schermo non succedeva niente.
+
+**`HOLD_LOG_HEARTBEAT_MS`** (nuovo, **5000**) fa stampare all'hold monitor una riga di stato:
+
+```
+HOLD | 23s  quote 0.010412 SOL  pnl +4.12%  picco +6.80%
+```
+
+Solo log, **nessuna chiamata aggiuntiva**: il quote e' gia' in mano al loop. Si spegne alzando il
+valore; a 0 viene comunque forzato a 1000ms.
+
+**Cruscotto.** `./scripts/bot cruscotto` (il default) mostra ora anche il token in lavorazione:
+mint, link gmgn, creator, DEX, la **pendenza della curva** dal `LIQPATH`, e le ultime tappe della
+valutazione con l'ora. Se la posizione e' aperta, in fondo compare la riga `POSIZIONE APERTA` col
+battito. Un riquadro `ULTIME VALUTAZIONI` tiene le ultime cinque con token, esito e motivo.
+
+Il parser scarta esplicitamente `CRISK`, `RREPEAT`, `CRISKT`, `FILTERS`, `HOLDLOG` e `LIQPATH`: sono
+righe utili nel file ma, a video, seppelliscono la narrazione dell'evento.

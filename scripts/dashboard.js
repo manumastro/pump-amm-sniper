@@ -78,6 +78,54 @@ function seriale() {
     });
 }
 
+/**
+ * L'evento in corso, ricostruito dal log del worker.
+ *
+ * Le righe interessanti sono poche fra molto rumore: durante l'hold il worker ripete
+ * CRISK/RREPEAT/CRISKT ogni paio di secondi, e lasciarle passare seppellisce tutto.
+ */
+function inCorso() {
+    try {
+        const dir = path.join(ROOT, "logs");
+        const f = fs.readdirSync(dir).filter((x) => /^paper-worker-\d+\.log$/.test(x))
+            .map((x) => path.join(dir, x))
+            .sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs)[0];
+        if (!f) return null;
+        const buf = fs.readFileSync(f, "utf8");
+        const righe = buf.split("\n").filter(Boolean);
+        // inizio dell'ultimo evento
+        let i = righe.length - 1;
+        for (; i >= 0; i--) if (/START\s+\| processing pool/.test(righe[i])) break;
+        if (i < 0) return null;
+        const blocco = righe.slice(i);
+        const campo = (tag) => {
+            for (let k = blocco.length - 1; k >= 0; k--) {
+                const m = new RegExp(`\\[W\\d\\]\\s+${tag}\\s+\\|\\s+(.*)$`).exec(blocco[k]);
+                if (m) return m[1].trim();
+            }
+            return null;
+        };
+        const tappe = [];
+        const RUMORE = /(CRISK|RREPEAT|CRISKT|FILTERS|HOLDLOG|LIQPATH|GMGN|SIGNATURE|─)/;
+        for (const r of blocco) {
+            const m = /\[([\d:.]+)\]\s+\[W\d\]\s+(.*)$/.exec(r);
+            if (!m || RUMORE.test(m[2])) continue;
+            tappe.push({ t: m[1].slice(0, 8), testo: m[2].replace(/\s+\|\s+/, " · ").trim() });
+        }
+        let slope = null;
+        for (let k = blocco.length - 1; k >= 0; k--) {
+            const m = /LIQPATH\s+\|\s+(\{.*\})$/.exec(blocco[k]);
+            if (m) { try { slope = JSON.parse(m[1]).slopeSolPerSec; } catch {} break; }
+        }
+        return {
+            token: campo("TOKEN"), pool: campo("POOL"), gmgn: campo("GMGN"),
+            creator: campo("CREATOR"), dex: campo("TX"), liq: campo("LIQ"),
+            hold: campo("HOLD"), fine: campo("END"), slope,
+            tappe: tappe.slice(-7),
+        };
+    } catch { return null; }
+}
+
 function attivita() {
     // ultima riga significativa dal log del worker: dice cosa sta succedendo adesso
     try {
@@ -155,6 +203,34 @@ async function disegna() {
     }
     parti.push(riquadro("ADESSO", righeOra));
 
+    // --- token in corso ---
+    const ic = inCorso();
+    if (ic && ic.token) {
+        const righeIc = [];
+        const concluso = !!ic.fine;
+        righeIc.push(
+            `  ${C.b}${ic.token}${C.r}` +
+            (ic.dex ? `   ${C.grigio}${ic.dex}${C.r}` : "") +
+            (concluso ? `   ${C.grigio}concluso${C.r}` : `   ${C.giallo}in corso${C.r}`)
+        );
+        if (ic.gmgn) righeIc.push(`  ${C.blu}${ic.gmgn}${C.r}`);
+        if (ic.creator) righeIc.push(`  ${C.grigio}creator${C.r} ${ic.creator}`);
+        if (ic.slope !== null && ic.slope !== undefined) {
+            const v = Number(ic.slope);
+            righeIc.push(`  ${C.grigio}pendenza della curva${C.r} ${(v >= 0 ? C.verde : C.rosso)}${v >= 0 ? "+" : ""}${v.toFixed(6)} SOL/s${C.r}   ${C.grigio}(il segnale di momentum)${C.r}`);
+        }
+        righeIc.push("");
+        for (const t of ic.tappe) {
+            const esito = /SKIP|🛑/.test(t.testo) ? C.rosso : /CHECKS|BUY|PAPER WIN|✅/.test(t.testo) ? C.verde : "";
+            righeIc.push(`  ${C.grigio}${t.t}${C.r}  ${esito}${t.testo}${C.r}`);
+        }
+        if (ic.hold && !concluso) {
+            righeIc.push("");
+            righeIc.push(`  ${C.b}${C.giallo}POSIZIONE APERTA${C.r}  ${ic.hold}`);
+        }
+        parti.push(riquadro(concluso ? "ULTIMO TOKEN VALUTATO" : "TOKEN IN VALUTAZIONE ADESSO", righeIc));
+    }
+
     // --- esiti ---
     if (report) {
         const e = esiti(report);
@@ -171,6 +247,15 @@ async function disegna() {
             `rug ${report.rugLossCount}   entrati ${C.b}${report.checksPassed}${C.r}/${report.finishedEvents}`
         );
         parti.push(riquadro("ESITI", righe));
+
+        const ultime = (report.operations || []).slice(-5).reverse();
+        parti.push(riquadro("ULTIME VALUTAZIONI", ultime.map((o) => {
+            const st = String(o.endStatus || "in corso").replace(/\s*\(\d+ms.*$/, "");
+            const entrata = /PAPER|COMPLETED/.test(st);
+            const motivo = String(o.skipReason || "").replace(/\s*\(curve=.*/, "").slice(0, 40);
+            return `  ${C.grigio}${o.startedAt}${C.r}  ${riempi(String(o.tokenMint || "-").slice(0, 12), 14)}` +
+                `${(entrata ? C.verde : C.rosso)}${riempi(tronca(st, 26), 27)}${C.r}${C.grigio}${motivo}${C.r}`;
+        })));
 
         // --- rpc ---
         const perOra = e.span > 0 ? (e.nRecenti / e.span) * 60 : 0;
