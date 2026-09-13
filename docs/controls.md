@@ -2500,3 +2500,39 @@ piu' per numero di campioni: quell'ordine metteva in cima il piu' vecchio ancora
 che non interessa guardare. Ogni riga porta l'ora dello skip e, sotto, il link gmgn.
 
 `CRUSCOTTO_REFRESH_MS` (default 2000) resta l'unica manopola.
+
+### 45. `FILTERS_MONITOR_ONLY` — modalita' misura (2026-09-13)
+
+**La domanda.** Quanto vale ogni filtro d'ingresso? Finora la risposta arrivava dallo shadow, che
+segue i token scartati e ne stima il picco. E' una stima: campiona ogni 10-60s, non sa cosa avrebbe
+fatto l'hold, e i suoi picchi vanno verificati uno a uno (vedi `docs/verifica-onchain.md`).
+
+**Il controllo.** Con `FILTERS_MONITOR_ONLY=true` i filtri d'ingresso **girano e registrano ma non
+bloccano**. Ogni token entra lo stesso, e l'operazione porta con se' in `bypassedFilters` l'elenco
+dei filtri che l'avrebbero fermata, col motivo. Cosi' la domanda si risponde sugli **esiti veri**:
+prendere le operazioni con `creator risk` fra i bypass e guardare quanto hanno reso.
+
+Filtri messi in sola misura: `token security`, `creator risk`, `pre-entry guard`, `pre-buy top10`.
+Anche il gate aggregato di fine sequenza viene ridotto alla sola liquidita', altrimenti riapplica
+creator-risk e top10 e annulla la misura.
+
+**Cosa continua a bloccare**, di proposito:
+
+- **la soglia di liquidita'** (`MIN_POOL_LIQUIDITY_SOL`), che resta l'unico filtro attivo;
+- **`no WSOL side`**, che non e' un filtro ma un limite: senza lato SOL la pool non e' prezzabile;
+- **tutte le uscite dell'hold** (stop loss, take profit, trailing). Sono la strategia di uscita, non
+  di ingresso: spegnerle cambierebbe due cose insieme e renderebbe il risultato illeggibile.
+
+**Perche' non basta spegnere i filtri da `.env`.** Si otterrebbero le stesse entrate ma senza
+attribuzione: un filtro spento non calcola nulla, quindi non si saprebbe quali operazioni avrebbe
+bloccato. Il costo di tenerli accesi e' RPC (il creator-risk da solo e' il 27,7% delle chiamate),
+ed e' esattamente cio' che si sta comprando.
+
+**Effetto sul ritmo.** Le entrate passano da ~2% a quasi tutto cio' che supera 1 SOL, e ogni entrata
+occupa il worker per la durata dell'hold. Meno token valutati all'ora, molti piu' esiti all'ora: e'
+il baratto giusto quando si misura, quello sbagliato quando si cerca.
+
+**Da rimettere a `false`** prima di qualunque uso non-paper: cosi' com'e', entra su tutto.
+
+**`./scripts/bot reset`** ora azzera anche `logs/cc-shadow` e i due file outcomes, oltre al report e
+ai log dei worker. Il backup datato del report resta la prima cosa che fa.

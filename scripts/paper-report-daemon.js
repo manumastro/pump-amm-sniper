@@ -152,6 +152,7 @@ function getEvent(id) {
       entryFilters: null,
       preBuyUltraGuard: null,
       holdLog: null,
+      bypassedFilters: [],
       liqPath: null,
     });
   }
@@ -504,6 +505,19 @@ function parseLine(logPath, line) {
       return;
     }
 
+    if (stage === 'BYPASS') {
+      // FILTERS_MONITOR_ONLY: il filtro avrebbe bloccato ma ha lasciato passare.
+      // Serve a legare ogni esito ai filtri che l'avrebbero fermato.
+      ev = ev || getCurrentEvent(logPath);
+      if (!ev) return;
+      const parsed = safeJsonParse(message);
+      if (parsed && typeof parsed === 'object') {
+        ev.bypassedFilters = ev.bypassedFilters || [];
+        ev.bypassedFilters.push(parsed);
+      }
+      return;
+    }
+
     if (stage === 'HOLDLOG') {
       ev = ev || getCurrentEvent(logPath);
       if (!ev) return;
@@ -693,6 +707,7 @@ function summarize() {
       entryFilters: e.entryFilters,
       preBuyUltraGuard: e.preBuyUltraGuard,
       holdLog: e.holdLog,
+      bypassedFilters: e.bypassedFilters || [],
       liqPath: e.liqPath,
       noWsolRetryCount: e.noWsolRetryCount || 0,
       noWsolRetryRecovered: !!e.noWsolRetryRecovered,
@@ -762,6 +777,7 @@ function summarize() {
       entryFilters: e.entryFilters,
       preBuyUltraGuard: e.preBuyUltraGuard,
       holdLog: e.holdLog,
+      bypassedFilters: e.bypassedFilters || [],
       liqPath: e.liqPath,
       noWsolRetryCount: e.noWsolRetryCount || 0,
       noWsolRetryRecovered: !!e.noWsolRetryRecovered,
@@ -789,6 +805,7 @@ function summarize() {
       entryFilters: e.entryFilters,
       preBuyUltraGuard: e.preBuyUltraGuard,
       holdLog: e.holdLog,
+      bypassedFilters: e.bypassedFilters || [],
       liqPath: e.liqPath,
     })),
   };

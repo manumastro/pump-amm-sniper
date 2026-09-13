@@ -32,7 +32,7 @@ import {
     getSolLiquidityFromState,
     getSpotSolPerTokenFromState,
 } from "./services/paper-trade/quote";
-import { patchConsoleWithTimestamp, stageLog } from "./services/reporting/stageLog";
+import { patchConsoleWithTimestamp, registraBypass, stageLog } from "./services/reporting/stageLog";
 import { createTop10Service } from "./services/top10";
 import { checkTokenSecurity, getMintInfoRobust } from "./services/token-security";
 import { formatLiquiditySol, formatQuoteMovePct, formatSolCompact, formatSolDecimal } from "./utils/format";
@@ -641,9 +641,13 @@ async function handleNewPool(connection: Connection, signature: string) {
         // 🛡️ SAFETY CHECKS
         const isSafe = await checkTokenSecurity(connection, tokenMint);
         if (!isSafe) {
-            console.log(`🛑 SKIP: Token failed safety checks.`);
-            finalStatus = "SKIP: token security";
-            return;
+            if (CONFIG.FILTERS_MONITOR_ONLY) {
+                registraBypass(ctx, "token security", "mint/freeze non revocati");
+            } else {
+                console.log(`🛑 SKIP: Token failed safety checks.`);
+                finalStatus = "SKIP: token security";
+                return;
+            }
         }
 
         let creatorRisk: CreatorRiskResult = { ok: true, reason: "creator unresolved (fail-open)" };
@@ -701,8 +705,12 @@ async function handleNewPool(connection: Connection, signature: string) {
                     createPoolBlockTime: tx.blockTime || null,
                     skipReason: `creator risk (${creatorRisk.reason})`,
                 });
-                finalStatus = "SKIP: creator risk";
-                return;
+                if (CONFIG.FILTERS_MONITOR_ONLY) {
+                    registraBypass(ctx, "creator risk", creatorRisk.reason || "");
+                } else {
+                    finalStatus = "SKIP: creator risk";
+                    return;
+                }
             }
         }
 
@@ -719,9 +727,13 @@ async function handleNewPool(connection: Connection, signature: string) {
                     creatorRisk,
                 );
                 if (!preEntry.ok) {
-                    console.log(`🛑 SKIP: pre-entry guard (${preEntry.reason})`);
-                    finalStatus = "SKIP: pre-entry guard";
-                    return;
+                    if (CONFIG.FILTERS_MONITOR_ONLY) {
+                        registraBypass(ctx, "pre-entry guard", preEntry.reason || "");
+                    } else {
+                        console.log(`🛑 SKIP: pre-entry guard (${preEntry.reason})`);
+                        finalStatus = "SKIP: pre-entry guard";
+                        return;
+                    }
                 }
                 liquiditySOL = preEntry.currentLiquiditySol;
                 preEntryCurrentLiquiditySol = preEntry.currentLiquiditySol;
@@ -729,7 +741,9 @@ async function handleNewPool(connection: Connection, signature: string) {
                 stageLog(ctx, "WAIT", "force-entry no-WSOL bypass: skipping pre-entry guard");
             }
             const top10 = await top10Service.runCheck(getHeavyConnection(connection), tokenMint, poolAddress, ctx);
-            if (!top10.ok) {
+            if (!top10.ok && CONFIG.FILTERS_MONITOR_ONLY) {
+                registraBypass(ctx, "pre-buy top10", top10.reason || "");
+            } else if (!top10.ok) {
                 console.log(`🛑 SKIP: pre-buy top10 (${top10.reason})`);
                 finalStatus = "SKIP: pre-buy top10";
                 return;
@@ -1027,9 +1041,20 @@ async function handleNewPool(connection: Connection, signature: string) {
                 })
             );
 
-            // Final check: ensure all pre‑buy checks passed
-            const allChecksPassed = (creatorRisk.ok || creatorRiskProbation) && top10.ok && liquiditySOL >= CONFIG.MIN_POOL_LIQUIDITY_SOL;
+            // Final check: ensure all pre‑buy checks passed.
+            // In FILTERS_MONITOR_ONLY resta solo la liquidita': gli altri due sono gia' stati
+            // registrati come BYPASS a monte, qui li ri-applicherebbe e annullerebbe la misura.
+            const allChecksPassed = CONFIG.FILTERS_MONITOR_ONLY
+                ? liquiditySOL >= CONFIG.MIN_POOL_LIQUIDITY_SOL
+                : (creatorRisk.ok || creatorRiskProbation) && top10.ok && liquiditySOL >= CONFIG.MIN_POOL_LIQUIDITY_SOL;
             if (!allChecksPassed) {
+                if (CONFIG.FILTERS_MONITOR_ONLY) {
+                    // qui puo' fallire solo la liquidita': chiamarla col suo nome tiene
+                    // pulita la tabella degli esiti
+                    console.log(`🛑 SKIP: Liquidity too low al pre-buy (${liquiditySOL.toFixed(4)} SOL; min ${CONFIG.MIN_POOL_LIQUIDITY_SOL} SOL)`);
+                    finalStatus = "SKIP: low liquidity";
+                    return;
+                }
                 console.log(`🛑 SKIP: pre‑buy checks failed (creatorRisk.ok=${creatorRisk.ok}, top10.ok=${top10.ok}, liquidity=${liquiditySOL.toFixed(2)} SOL)`);
                 finalStatus = "SKIP: pre‑buy checks failed";
                 return;
@@ -1110,9 +1135,13 @@ async function handleNewPool(connection: Connection, signature: string) {
                 creatorRisk,
             );
             if (!preEntry.ok) {
-                console.log(`🛑 SKIP: pre-entry guard (${preEntry.reason})`);
-                finalStatus = "SKIP: pre-entry guard";
-                return;
+                if (CONFIG.FILTERS_MONITOR_ONLY) {
+                    registraBypass(ctx, "pre-entry guard", preEntry.reason || "");
+                } else {
+                    console.log(`🛑 SKIP: pre-entry guard (${preEntry.reason})`);
+                    finalStatus = "SKIP: pre-entry guard";
+                    return;
+                }
             }
         } else if (forceEntryNoWsolBypass && CONFIG.FORCE_ENTRY_ON_NO_WSOL_SIDE) {
             stageLog(ctx, "WAIT", "force-entry no-WSOL bypass: skipping pre-entry guard");

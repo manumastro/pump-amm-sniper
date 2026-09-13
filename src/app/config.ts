@@ -139,6 +139,19 @@ export const CONFIG = {
     // worker occupato per un controllo che, su un token appena nato, ha 2 holder.
     PRE_BUY_TOP10_MAX_TOTAL_MS: Number(process.env.PRE_BUY_TOP10_MAX_TOTAL_MS || 20000),
     PRE_BUY_TOP10_RETRY_BASE_MS: Number(process.env.PRE_BUY_TOP10_RETRY_BASE_MS ?? 400),
+    /**
+     * Modalita' misura: i filtri d'ingresso girano e registrano, ma non bloccano piu'.
+     *
+     * Serve a rispondere a "quanto vale ogni filtro" con gli esiti veri invece che con lo
+     * shadow: ogni token che sarebbe stato scartato entra lo stesso, e l'operazione porta
+     * con se' l'elenco dei filtri che l'avrebbero fermata (stage BYPASS -> bypassedFilters
+     * nel report). Spegnere i filtri da .env darebbe le stesse entrate ma senza attribuzione.
+     *
+     * NON tocca la soglia di liquidita', che resta l'unico filtro che blocca, ne' lo scarto
+     * per assenza di lato WSOL, che e' strutturale (senza lato SOL non si puo' prezzare).
+     * Vedi docs/controls.md 45. Da usare solo in paper: in live entrerebbe su tutto.
+     */
+    FILTERS_MONITOR_ONLY: envBool("FILTERS_MONITOR_ONLY", false),
     CREATOR_RISK_CHECK_ENABLED: envBool("CREATOR_RISK_CHECK_ENABLED", true),
     CREATOR_RISK_SIG_LIMIT: Number(process.env.CREATOR_RISK_SIG_LIMIT ?? 80),
     CREATOR_RISK_PARSED_TX_LIMIT: Number(process.env.CREATOR_RISK_PARSED_TX_LIMIT ?? 50),

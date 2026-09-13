@@ -43,3 +43,16 @@ export function patchConsoleWithTimestamp() {
 export function stageLog(_ctx: string, stage: string, message: string) {
     console.log(`${stage.padEnd(12)} | ${message}`);
 }
+
+/**
+ * Registra un filtro che avrebbe bloccato l'ingresso ma e' stato lasciato passare
+ * perche' `FILTERS_MONITOR_ONLY` e' attivo.
+ *
+ * Serve l'attribuzione, non la riga a schermo: il daemon raccoglie questi eventi in
+ * `bypassedFilters` dell'operazione, cosi' ogni esito porta con se' l'elenco dei filtri
+ * che l'avrebbero fermato e si puo' calcolare quanto vale ciascuno sugli esiti veri.
+ * Vedi docs/controls.md 45.
+ */
+export function registraBypass(ctx: string, filtro: string, motivo: string) {
+    stageLog(ctx, "BYPASS", JSON.stringify({ filtro, motivo }));
+}

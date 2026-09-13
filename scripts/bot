@@ -250,7 +250,12 @@ reset)
     : > logs/paper-report.json
     : > logs/paper-report.txt
     : > logs/paper-report-daemon.log
+    : > logs/paper-report-outcomes.json
+    : > logs/paper-report-outcomes.txt
     rm -f logs/paper-worker-*.log
+    # anche lo shadow: i token seguiti appartengono alla sessione che sta finendo,
+    # tenerli mescolerebbe due configurazioni diverse nella stessa tabella
+    rm -rf logs/cc-shadow
     docker compose up -d --build
     echo "ripartito da zero."
     ;;
