@@ -133,12 +133,18 @@ Tutto quello che serve per guardare e governare il bot senza ricordarsi le opzio
 | `worker` | il log del worker attivo adesso, dall'inizio |
 | `stato` | config attiva, contatori, report, ultime 10 valutazioni |
 | `rpc` | valutazioni/ora, richieste/ora, media per esito, proiezione mensile |
+| `analisi` | momentum d'ingresso e costo degli skip |
+| `shadow` | i token scartati, seguiti in tempo reale |
 | `shell` | entra nel container |
 | `su` `giu` `riavvia` `rebuild` | ciclo di vita |
 | `reset` | **backup del report**, azzera i log, riparte da zero |
 
 `reset` fa `cp logs/paper-report.json logs/paper-report-<data-ora>.json` prima di toccare
 qualunque cosa, come impone la sequenza di questo runbook.
+
+⚠️ **Lo shadow tracking non compare in `live`.** `appendCcShadowLog` scrive su
+`logs/cc-shadow/manager.log` e gli snapshot su `cc-<N>/timeline/events.ndjson`, non sullo stdout
+dello sniper: cercarlo nel log del container non lo trova. `shadow` e' l'unico modo per vederlo.
 
 `rpc` legge i contatori `rpc=` / `429=` che ogni riga di `endStatus` porta con se, quindi
 risponde sui dati della sessione corrente senza bisogno di strumentazione aggiuntiva.

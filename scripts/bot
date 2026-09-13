@@ -19,6 +19,7 @@ uso: ./scripts/bot <comando>
   stato       fotografia: config attiva, contatori, ultime valutazioni
   rpc         quante chiamate stiamo facendo, al minuto e per valutazione
   analisi     momentum d'ingresso e costo degli skip (il quadro di domani)
+  shadow      i token scartati, seguiti in tempo reale (non sono nel log dello sniper)
   shell       entra nel container
   veglia      impedisce al Mac di dormire col coperchio chiuso (chiede sudo)
   dormi       ripristina il comportamento normale (chiede sudo)
@@ -132,6 +133,61 @@ rpc)
 
 analisi)
     node scripts/entry-signal-analysis.js "${2:-}"
+    ;;
+
+shadow)
+    # Lo shadow tracking NON scrive sullo stdout dello sniper: appendCcShadowLog va su
+    # logs/cc-shadow/manager.log e gli snapshot su cc-<N>/timeline/events.ndjson.
+    # Per questo non si vede con './scripts/bot live'.
+    [ -d logs/cc-shadow ] || { echo "Nessun dato shadow. Serve CC_SHADOW_ENABLED=true." >&2; exit 1; }
+    echo "token seguiti adesso:"
+    node -e '
+      const fs=require("fs"), path=require("path");
+      const root="logs/cc-shadow";
+      let n=0;
+      for (const d of fs.readdirSync(root)) {
+        const f=path.join(root,d,"summary","by-token.json");
+        if(!fs.existsSync(f)) continue;
+        let byToken; try { byToken=JSON.parse(fs.readFileSync(f,"utf8")); } catch { continue; }
+        for (const v of Object.values(byToken)) {
+          n++;
+          const ls=v.lastSnapshot||{};
+          const pct=(x)=> (typeof x==="number" ? (x>=0?"+":"")+x.toFixed(2)+"%" : "n/a");
+          console.log(
+            `  ${String(v.tokenMint).slice(0,12).padEnd(13)}` +
+            `${String(v.skipReason||"-").slice(0,42).padEnd(44)}` +
+            `snap=${String(v.snapshots).padStart(3)}  ` +
+            `liq=${(ls.solLiquidity!=null?Number(ls.solLiquidity).toFixed(4):"n/a").padStart(9)}  ` +
+            `ora=${pct(ls.currentPnlPct).padStart(9)}  picco=${pct(v.peakPnlPct).padStart(9)}`
+          );
+        }
+      }
+      if(!n) console.log("  (nessuno: i job nascono dagli skip, campionati al 20%)");
+    '
+    echo
+    echo "--- in tempo reale (ctrl-C per uscire) ---"
+    tail -F -n 0 logs/cc-shadow/manager.log logs/cc-shadow/cc-*/timeline/events.ndjson 2>/dev/null \
+      | node -e '
+        let buf="";
+        process.stdin.on("data",(c)=>{
+          buf+=c; const righe=buf.split("\n"); buf=righe.pop();
+          for (const r of righe) {
+            const t=r.trim();
+            if(!t || t.startsWith("==>")) continue;
+            if(!t.startsWith("{")) { console.log(t); continue; }
+            let d; try { d=JSON.parse(t); } catch { continue; }
+            const pct=(x)=> (typeof x==="number" ? (x>=0?"+":"")+x.toFixed(2)+"%" : "n/a");
+            console.log(
+              `  ${String(d.tokenMint||"").slice(0,12).padEnd(13)}` +
+              `#${String(d.sampleIndex).padStart(3)}  ` +
+              `${String(Math.round((d.ageMs||0)/1000)+"s").padStart(6)}  ` +
+              `liq=${(d.solLiquidity!=null?Number(d.solLiquidity).toFixed(6):"n/a").padStart(11)}  ` +
+              `pnl=${pct(d.currentPnlPct).padStart(9)}  picco=${pct(d.peakPnlPct).padStart(9)}` +
+              (d.finalReason?`  [${d.finalReason}]`:"")
+            );
+          }
+        });
+      '
     ;;
 
 veglia)
