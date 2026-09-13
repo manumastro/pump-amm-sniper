@@ -2427,3 +2427,28 @@ Il primo e' un round trip corretto, il secondo e' il comportamento giusto su una
 ⚠️ Resta vocabolario PumpSwap in `executeBuy` / `executeSell` (`src/pumpAmmSniper.ts` ~3199-3241).
 Sono i percorsi **live**, mai eseguiti in `MONITOR_ONLY`, e sono gia' fra i punti aperti di
 `PRODUCTION_BOT_CHECKLIST.md`. Vanno portati sull'adapter prima di qualunque passaggio a live.
+
+---
+
+## 42. `./scripts/bot live` mostrava solo il supervisore (2026-09-13)
+
+I worker sono **processi figli** con lo stdout rediretto su `logs/paper-worker-N.log`
+(`getWorkerLogPath`), quindi non passano dallo stdout del container. Misurato: 198 righe `SKIP:`
+nel log del worker, **0** in `docker compose logs sniper`.
+
+Conseguenza: `live`, `flusso`, `trade` ed `errori` — che leggevano solo `docker compose logs` —
+mostravano DISPATCH e SERIALE e **nessuna decisione per token**. Il log piu' informativo del bot era
+raggiungibile solo con `worker`, e solo un file alla volta.
+
+Corretto con `tutti_i_log()`, che unisce le due sorgenti (`docker compose logs -f` +
+`tail -F logs/paper-worker-*.log`). `flusso` include ora anche `TOKEN`, `LIQ`, `LIQPATH`, `CRISK`
+e `CCSHADOW`.
+
+Aggiunta inoltre una riga nel worker quando un token scartato finisce sotto shadow:
+
+```
+👁️  CCSHADOW: token seguito dopo lo skip (low-liq) — ./scripts/bot shadow
+```
+
+Senza, lo skip sembrava un vicolo cieco anche quando il token veniva seguito, perche' il
+campionamento vive nel supervisore e scrive su file suoi (sezione 39.3).

@@ -241,6 +241,9 @@ function enqueueCcShadowCandidate(payload: {
             kind,
             programId: payload.programId || ACTIVE_ADAPTER.programId,
         }));
+        // Senza questa riga lo skip risulta un vicolo cieco anche quando il token viene
+        // seguito: il campionamento vive nel supervisore e non scrive qui. Vedi controls.md 42.
+        console.log(`👁️  CCSHADOW: token seguito dopo lo skip (${kind}) — ./scripts/bot shadow`);
         fs.renameSync(tmpPath, outPath);
     } catch (error) {
         console.error(`CCSHADOW    | enqueue failed ${payload.eventId}: ${(error as Error)?.message || "unknown"}`);

@@ -37,23 +37,33 @@ richiede_container() {
     }
 }
 
+# I worker sono processi FIGLI del supervisore e scrivono su logs/paper-worker-N.log,
+# non sullo stdout del container: `docker compose logs` contiene solo le righe del
+# supervisore (DISPATCH, SERIALE) e nessuna decisione per token. Qualunque vista utile
+# deve unire le due sorgenti.
+tutti_i_log() {
+    docker compose logs -f --tail="${1:-100}" "$SNIPER" 2>/dev/null &
+    tail -F -n "${1:-100}" logs/paper-worker-*.log 2>/dev/null &
+    wait
+}
+
 case "${1:-live}" in
 
 live)
     richiede_container
-    docker compose logs -f --tail=100 "$SNIPER"
+    tutti_i_log 100
     ;;
 
 flusso)
     richiede_container
-    docker compose logs -f --tail=200 "$SNIPER" \
-        | grep --line-buffered -E "DISPATCH|SERIALE|STEP|SKIP:|PAPER (WIN|LOSS)|COMPLETED|BUY|SELL|🛑|✅"
+    tutti_i_log 200 \
+        | grep --line-buffered -E "DISPATCH|SERIALE|TOKEN|LIQ |LIQPATH|CRISK|SKIP:|PAPER (WIN|LOSS)|COMPLETED|BUY|SELL|CCSHADOW|🛑|✅"
     ;;
 
 trade)
     richiede_container
-    docker compose logs -f --tail=500 "$SNIPER" \
-        | grep --line-buffered -E "PAPER (WIN|LOSS)|COMPLETED|BUY |SELL |PnL|take profit|trailing|stop loss|rug"
+    tutti_i_log 500 \
+        | grep --line-buffered -E "PAPER (WIN|LOSS)|COMPLETED|BUY |SELL |PnL|take profit|trailing|stop loss|rug|CHECKS"
     ;;
 
 seriale)
@@ -63,7 +73,7 @@ seriale)
 
 errori)
     richiede_container
-    docker compose logs -f --tail=200 "$SNIPER" \
+    tutti_i_log 200 \
         | grep --line-buffered -iE "error|429|too many|ucciso|circuit breaker|fallita|❌|🚨"
     ;;
 
