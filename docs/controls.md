@@ -2483,9 +2483,16 @@ righe utili nel file ma, a video, seppelliscono la narrazione dell'evento.
 La schermata era diventata alta: cinque riquadri impilati, e per vedere il token in lavorazione si
 passava sopra a esiti, RPC e shadow, che sono storia e non cambiano da un refresh all'altro.
 
-Ora e' divisa: **sinistra = adesso** (stato del bot, token in valutazione tappa per tappa, posizione
-aperta), **destra = la sessione finora** (esiti, ultime valutazioni, ritmo RPC, token seguiti in
-ombra). Le larghezze si ricavano dal terminale; sotto i **132 caratteri** le due colonne si impilano
-da sole come prima, e la tabella dello shadow lascia cadere la colonna del motivo sotto i 74.
+Ora e' divisa: **sinistra = la sessione finora** (esiti, operazioni eseguite, ultime valutazioni,
+ritmo RPC, token seguiti in ombra), **destra = adesso** (stato del bot, token in valutazione tappa
+per tappa, posizione aperta). Le larghezze si ricavano dal terminale; sotto i **132 caratteri** le
+due colonne si impilano da sole come prima, e la tabella dello shadow lascia cadere la colonna del
+motivo sotto i 74.
+
+**`OPERAZIONI ESEGUITE`** e' il riquadro nuovo: le entrate vere, una riga ciascuna, vincenti e
+perdenti allo stesso modo. Ora dell'acquisto, token, PnL in percentuale e in SOL, durata reale
+dell'hold, motivo dell'uscita e picco toccato — tutto da `holdLog` del report (`exitReason`,
+`actualDurationMs`, `peakPnlPct`), gia' presente e mai mostrato. Le entrate sono ~1 su 25
+valutazioni e prima stavano schiacciate nella sola riga `entrati N/M`.
 
 `CRUSCOTTO_REFRESH_MS` (default 2000) resta l'unica manopola.

@@ -265,6 +265,40 @@ function colonnaStoria(report, sh, w) {
         righe.push(`  ${C.grigio}entrati${C.r} ${C.b}${report.checksPassed}${C.r}/${report.finishedEvents}`);
         out.push(...riquadro("ESITI DELLA SESSIONE", righe, w));
 
+        // Le operazioni davvero eseguite. Sono poche (~1 su 25 valutazioni) e restavano
+        // schiacciate in una riga di conteggio: qui ognuna ha il suo esito, il motivo
+        // dell'uscita e quanto e' durata.
+        const fatte = (report.operations || []).filter((o) => o.checksPassed && o.pnlPct !== null && o.pnlPct !== undefined);
+        const righeOp = [];
+        if (!fatte.length) {
+            righeOp.push(`  ${C.grigio}nessuna entrata in questa sessione${C.r}`);
+        } else {
+            for (const o of fatte.slice(-8).reverse()) {
+                const hl = o.holdLog || {};
+                const durata = hl.actualDurationMs ? `${(hl.actualDurationMs / 1000).toFixed(0)}s` : "-";
+                const motivo = String(hl.exitReason || "").replace("winner ", "").replace("hard ", "");
+                const picco = typeof hl.peakPnlPct === "number" ? hl.peakPnlPct : null;
+                righeOp.push(
+                    `  ${C.grigio}${String(o.buyAt || o.startedAt).slice(0, 8)}${C.r} ` +
+                    `${riempi(String(o.tokenMint || "-").slice(0, 10), 11)}` +
+                    `${riempi("", Math.max(0, 9 - vis(pct(o.pnlPct, 1))))}${pct(o.pnlPct, 1)} ` +
+                    `${riempi((o.pnlSol >= 0 ? C.verde : C.rosso) + (o.pnlSol >= 0 ? "+" : "") + Number(o.pnlSol).toFixed(4) + C.r, 9)}` +
+                    `${riempi(durata, 5)}${C.grigio}${tronca(motivo, 16)}${C.r}` +
+                    (picco !== null ? ` ${C.grigio}picco${C.r} ${pct(picco, 0)}` : "") +
+                    (o.rugLoss ? ` ${C.rosso}RUG${C.r}` : "")
+                );
+            }
+            const somma = fatte.reduce((a, o) => a + Number(o.pnlSol || 0), 0);
+            const vinte = fatte.filter((o) => Number(o.pnlPct) > 0).length;
+            righeOp.push("");
+            righeOp.push(
+                `  ${C.b}${fatte.length}${C.r} operazioni   ${C.verde}${vinte}W${C.r}/${C.rosso}${fatte.length - vinte}L${C.r}   ` +
+                `${C.b}${(somma >= 0 ? C.verde : C.rosso)}${somma >= 0 ? "+" : ""}${somma.toFixed(4)} SOL${C.r}   ` +
+                `${C.grigio}su ${report.finishedEvents} valutazioni${C.r}`
+            );
+        }
+        out.push(...riquadro("OPERAZIONI ESEGUITE", righeOp, w));
+
         const ultime = (report.operations || []).slice(-6).reverse();
         out.push(...riquadro("ULTIME VALUTAZIONI", ultime.map((o) => {
             const st = String(o.endStatus || "in corso").replace(/\s*\(\d+ms.*$/, "");
@@ -321,12 +355,13 @@ async function disegna() {
     const ora = new Date().toLocaleTimeString("it-IT");
     const testa = C.b + C.ciano + "  PUMP SNIPER" + C.r + C.grigio + `   ${ora}   ricarica ogni ${REFRESH_MS / 1000}s   ctrl-C per uscire` + C.r;
 
-    const sx = colonnaOra(s, att, ic, wsx);
-    const dx = colonnaStoria(report, sh, wdx);
+    // La storia sta a sinistra, dove l'occhio parte; l'evento in corso a destra.
+    const sx = colonnaStoria(report, sh, wsx);
+    const dx = colonnaOra(s, att, ic, wdx);
 
     const corpo = affiancate
-        ? [riempi(C.b + "  ▌ ADESSO" + C.r, wsx) + "  " + C.b + "  ▌ LA SESSIONE FINORA" + C.r, ...affianca(sx, dx, wsx)]
-        : [...sx, ...dx];
+        ? [riempi(C.b + "  ▌ LA SESSIONE FINORA" + C.r, wsx) + "  " + C.b + "  ▌ ADESSO" + C.r, ...affianca(sx, dx, wsx)]
+        : [...dx, ...sx];
 
     process.stdout.write("\x1b[H\x1b[2J" + testa + "\n" + corpo.join("\n") + "\n");
 }
