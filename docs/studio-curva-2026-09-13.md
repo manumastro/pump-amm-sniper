@@ -65,3 +65,79 @@ passa la soglia senza sforzo. Il problema e' che non abbiamo l'adapter registrat
 **2. La gestione dell'uscita attuale butterebbe via l'edge.** `HOLD_WINNER_HARD_TP_PCT = 50` chiude a
 +50%: su un token che fa +32.532% significa prendere lo 0,15% del movimento. Su questa popolazione il
 take profit fisso e' il controllo sbagliato — serve il trailing, o niente.
+
+---
+
+# Correzione e secondo giro: si riconoscono prima?
+
+## Il secchio `no WSOL side` sono due cose diverse
+
+Detto sopra che i 61 `no WSOL side` erano graduazioni istantanee. **Non e' vero: solo 13 lo sono.**
+Il motivo esatto e' gia' scritto nel nostro `skipReason`, e separa i due gruppi in modo perfetto:
+
+| motivo nel messaggio | n | vivi | mc max |
+|---|---|---|---|
+| `quote=SOL (migrata su PumpSwap)` | **13** | **13 (100%)** | $13.540.107 |
+| `quote=<altro mint>` (USDC, token vari) | 48 | **0** | $5.902 |
+
+I 48 sono curve pump quotate in un token che non e' SOL: scartarle e' giusto, sono morte tutte.
+I 13 sono graduazioni istantanee: **vive tutte e 13**. La separazione e' gia' nel log, a costo zero,
+un secondo dopo la nascita. Basta leggere il campo `quote` invece di trattare tutto il secchio uguale.
+
+## Dentro i 13: alla nascita sono identici
+
+Da dexscreener, la pool PumpSwap dei 13 nasce **nello stesso secondo** della curva, e la curva resta
+a mc $41.000 esatti per tutti. A `t+1s` non c'e' nulla che li distingua: stesso template, stesso
+istante, stesso mc.
+
+## Cio' che li distingue: quanta SOL c'e' nella pool alla nascita
+
+Letto on-chain il vault WSOL della pool alla transazione di creazione (`postTokenBalances`):
+
+```
+mint        SOL nella pool alla nascita     mc adesso
+Hp25GPMp          1.505                    $14.194.454
+k91ZFNe2          1.505                    $13.601.122
+J52CTiCT          1.503                    $12.337.194
+aEXwZerT          1.506                     $6.165.944
+-------------------------------------------------------  soglia
+NwffF1pP            614                     $2.419.344
+mAHFcA8w            562                          $1.752
+r8v6nUBo            468                          $1.775
+92psX1jT            467                          $1.752
+cfCH3kDr            366                     $1.242.975
+RjjjS34w            366                          $1.795
+7f4sYTQP            147                          $1.885
+DvhArRpK             72                          $1.988
+DGqv6cTQ             71                          $2.150
+```
+
+**Sopra 1.500 SOL: 4 su 4, tutti oltre $6M. Sotto 700 SOL: 2 vincitori su 9, 7 morti.**
+
+E' l'unica variabile osservabile all'ingresso che separa, ed e' leggibile **prima di comprare**:
+e' il saldo del vault della pool, una `getTokenAccountBalance`.
+
+### Perche' non fidarsi ancora
+
+- **n=4.** Quattro campioni, tutti fra le 10:18 e le 10:22 UTC, quattro minuti.
+- **Almeno due condividono un'origine:** `k91ZFNe2` e `Hp25GPMp` hanno lo stesso payer
+  (`HTVZVEQMBsNanubDPTs3CxDAEGNFQHJY8c1441iy2S5r`). Se dietro i quattro c'e' un solo operatore,
+  n=4 e' in realta' n=1, ed e' esattamente l'errore gia' commesso con il "seed 85 SOL" del
+  2026-09-13 (vedi `docs/mercato-2026-09-13.md`).
+- Il gruppo di controllo pero' esiste e non e' vuoto: 9 token sotto i 700 SOL, 7 morti.
+
+**Prima di usarla come soglia serve una sessione di conferma su token nati in ore diverse.**
+
+## Sull'uscita: il TP fisso qui non funziona
+
+Sulla popolazione dei 13, con 6 vincitori da +39% a +32.532% e 7 a -95%, il profitto viene tutto
+dalla coda. `HOLD_WINNER_HARD_TP_PCT = 50` tronca l'unica fonte di guadagno e lascia intatte le
+perdite: e' la forma d'uscita sbagliata per definizione.
+
+Ma l'ordine delle cose e' questo: **non serve holdare piu' a lungo su 13 token, serve entrare sui 4.**
+Se la soglia di seed regge, il secchio passa da 6 vincitori su 13 a 4 su 4, e solo a quel punto il
+trailing stop ha qualcosa da proteggere. Cambiare l'uscita prima dell'ingresso significa tenere piu'
+a lungo anche i sette che vanno a -95%.
+
+Ordine proposto: (1) registrare `pumpSwapAdapter`, (2) leggere il vault della pool all'ingresso e
+misurarlo su una sessione senza bloccare, (3) solo dopo sostituire il TP fisso con un trailing.
