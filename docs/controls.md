@@ -2495,4 +2495,8 @@ dell'hold, motivo dell'uscita e picco toccato — tutto da `holdLog` del report 
 `actualDurationMs`, `peakPnlPct`), gia' presente e mai mostrato. Le entrate sono ~1 su 25
 valutazioni e prima stavano schiacciate nella sola riga `entrati N/M`.
 
+**Shadow.** I token seguiti in ombra sono ordinati **dal piu' recente** (per `createdAtMs`), non
+piu' per numero di campioni: quell'ordine metteva in cima il piu' vecchio ancora vivo, cioe' l'unico
+che non interessa guardare. Ogni riga porta l'ora dello skip e, sotto, il link gmgn.
+
 `CRUSCOTTO_REFRESH_MS` (default 2000) resta l'unica manopola.

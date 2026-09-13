@@ -165,7 +165,9 @@ function shadow() {
         if (!byToken) continue;
         for (const v of Object.values(byToken)) out.push(v);
     }
-    return out.sort((a, b) => (b.snapshots || 0) - (a.snapshots || 0));
+    // dal piu' recente: e' il token appena scartato quello che interessa guardare,
+    // non quello con piu' campioni (che e' solo il piu' vecchio ancora vivo)
+    return out.sort((a, b) => (b.createdAtMs || b.startedAtMs || 0) - (a.createdAtMs || a.startedAtMs || 0));
 }
 
 function esiti(report) {
@@ -322,16 +324,18 @@ function colonnaStoria(report, sh, w) {
         righeSh.push(`  ${C.grigio}nessun token seguito (i job nascono dagli skip, al 20%)${C.r}`);
     } else {
         const stretta = interno < 74;
-        righeSh.push(`  ${C.grigio}${riempi("token", 12)}${stretta ? "" : riempi("motivo dello skip", 24)}${"snap".padStart(5)}${"ora".padStart(10)}${"picco".padStart(10)}${C.r}`);
-        for (const v of sh.slice(0, 8)) {
+        const ora = (ms) => (ms ? new Date(ms).toLocaleTimeString("it-IT") : "--:--:--");
+        for (const v of sh.slice(0, 6)) {
             const ls = v.lastSnapshot || {};
             righeSh.push(
-                `  ${riempi(String(v.tokenMint).slice(0, 10), 12)}` +
-                (stretta ? "" : riempi(tronca(String(v.skipReason || "-").replace(/\s*\(.*/, ""), 22), 24)) +
-                `${String(v.snapshots).padStart(5)}` +
-                `${riempi("", Math.max(0, 10 - vis(pct(ls.currentPnlPct))))}${pct(ls.currentPnlPct)}` +
-                `${riempi("", Math.max(0, 10 - vis(pct(v.peakPnlPct))))}${pct(v.peakPnlPct)}`
+                `  ${C.grigio}${ora(v.createdAtMs || v.startedAtMs)}${C.r}  ` +
+                `${riempi(String(v.tokenMint).slice(0, 10), 12)}` +
+                (stretta ? "" : riempi(tronca(String(v.skipReason || "-").replace(/\s*\(.*/, ""), 20), 22)) +
+                `${C.grigio}snap${C.r}${String(v.snapshots).padStart(4)}` +
+                `${riempi("", Math.max(0, 10 - vis(pct(ls.currentPnlPct, 1))))}${pct(ls.currentPnlPct, 1)}` +
+                `${C.grigio} picco${C.r}${riempi("", Math.max(0, 9 - vis(pct(v.peakPnlPct, 1))))}${pct(v.peakPnlPct, 1)}`
             );
+            righeSh.push(`  ${C.blu}${v.gmgn || "https://gmgn.ai/sol/token/" + v.tokenMint}${C.r}`);
         }
         const saliti = sh.filter((v) => typeof v.peakPnlPct === "number" && v.peakPnlPct >= 10).length;
         righeSh.push("");
