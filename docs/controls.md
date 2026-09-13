@@ -2554,3 +2554,19 @@ reset non abbia funzionato. `reset` ora fa `docker compose down`, **aspetta** ch
 report-daemon.js')"`) sopravvive a qualunque reset di Docker e continua a riscrivere
 `logs/paper-report.json` col proprio stato. Se dopo un reset ricompaiono dati vecchi, il primo
 controllo e' `ps aux | grep paper-report-daemon`: dev'esserci solo il processo dentro il container.
+
+### 47. Il recheck creator-risk svuotava la misura (2026-09-13)
+
+Con `FILTERS_MONITOR_ONLY` attivo, **8 entrate su 13** uscivano con `creator risk: ...` dopo pochi
+secondi, tutte a circa **-2,5%** (la sola fee). Il motivo: `HOLD_CREATOR_RISK_RECHECK_ENABLED`
+ri-esegue durante l'hold **lo stesso controllo gia' bypassato all'ingresso**. Il token entrava e
+veniva buttato fuori dallo stesso segnale dalla porta accanto, quindi non si imparava niente su cosa
+avrebbe fatto.
+
+Ora in modalita' misura il recheck **registra e non esce** (`BYPASS | creator risk (uscita hold)`).
+
+**Restano attive** le uscite che reagiscono a cio' che il creator fa *adesso* — `creator amm burst`,
+`creator outbound`, `close-account burst`, `outbound spray`, `inbound spray` — perche' non sono la
+riapplicazione del filtro d'ingresso ma rilevatori di comportamento in corso. Stessa logica per stop
+loss, take profit e trailing: la modalita' misura riguarda **cosa compriamo**, non **quando
+vendiamo**.

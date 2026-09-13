@@ -2,7 +2,7 @@ import BN from "bn.js";
 import { Connection } from "@solana/web3.js";
 import { CONFIG } from "../../app/config";
 import { CreatorRiskResult, WinnerManagementProfile } from "../../domain/types";
-import { stageLog } from "../reporting/stageLog";
+import { registraBypass, stageLog } from "../reporting/stageLog";
 import { formatQuoteMovePct } from "../../utils/format";
 import { shortSig } from "../../utils/pubkeys";
 import { getExitQuoteSolFromState, getSolLiquidityFromState } from "./quote";
@@ -373,9 +373,16 @@ export async function waitForExitStateWithLiquidityStop(
                         continue;
                     }
                     recordTrigger("creatorRiskRecheck", true, creatorRisk.reason || "unknown");
-                    console.log(`⚠️ CREATOR RISK EXIT: ${creatorRisk.reason}`);
-                    logHoldSummary(`creator risk: ${creatorRisk.reason || "unknown"}`);
-                    return { state: s, exitReason: `creator risk: ${creatorRisk.reason || "unknown"}` };
+                    // In modalita' misura non si esce: e' lo stesso segnale gia' bypassato
+                    // all'ingresso, e uscire alla fee su ogni token che lo attiva svuota
+                    // l'esperimento (8 entrate su 13 chiuse a -2,5%). Vedi controls.md 47.
+                    if (CONFIG.FILTERS_MONITOR_ONLY) {
+                        registraBypass(logPrefix, "creator risk (uscita hold)", creatorRisk.reason || "unknown");
+                    } else {
+                        console.log(`⚠️ CREATOR RISK EXIT: ${creatorRisk.reason}`);
+                        logHoldSummary(`creator risk: ${creatorRisk.reason || "unknown"}`);
+                        return { state: s, exitReason: `creator risk: ${creatorRisk.reason || "unknown"}` };
+                    }
                 }
             }
 
