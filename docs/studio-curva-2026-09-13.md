@@ -90,43 +90,58 @@ Da dexscreener, la pool PumpSwap dei 13 nasce **nello stesso secondo** della cur
 a mc $41.000 esatti per tutti. A `t+1s` non c'e' nulla che li distingua: stesso template, stesso
 istante, stesso mc.
 
-## Cio' che li distingue: quanta SOL c'e' nella pool alla nascita
+## Cio' che li distingue: quanta SOL arriva nel primo secondo
 
-Letto on-chain il vault WSOL della pool alla transazione di creazione (`postTokenBalances`):
+> **Correzione (stessa giornata).** La prima versione di questa sezione diceva "la SOL nella pool
+> alla nascita: sopra 1.500 SOL 4 su 4". Era una lettura sbagliata: le firme venivano ordinate per
+> `blockTime`, ma decine di transazioni condividono lo stesso secondo di creazione e il sort stabile
+> di JS le lascia dal piu' recente. Si leggeva l'**ultima** transazione di quel secondo credendola la
+> prima. Rimisurato con l'ordine vero (ordine API ribaltato, mai `blockTime`).
+
+**Il seed di graduazione non e' un segnale: e' 67,4 SOL per tutti**, 22 letture su 22. E' un
+parametro fisso di pump.
+
+I 1.505 SOL erano la pool **dopo circa un secondo di vita**: ~1.438 SOL di acquisti entrati nello
+stesso secondo della graduazione. E' una cosa diversa, e piu' utile — non e' un parametro del
+template, e' domanda vera. Ed e' esattamente cio' che il worker legge quando arriva sulla pool.
+
+Rimisurato su **28 pool graduate in quattro ore diverse** (07, 08, 09, 10 UTC), vivo = mc >= $100.000:
+
+| SOL nella pool dopo ~1s | n | vivi | mc max |
+|---|---|---|---|
+| oltre 1.500 | 5 | 4 (80%) | $14.382.579 |
+| 300 - 800 | 12 | 4 (33%) | $2.422.147 |
+| sotto 150 (nessun acquisto) | 9 | 1 (11%) | $121.093 |
+| non leggibile | 2 | 0 | $2.532 |
+
+I nove vivi:
 
 ```
-mint        SOL nella pool alla nascita     mc adesso
-Hp25GPMp          1.505                    $14.194.454
-k91ZFNe2          1.505                    $13.601.122
-J52CTiCT          1.503                    $12.337.194
-aEXwZerT          1.506                     $6.165.944
--------------------------------------------------------  soglia
-NwffF1pP            614                     $2.419.344
-mAHFcA8w            562                          $1.752
-r8v6nUBo            468                          $1.775
-92psX1jT            467                          $1.752
-cfCH3kDr            366                     $1.242.975
-RjjjS34w            366                          $1.795
-7f4sYTQP            147                          $1.885
-DvhArRpK             72                          $1.988
-DGqv6cTQ             71                          $2.150
+Hp25GPMp  10:21  1506 SOL  $14.382.579      cfCH3kDr  09:26   367 SOL   $1.423.309
+k91ZFNe2  10:19  1506 SOL  $13.709.210      VyoGPmnQ  10:27   366 SOL   $1.108.563
+aEXwZerT  10:18  1506 SOL  $13.244.365      J1NzhQmU  10:51    73 SOL     $121.093
+J52CTiCT  10:22  1505 SOL  $12.451.922
+NwffF1pP  09:50   615 SOL   $2.422.147
+V5HAV6jt  08:37   546 SOL   $1.948.110
 ```
 
-**Sopra 1.500 SOL: 4 su 4, tutti oltre $6M. Sotto 700 SOL: 2 vincitori su 9, 7 morti.**
+### Cosa regge e cosa no
 
-E' l'unica variabile osservabile all'ingresso che separa, ed e' leggibile **prima di comprare**:
-e' il saldo del vault della pool, una `getTokenAccountBalance`.
+**Non regge la soglia a 1.500.** I quattro vivi di quella fascia nascono in quattro minuti e almeno
+due condividono il payer: un campione solo travestito da quattro. E l'unico caso indipendente della
+fascia, `43VfGSS9` con **3.027 SOL** — il primo secondo piu' forte dell'intero campione — e' morto a
+$456. Piu' SOL non e' automaticamente meglio.
 
-### Perche' non fidarsi ancora
+**Regge il taglio grezzo:** c'e' stato un acquisto nel primo secondo, si' o no.
 
-- **n=4.** Quattro campioni, tutti fra le 10:18 e le 10:22 UTC, quattro minuti.
-- **Almeno due condividono un'origine:** `k91ZFNe2` e `Hp25GPMp` hanno lo stesso payer
-  (`HTVZVEQMBsNanubDPTs3CxDAEGNFQHJY8c1441iy2S5r`). Se dietro i quattro c'e' un solo operatore,
-  n=4 e' in realta' n=1, ed e' esattamente l'errore gia' commesso con il "seed 85 SOL" del
-  2026-09-13 (vedi `docs/mercato-2026-09-13.md`).
-- Il gruppo di controllo pero' esiste e non e' vuoto: 9 token sotto i 700 SOL, 7 morti.
+```
+  >= 300 SOL   8 vivi su 17   47%
+  <  150 SOL   1 vivo  su  9  11%
+```
 
-**Prima di usarla come soglia serve una sessione di conferma su token nati in ore diverse.**
+Quattro volte meglio. Ma sono 17 e 9 campioni, e il 47% resta una lotteria: il segnale non dice
+"questo vince", dice "qui vale la pena giocare". Per questo `PUMP_MIGRATO_MIN_SOL_1S` resta a 0 e il
+numero si registra soltanto (`SOL1S` nel log, `solPrimoSecondo` nel report).
 
 ## Sull'uscita: il TP fisso qui non funziona
 

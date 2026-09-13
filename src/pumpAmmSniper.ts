@@ -4,7 +4,7 @@ import path from "path";
 import bs58 from "bs58";
 import { OnlinePumpAmmSdk, PumpAmmSdk, buyQuoteInput, sellBaseInput } from "@pump-fun/pump-swap-sdk";
 import { getActiveAdapter, getAdapterForProgram, initAdapters, listAdapters, listMonitoredProgramIds } from "./services/dex";
-import { curvaGiaGraduata, passaAllaPoolGraduata, valutaSeedGraduata } from "./services/dex/pumpMigrato";
+import { curvaGiaGraduata, passaAllaPoolGraduata, valutaSol1s } from "./services/dex/pumpMigrato";
 
 // L'adapter del DEX su cui gira questo processo, risolto da WORKER_TASK_PROGRAM_ID.
 // Non e' una costante: una curva pump gia' graduata sposta il worker su PumpSwap a meta'
@@ -630,19 +630,20 @@ async function handleNewPool(connection: Connection, signature: string) {
             stageLog(ctx, "LIQ", `${liqSolFmt} SOL (USD unavailable)`);
         }
 
-        // Su una pool appena graduata la liquidita' letta e' il seed del lancio: si registra
-        // sempre, si filtra solo se PUMP_MIGRATO_MIN_SEED_SOL e' stato alzato. Vedi
+        // Su una pool appena graduata la liquidita' letta e' la SOL arrivata nel primo
+        // secondo di vita — non il seed, che e' 67,4 per tutti. Si registra sempre, si
+        // filtra solo se PUMP_MIGRATO_MIN_SOL_1S e' stato alzato. Vedi
         // services/dex/pumpMigrato.ts e docs/controls.md 48.
         if (passaggioGraduata) {
-            const seed = valutaSeedGraduata(liquiditySOL);
-            stageLog(ctx, "SEEDPOOL", JSON.stringify({
-                seedSol: Number(liquiditySOL.toFixed(6)),
-                soglia: seed.soglia,
-                ok: seed.ok,
+            const primo = valutaSol1s(liquiditySOL);
+            stageLog(ctx, "SOL1S", JSON.stringify({
+                sol1s: Number(liquiditySOL.toFixed(6)),
+                soglia: primo.soglia,
+                ok: primo.ok,
             }));
-            if (!seed.ok) {
-                console.log(`🛑 SKIP: seed pool graduata insufficiente (${seed.motivo})`);
-                finalStatus = "SKIP: seed graduata";
+            if (!primo.ok) {
+                console.log(`🛑 SKIP: primo secondo debole (${primo.motivo})`);
+                finalStatus = "SKIP: primo secondo debole";
                 return;
             }
         }

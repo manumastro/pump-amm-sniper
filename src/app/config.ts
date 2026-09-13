@@ -100,10 +100,11 @@ export const CONFIG = {
     // Quando la curva risulta gia' completa il worker passa sulla pool PumpSwap canonica
     // invece di scartare il token.
     PUMP_MIGRATO_ENABLED: envBool("PUMP_MIGRATO_ENABLED", true),
-    // Soglia sulla SOL presente nella pool alla nascita. 0 = solo misura, non blocca:
-    // il campione e' n=4 e due dei quattro condividono il payer, quindi la soglia va
-    // confermata su token nati in ore diverse prima di farne un filtro.
-    PUMP_MIGRATO_MIN_SEED_SOL: Number(process.env.PUMP_MIGRATO_MIN_SEED_SOL ?? 0),
+    // Soglia sulla SOL nella pool quando il worker la legge, cioe' dopo ~1 secondo di
+    // vita. NON e' il seed di graduazione: quello e' 67,4 SOL per tutti e non discrimina
+    // niente (misurato su 28 pool, controls.md 48). Questa e' la domanda arrivata nel
+    // primo secondo. 0 = solo misura, non blocca.
+    PUMP_MIGRATO_MIN_SOL_1S: Number(process.env.PUMP_MIGRATO_MIN_SOL_1S ?? 0),
     // Uscita dedicata: su una popolazione a coda lunga il TP fisso tronca l'unica fonte
     // di guadagno. 0 = nessun take profit, si esce solo col trailing.
     PUMP_MIGRATO_HARD_TAKE_PROFIT_PCT: Number(process.env.PUMP_MIGRATO_HARD_TAKE_PROFIT_PCT ?? 0),

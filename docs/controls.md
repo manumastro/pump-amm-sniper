@@ -2599,14 +2599,51 @@ su 61 e sono morti tutti e 48.
   un worker solo, ascoltare anche PumpSwap ruberebbe capacita' a pump invece di aggiungersi; per
   questi token non serve, arrivano gia' dall'evento `create` di pump.
 
-**`PUMP_MIGRATO_MIN_SEED_SOL = 0` — soglia disattivata di proposito.** La SOL nella pool alla nascita
-e' l'unica variabile osservabile all'ingresso che separa i vincitori: sopra 1.500 SOL 4 su 4 oltre
-$6M di mc, sotto 700 SOL 7 morti su 9. Ma **n=4**, tutti nati in quattro minuti, e due dei quattro
-condividono il payer: potrebbe essere un operatore solo, cioe' n=1. E' la stessa forma dell'errore
-gia' commesso col "seed 85 SOL" (`docs/mercato-2026-09-13.md`). Quindi per ora si **registra**
-(`SEEDPOOL` nel log — non `SEED`, che appartiene gia' al seed del *creator* — e `seedGraduata` nel report) senza bloccare. Alzare la soglia solo dopo un campione
-nato in ore diverse. Il numero non costa chiamate: e' la liquidita' che il worker legge comunque, e a
-un secondo dalla creazione quella liquidita' **e'** il seed.
+**`PUMP_MIGRATO_MIN_SOL_1S = 0` — soglia disattivata, e il perche' e' cambiato.**
+
+Prima versione di questa sezione (2026-09-13, mattina): "la SOL nella pool alla nascita separa i
+vincitori, sopra 1.500 SOL 4 su 4". **Era una lettura sbagliata.** Le firme della pool venivano
+ordinate per `blockTime`, ma decine di transazioni condividono lo **stesso secondo** di creazione e
+il sort stabile di JS lascia quel gruppo nell'ordine dell'API, cioe' dal piu' recente: si leggeva
+l'ultima transazione del secondo di nascita credendola la prima.
+
+Rimisurato prendendo la transazione davvero piu' vecchia (ordine API ribaltato, mai `blockTime`), su
+28 pool graduate in **quattro ore diverse**:
+
+- **il seed di graduazione e' 67,4 SOL per tutti** — 22 letture su 22. E' un parametro fisso di pump
+  e non discrimina niente. Come segnale non e' mai esistito.
+- i 1.505 SOL erano la pool **dopo circa un secondo**: ~1.438 SOL di acquisti entrati nello stesso
+  secondo della graduazione. Cosa diversa, e piu' interessante: e' domanda, non un parametro.
+
+Vivo = mc attuale >= $100.000.
+
+| SOL nella pool dopo ~1s | n | vivi | mc max |
+|---|---|---|---|
+| oltre 1.500 | 5 | 4 (80%) | $14.382.579 |
+| 300 - 800 | 12 | 4 (33%) | $2.422.147 |
+| sotto 150 (nessun acquisto) | 9 | 1 (11%) | $121.093 |
+| non leggibile | 2 | 0 | $2.532 |
+
+**Il gradino a 1.500 non regge.** I quattro vivi di quella fascia nascono in quattro minuti
+(10:18-10:22) e almeno due condividono il payer: valgono come un campione solo. E l'unico caso
+indipendente nella fascia, `43VfGSS9` con **3.027 SOL** — il piu' alto di tutti — e' morto a $456.
+Piu' SOL non e' automaticamente meglio.
+
+**Cio' che resta in piedi e' il taglio grezzo:** c'e' stato un acquisto nel primo secondo o no.
+
+```
+  >= 300 SOL    8 vivi su 17   47%
+  <  150 SOL    1 vivo  su  9  11%
+```
+
+Quattro volte meglio, ma con 17 e 9 campioni e un tasso del 47% che resta una lotteria. Per questo la
+soglia e' a **0**: si registra (`SOL1S` nel log, `solPrimoSecondo` nel report) e non si blocca. Serve
+un campione piu' grande e nato in giornate diverse prima di accenderla. Il numero non costa chiamate:
+e' la liquidita' che il worker legge comunque all'ingresso.
+
+*Nomi:* lo stage e' `SOL1S`, non `SEED` (quello e' il seed del *creator*,
+`services/creator-risk/index.ts`) e non `SEEDPOOL`, che e' stato il nome per un'ora ed era gia'
+sbagliato nel merito.
 
 **Uscita dedicata.** Il profilo di aprile (TP fisso a +50%, trailing 10%, hold 90s) e' tarato su
 tanti piccoli guadagni; questa popolazione e' l'opposto — 6 vincitori su 13 da +39% a +32.532%, gli
@@ -2629,4 +2666,4 @@ perde vale zero. Resta sotto `WORKER_MAX_LIFETIME_MS` (1.200s), che non va abbas
 dell'hold piu' il tempo di valutazione.
 
 **Da rimisurare alla prossima sessione:** quanti `GRADUATA` al netto di quanti eventi persi, la
-distribuzione dei `seedGraduata`, e se il trailing al 25% regge o esce comunque troppo presto.
+distribuzione dei `solPrimoSecondo`, e se il trailing al 25% regge o esce comunque troppo presto.

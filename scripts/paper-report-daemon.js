@@ -154,7 +154,7 @@ function getEvent(id) {
       holdLog: null,
       bypassedFilters: [],
       poolGraduata: null,
-      seedGraduata: null,
+      solPrimoSecondo: null,
       liqPath: null,
     });
   }
@@ -520,16 +520,16 @@ function parseLine(logPath, line) {
       return;
     }
 
-    if (stage === 'SEEDPOOL') {
-      // SOL nella pool graduata alla nascita: la variabile candidata a discriminare.
-      // Non 'SEED': quello stage esiste gia' e appartiene al seed del *creator*
-      // (services/creator-risk/index.ts). Due significati sullo stesso nome li
-      // renderebbe indistinguibili nel log e nel report.
+    if (stage === 'SOL1S') {
+      // SOL nella pool graduata dopo ~1 secondo di vita: la variabile candidata a
+      // discriminare. Non 'SEED' (che e' il seed del *creator*) e non 'SEEDPOOL':
+      // il seed di graduazione e' 67,4 SOL per tutti e non dice niente, questo numero
+      // e' la domanda arrivata nel primo secondo. Vedi controls.md 48.
       ev = ev || getCurrentEvent(logPath);
       if (!ev) return;
       const parsed = safeJsonParse(message);
       if (parsed && typeof parsed === 'object') {
-        ev.seedGraduata = parsed;
+        ev.solPrimoSecondo = parsed;
       }
       return;
     }
@@ -738,7 +738,7 @@ function summarize() {
       holdLog: e.holdLog,
       bypassedFilters: e.bypassedFilters || [],
       poolGraduata: e.poolGraduata || null,
-      seedGraduata: e.seedGraduata || null,
+      solPrimoSecondo: e.solPrimoSecondo || null,
       liqPath: e.liqPath,
       noWsolRetryCount: e.noWsolRetryCount || 0,
       noWsolRetryRecovered: !!e.noWsolRetryRecovered,
@@ -810,7 +810,7 @@ function summarize() {
       holdLog: e.holdLog,
       bypassedFilters: e.bypassedFilters || [],
       poolGraduata: e.poolGraduata || null,
-      seedGraduata: e.seedGraduata || null,
+      solPrimoSecondo: e.solPrimoSecondo || null,
       liqPath: e.liqPath,
       noWsolRetryCount: e.noWsolRetryCount || 0,
       noWsolRetryRecovered: !!e.noWsolRetryRecovered,
@@ -840,7 +840,7 @@ function summarize() {
       holdLog: e.holdLog,
       bypassedFilters: e.bypassedFilters || [],
       poolGraduata: e.poolGraduata || null,
-      seedGraduata: e.seedGraduata || null,
+      solPrimoSecondo: e.solPrimoSecondo || null,
       liqPath: e.liqPath,
     })),
   };

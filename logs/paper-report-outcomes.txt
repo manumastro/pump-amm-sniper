@@ -1,10 +1,18 @@
-Paper Trade Outcomes @ 2026-09-13T10:55:19.427Z
-operations with pnl: 1
+Paper Trade Outcomes @ 2026-09-13T11:10:50.564Z
+operations with pnl: 9
 invalid pnl excluded: 0
-total pnl (SOL): -0.002538
-avg pnl (%): -25.38
-wins/losses: 0/1
-win rate: 0%
+total pnl (SOL): -0.018661
+avg pnl (%): -20.7344
+wins/losses: 2/7
+win rate: 22.22%
 
 Operations with pnl:
 0001. evt-000001 CwqL7fHZmJDfwTpssHwQY6WDyH1eckPkEZz63bBepump start=10:54:11.553 buy_ts=10:54:18.234 sell_ts=10:54:34.928 end=10:54:34.930 buy_spot=5.233e-8 sell_spot=4.006e-8 pnl=-0.002538 (-25.38%) pnl_valid=YES class=clean status=COMPLETED (23373ms, rpc=163 429=0) skip=- rug_like=NO rug_loss=NO gmgn=https://gmgn.ai/sol/token/CwqL7fHZmJDfwTpssHwQY6WDyH1eckPkEZz63bBepump pnl_issue=-
+0002. evt-000003 GsTgygh6Mn4vCC3Nns52drw5BTUJY4JS7fF9dygJpump start=10:54:44.799 buy_ts=10:54:50.571 sell_ts=10:56:22.421 end=10:56:22.427 buy_spot=3.219e-8 sell_spot=3.118e-8 pnl=-0.000559 (-5.59%) pnl_valid=YES class=hostile status=COMPLETED (97624ms, rpc=294 429=0) skip=creator risk (unique counterparties 8 not in whitelist) rug_like=NO rug_loss=NO gmgn=https://gmgn.ai/sol/token/GsTgygh6Mn4vCC3Nns52drw5BTUJY4JS7fF9dygJpump pnl_issue=-
+0003. evt-000006 4nyHY4BXDioU8LLUyQMPnY9HLStQWH1rq7rvByhTpump start=10:56:48.131 buy_ts=10:56:52.982 sell_ts=10:57:07.981 end=10:57:07.984 buy_spot=3.172e-8 sell_spot=2.795e-8 pnl=-0.01 (-100%) pnl_valid=YES class=hostile status=PAPER LOSS (19849ms, rpc=58 429=0) skip=- rug_like=YES rug_loss=YES gmgn=https://gmgn.ai/sol/token/4nyHY4BXDioU8LLUyQMPnY9HLStQWH1rq7rvByhTpump pnl_issue=-
+0004. evt-000009 CLC3vFYLcWW8xPr3Ypu3EG9quaHtrDqkNrWrrDrmpump start=10:57:30.797 buy_ts=10:57:36.538 sell_ts=10:57:48.099 end=10:57:48.102 buy_spot=3.213e-8 sell_spot=2.795e-8 pnl=-0.01 (-100%) pnl_valid=YES class=hostile status=PAPER LOSS (17300ms, rpc=60 429=0) skip=creator risk (unique counterparties 6 not in whitelist) rug_like=YES rug_loss=YES gmgn=https://gmgn.ai/sol/token/CLC3vFYLcWW8xPr3Ypu3EG9quaHtrDqkNrWrrDrmpump pnl_issue=-
+0005. evt-000011 8GmBcPc9wjTaWBMvqwXXoHfBz7pLhEbYCoey2NSpump start=10:58:00.993 buy_ts=10:58:07.723 sell_ts=10:58:25.821 end=10:58:25.823 buy_spot=5.418e-8 sell_spot=8.615e-8 pnl=0.005499 (54.99%) pnl_valid=YES class=clean status=COMPLETED (24824ms, rpc=187 429=0) skip=- rug_like=NO rug_loss=NO gmgn=https://gmgn.ai/sol/token/8GmBcPc9wjTaWBMvqwXXoHfBz7pLhEbYCoey2NSpump pnl_issue=-
+0006. evt-000013 3rtvxNYmq9vfJPEaAJUtXLJ2T6oWUG9nyaCUYPG2pump start=10:58:34.911 buy_ts=10:58:42.911 sell_ts=10:58:47.627 end=10:58:47.628 buy_spot=3.584e-8 sell_spot=3.069e-8 pnl=-0.001653 (-16.53%) pnl_valid=YES class=hostile status=COMPLETED (12715ms, rpc=85 429=0) skip=creator risk (creator refunded funder 2.004 SOL) rug_like=NO rug_loss=NO gmgn=https://gmgn.ai/sol/token/3rtvxNYmq9vfJPEaAJUtXLJ2T6oWUG9nyaCUYPG2pump pnl_issue=-
+0007. evt-000015 3UcjUdkQd8312yDRzi2iRMVrayYeVafSUZ5Zw8i2pump start=10:59:08.693 buy_ts=10:59:15.408 sell_ts=10:59:19.543 end=10:59:19.546 buy_spot=3.828e-7 sell_spot=3.28e-7 pnl=-0.001644 (-16.44%) pnl_valid=YES class=hostile status=COMPLETED (10851ms, rpc=61 429=0) skip=creator risk (unique counterparties 6 not in whitelist) rug_like=NO rug_loss=NO gmgn=https://gmgn.ai/sol/token/3UcjUdkQd8312yDRzi2iRMVrayYeVafSUZ5Zw8i2pump pnl_issue=-
+0008. evt-000016 6j6FEVTyis8EqsRkxGeZgS9qYANuEp5J2Bz9h9iipump start=10:59:38.942 buy_ts=10:59:44.552 sell_ts=11:00:11.609 end=11:00:11.614 buy_spot=3.942e-8 sell_spot=4.959e-8 pnl=0.002261 (22.61%) pnl_valid=YES class=hostile status=COMPLETED (32667ms, rpc=76 429=0) skip=creator risk (unique counterparties 12 not in whitelist) rug_like=NO rug_loss=NO gmgn=https://gmgn.ai/sol/token/6j6FEVTyis8EqsRkxGeZgS9qYANuEp5J2Bz9h9iipump pnl_issue=-
+0009. evt-000019 5pCpFSyec7sTch1bgkA4xLcsSj59Aw31aZRPyt3apump start=11:00:34.353 buy_ts=11:00:46.863 sell_ts=11:02:20.332 end=11:02:20.334 buy_spot=3.229e-8 sell_spot=3.304e-8 pnl=-0.000027 (-0.27%) pnl_valid=YES class=hostile status=COMPLETED (105979ms, rpc=791 429=0) skip=creator risk (creator refunded funder 15.403 SOL) rug_like=NO rug_loss=NO gmgn=https://gmgn.ai/sol/token/5pCpFSyec7sTch1bgkA4xLcsSj59Aw31aZRPyt3apump pnl_issue=-

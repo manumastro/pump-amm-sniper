@@ -1,25 +1,46 @@
-Paper Trade Report @ 2026-09-13T10:55:19.427Z
-events seen: 3
-finished: 2
-checks passed: 1
-skipped: 1
-no WSOL skips: 0
+Paper Trade Report @ 2026-09-13T11:10:50.564Z
+events seen: 23
+finished: 22
+checks passed: 7
+skipped: 19
+no WSOL skips: 2
 no WSOL retry events: 0
 no WSOL retry recovered: 0
 no WSOL retry exhausted: 0
 no WSOL retry attempts total: 0
-hostile skips: 0
+hostile skips: 6
 rug-like avoided: 0
-rug losses (-100%): 0
+rug losses (-100%): 2
 invalid pnl excluded: 0
-total pnl (SOL): -0.002538
-avg pnl (%): -25.38
-wins/losses: 0/1
-win rate: 0%
+total pnl (SOL): -0.018661
+avg pnl (%): -20.7344
+wins/losses: 2/7
+win rate: 22.22%
 
 All operations:
 0001. evt-000001 CwqL7fHZmJDfwTpssHwQY6WDyH1eckPkEZz63bBepump start=10:54:11.553 buy_ts=10:54:18.234 sell_ts=10:54:34.928 end=10:54:34.930 buy_spot=5.233e-8 sell_spot=4.006e-8 pnl=-0.002538 (-25.38%) pnl_valid=YES class=clean status=COMPLETED (23373ms, rpc=163 429=0) skip=- rug_like=NO rug_loss=NO rug_reason=- gmgn=https://gmgn.ai/sol/token/CwqL7fHZmJDfwTpssHwQY6WDyH1eckPkEZz63bBepump pnl_issue=-
 0002. evt-000002 G6TWKtee9db7goXReHymbdm4YrnoKWELk5RdwijFpump start=10:54:37.100 buy_ts=- sell_ts=- end=10:54:43.748 buy_spot=n/a sell_spot=n/a pnl=n/a (n/a%) pnl_valid=YES class=clean status=SKIP: low liquidity (6646ms, rpc=17 429=0) skip=Liquidity too low (0.9997 SOL / USD N/A; min 1 SOL) rug_like=NO rug_loss=NO rug_reason=- gmgn=https://gmgn.ai/sol/token/G6TWKtee9db7goXReHymbdm4YrnoKWELk5RdwijFpump pnl_issue=-
+0003. evt-000003 GsTgygh6Mn4vCC3Nns52drw5BTUJY4JS7fF9dygJpump start=10:54:44.799 buy_ts=10:54:50.571 sell_ts=10:56:22.421 end=10:56:22.427 buy_spot=3.219e-8 sell_spot=3.118e-8 pnl=-0.000559 (-5.59%) pnl_valid=YES class=hostile status=COMPLETED (97624ms, rpc=294 429=0) skip=creator risk (unique counterparties 8 not in whitelist) rug_like=NO rug_loss=NO rug_reason=- gmgn=https://gmgn.ai/sol/token/GsTgygh6Mn4vCC3Nns52drw5BTUJY4JS7fF9dygJpump pnl_issue=-
+0004. evt-000004 3EoHsdhmTt1GeTSDKFUSh6nK8kXsrSpQ1F6rQYe7pump start=10:56:29.713 buy_ts=- sell_ts=- end=10:56:36.874 buy_spot=n/a sell_spot=n/a pnl=n/a (n/a%) pnl_valid=YES class=clean status=SKIP: low liquidity (7154ms, rpc=19 429=0) skip=Liquidity too low (0.9975 SOL / USD N/A; min 1 SOL) rug_like=NO rug_loss=NO rug_reason=- gmgn=https://gmgn.ai/sol/token/3EoHsdhmTt1GeTSDKFUSh6nK8kXsrSpQ1F6rQYe7pump pnl_issue=-
+0005. evt-000005 SPnpP2bPXWrFVb1DZz7Zdqh181T5NSAsq4ggSxSpump start=10:56:37.910 buy_ts=- sell_ts=- end=10:56:44.112 buy_spot=n/a sell_spot=n/a pnl=n/a (n/a%) pnl_valid=YES class=clean status=SKIP: low liquidity (6197ms, rpc=19 429=0) skip=Liquidity too low (0.5290 SOL / USD N/A; min 1 SOL) rug_like=NO rug_loss=NO rug_reason=- gmgn=https://gmgn.ai/sol/token/SPnpP2bPXWrFVb1DZz7Zdqh181T5NSAsq4ggSxSpump pnl_issue=-
+0006. evt-000006 4nyHY4BXDioU8LLUyQMPnY9HLStQWH1rq7rvByhTpump start=10:56:48.131 buy_ts=10:56:52.982 sell_ts=10:57:07.981 end=10:57:07.984 buy_spot=3.172e-8 sell_spot=2.795e-8 pnl=-0.01 (-100%) pnl_valid=YES class=hostile status=PAPER LOSS (19849ms, rpc=58 429=0) skip=- rug_like=YES rug_loss=YES rug_reason=PAPER LOSS (19849ms, rpc=58 429=0) gmgn=https://gmgn.ai/sol/token/4nyHY4BXDioU8LLUyQMPnY9HLStQWH1rq7rvByhTpump pnl_issue=-
+0007. evt-000007 5MsUrHGyc8GVqHgJH6QrDq5y4PDWvxVgnoRfy6AEpump start=10:57:18.759 buy_ts=- sell_ts=- end=10:57:19.734 buy_spot=n/a sell_spot=n/a pnl=n/a (n/a%) pnl_valid=YES class=clean status=SKIP: no WSOL side (973ms, rpc=6 429=0) skip=pool has no WSOL side (curve=CqSJo6kNzX1sZ6QTgEegzCFnGv5quBK4LxjKL9Zzxhx7 token=5MsUrHGyc8GVqHgJH6QrDq5y4PDWvxVgnoRfy6AEpump quote=DKNGQFNGQmoBdXSRGKJ8tTu7uPDasw5JDcfMmWniNfow (quotata in DKNGQFNGQmoBdXSRGKJ8tTu7uPDasw5JDcfMmWniNfow, non in SOL: scartata)) rug_like=NO rug_loss=NO rug_reason=- gmgn=https://gmgn.ai/sol/token/5MsUrHGyc8GVqHgJH6QrDq5y4PDWvxVgnoRfy6AEpump pnl_issue=-
+0008. evt-000008 HCD33wXAnyqKwdo4ezDAG7dWti6HLQEjnrkB4RT9pump start=10:57:23.014 buy_ts=- sell_ts=- end=10:57:29.236 buy_spot=n/a sell_spot=n/a pnl=n/a (n/a%) pnl_valid=YES class=clean status=SKIP: low liquidity (6217ms, rpc=19 429=0) skip=Liquidity too low (0.009902 SOL / USD N/A; min 1 SOL) rug_like=NO rug_loss=NO rug_reason=- gmgn=https://gmgn.ai/sol/token/HCD33wXAnyqKwdo4ezDAG7dWti6HLQEjnrkB4RT9pump pnl_issue=-
+0009. evt-000009 CLC3vFYLcWW8xPr3Ypu3EG9quaHtrDqkNrWrrDrmpump start=10:57:30.797 buy_ts=10:57:36.538 sell_ts=10:57:48.099 end=10:57:48.102 buy_spot=3.213e-8 sell_spot=2.795e-8 pnl=-0.01 (-100%) pnl_valid=YES class=hostile status=PAPER LOSS (17300ms, rpc=60 429=0) skip=creator risk (unique counterparties 6 not in whitelist) rug_like=YES rug_loss=YES rug_reason=creator risk (unique counterparties 6 not in whitelist) PAPER LOSS (17300ms, rpc=60 429=0) gmgn=https://gmgn.ai/sol/token/CLC3vFYLcWW8xPr3Ypu3EG9quaHtrDqkNrWrrDrmpump pnl_issue=-
+0010. evt-000010 G1om2LZRFzUwtqrbtYoXBCLNREVb9s64ZKmR245Npump start=10:57:50.747 buy_ts=- sell_ts=- end=10:57:56.797 buy_spot=n/a sell_spot=n/a pnl=n/a (n/a%) pnl_valid=YES class=clean status=SKIP: low liquidity (6047ms, rpc=18 429=0) skip=Liquidity too low (0.7578 SOL / USD N/A; min 1 SOL) rug_like=NO rug_loss=NO rug_reason=- gmgn=https://gmgn.ai/sol/token/G1om2LZRFzUwtqrbtYoXBCLNREVb9s64ZKmR245Npump pnl_issue=-
+0011. evt-000011 8GmBcPc9wjTaWBMvqwXXoHfBz7pLhEbYCoey2NSpump start=10:58:00.993 buy_ts=10:58:07.723 sell_ts=10:58:25.821 end=10:58:25.823 buy_spot=5.418e-8 sell_spot=8.615e-8 pnl=0.005499 (54.99%) pnl_valid=YES class=clean status=COMPLETED (24824ms, rpc=187 429=0) skip=- rug_like=NO rug_loss=NO rug_reason=- gmgn=https://gmgn.ai/sol/token/8GmBcPc9wjTaWBMvqwXXoHfBz7pLhEbYCoey2NSpump pnl_issue=-
+0012. evt-000012 CBzvHFo5jAHNC9ZyDaB17KgFtZgPDupYDDeAGaGypump start=10:58:28.514 buy_ts=- sell_ts=- end=10:58:29.338 buy_spot=n/a sell_spot=n/a pnl=n/a (n/a%) pnl_valid=YES class=clean status=SKIP: no WSOL side (822ms, rpc=6 429=0) skip=pool has no WSOL side (curve=wz4HGA8bJZGMANrekM9dr3cApY5njZaVPPSe1JHbisF token=CBzvHFo5jAHNC9ZyDaB17KgFtZgPDupYDDeAGaGypump quote=3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh (quotata in 3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh, non in SOL: scartata)) rug_like=NO rug_loss=NO rug_reason=- gmgn=https://gmgn.ai/sol/token/CBzvHFo5jAHNC9ZyDaB17KgFtZgPDupYDDeAGaGypump pnl_issue=-
+0013. evt-000013 3rtvxNYmq9vfJPEaAJUtXLJ2T6oWUG9nyaCUYPG2pump start=10:58:34.911 buy_ts=10:58:42.911 sell_ts=10:58:47.627 end=10:58:47.628 buy_spot=3.584e-8 sell_spot=3.069e-8 pnl=-0.001653 (-16.53%) pnl_valid=YES class=hostile status=COMPLETED (12715ms, rpc=85 429=0) skip=creator risk (creator refunded funder 2.004 SOL) rug_like=NO rug_loss=NO rug_reason=- gmgn=https://gmgn.ai/sol/token/3rtvxNYmq9vfJPEaAJUtXLJ2T6oWUG9nyaCUYPG2pump pnl_issue=-
+0014. evt-000014 C2UE918AGCvSkZUimYSAkB4tU45QybniNdSzcCbcpump start=10:58:55.639 buy_ts=- sell_ts=- end=10:59:01.800 buy_spot=n/a sell_spot=n/a pnl=n/a (n/a%) pnl_valid=YES class=clean status=SKIP: low liquidity (6159ms, rpc=19 429=0) skip=Liquidity too low (0.8948 SOL / USD N/A; min 1 SOL) rug_like=NO rug_loss=NO rug_reason=- gmgn=https://gmgn.ai/sol/token/C2UE918AGCvSkZUimYSAkB4tU45QybniNdSzcCbcpump pnl_issue=-
+0015. evt-000015 3UcjUdkQd8312yDRzi2iRMVrayYeVafSUZ5Zw8i2pump start=10:59:08.693 buy_ts=10:59:15.408 sell_ts=10:59:19.543 end=10:59:19.546 buy_spot=3.828e-7 sell_spot=3.28e-7 pnl=-0.001644 (-16.44%) pnl_valid=YES class=hostile status=COMPLETED (10851ms, rpc=61 429=0) skip=creator risk (unique counterparties 6 not in whitelist) rug_like=NO rug_loss=NO rug_reason=- gmgn=https://gmgn.ai/sol/token/3UcjUdkQd8312yDRzi2iRMVrayYeVafSUZ5Zw8i2pump pnl_issue=-
+0016. evt-000016 6j6FEVTyis8EqsRkxGeZgS9qYANuEp5J2Bz9h9iipump start=10:59:38.942 buy_ts=10:59:44.552 sell_ts=11:00:11.609 end=11:00:11.614 buy_spot=3.942e-8 sell_spot=4.959e-8 pnl=0.002261 (22.61%) pnl_valid=YES class=hostile status=COMPLETED (32667ms, rpc=76 429=0) skip=creator risk (unique counterparties 12 not in whitelist) rug_like=NO rug_loss=NO rug_reason=- gmgn=https://gmgn.ai/sol/token/6j6FEVTyis8EqsRkxGeZgS9qYANuEp5J2Bz9h9iipump pnl_issue=-
+0017. evt-000017 GFzWtSm4kiWkZptREcUrjQ6qJr6NjMFhQRnroJ5pump start=11:00:14.998 buy_ts=- sell_ts=- end=11:00:20.832 buy_spot=n/a sell_spot=n/a pnl=n/a (n/a%) pnl_valid=YES class=clean status=SKIP: low liquidity (5830ms, rpc=19 429=0) skip=Liquidity too low (0.0788 SOL / USD N/A; min 1 SOL) rug_like=NO rug_loss=NO rug_reason=- gmgn=https://gmgn.ai/sol/token/GFzWtSm4kiWkZptREcUrjQ6qJr6NjMFhQRnroJ5pump pnl_issue=-
+0018. evt-000018 D4YW3jXeeGKPo2zNn8RbqbzrTbJzbxAi5JChVCaypump start=11:00:26.556 buy_ts=- sell_ts=- end=11:00:32.489 buy_spot=n/a sell_spot=n/a pnl=n/a (n/a%) pnl_valid=YES class=clean status=SKIP: low liquidity (5931ms, rpc=19 429=0) skip=Liquidity too low (0.1783 SOL / USD N/A; min 1 SOL) rug_like=NO rug_loss=NO rug_reason=- gmgn=https://gmgn.ai/sol/token/D4YW3jXeeGKPo2zNn8RbqbzrTbJzbxAi5JChVCaypump pnl_issue=-
+0019. evt-000019 5pCpFSyec7sTch1bgkA4xLcsSj59Aw31aZRPyt3apump start=11:00:34.353 buy_ts=11:00:46.863 sell_ts=11:02:20.332 end=11:02:20.334 buy_spot=3.229e-8 sell_spot=3.304e-8 pnl=-0.000027 (-0.27%) pnl_valid=YES class=hostile status=COMPLETED (105979ms, rpc=791 429=0) skip=creator risk (creator refunded funder 15.403 SOL) rug_like=NO rug_loss=NO rug_reason=- gmgn=https://gmgn.ai/sol/token/5pCpFSyec7sTch1bgkA4xLcsSj59Aw31aZRPyt3apump pnl_issue=-
+0020. evt-000020 G9pEWUsvjn36U5G81vptD3L827voJra5y9R6P7E2pump start=11:02:24.662 buy_ts=- sell_ts=- end=11:02:30.584 buy_spot=n/a sell_spot=n/a pnl=n/a (n/a%) pnl_valid=YES class=clean status=SKIP: low liquidity (5916ms, rpc=18 429=0) skip=Liquidity too low (0.0991 SOL / USD N/A; min 1 SOL) rug_like=NO rug_loss=NO rug_reason=- gmgn=https://gmgn.ai/sol/token/G9pEWUsvjn36U5G81vptD3L827voJra5y9R6P7E2pump pnl_issue=-
+0021. evt-000021 4sd1ez9YJZV2GAvGzgUW7zNeSxGxqD6RpTexywZBpump start=11:02:36.281 buy_ts=- sell_ts=- end=11:02:42.190 buy_spot=n/a sell_spot=n/a pnl=n/a (n/a%) pnl_valid=YES class=clean status=SKIP: low liquidity (5904ms, rpc=18 429=0) skip=Liquidity too low (0.000000 SOL / USD N/A; min 1 SOL) rug_like=NO rug_loss=NO rug_reason=- gmgn=https://gmgn.ai/sol/token/4sd1ez9YJZV2GAvGzgUW7zNeSxGxqD6RpTexywZBpump pnl_issue=-
+0022. evt-000022 2QAVE2mhvVJSVWocNjr6ZAY3VyAKAzLs2s4ys6Fepump start=11:02:44.375 buy_ts=- sell_ts=- end=11:02:50.229 buy_spot=n/a sell_spot=n/a pnl=n/a (n/a%) pnl_valid=YES class=clean status=SKIP: low liquidity (5850ms, rpc=18 429=0) skip=Liquidity too low (0.000000 SOL / USD N/A; min 1 SOL) rug_like=NO rug_loss=NO rug_reason=- gmgn=https://gmgn.ai/sol/token/2QAVE2mhvVJSVWocNjr6ZAY3VyAKAzLs2s4ys6Fepump pnl_issue=-
 
 Rug loss events (-100%):
-(none)
+001. evt-000006 4nyHY4BXDioU8LLUyQMPnY9HLStQWH1rq7rvByhTpump buy_ts=10:56:52.982 sell_ts=10:57:07.981 pnl_ts=10:57:07.981 buy_spot=3.172e-8 sell_spot=2.795e-8 pnl=-0.01 (-100%) class=hostile reason=PAPER LOSS (19849ms, rpc=58 429=0) gmgn=https://gmgn.ai/sol/token/4nyHY4BXDioU8LLUyQMPnY9HLStQWH1rq7rvByhTpump filters=liq n/a>=n/a (PASS) | token PASS | top10 n/a<=n/a (PASS) | rapidDispersal t=0/3 d=0/3 sol=0/100 (PASS) | lookupTable creates=0/20 lookups=0/2 (PASS) | setupBurst creates=0/250 window=n/as (PASS) | ultraGuard liqDropMax=0<=35 quoteDropMax=0<=35
+002. evt-000009 CLC3vFYLcWW8xPr3Ypu3EG9quaHtrDqkNrWrrDrmpump buy_ts=10:57:36.538 sell_ts=10:57:48.099 pnl_ts=10:57:48.099 buy_spot=3.213e-8 sell_spot=2.795e-8 pnl=-0.01 (-100%) class=hostile reason=creator risk (unique counterparties 6 not in whitelist) gmgn=https://gmgn.ai/sol/token/CLC3vFYLcWW8xPr3Ypu3EG9quaHtrDqkNrWrrDrmpump filters=liq n/a>=n/a (PASS) | token PASS | top10 n/a<=n/a (PASS) | rapidDispersal t=0/3 d=0/3 sol=0/100 (PASS) | lookupTable creates=0/20 lookups=0/2 (PASS) | setupBurst creates=0/250 window=n/as (PASS) | ultraGuard liqDropMax=0<=35 quoteDropMax=0<=35

@@ -55,26 +55,29 @@ export function passaAllaPoolGraduata(tokenMint: string): Passaggio | null {
 }
 
 /**
- * La SOL presente nella pool appena graduata: l'unica variabile osservabile all'ingresso
- * che, sul campione del 2026-09-13, separa i vincitori.
+ * La SOL nella pool quando il worker la legge, cioe' a circa un secondo dalla creazione.
+ *
+ * **Non e' il seed di graduazione.** Quello e' un parametro fisso di pump — 67,4 SOL su
+ * 22 pool lette su 22 — e non distingue un vincitore da un morto. Questo numero e' invece
+ * quanta SOL e' *arrivata* nel primo secondo di vita: domanda vera, non un parametro del
+ * template. Misurato su 28 pool graduate in quattro ore diverse (controls.md 48):
  *
  * ```
- *   >= 1.500 SOL    4 su 4 oltre $6M di mc
- *   <    700 SOL    7 morti su 9
+ *   >= 300 SOL nel primo secondo   8 vivi su 17   (47%)
+ *   <  150 SOL (nessun acquisto)   1 vivo  su  9  (11%)
  * ```
  *
- * n=4 pero', e due dei quattro condividono il payer: potrebbe essere un operatore solo,
- * cioe' n=1. E' esattamente la forma dell'errore gia' commesso con il "seed 85 SOL"
- * (docs/mercato-2026-09-13.md). Per questo la soglia parte a 0: si **registra** e basta,
- * finche' non c'e' un campione nato in ore diverse. Alzare
- * `PUMP_MIGRATO_MIN_SEED_SOL` la trasforma in filtro.
+ * Il gradino piu' alto (>= 1.500 SOL: 4 vivi su 5) **non e' affidabile**: i quattro vivi
+ * nascono in quattro minuti e almeno due condividono il payer, quindi valgono come un
+ * campione solo; e l'unico caso indipendente in quella fascia, 3.027 SOL, e' morto a $456.
+ * Piu' SOL non e' automaticamente meglio.
  *
- * Il numero non costa nulla: e' la liquidita' che il worker legge comunque all'ingresso,
- * e a un secondo dalla creazione quella liquidita' **e'** il seed.
+ * Per questo la soglia parte a 0: si **registra** e basta. Il numero non costa chiamate,
+ * e' la liquidita' che il worker legge comunque all'ingresso.
  */
-export function valutaSeedGraduata(seedSol: number): { ok: boolean; soglia: number; motivo: string } {
-    const soglia = Math.max(0, CONFIG.PUMP_MIGRATO_MIN_SEED_SOL);
+export function valutaSol1s(sol1s: number): { ok: boolean; soglia: number; motivo: string } {
+    const soglia = Math.max(0, CONFIG.PUMP_MIGRATO_MIN_SOL_1S);
     if (soglia <= 0) return { ok: true, soglia, motivo: "solo misura" };
-    if (seedSol >= soglia) return { ok: true, soglia, motivo: "sopra soglia" };
-    return { ok: false, soglia, motivo: `seed ${seedSol.toFixed(2)} SOL < ${soglia} SOL` };
+    if (sol1s >= soglia) return { ok: true, soglia, motivo: "sopra soglia" };
+    return { ok: false, soglia, motivo: `${sol1s.toFixed(2)} SOL nel primo secondo < ${soglia} SOL` };
 }
