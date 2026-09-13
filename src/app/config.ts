@@ -420,7 +420,12 @@ export const CONFIG = {
     PAPER_CREATOR_RISK_PROBATION_LOW_CASHOUT_MIN_SCORE:
         Number(1),
     CREATOR_RESOLUTION_FAIL_OPEN: envBool("CREATOR_RESOLUTION_FAIL_OPEN", false),
-    LOW_LIQUIDITY_RECHECK_ENABLED: envBool("LOW_LIQUIDITY_RECHECK_ENABLED", true),
+    // Spento il 2026-09-13: era la voce di spesa piu' grossa del bot e non ha mai
+    // prodotto un vincitore. Su 1.025 finestre ne ha recuperate 37 (3,6%), di cui 3
+    // effettivamente comprate: tutte e tre in perdita, media -12,4%. Intanto teneva
+    // occupato l'unico worker 5 secondi per token, il 55% di tutto il tempo di lavoro,
+    // sul secchio che la misura da' a zero vincitori su 137. Vedi controls.md 49.
+    LOW_LIQUIDITY_RECHECK_ENABLED: envBool("LOW_LIQUIDITY_RECHECK_ENABLED", false),
     LOW_LIQUIDITY_RECHECK_WINDOW_MS: Number(process.env.LOW_LIQUIDITY_RECHECK_WINDOW_MS ?? 5000),
     LOW_LIQUIDITY_RECHECK_INTERVAL_MS: Number(process.env.LOW_LIQUIDITY_RECHECK_INTERVAL_MS ?? 300),
     LOW_LIQUIDITY_POOL_COOLDOWN_MS: Number(process.env.LOW_LIQUIDITY_POOL_COOLDOWN_MS ?? 120000),

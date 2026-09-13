@@ -2667,3 +2667,36 @@ dell'hold piu' il tempo di valutazione.
 
 **Da rimisurare alla prossima sessione:** quanti `GRADUATA` al netto di quanti eventi persi, la
 distribuzione dei `solPrimoSecondo`, e se il trailing al 25% regge o esce comunque troppo presto.
+
+### 49. Il recheck low-liquidity costava il 55% del tempo e non ha mai vinto (2026-09-13)
+
+Misurato su 1.813 cicli di worker degli archivi, il tempo di lavoro diviso per esito:
+
+| esito | n | mediana | tempo totale | quota |
+|---|---|---|---|---|
+| **`SKIP: low liquidity`** | 995 | **6,1s** | 14.142s | **55%** |
+| `COMPLETED` | 92 | 26,2s | 3.576s | 14% |
+| `ERROR: richiesta RPC oltre 8000ms` | 3 | 1.109,7s | 3.329s | 13% |
+| `MONITOR_ONLY` | 18 | 16,1s | 1.623s | 6% |
+| `SKIP: creator risk` | 261 | 6,7s | 1.485s | 6% |
+| **`SKIP: no WSOL side`** | 337 | **0,9s** | 473s | **2%** |
+
+Il secchio che consuma piu' della meta' del bot e' quello che
+`docs/studio-curva-2026-09-13.md` misura a **0 vincitori su 137**. Il secchio che contiene **tutti** i
+vincitori costa lo **0,9s** e il 2% del tempo. Dei 6,1s di mediana, 5 sono
+`LOW_LIQUIDITY_RECHECK_WINDOW_MS`: il worker sta fermo a ricampionare una curva sotto soglia.
+
+**Quanto vale quell'attesa:** su 1.025 finestre registrate ha recuperato **37 token** (3,6%). Di
+quei 37, 21 sono poi usciti su creator risk, 3 sono stati comprati davvero — **tutti e tre in
+perdita, media -12,4%, zero vincenti**.
+
+Quindi `LOW_LIQUIDITY_RECHECK_ENABLED=false`. Si libera circa **metà del tempo di worker** a costo
+misurato zero, e il ritmo di valutazione raddoppia — che e' esattamente cio' che serve per mettere
+insieme un campione di pool graduate in tempi umani.
+
+**Non e' la stessa cosa che aggiungere worker.** Con `RPC_MAX_REQUESTS_PER_SEC=8` e un worker solo la
+sessione registra **0 errori 429**: il limite RPC non e' il vincolo, lo e' il tempo che il worker
+passa ad aspettare. Aggiungere un secondo worker raddoppierebbe anche quello, e reintrodurrebbe la
+contesa che il modello seriale (sezione 38) serviva a togliere, piu' il rischio dei worker appesi
+(sezione 26 — e sopra si vedono 3 cicli da 1.109s di mediana, il 13% del tempo). Togliere l'attesa
+inutile e' lo stesso guadagno senza nessuno dei due rischi.
