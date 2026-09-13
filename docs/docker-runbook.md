@@ -125,7 +125,8 @@ Tutto quello che serve per guardare e governare il bot senza ricordarsi le opzio
 
 | comando | cosa fa |
 |---|---|
-| `live` (default) | tutti i log dello sniper, in coda |
+| `cruscotto` (default) | **una schermata che si ridisegna**: stato, esiti, RPC, shadow |
+| `live` | tutti i log in coda, supervisore **e** worker |
 | `flusso` | solo le decisioni: dispatch, skip, trade, riga `SERIALE` |
 | `trade` | solo entrate, uscite e PnL |
 | `seriale` | solo la riga `SERIALE`, per tenere d'occhio `quota_vista` |

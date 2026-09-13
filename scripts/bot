@@ -10,7 +10,8 @@ uso() {
     cat <<'EOF'
 uso: ./scripts/bot <comando>
 
-  live        tutti i log dello sniper in tempo reale (default)
+  cruscotto   UNA schermata che si ridisegna: stato, esiti, RPC, shadow (default)
+  live        tutti i log in tempo reale, supervisore + worker
   flusso      solo le decisioni: dispatch, skip, trade, riga SERIALE
   trade       solo i trade: entrate, uscite, PnL
   seriale     solo la riga SERIALE, per vedere la quota_vista
@@ -26,7 +27,7 @@ uso: ./scripts/bot <comando>
   su | giu | riavvia | rebuild
   reset       backup del report, azzera i log, riavvia da zero
 
-senza argomenti: live
+senza argomenti: cruscotto
 EOF
 }
 
@@ -47,7 +48,12 @@ tutti_i_log() {
     wait
 }
 
-case "${1:-live}" in
+case "${1:-cruscotto}" in
+
+cruscotto)
+    richiede_container
+    exec node scripts/dashboard.js
+    ;;
 
 live)
     richiede_container
