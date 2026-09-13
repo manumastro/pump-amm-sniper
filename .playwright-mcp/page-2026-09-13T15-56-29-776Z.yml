@@ -1,0 +1,162 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - heading "GMGN.AI | The Fastest Multi-Chain Meme Trading Terminal" [level=2] [ref=e4]
+      - paragraph [ref=e5]: GMGN.AI is a MEME token trading platform supporting Solana, BSC, Base, and Ethereum — covering new token monitoring, security auditing, holder analysis, smart money copy trading, wallet P&L analytics, and automated trade execution, widely used for early-stage on-chain project discovery and quantitative trading.
+      - heading "Core Features" [level=3] [ref=e6]
+      - list [ref=e7]:
+        - listitem [ref=e8]:
+          - strong [ref=e9]: Real-Time New Token Monitoring
+          - paragraph [ref=e10]: Continuously scans launchpads including Pump.fun, FourMeme, Raydium, and letsbonk with filters for market cap, volume, and creation time — helping users enter positions at early low-cap stages.
+        - listitem [ref=e11]:
+          - strong [ref=e12]: Live Trending Token Rankings
+          - paragraph [ref=e13]: Leaderboard updated every minute based on buy/sell count, trading volume, price change, and holder growth — reflecting real-time market momentum and capital flow.
+        - listitem [ref=e14]:
+          - strong [ref=e15]: Token Holder Structure Analysis
+          - paragraph [ref=e16]: "Real-time calculation of four key metrics: insider/rat wallet ratio, bundle buy ratio, DEV holdings %, and Top 10 wallet concentration."
+        - listitem [ref=e17]:
+          - strong [ref=e18]: Automated Token Security Audit
+          - paragraph [ref=e19]: "Auto-checks every token for: LP burned status, honeypot detection, contract renounced status, and mintable flag."
+        - listitem [ref=e20]:
+          - strong [ref=e21]: Smart Money Copy Trading
+          - paragraph [ref=e22]: Identifies high-win-rate wallets on-chain and enables one-click copy trading that automatically mirrors their buy/sell actions and position sizing.
+        - listitem [ref=e23]:
+          - strong [ref=e24]: KOL & Wallet Tracker with Real-Time Alerts
+          - paragraph [ref=e25]: Custom watchlist with real-time push notifications for every on-chain event — buys, sells, position adds, and full exits — from tracked wallets and KOLs.
+        - listitem [ref=e26]:
+          - strong [ref=e27]: Zero-Latency Trading & Automated Strategies
+          - paragraph [ref=e28]: Zero-latency on-chain trade execution with Take Profit, Stop Loss, Trailing Take Profit / Trailing Stop Loss, and multi-wallet batch order support.
+        - listitem [ref=e29]:
+          - strong [ref=e30]: Wallet P&L Analytics
+          - paragraph [ref=e31]: "Enter any wallet address to instantly generate: realized/unrealized PnL, win rate and risk/reward ratio, current holdings valuation, full trade history, and developer wallet token creation records with all-time high (ATH) market cap per token."
+        - listitem [ref=e32]:
+          - strong [ref=e33]: Trading Data API & AI-Native Skills
+          - paragraph [ref=e34]: Five structured API categories — token data, wallet data, market data, trade execution, and signal tracking — packaged as standardized AI Skills directly callable by Claude, GPT, and other AI Agents via natural language for on-chain data queries and trade execution.
+    - generic [ref=e36]:
+      - banner [ref=e38]:
+        - generic [ref=e39]:
+          - link [ref=e41] [cursor=pointer]:
+            - /url: /?chain=sol
+            - img "logo" [ref=e42]
+          - navigation "Main navigation" [ref=e44]:
+            - link "Trenches" [ref=e45] [cursor=pointer]:
+              - /url: /?chain=sol
+            - link "In tendenza" [ref=e46] [cursor=pointer]:
+              - /url: /trend?chain=sol
+            - link "CopyTrade" [ref=e47] [cursor=pointer]:
+              - /url: /trade?chain=sol
+            - link "Monitor" [ref=e48] [cursor=pointer]:
+              - /url: /monitor?chain=sol
+            - link "Segui" [ref=e49] [cursor=pointer]:
+              - /url: /follow?chain=sol
+            - link "Portfolio" [ref=e50] [cursor=pointer]:
+              - /url: /portfolio?chain=sol
+            - link "Affiliare" [ref=e51] [cursor=pointer]:
+              - /url: /rewards?chain=sol
+            - link "Su/Giù" [ref=e52] [cursor=pointer]:
+              - /url: https://future.news/updown
+            - link "Perpetual" [ref=e53] [cursor=pointer]:
+              - /url: /perpetual/BTC.PERP_USDC
+              - generic [ref=e54]:
+                - text: Perpetual
+                - generic [aria-hidden]: Beta
+        - generic [ref=e55]:
+          - generic [ref=e58]:
+            - generic [ref=e59]:
+              - textbox "Search name, CA, wallet" [ref=e64]
+              - generic [ref=e65]: /
+            - group "Search name, CA, wallet"
+          - generic [ref=e67]: Cooking
+          - generic [ref=e77]:
+            - link "API" [ref=e78] [cursor=pointer]:
+              - /url: /ai
+            - button [ref=e86] [cursor=pointer]:
+              - link "APP" [ref=e87]:
+                - /url: /app
+          - generic [ref=e90]:
+            - button "SOL" [ref=e91] [cursor=pointer]
+            - generic [ref=e98]:
+              - link [ref=e99] [cursor=pointer]:
+                - /url: /watchlists
+              - button [ref=e103] [cursor=pointer]
+      - main [ref=e107]:
+        - generic [ref=e108]:
+          - generic [ref=e109]:
+            - generic [ref=e112]:
+              - generic [ref=e120]:
+                - generic [ref=e121]:
+                  - generic [ref=e122] [cursor=pointer]: 1s
+                  - generic [ref=e123] [cursor=pointer]: 30s
+                  - generic [ref=e124] [cursor=pointer]: 1m
+                  - generic [ref=e125] [cursor=pointer]: 1O
+                  - generic [ref=e126] [cursor=pointer]: 4O
+                  - generic [ref=e127] [cursor=pointer]: 1G
+                  - button [ref=e128] [cursor=pointer]
+                - button "Multicharts" [ref=e130] [cursor=pointer]
+                - generic [ref=e135] [cursor=pointer]
+                - img [ref=e136] [cursor=pointer]
+                - button "Display" [ref=e139] [cursor=pointer]
+                - generic [ref=e145] [cursor=pointer]:
+                  - generic [ref=e146]: Prezzo
+                  - text: /
+                  - generic [ref=e147]: MC
+                - generic [ref=e149] [cursor=pointer]:
+                  - generic [ref=e150]: USD
+                  - text: /
+                  - generic [ref=e151]: SOL
+                - generic [ref=e153] [cursor=pointer]
+                - button [ref=e154] [cursor=pointer]
+                - generic [ref=e158] [cursor=pointer]
+              - generic [ref=e172]:
+                - tablist [ref=e173]:
+                  - generic [ref=e175]:
+                    - tab "Attività" [selected] [ref=e177] [cursor=pointer]
+                    - tab "Le mie posizioni" [ref=e185] [cursor=pointer]
+                    - tab "Detentori" [ref=e192] [cursor=pointer]
+                    - tab "Migliori Traders" [ref=e200] [cursor=pointer]
+                    - tab "Dev Token" [ref=e207] [cursor=pointer]
+                  - generic [ref=e215]:
+                    - button "Un Click" [ref=e216] [cursor=pointer]
+                    - button "GMGN Comunità" [ref=e220] [cursor=pointer]
+                    - generic "Bubble" [ref=e228] [cursor=pointer]
+                    - generic [ref=e231] [cursor=pointer]
+                    - generic [ref=e234] [cursor=pointer]
+                - tabpanel "Attività" [ref=e240]
+            - generic [ref=e242]:
+              - generic [ref=e244] [cursor=pointer]
+              - generic [ref=e247] [cursor=pointer]
+          - iframe [ref=e251]:
+            - generic [ref=f1e1]:
+              - contentinfo:
+                - paragraph: TradingView è interattivo e dispone di comandi da utilizzare con uno screen reader. Di seguito è riportato un elenco di comandi da tastiera disponibili per interagire con la piattaforma
+                - list:
+                  - listitem: Inizia a usare la modalità di navigazione da tastiera. Premere ⌥ + Z
+                  - listitem: Ricerca rapida. Premere ⌘ + K
+                  - listitem: Cambia simbolo. Iniziare a digitare il nome del simbolo
+                  - listitem: Modifica l'intervallo. Premere numero o virgola
+                  - listitem: Indicatori, metriche e strategie. Premere slash
+                  - listitem: Apri layout. Premi il punto
+              - progressbar [ref=f1e9]
+              - alert
+      - contentinfo [ref=e252]:
+        - generic [ref=e254]:
+          - generic [ref=e255] [cursor=pointer]: Social Tracker
+          - generic [ref=e260] [cursor=pointer]: Holding
+          - generic [ref=e266] [cursor=pointer]: PnL
+          - button [ref=e273] [cursor=pointer]:
+            - generic [ref=e274]:
+              - img "Pump.fun Icon" [ref=e275]
+              - img "Pump.fun Icon" [ref=e276]
+              - img "Mayhem Icon" [ref=e277]
+          - button "$0.000" [ref=e279] [cursor=pointer]
+          - button "$0.000" [ref=e283] [cursor=pointer]
+          - button "$0.000" [ref=e287] [cursor=pointer]
+          - button "$0.000" [ref=e295] [cursor=pointer]
+  - alert [ref=e303]
+  - generic:
+    - region "Notifications-top"
+    - region "Notifications-top-left"
+    - region "Notifications-top-right"
+    - region "Notifications-bottom-left"
+    - region "Notifications-bottom"
+    - region "Notifications-bottom-right"

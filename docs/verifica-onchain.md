@@ -67,3 +67,48 @@ SOL. Le singole letture di prezzo coincidono con gmgn in tutti e tre i punti, qu
 problema di decodifica; e' il modello della curva che non e' quello classico a 30 SOL virtuali
 (quella curva parte da ~8,6). Da chiarire prima di fidarsi del `peakPnlPct` dello shadow in
 aggregato.
+
+## Le tre regole del misurare (2026-09-13)
+
+Scritte dopo una giornata in cui tre modifiche di fila sono state applicate e poi annullate, tutte
+per errori di misura e nessuna per un errore di codice. Valgono per qualunque analisi, sempre.
+
+### 1. Il punto zero e' il nostro ingresso, mai la nascita del pool
+
+Una curva pump che gradua all'istante viene comprata **nella stessa transazione di creazione**: il
+prezzo sale di 1.000-11.000x prima che il bot possa vedere il token. Esempio verificato
+(`6agyG6m21AwAabMdm8W5Y8htPCf45a8AhTxsKVTpump`, pool `GnXM8WeLB9QfULDqkP7weJU1ukmNrZZqPKxQyUdAG42u`):
+
+| | ora | SOL nel pool | token nel pool | prezzo |
+|---|---|---|---|---|
+| creazione | 12:03:22 | 67,41 | 206.900.000 | 0,00000033 |
+| nostro ingresso | 12:03:38 | 3.038,69 | 5.764.770 | 0,00052711 |
+| massimo | 15:56:52 | 4.058,50 | 4.328.577 | 0,00093761 |
+
+Dexscreener dice **+217.636%**. Dal nostro ingresso sono **+78%**. Il primo numero e' vero e
+inutile: descrive un movimento avvenuto in 16 secondi, a cui non potevamo partecipare.
+
+### 2. Le firme non si ordinano per `blockTime`
+
+Decine di transazioni condividono lo stesso secondo di creazione. `Array.prototype.sort` e' stabile,
+quindi dentro quel secondo conserva l'ordine di arrivo — che per `getSignaturesForAddress` e' **dal
+piu' recente**. Ordinare per `blockTime` e prendere `[0]` restituisce l'**ultima** transazione di quel
+secondo credendola la prima, e cambia la lettura di un fattore 20.
+
+L'ordine cronologico corretto: impaginare fino alla pagina non piena, poi ribaltare pagine ed
+elementi.
+
+```js
+const crono = [];
+for (let i = pagine.length - 1; i >= 0; i--)
+  for (let j = pagine[i].length - 1; j >= 0; j--) crono.push(pagine[i][j]);
+```
+
+### 3. Il prezzo si ricostruisce dalle riserve, non si copia
+
+`prezzo = SOL nel pool / token nel pool`, letti da `postTokenBalances` della transazione
+(`owner === pool`). Ogni percentuale presa gia' fatta da dexscreener, gmgn o solscan ha un punto zero
+che non e' il nostro e che non e' scritto da nessuna parte.
+
+**Controprova obbligatoria:** ogni conclusione va accompagnata dalla transazione che la dimostra, con
+il link `https://solscan.io/tx/<firma>`, cosi' chiunque puo' riaprirla e contare gli stessi numeri.
