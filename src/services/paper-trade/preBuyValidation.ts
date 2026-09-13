@@ -2,7 +2,7 @@ import BN from "bn.js";
 import { Connection } from "@solana/web3.js";
 import { CONFIG } from "../../app/config";
 import { CreatorRiskResult, PaperSimulationOptions, PreBuyEntryValidationResult } from "../../domain/types";
-import { stageLog } from "../reporting/stageLog";
+import { registraBypass, stageLog } from "../reporting/stageLog";
 import { formatSolCompact } from "../../utils/format";
 import { shortSig } from "../../utils/pubkeys";
 import { describePoolMints, getEntryTokenOutFromState, getPoolOrientation, getSolLiquidityFromState, getSpotSolPerTokenFromState } from "./quote";
@@ -127,11 +127,14 @@ export async function validatePreBuyEntryState(
             initialCreatorRisk,
         );
         if (!creatorRisk.ok) {
-            if (creatorRisk.transientError) {
+            // In modalita' misura il recheck registra e lascia passare, come il controllo a
+            // monte: bloccare qui rimetterebbe in gioco il creator-risk dalla porta di servizio
+            // e annullerebbe l'esperimento. Vedi docs/controls.md 45.
+            if (CONFIG.FILTERS_MONITOR_ONLY) {
+                registraBypass(ctx, "creator risk recheck", creatorRisk.reason || "");
+            } else if (creatorRisk.transientError) {
                 return { ok: false, reason: `creator risk recheck (${creatorRisk.reason})` };
-            }
-
-            if (options?.suppressCreatorRiskRecheck) {
+            } else if (options?.suppressCreatorRiskRecheck) {
                 const baselineCreatorCashoutSol = Number(initialCreatorRisk?.creatorCashoutSol || 0);
                 const probationEscalation = deps.shouldEscalateProbationCreatorRisk(
                     creatorRisk,
@@ -151,7 +154,7 @@ export async function validatePreBuyEntryState(
         }
     }
 
-    if (creatorAddress && poolAddress && CONFIG.PRE_BUY_FINAL_REMOVE_LIQ_CHECK_ENABLED) {
+    if (creatorAddress && poolAddress && CONFIG.PRE_BUY_FINAL_REMOVE_LIQ_CHECK_ENABLED && !CONFIG.FILTERS_MONITOR_ONLY) {
         const removeLiq = await deps.detectRemoveLiquiditySince(
             connection,
             poolAddress,
@@ -238,7 +241,11 @@ export async function validatePreBuyEntryState(
             }
             if (Number.isFinite(liqDropPct) && liqDropPct >= CONFIG.PRE_BUY_ULTRA_SHORT_RUG_GUARD_MAX_LIQ_DROP_PCT) {
                 stageLog(ctx, "PREBUY", `ultra-guard liq drop ${liqDropPct.toFixed(2)}% in ${Date.now() - guardStartMs}ms`);
-                return { ok: false, reason: `ultra-short rug guard liquidity drop ${liqDropPct.toFixed(2)}%` };
+                if (CONFIG.FILTERS_MONITOR_ONLY) {
+                    registraBypass(ctx, "ultra-short rug guard", `liquidity drop ${liqDropPct.toFixed(2)}%`);
+                } else {
+                    return { ok: false, reason: `ultra-short rug guard liquidity drop ${liqDropPct.toFixed(2)}%` };
+                }
             }
 
             const quoteDropPct = ((effectiveEntryQuote.tokenOutUi - probeQuote.tokenOutUi) / effectiveEntryQuote.tokenOutUi) * 100;
@@ -247,7 +254,11 @@ export async function validatePreBuyEntryState(
             }
             if (Number.isFinite(quoteDropPct) && quoteDropPct >= CONFIG.PRE_BUY_ULTRA_SHORT_RUG_GUARD_MAX_QUOTE_DROP_PCT) {
                 stageLog(ctx, "PREBUY", `ultra-guard quote drop ${quoteDropPct.toFixed(2)}% in ${Date.now() - guardStartMs}ms`);
-                return { ok: false, reason: `ultra-short rug guard quote drop ${quoteDropPct.toFixed(2)}%` };
+                if (CONFIG.FILTERS_MONITOR_ONLY) {
+                    registraBypass(ctx, "ultra-short rug guard", `quote drop ${quoteDropPct.toFixed(2)}%`);
+                } else {
+                    return { ok: false, reason: `ultra-short rug guard quote drop ${quoteDropPct.toFixed(2)}%` };
+                }
             }
 
             effectiveEntryState = probeState;
@@ -282,7 +293,11 @@ export async function validatePreBuyEntryState(
                 "PREBUY",
                 `quote_vs_spot=${quoteVsSpotRatio.toFixed(2)}x spot=${formatSolCompact(entrySpotSolPerToken)}/token`,
             );
-            return { ok: false, reason: `quote sanity ${quoteVsSpotRatio.toFixed(2)}x spot` };
+            if (CONFIG.FILTERS_MONITOR_ONLY) {
+                registraBypass(ctx, "quote sanity", `${quoteVsSpotRatio.toFixed(2)}x spot`);
+            } else {
+                return { ok: false, reason: `quote sanity ${quoteVsSpotRatio.toFixed(2)}x spot` };
+            }
         }
     }
 

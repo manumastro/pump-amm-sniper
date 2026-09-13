@@ -2536,3 +2536,21 @@ il baratto giusto quando si misura, quello sbagliato quando si cerca.
 
 **`./scripts/bot reset`** ora azzera anche `logs/cc-shadow` e i due file outcomes, oltre al report e
 ai log dei worker. Il backup datato del report resta la prima cosa che fa.
+
+### 46. Due trappole trovate azzerando (2026-09-13)
+
+**`paper.log` nella root non e' il log del supervisore.** Dentro l'immagine `/app/paper.log` e' un
+**symlink** a `/app/logs/paper.log`, che e' l'unico dei due dentro il volume montato. `./scripts/bot
+reset` svuotava solo quello in root, quindi il vero log restava intero; e il daemon, quando non trova
+log dei worker, ricostruisce il report proprio da li'. Risultato: l'intera storia ricompariva dopo il
+reset. Ora `reset` svuota entrambi.
+
+**`docker compose stop` non basta.** Il daemon tiene gli eventi in memoria e riscrive il report ogni
+pochi secondi: se e' ancora vivo mentre si azzerano i file, si riprende il suo stato e sembra che il
+reset non abbia funzionato. `reset` ora fa `docker compose down`, **aspetta** che `docker compose ps
+-q` sia vuoto, e si ferma con errore se non lo diventa entro 30s.
+
+**Terza causa, esterna al codice:** un daemon avviato a mano sull'host (`node -e "require('.../paper-
+report-daemon.js')"`) sopravvive a qualunque reset di Docker e continua a riscrivere
+`logs/paper-report.json` col proprio stato. Se dopo un reset ricompaiono dati vecchi, il primo
+controllo e' `ps aux | grep paper-report-daemon`: dev'esserci solo il processo dentro il container.

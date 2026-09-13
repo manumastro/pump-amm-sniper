@@ -245,8 +245,25 @@ reset)
         cp logs/paper-report.json "logs/paper-report-$stamp.json"
         echo "backup -> logs/paper-report-$stamp.json"
     fi
-    docker compose stop "$SNIPER" "$REPORT" >/dev/null 2>&1 || true
+    # I container vanno giu' DAVVERO prima di toccare i file: il daemon del report
+    # tiene gli eventi in memoria e li riscrive ogni pochi secondi, quindi se e' ancora
+    # vivo mentre azzeriamo si riprende il suo stato vecchio e sembra che il reset non
+    # abbia funzionato (successo il 2026-09-13).
+    docker compose down --remove-orphans >/dev/null 2>&1 || true
+    for _ in $(seq 1 30); do
+        [ -z "$(docker compose ps -q 2>/dev/null)" ] && break
+        sleep 1
+    done
+    if [ -n "$(docker compose ps -q 2>/dev/null)" ]; then
+        echo "ATTENZIONE: container ancora attivi, reset annullato" >&2
+        exit 1
+    fi
     : > paper.log
+    # Il log del supervisore vive QUI: dentro l'immagine /app/paper.log e' un symlink a
+    # /app/logs/paper.log, ed e' l'unico dei due che sta nel volume montato. Il daemon,
+    # quando non trova log dei worker, ricostruisce il report proprio da questo: saltarlo
+    # faceva ricomparire l'intera storia dopo il reset (2026-09-13).
+    : > logs/paper.log
     : > logs/paper-report.json
     : > logs/paper-report.txt
     : > logs/paper-report-daemon.log
