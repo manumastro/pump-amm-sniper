@@ -3169,49 +3169,6 @@ async function getDexScreenerSnapshot(tokenMint: string, poolAddress?: string): 
     }
 }
 
-function quoteTokenOutFromStateForShadow(
-    state: any,
-    tokenMint: string,
-    buyAmountLamports: BN,
-): { tokenOutAtomic: BN } | null {
-    const orientation = getPoolOrientation(state, tokenMint);
-    if (!orientation.hasWsol) return null;
-
-    try {
-        if (orientation.solIsBase) {
-            const entry = sellBaseInput({
-                base: buyAmountLamports,
-                slippage: CONFIG.SLIPPAGE_PERCENT,
-                baseReserve: state.poolBaseAmount,
-                quoteReserve: state.poolQuoteAmount,
-                baseMintAccount: state.baseMintAccount,
-                baseMint: state.baseMint,
-                coinCreator: state.pool.coinCreator,
-                creator: state.pool.creator,
-                feeConfig: state.feeConfig,
-                globalConfig: state.globalConfig,
-            });
-            return entry.uiQuote.lte(new BN(0)) ? null : { tokenOutAtomic: entry.uiQuote };
-        }
-
-        const entry = buyQuoteInput({
-            quote: buyAmountLamports,
-            slippage: CONFIG.SLIPPAGE_PERCENT,
-            baseReserve: state.poolBaseAmount,
-            quoteReserve: state.poolQuoteAmount,
-            baseMintAccount: state.baseMintAccount,
-            baseMint: state.baseMint,
-            coinCreator: state.pool.coinCreator,
-            creator: state.pool.creator,
-            feeConfig: state.feeConfig,
-            globalConfig: state.globalConfig,
-        });
-        return entry.base.lte(new BN(0)) ? null : { tokenOutAtomic: entry.base };
-    } catch {
-        return null;
-    }
-}
-
 // ═══════════════════════════════════════════════════════════════════════════════
 // EXECUTE BUY
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -3445,21 +3402,26 @@ async function sampleCcShadowCandidate(candidate: {
         nextState.lastDexSnapshot = dexSnapshot;
     }
 
-    const orientation = poolState ? getPoolOrientation(poolState, candidate.tokenMint) : { solIsBase: false, tokenIsBase: false, hasWsol: false };
-    const liquiditySol = poolState ? getSolLiquidityFromState(poolState, candidate.tokenMint) : null;
-    const spotSolPerToken = poolState ? getSpotSolPerTokenFromState(poolState, candidate.tokenMint, tokenDecimals) : null;
+    const orientation = poolState ? shadowAdapter.getOrientation(poolState, candidate.tokenMint) : { solIsBase: false, tokenIsBase: false, hasWsol: false };
+    const liquiditySol = poolState ? shadowAdapter.getSolLiquidity(poolState, candidate.tokenMint) : null;
+    const spotSolPerToken = poolState ? shadowAdapter.getSpotSolPerToken(poolState, candidate.tokenMint, tokenDecimals) : null;
 
     let baselineTokenOutAtomic = nextState.baselineTokenOutAtomic ? new BN(String(nextState.baselineTokenOutAtomic)) : null;
     if (!baselineTokenOutAtomic && poolState) {
-        const quote = quoteTokenOutFromStateForShadow(poolState, candidate.tokenMint, buyAmountLamports);
-        if (quote?.tokenOutAtomic) {
-            baselineTokenOutAtomic = quote.tokenOutAtomic;
-            nextState.baselineTokenOutAtomic = quote.tokenOutAtomic.toString();
+        // Il contratto DexAdapter espone gia getEntryTokenOut/getExitQuoteSol proprio per
+        // non riscrivere la matematica di un DEX fuori dal suo adapter. La versione a mano
+        // che stava qui usava state.poolBaseAmount e state.pool.coinCreator, cioe vocabolario
+        // PumpSwap, e su una curva pump falliva in silenzio: nessun baseline, nessun PnL,
+        // quindi shadow tracking senza il dato per cui esiste. Vedi controls.md 41.
+        const tokenOutAtomic = shadowAdapter.getEntryTokenOut(poolState, candidate.tokenMint, buyAmountLamports);
+        if (tokenOutAtomic && tokenOutAtomic.gt(new BN(0))) {
+            baselineTokenOutAtomic = tokenOutAtomic;
+            nextState.baselineTokenOutAtomic = tokenOutAtomic.toString();
         }
     }
 
     const currentExitQuoteSol = poolState && baselineTokenOutAtomic
-        ? getExitQuoteSolFromState(poolState, candidate.tokenMint, baselineTokenOutAtomic)
+        ? shadowAdapter.getExitQuoteSol(poolState, candidate.tokenMint, baselineTokenOutAtomic)
         : null;
     const baselineExitQuoteSol = Number.isFinite(Number(nextState.baselineExitQuoteSol))
         ? Number(nextState.baselineExitQuoteSol)

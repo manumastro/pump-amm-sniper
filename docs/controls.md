@@ -2391,3 +2391,39 @@ Una tabella piena di zeri e' indistinguibile da una tabella piena di dati mancan
 separatamente quanti campioni erano leggibili. Prima di leggere qualunque risultato dello shadow
 tracking, controllare la riga `token senza un solo snapshot leggibile` che `./scripts/bot analisi`
 stampa in testa alla seconda tabella.
+
+---
+
+## 41. Quarto difetto dello shadow: il quote scritto a mano (2026-09-13)
+
+Dopo le tre correzioni della sezione 40 lo shadow leggeva finalmente lo stato della pool
+(`hasWsol=true`, `solLiquidity=0,1975`), ma `baselineExitQuoteSol`, `currentExitQuoteSol` e
+`peakPnlPct` restavano `null`: cioe' proprio il dato per cui lo shadow tracking esiste.
+
+**Causa.** `sampleCcShadowCandidate` non usava il contratto `DexAdapter`, che espone
+`getEntryTokenOut` e `getExitQuoteSol` apposta. Aveva una funzione locale,
+`quoteTokenOutFromStateForShadow`, che chiamava `sellBaseInput()` dell'SDK PumpSwap su
+`state.poolBaseAmount`, `state.poolQuoteAmount` e `state.pool.coinCreator`. Su una bonding curve
+pump quei campi non esistono: la funzione lanciava, il `try` la ingoiava e restituiva `null`.
+
+E' il **terzo posto** in due giorni con lo stesso difetto: vocabolario PumpSwap in codice che vale
+per tutti i DEX. Gli altri due sono `hasUsableReserves` (sezione 29) e `defaultAdapter` (sezione 40).
+La regola in cima a `getActiveAdapter()` e nel contratto `DexAdapter` — *nient'altro deve conoscere
+la forma dello stato interno del DEX* — vale anche per il supervisore e per il codice di
+strumentazione, non solo per i worker.
+
+`quoteTokenOutFromStateForShadow` e' stata eliminata; orientation, liquidita, spot, entry e exit
+passano tutti da `shadowAdapter`, risolto dal `programId` che viaggia nel job.
+
+**Verifica su due curve pump reali:**
+
+| liquidita | tokenOut per 0,01 SOL | exit quote |
+|---|---|---|
+| 0,165 SOL | 290.128.022.469 | **0,009748 SOL** (−2,5%, la fee della curva) |
+| 1e−9 SOL (svuotata) | 343.510.925.941 | 1e−9 SOL |
+
+Il primo e' un round trip corretto, il secondo e' il comportamento giusto su una curva vuota.
+
+⚠️ Resta vocabolario PumpSwap in `executeBuy` / `executeSell` (`src/pumpAmmSniper.ts` ~3199-3241).
+Sono i percorsi **live**, mai eseguiti in `MONITOR_ONLY`, e sono gia' fra i punti aperti di
+`PRODUCTION_BOT_CHECKLIST.md`. Vanno portati sull'adapter prima di qualunque passaggio a live.
