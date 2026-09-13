@@ -5,6 +5,10 @@
  * Legge le stesse fonti sparse che il bot usa gia' — report, log dei worker, summary
  * dello shadow, riga SERIALE del supervisore — e le mette in un posto solo.
  * Nessuna dipendenza esterna: ANSI a mano.
+ *
+ * Due colonne: a sinistra cosa sta succedendo adesso (il token in valutazione, tappa
+ * per tappa), a destra la storia della sessione (esiti, ritmo, token seguiti in ombra).
+ * Sotto i 132 caratteri di terminale le due colonne si impilano da sole.
  */
 const fs = require("fs");
 const path = require("path");
@@ -20,7 +24,9 @@ const C = {
     rosso: "\x1b[31m", verde: "\x1b[32m", giallo: "\x1b[33m",
     blu: "\x1b[34m", ciano: "\x1b[36m", grigio: "\x1b[90m",
 };
-const L = () => Math.max(72, Math.min(process.stdout.columns || 100, 110));
+
+const TOT = () => Math.max(72, process.stdout.columns || 100);
+const AFFIANCATE = () => TOT() >= 132;
 
 // La larghezza va calcolata sui caratteri visibili, non sui byte del colore.
 const nudo = (s) => String(s).replace(/\x1b\[[0-9;]*m/g, "");
@@ -47,17 +53,25 @@ const pct = (x, d = 2) =>
         ? (x >= 0 ? C.verde : C.rosso) + (x >= 0 ? "+" : "") + x.toFixed(d) + "%" + C.r
         : C.grigio + "n/a" + C.r;
 
-function riquadro(titolo, righe) {
-    const w = L();
+/** Restituisce le righe del riquadro, non una stringa: servono per affiancare le colonne. */
+function riquadro(titolo, righe, w) {
     const interno = w - 2;
     const out = [];
     out.push(C.grigio + "┌─ " + C.r + C.b + titolo + C.r + " " + C.grigio + "─".repeat(Math.max(0, interno - vis(titolo) - 3)) + "┐" + C.r);
     for (const r of righe) out.push(C.grigio + "│" + C.r + riempi(tronca(r, interno), interno) + C.grigio + "│" + C.r);
     out.push(C.grigio + "└" + "─".repeat(interno) + "┘" + C.r);
-    return out.join("\n");
+    return out;
 }
 
-function barra(n, tot, w = 22) {
+/** Incolla due colonne di righe gia' formattate, pareggiando quella piu' corta. */
+function affianca(sx, dx, wsx) {
+    const n = Math.max(sx.length, dx.length);
+    const out = [];
+    for (let i = 0; i < n; i++) out.push(riempi(sx[i] || "", wsx) + "  " + (dx[i] || ""));
+    return out;
+}
+
+function barra(n, tot, w) {
     if (!tot) return C.grigio + "░".repeat(w) + C.r;
     const p = Math.round((n / tot) * w);
     return C.ciano + "█".repeat(p) + C.r + C.grigio + "░".repeat(w - p) + C.r;
@@ -78,21 +92,25 @@ function seriale() {
     });
 }
 
+function logWorker() {
+    const dir = path.join(ROOT, "logs");
+    const f = fs.readdirSync(dir).filter((x) => /^paper-worker-\d+\.log$/.test(x))
+        .map((x) => path.join(dir, x))
+        .sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs)[0];
+    return f || null;
+}
+
 /**
  * L'evento in corso, ricostruito dal log del worker.
  *
  * Le righe interessanti sono poche fra molto rumore: durante l'hold il worker ripete
  * CRISK/RREPEAT/CRISKT ogni paio di secondi, e lasciarle passare seppellisce tutto.
  */
-function inCorso() {
+function inCorso(tappeMax) {
     try {
-        const dir = path.join(ROOT, "logs");
-        const f = fs.readdirSync(dir).filter((x) => /^paper-worker-\d+\.log$/.test(x))
-            .map((x) => path.join(dir, x))
-            .sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs)[0];
+        const f = logWorker();
         if (!f) return null;
-        const buf = fs.readFileSync(f, "utf8");
-        const righe = buf.split("\n").filter(Boolean);
+        const righe = fs.readFileSync(f, "utf8").split("\n").filter(Boolean);
         // inizio dell'ultimo evento
         let i = righe.length - 1;
         for (; i >= 0; i--) if (/START\s+\| processing pool/.test(righe[i])) break;
@@ -121,7 +139,7 @@ function inCorso() {
             token: campo("TOKEN"), pool: campo("POOL"), gmgn: campo("GMGN"),
             creator: campo("CREATOR"), dex: campo("TX"), liq: campo("LIQ"),
             hold: campo("HOLD"), fine: campo("END"), slope,
-            tappe: tappe.slice(-7),
+            tappe: tappe.slice(-tappeMax),
         };
     } catch { return null; }
 }
@@ -129,9 +147,7 @@ function inCorso() {
 function attivita() {
     // ultima riga significativa dal log del worker: dice cosa sta succedendo adesso
     try {
-        const f = fs.readdirSync(path.join(ROOT, "logs")).filter((x) => /^paper-worker-\d+\.log$/.test(x))
-            .map((x) => path.join(ROOT, "logs", x))
-            .sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs)[0];
+        const f = logWorker();
         if (!f) return null;
         const righe = fs.readFileSync(f, "utf8").split("\n").filter(Boolean);
         const eta = (Date.now() - fs.statSync(f).mtimeMs) / 1000;
@@ -175,49 +191,38 @@ function esiti(report) {
     return { m, rpc, n, span, nRecenti: coda.length, rpcRecenti };
 }
 
-async function disegna() {
-    const report = leggiJson(REPORT);
-    const s = await seriale();
-    const att = attivita();
-    const sh = shadow();
+// ─────────────────────────── colonna di sinistra: adesso ───────────────────────────
 
-    const parti = [];
-    const ora = new Date().toLocaleTimeString("it-IT");
-    parti.push(C.b + C.ciano + "  PUMP SNIPER" + C.r + C.grigio + `   ${ora}   ricarica ogni ${REFRESH_MS / 1000}s   ctrl-C per uscire` + C.r + "\n");
+function colonnaOra(s, att, ic, w) {
+    const out = [];
 
-    // --- adesso ---
     const righeOra = [];
     if (s) {
         const occupato = s.worker === "1";
-        righeOra.push(
-            `  ${occupato ? C.giallo + "● in valutazione" : C.verde + "○ libero"}${C.r}` +
-            `     valutate ${C.b}${s.valutate}${C.r}   ignorate ${s.ignorate}   ` +
-            `quota vista ${C.b}${s.quota}%${C.r}   create fallite ${s.fallite}`
-        );
+        righeOra.push(`  ${occupato ? C.giallo + "● in valutazione" : C.verde + "○ libero"}${C.r}   ${C.grigio}worker ${s.worker}/1${C.r}`);
+        righeOra.push(`  ${C.grigio}valutate${C.r} ${C.b}${s.valutate}${C.r}   ${C.grigio}ignorate${C.r} ${s.ignorate}   ${C.grigio}quota vista${C.r} ${C.b}${s.quota}%${C.r}`);
     } else {
         righeOra.push(`  ${C.grigio}supervisore non raggiungibile (il container gira?)${C.r}`);
     }
     if (att) {
         const r = att.riga.replace(/^\[[\d:.]+\]\s*\[W\d\]\s*/, "");
-        righeOra.push(`  ${C.grigio}ultimo evento ${att.eta.toFixed(0)}s fa:${C.r} ${r}`);
+        righeOra.push(`  ${C.grigio}${att.eta.toFixed(0)}s fa:${C.r} ${r}`);
     }
-    parti.push(riquadro("ADESSO", righeOra));
+    out.push(...riquadro("STATO DEL BOT", righeOra, w));
 
-    // --- token in corso ---
-    const ic = inCorso();
     if (ic && ic.token) {
         const righeIc = [];
         const concluso = !!ic.fine;
         righeIc.push(
             `  ${C.b}${ic.token}${C.r}` +
-            (ic.dex ? `   ${C.grigio}${ic.dex}${C.r}` : "") +
             (concluso ? `   ${C.grigio}concluso${C.r}` : `   ${C.giallo}in corso${C.r}`)
         );
+        if (ic.dex) righeIc.push(`  ${C.grigio}${ic.dex}${C.r}`);
         if (ic.gmgn) righeIc.push(`  ${C.blu}${ic.gmgn}${C.r}`);
         if (ic.creator) righeIc.push(`  ${C.grigio}creator${C.r} ${ic.creator}`);
         if (ic.slope !== null && ic.slope !== undefined) {
             const v = Number(ic.slope);
-            righeIc.push(`  ${C.grigio}pendenza della curva${C.r} ${(v >= 0 ? C.verde : C.rosso)}${v >= 0 ? "+" : ""}${v.toFixed(6)} SOL/s${C.r}   ${C.grigio}(il segnale di momentum)${C.r}`);
+            righeIc.push(`  ${C.grigio}pendenza${C.r} ${(v >= 0 ? C.verde : C.rosso)}${v >= 0 ? "+" : ""}${v.toFixed(6)} SOL/s${C.r} ${C.grigio}(momentum)${C.r}`);
         }
         righeIc.push("");
         for (const t of ic.tappe) {
@@ -226,72 +231,104 @@ async function disegna() {
         }
         if (ic.hold && !concluso) {
             righeIc.push("");
-            righeIc.push(`  ${C.b}${C.giallo}POSIZIONE APERTA${C.r}  ${ic.hold}`);
+            righeIc.push(`  ${C.b}${C.giallo}POSIZIONE APERTA${C.r}`);
+            righeIc.push(`  ${ic.hold}`);
         }
-        parti.push(riquadro(concluso ? "ULTIMO TOKEN VALUTATO" : "TOKEN IN VALUTAZIONE ADESSO", righeIc));
+        out.push(...riquadro(concluso ? "ULTIMO TOKEN VALUTATO" : "TOKEN IN VALUTAZIONE ADESSO", righeIc, w));
+    } else {
+        out.push(...riquadro("TOKEN IN VALUTAZIONE", [`  ${C.grigio}nessun evento nel log del worker${C.r}`], w));
     }
+    return out;
+}
 
-    // --- esiti ---
+// ─────────────────────────── colonna di destra: passato ────────────────────────────
+
+function colonnaStoria(report, sh, w) {
+    const out = [];
+    const interno = w - 2;
+
     if (report) {
         const e = esiti(report);
         const righe = [];
         const tot = [...e.m.values()].reduce((a, b) => a + b, 0);
+        // larghezza della barra ricavata da quello che avanza: etichetta 26 + conteggio 6 + percentuale 7
+        const wBar = Math.max(6, Math.min(22, interno - 43));
         for (const [k, v] of [...e.m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 7)) {
             const entrata = /PAPER|COMPLETED/.test(k);
-            righe.push(`  ${riempi((entrata ? C.verde : "") + tronca(k, 30) + C.r, 30)} ${String(v).padStart(4)}  ${barra(v, tot)} ${((v / tot) * 100).toFixed(1)}%`);
+            righe.push(`  ${riempi((entrata ? C.verde : "") + tronca(k, 26) + C.r, 27)}${String(v).padStart(4)}  ${barra(v, tot, wBar)} ${((v / tot) * 100).toFixed(1).padStart(4)}%`);
         }
         righe.push("");
         righe.push(
-            `  ${C.b}PnL ${C.r}${pct(Number(report.avgPnlPct), 2)}   ` +
-            `${report.totalPnlSol} SOL   ${C.verde}${report.wins}W${C.r}/${C.rosso}${report.losses}L${C.r}   ` +
-            `rug ${report.rugLossCount}   entrati ${C.b}${report.checksPassed}${C.r}/${report.finishedEvents}`
+            `  ${C.b}PnL ${C.r}${pct(Number(report.avgPnlPct), 2)}   ${report.totalPnlSol} SOL   ` +
+            `${C.verde}${report.wins}W${C.r}/${C.rosso}${report.losses}L${C.r}   ${C.grigio}rug${C.r} ${report.rugLossCount}`
         );
-        parti.push(riquadro("ESITI", righe));
+        righe.push(`  ${C.grigio}entrati${C.r} ${C.b}${report.checksPassed}${C.r}/${report.finishedEvents}`);
+        out.push(...riquadro("ESITI DELLA SESSIONE", righe, w));
 
-        const ultime = (report.operations || []).slice(-5).reverse();
-        parti.push(riquadro("ULTIME VALUTAZIONI", ultime.map((o) => {
+        const ultime = (report.operations || []).slice(-6).reverse();
+        out.push(...riquadro("ULTIME VALUTAZIONI", ultime.map((o) => {
             const st = String(o.endStatus || "in corso").replace(/\s*\(\d+ms.*$/, "");
             const entrata = /PAPER|COMPLETED/.test(st);
-            const motivo = String(o.skipReason || "").replace(/\s*\(curve=.*/, "").slice(0, 40);
-            return `  ${C.grigio}${o.startedAt}${C.r}  ${riempi(String(o.tokenMint || "-").slice(0, 12), 14)}` +
-                `${(entrata ? C.verde : C.rosso)}${riempi(tronca(st, 26), 27)}${C.r}${C.grigio}${motivo}${C.r}`;
-        })));
+            const motivo = String(o.skipReason || "").replace(/\s*\(curve=.*/, "");
+            return `  ${C.grigio}${String(o.startedAt).slice(0, 8)}${C.r}  ${riempi(String(o.tokenMint || "-").slice(0, 10), 12)}` +
+                `${(entrata ? C.verde : C.rosso)}${riempi(tronca(st, 22), 23)}${C.r}${C.grigio}${motivo}${C.r}`;
+        }), w));
 
-        // --- rpc ---
         const perOra = e.span > 0 ? (e.nRecenti / e.span) * 60 : 0;
         const rpcOra = e.span > 0 ? (e.rpcRecenti / e.span) * 60 : 0;
-        parti.push(riquadro("CHIAMATE RPC", [
-            `  sessione: ${e.n} valutazioni, ${e.rpc} richieste, ${(e.rpc / Math.max(1, e.n)).toFixed(1)} per valutazione`,
-            `  ultime ${e.nRecenti} (${e.span.toFixed(1)} min):  ` +
-            `${C.b}${perOra.toFixed(0)}${C.r}/ora   ${C.b}${rpcOra.toFixed(0)}${C.r} richieste/ora   ` +
-            `${C.b}${((rpcOra * 730) / 1e6).toFixed(1)}M${C.r}/mese`,
-        ]));
+        out.push(...riquadro("CHIAMATE RPC", [
+            `  ${C.grigio}sessione${C.r} ${e.n} valutazioni, ${e.rpc} richieste, ${(e.rpc / Math.max(1, e.n)).toFixed(1)}/valutazione`,
+            `  ${C.grigio}ultime ${e.nRecenti} (${e.span.toFixed(1)} min)${C.r}  ${C.b}${perOra.toFixed(0)}${C.r}/ora   ` +
+            `${C.b}${rpcOra.toFixed(0)}${C.r} req/ora   ${C.b}${((rpcOra * 730) / 1e6).toFixed(1)}M${C.r}/mese`,
+        ], w));
     }
 
-    // --- shadow ---
     const righeSh = [];
     if (!sh.length) {
-        righeSh.push(`  ${C.grigio}nessun token seguito (i job nascono dagli skip, campionati al 20%)${C.r}`);
+        righeSh.push(`  ${C.grigio}nessun token seguito (i job nascono dagli skip, al 20%)${C.r}`);
     } else {
-        righeSh.push(`  ${C.grigio}${riempi("token", 14)}${riempi("motivo dello skip", 26)}${"snap".padStart(5)}${"liq".padStart(11)}${"ora".padStart(11)}${"picco".padStart(11)}${C.r}`);
+        const stretta = interno < 74;
+        righeSh.push(`  ${C.grigio}${riempi("token", 12)}${stretta ? "" : riempi("motivo dello skip", 24)}${"snap".padStart(5)}${"ora".padStart(10)}${"picco".padStart(10)}${C.r}`);
         for (const v of sh.slice(0, 8)) {
             const ls = v.lastSnapshot || {};
             righeSh.push(
-                `  ${riempi(String(v.tokenMint).slice(0, 12), 14)}` +
-                `${riempi(tronca(String(v.skipReason || "-").replace(/\s*\(.*/, ""), 24), 26)}` +
+                `  ${riempi(String(v.tokenMint).slice(0, 10), 12)}` +
+                (stretta ? "" : riempi(tronca(String(v.skipReason || "-").replace(/\s*\(.*/, ""), 22), 24)) +
                 `${String(v.snapshots).padStart(5)}` +
-                `${(ls.solLiquidity != null ? Number(ls.solLiquidity).toFixed(4) : "n/a").padStart(11)}` +
-                `${riempi("", 11 - vis(pct(ls.currentPnlPct)))}${pct(ls.currentPnlPct)}` +
-                `${riempi("", 11 - vis(pct(v.peakPnlPct)))}${pct(v.peakPnlPct)}`
+                `${riempi("", Math.max(0, 10 - vis(pct(ls.currentPnlPct))))}${pct(ls.currentPnlPct)}` +
+                `${riempi("", Math.max(0, 10 - vis(pct(v.peakPnlPct))))}${pct(v.peakPnlPct)}`
             );
         }
         const saliti = sh.filter((v) => typeof v.peakPnlPct === "number" && v.peakPnlPct >= 10).length;
         righeSh.push("");
         righeSh.push(`  ${sh.length} seguiti   ${C.verde}${saliti}${C.r} hanno toccato +10% dopo lo skip`);
     }
-    parti.push(riquadro("TOKEN SCARTATI, SEGUITI IN OMBRA", righeSh));
+    out.push(...riquadro("TOKEN SCARTATI, SEGUITI IN OMBRA", righeSh, w));
+    return out;
+}
 
-    process.stdout.write("\x1b[H\x1b[2J" + parti.join("\n") + "\n");
+async function disegna() {
+    const report = leggiJson(REPORT);
+    const [s, att, sh] = [await seriale(), attivita(), shadow()];
+
+    const affiancate = AFFIANCATE();
+    const wsx = affiancate ? Math.floor((TOT() - 3) / 2) : Math.min(TOT() - 1, 110);
+    const wdx = affiancate ? TOT() - 3 - wsx : wsx;
+    // affiancate la colonna di sinistra e' meta' schermo e le tappe devono stare
+    // accanto ai riquadri di destra senza sfondare in altezza
+    const ic = inCorso(affiancate ? 10 : 7);
+
+    const ora = new Date().toLocaleTimeString("it-IT");
+    const testa = C.b + C.ciano + "  PUMP SNIPER" + C.r + C.grigio + `   ${ora}   ricarica ogni ${REFRESH_MS / 1000}s   ctrl-C per uscire` + C.r;
+
+    const sx = colonnaOra(s, att, ic, wsx);
+    const dx = colonnaStoria(report, sh, wdx);
+
+    const corpo = affiancate
+        ? [riempi(C.b + "  ▌ ADESSO" + C.r, wsx) + "  " + C.b + "  ▌ LA SESSIONE FINORA" + C.r, ...affianca(sx, dx, wsx)]
+        : [...sx, ...dx];
+
+    process.stdout.write("\x1b[H\x1b[2J" + testa + "\n" + corpo.join("\n") + "\n");
 }
 
 process.stdout.write("\x1b[?25l");
