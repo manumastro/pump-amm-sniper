@@ -166,17 +166,38 @@ export function createPaperTradeService(deps: PaperTradeDeps) {
                 options?.forceHoldMs && Number.isFinite(options.forceHoldMs)
                     ? Math.max(1000, options.forceHoldMs)
                     : 0;
+            const poolGraduata = !!options?.poolGraduata;
             const effectiveHoldMs = forcedProbationHoldMs > 0
                 ? forcedProbationHoldMs
                 : suspiciousRelay
                     ? Math.max(1000, CONFIG.HOLD_SUSPICIOUS_RELAY_SHORT_HOLD_MS)
-                    : Math.max(1000, CONFIG.AUTO_SELL_DELAY_MS);
+                    : poolGraduata
+                        ? Math.max(1000, CONFIG.PUMP_MIGRATO_HOLD_MS)
+                        : Math.max(1000, CONFIG.AUTO_SELL_DELAY_MS);
 
             // Use unified winner profile for all CC values (CP=1 profile: 100% take profit, 20% trailing)
             const activeWinnerProfile = {
                 ...HOLD_WINNER_PROFILE,
                 hardTakeProfitPct: CONFIG.HOLD_WINNER_HARD_TAKE_PROFIT_PCT_CP1,
             };
+
+            /**
+             * Uscita dedicata alle pool gia' graduate.
+             *
+             * La popolazione e' a coda lunga: 6 vincitori su 13 da +39% a +32.532%, gli
+             * altri 7 a -95%. Il profilo di aprile (TP fisso a +50%, trailing al 10%) e'
+             * tarato sull'opposto — tanti piccoli guadagni — e qui farebbe due danni:
+             * chiuderebbe a +50% un movimento di cinque cifre, e uscirebbe al primo
+             * ritracciamento del 10%, che su questi token e' rumore di pochi secondi.
+             * Quindi: nessun take profit, trailing piu' largo, finestra piu' lunga.
+             * Il floor a +3% resta: protegge dal tornare sotto zero dopo essersi armato.
+             * Vedi docs/controls.md 48 e docs/studio-curva-2026-09-13.md.
+             */
+            if (poolGraduata) {
+                activeWinnerProfile.hardTakeProfitPct = CONFIG.PUMP_MIGRATO_HARD_TAKE_PROFIT_PCT;
+                activeWinnerProfile.trailingDropPct = CONFIG.PUMP_MIGRATO_TRAILING_DROP_PCT;
+                stageLog(ctx, "HOLD", `pool graduata: hold ${effectiveHoldMs}ms, trailing ${activeWinnerProfile.trailingDropPct}%, hard TP ${activeWinnerProfile.hardTakeProfitPct || "off"}`);
+            }
 
             if (forcedProbationHoldMs > 0) {
                 stageLog(ctx, "HOLD", `probation hold ${effectiveHoldMs}ms (paper creator-risk bypass)`);

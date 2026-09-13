@@ -2570,3 +2570,63 @@ Ora in modalita' misura il recheck **registra e non esce** (`BYPASS | creator ri
 riapplicazione del filtro d'ingresso ma rilevatori di comportamento in corso. Stessa logica per stop
 loss, take profit e trailing: la modalita' misura riguarda **cosa compriamo**, non **quando
 vendiamo**.
+
+### 48. Seguire la curva che ha gia' graduato (2026-09-13)
+
+Misura di partenza: `docs/studio-curva-2026-09-13.md`. Su 255 token visti nascere dal bot, i 61
+`SKIP: no WSOL side` erano **due popolazioni diverse**, distinguibili dal campo `quote` del nostro
+stesso messaggio di skip:
+
+| motivo | n | vivi dopo 5-90 min | mc max |
+|---|---|---|---|
+| `quote=SOL (migrata su PumpSwap)` | 13 | **13 (100%)** | $13.540.107 |
+| `quote=<mint diverso da SOL>` | 48 | 0 | $5.902 |
+
+Zero vincitori sui 194 token restanti, compresi i 28 comprati davvero (mc massima $15.131).
+
+**Cosa e' cambiato.** `PUMP_MIGRATO_ENABLED=true`: quando il worker trova la curva **completa**
+(`state.complete && !state.quoteMint`) non scarta piu' il token, passa sulla sua pool PumpSwap e
+prosegue il ciclo normale. La curva quotata in un mint diverso da SOL resta uno scarto: sono 48 casi
+su 61 e sono morti tutti e 48.
+
+- La pool si **deriva**, non si cerca: `canonicalPumpPoolPda(mint)`, zero RPC, verificata 13 su 13
+  contro le pool reali dello studio.
+- Il cambio di DEX a meta' ciclo passa da `promuoviAdapterAttivo()` (`src/services/dex/index.ts`).
+  Rompe l'invariante "un worker, un DEX", quindi e' vincolato: solo in un worker, una volta sola,
+  prima di qualunque quote, e sempre insieme al cambio di pool. Tutti i call site leggono
+  `getActiveAdapter()` a ogni chiamata, quindi si spostano da soli.
+- `pumpSwapAdapter` e' in `DISPONIBILI` ma **non** in `ADAPTERS`: nessuna seconda subscription. Con
+  un worker solo, ascoltare anche PumpSwap ruberebbe capacita' a pump invece di aggiungersi; per
+  questi token non serve, arrivano gia' dall'evento `create` di pump.
+
+**`PUMP_MIGRATO_MIN_SEED_SOL = 0` — soglia disattivata di proposito.** La SOL nella pool alla nascita
+e' l'unica variabile osservabile all'ingresso che separa i vincitori: sopra 1.500 SOL 4 su 4 oltre
+$6M di mc, sotto 700 SOL 7 morti su 9. Ma **n=4**, tutti nati in quattro minuti, e due dei quattro
+condividono il payer: potrebbe essere un operatore solo, cioe' n=1. E' la stessa forma dell'errore
+gia' commesso col "seed 85 SOL" (`docs/mercato-2026-09-13.md`). Quindi per ora si **registra**
+(`SEED` nel log, `seedGraduata` nel report) senza bloccare. Alzare la soglia solo dopo un campione
+nato in ore diverse. Il numero non costa chiamate: e' la liquidita' che il worker legge comunque, e a
+un secondo dalla creazione quella liquidita' **e'** il seed.
+
+**Uscita dedicata.** Il profilo di aprile (TP fisso a +50%, trailing 10%, hold 90s) e' tarato su
+tanti piccoli guadagni; questa popolazione e' l'opposto — 6 vincitori su 13 da +39% a +32.532%, gli
+altri 7 a -95%. Un TP a +50% prende lo 0,15% di un +32.532%, e un trailing al 10% esce al primo
+rumore. Per le sole pool graduate:
+
+| | resto del bot | pool graduata |
+|---|---|---|
+| `hard take profit` | 50% | **0 = nessuno** (`PUMP_MIGRATO_HARD_TAKE_PROFIT_PCT`) |
+| `trailing drop` | 10% | **25%** (`PUMP_MIGRATO_TRAILING_DROP_PCT`) |
+| durata hold | 90s (`AUTO_SELL_DELAY_MS`) | **600s** (`PUMP_MIGRATO_HOLD_MS`) |
+
+Il floor a +3% (`HOLD_WINNER_PROFIT_FLOOR_PCT`) resta anche qui: impedisce di riscendere sotto zero
+dopo essersi armati.
+
+**Costo da tenere d'occhio.** Con il modello seriale un hold di 10 minuti tiene occupato l'unico
+worker per 10 minuti, e tutto il resto finisce in `ignorate_occupato`. E' una scelta, non un effetto
+collaterale: sui 194 token non graduati la misura dice zero vincitori, quindi la capacita' che si
+perde vale zero. Resta sotto `WORKER_MAX_LIFETIME_MS` (1.200s), che non va abbassato sotto i 600s
+dell'hold piu' il tempo di valutazione.
+
+**Da rimisurare alla prossima sessione:** quanti `GRADUATA` al netto di quanti eventi persi, la
+distribuzione dei `seedGraduata`, e se il trailing al 25% regge o esce comunque troppo presto.

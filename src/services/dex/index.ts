@@ -43,11 +43,28 @@ const ADAPTERS: DexAdapter[] = [
     pumpBondingCurveAdapter,
 ];
 
+/**
+ * Adapter utilizzabili, anche se non ascoltati.
+ *
+ * ADAPTERS decide a quali program ci si iscrive; questa lista decide quali adapter
+ * il bot sa *usare* una volta che un pool gli arriva per altra strada. `pumpSwapAdapter`
+ * sta qui e non in ADAPTERS di proposito: non vogliamo una seconda subscription che con
+ * un worker solo ruberebbe capacita' a pump, ma vogliamo poter seguire una curva che ha
+ * gia' graduato sulla sua pool PumpSwap (vedi services/dex/pumpMigrato.ts e
+ * docs/studio-curva-2026-09-13.md: e' l'unica popolazione che ha prodotto vincitori).
+ */
+const DISPONIBILI: DexAdapter[] = [
+    ...ADAPTERS,
+    pumpSwapAdapter,
+];
+
 const BY_PROGRAM = new Map<string, DexAdapter>(ADAPTERS.map((a) => [a.programId, a]));
 
 /** lega tutti gli adapter registrati alla connection condivisa */
 export function initAdapters(connection: Connection) {
-    for (const a of ADAPTERS) a.init(connection);
+    // si inizializzano anche i disponibili-non-ascoltati: init() lega solo la connection
+    // (per pumpswap costruisce l'SDK), non apre subscription e non costa chiamate.
+    for (const a of DISPONIBILI) a.init(connection);
 }
 
 export function getAdapterForProgram(programId: string): DexAdapter | undefined {
@@ -55,7 +72,7 @@ export function getAdapterForProgram(programId: string): DexAdapter | undefined 
 }
 
 export function getAdapterByName(name: string): DexAdapter | undefined {
-    return ADAPTERS.find((a) => a.name === name);
+    return DISPONIBILI.find((a) => a.name === name);
 }
 
 export function listAdapters(): DexAdapter[] {
@@ -96,4 +113,25 @@ export function getActiveAdapter(): DexAdapter {
         active = getAdapterForProgram(process.env.WORKER_TASK_PROGRAM_ID || "") || defaultAdapter;
     }
     return active;
+}
+
+/**
+ * Cambia il DEX di questo processo a meta' ciclo.
+ *
+ * Serve a un caso solo: la curva pump che il worker trova gia' completa. Il token e'
+ * lo stesso, il pool no — e' la pool PumpSwap canonica — e da quel momento ogni quote
+ * deve passare dalla matematica di PumpSwap. Tutti i ~40 call site leggono
+ * `getActiveAdapter()` a ogni chiamata, quindi cambiare `active` li sposta tutti.
+ *
+ * Vincoli, perche' questa funzione rompe l'invariante "un worker, un DEX":
+ * - solo in un worker (il supervisore serve piu' token contemporaneamente);
+ * - una sola volta per processo, e solo *prima* di qualunque quote;
+ * - il chiamante deve aggiornare anche il pool, altrimenti si quota l'indirizzo della
+ *   curva con la matematica dell'AMM.
+ */
+export function promuoviAdapterAttivo(nome: string): DexAdapter | null {
+    const nuovo = getAdapterByName(nome);
+    if (!nuovo) return null;
+    active = nuovo;
+    return nuovo;
 }

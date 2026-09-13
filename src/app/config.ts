@@ -94,6 +94,21 @@ export const CONFIG = {
     HOLD_WINNER_HARD_TAKE_PROFIT_PCT_CP1: Number(process.env.HOLD_WINNER_HARD_TAKE_PROFIT_PCT_CP1 ?? 50),
     HOLD_WINNER_MIN_PEAK_SOL: Number(process.env.HOLD_WINNER_MIN_PEAK_SOL ?? 0.0104),
     HOLD_WINNER_PROFIT_FLOOR_PCT: Number(process.env.HOLD_WINNER_PROFIT_FLOOR_PCT ?? 3),
+    // --- curva pump gia' graduata (docs/studio-curva-2026-09-13.md, controls.md 48) ---
+    // Su 255 token visti nascere, le 13 graduazioni istantanee sono l'unica popolazione
+    // che ha prodotto vincitori (13 vive su 13, mc fino a $13,5M) contro zero su 194.
+    // Quando la curva risulta gia' completa il worker passa sulla pool PumpSwap canonica
+    // invece di scartare il token.
+    PUMP_MIGRATO_ENABLED: envBool("PUMP_MIGRATO_ENABLED", true),
+    // Soglia sulla SOL presente nella pool alla nascita. 0 = solo misura, non blocca:
+    // il campione e' n=4 e due dei quattro condividono il payer, quindi la soglia va
+    // confermata su token nati in ore diverse prima di farne un filtro.
+    PUMP_MIGRATO_MIN_SEED_SOL: Number(process.env.PUMP_MIGRATO_MIN_SEED_SOL ?? 0),
+    // Uscita dedicata: su una popolazione a coda lunga il TP fisso tronca l'unica fonte
+    // di guadagno. 0 = nessun take profit, si esce solo col trailing.
+    PUMP_MIGRATO_HARD_TAKE_PROFIT_PCT: Number(process.env.PUMP_MIGRATO_HARD_TAKE_PROFIT_PCT ?? 0),
+    PUMP_MIGRATO_TRAILING_DROP_PCT: Number(process.env.PUMP_MIGRATO_TRAILING_DROP_PCT ?? 25),
+    PUMP_MIGRATO_HOLD_MS: Number(process.env.PUMP_MIGRATO_HOLD_MS ?? 600000),
     // Price path recorder: campiona il quote di uscita durante l'hold per rendere
     // le sessioni paper ri-simulabili offline (trailing, floor, exit anticipate).
     HOLD_PRICE_PATH_RECORD_ENABLED: envBool("HOLD_PRICE_PATH_RECORD_ENABLED", true),

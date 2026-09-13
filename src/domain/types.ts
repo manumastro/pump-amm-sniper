@@ -125,6 +125,12 @@ export type PaperSimulationOptions = {
     forceHoldMs?: number;
     suppressCreatorRiskRecheck?: boolean;
     skipCreatorRiskRecheck?: boolean;
+    /**
+     * Il token e' una curva pump gia' graduata, seguita sulla sua pool PumpSwap.
+     * Cambia la gestione dell'uscita: niente take profit fisso, trailing piu' largo,
+     * hold piu' lungo. Vedi services/dex/pumpMigrato.ts e docs/controls.md 48.
+     */
+    poolGraduata?: boolean;
 };
 
 export type PreBuyEntryValidationResult = {

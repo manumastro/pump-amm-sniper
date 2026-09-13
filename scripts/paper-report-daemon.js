@@ -153,6 +153,8 @@ function getEvent(id) {
       preBuyUltraGuard: null,
       holdLog: null,
       bypassedFilters: [],
+      poolGraduata: null,
+      seedGraduata: null,
       liqPath: null,
     });
   }
@@ -505,6 +507,30 @@ function parseLine(logPath, line) {
       return;
     }
 
+    if (stage === 'GRADUATA') {
+      // La curva era gia' completa e il worker e' passato sulla pool PumpSwap.
+      // Senza questo campo nel report il token sembra un normale ingresso pump e
+      // non si puo' misurare a parte la popolazione che vale (controls.md 48).
+      ev = ev || getCurrentEvent(logPath);
+      if (!ev) return;
+      const parsed = safeJsonParse(message);
+      if (parsed && typeof parsed === 'object') {
+        ev.poolGraduata = parsed;
+      }
+      return;
+    }
+
+    if (stage === 'SEED') {
+      // SOL nella pool graduata alla nascita: la variabile candidata a discriminare.
+      ev = ev || getCurrentEvent(logPath);
+      if (!ev) return;
+      const parsed = safeJsonParse(message);
+      if (parsed && typeof parsed === 'object') {
+        ev.seedGraduata = parsed;
+      }
+      return;
+    }
+
     if (stage === 'BYPASS') {
       // FILTERS_MONITOR_ONLY: il filtro avrebbe bloccato ma ha lasciato passare.
       // Serve a legare ogni esito ai filtri che l'avrebbero fermato.
@@ -708,6 +734,8 @@ function summarize() {
       preBuyUltraGuard: e.preBuyUltraGuard,
       holdLog: e.holdLog,
       bypassedFilters: e.bypassedFilters || [],
+      poolGraduata: e.poolGraduata || null,
+      seedGraduata: e.seedGraduata || null,
       liqPath: e.liqPath,
       noWsolRetryCount: e.noWsolRetryCount || 0,
       noWsolRetryRecovered: !!e.noWsolRetryRecovered,
@@ -778,6 +806,8 @@ function summarize() {
       preBuyUltraGuard: e.preBuyUltraGuard,
       holdLog: e.holdLog,
       bypassedFilters: e.bypassedFilters || [],
+      poolGraduata: e.poolGraduata || null,
+      seedGraduata: e.seedGraduata || null,
       liqPath: e.liqPath,
       noWsolRetryCount: e.noWsolRetryCount || 0,
       noWsolRetryRecovered: !!e.noWsolRetryRecovered,
@@ -806,6 +836,8 @@ function summarize() {
       preBuyUltraGuard: e.preBuyUltraGuard,
       holdLog: e.holdLog,
       bypassedFilters: e.bypassedFilters || [],
+      poolGraduata: e.poolGraduata || null,
+      seedGraduata: e.seedGraduata || null,
       liqPath: e.liqPath,
     })),
   };

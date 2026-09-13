@@ -4,9 +4,13 @@ import path from "path";
 import bs58 from "bs58";
 import { OnlinePumpAmmSdk, PumpAmmSdk, buyQuoteInput, sellBaseInput } from "@pump-fun/pump-swap-sdk";
 import { getActiveAdapter, getAdapterForProgram, initAdapters, listAdapters, listMonitoredProgramIds } from "./services/dex";
+import { curvaGiaGraduata, passaAllaPoolGraduata, valutaSeedGraduata } from "./services/dex/pumpMigrato";
 
 // L'adapter del DEX su cui gira questo processo, risolto da WORKER_TASK_PROGRAM_ID.
-const ACTIVE_ADAPTER = getActiveAdapter();
+// Non e' una costante: una curva pump gia' graduata sposta il worker su PumpSwap a meta'
+// ciclo (services/dex/pumpMigrato.ts). Il cambio avviene una volta sola, prima di
+// qualunque quote, e sempre insieme al cambio di pool.
+let ACTIVE_ADAPTER = getActiveAdapter();
 import BN from "bn.js";
 import { AccountLayout, getMint, TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
 import { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction, createCloseAccountInstruction } from "@solana/spl-token";
@@ -443,7 +447,8 @@ async function handleNewPool(connection: Connection, signature: string) {
             return;
         }
 
-        const poolAddress: string = resolved.poolAddress;
+        // non const: il passaggio alla pool graduata lo riscrive (pumpMigrato.ts)
+        let poolAddress: string = resolved.poolAddress;
         const tokenMint: string = resolved.tokenMint;
         let creatorAddress: string | null = resolved.creatorAddress;
         if (creatorAddress) {
@@ -498,7 +503,7 @@ async function handleNewPool(connection: Connection, signature: string) {
         let liquiditySOL = 0;
         let forceEntryNoWsolBypass = false;
         const observerUser = walletKeypair?.publicKey ?? Keypair.generate().publicKey;
-        const poolKey = new PublicKey(poolAddress);
+        let poolKey = new PublicKey(poolAddress);
         const noWsolRecheckEnabled = CONFIG.PRE_BUY_NO_WSOL_RECHECK_ENABLED;
         const noWsolMaxAttempts = noWsolRecheckEnabled
             ? Math.max(1, CONFIG.PRE_BUY_NO_WSOL_RECHECK_MAX_ATTEMPTS)
@@ -510,6 +515,7 @@ async function handleNewPool(connection: Connection, signature: string) {
         const deferredReplayExtraAttempts = deferredReplayMode ? 8 : 0;
         const stateAttempts = Math.max(6, noWsolMaxAttempts) + deferredReplayExtraAttempts;
         let noWsolRetryCount = 0;
+        let passaggioGraduata = false;
 
         for (let i = 0; i < stateAttempts; i++) {
             try {
@@ -522,6 +528,27 @@ async function handleNewPool(connection: Connection, signature: string) {
                         stageLog(ctx, "NOWSOL", `force-entry enabled: bypass no-WSOL skip (${mintInfo})`);
                         forceEntryNoWsolBypass = true;
                         break;
+                    }
+
+                    // La curva completa non e' un token da scartare: e' un token che ha
+                    // gia' cambiato DEX. Vedi docs/studio-curva-2026-09-13.md — e' l'unica
+                    // popolazione che ha prodotto vincitori. La curva quotata in un mint
+                    // diverso da SOL resta invece uno scarto, e sono 48 casi su 61.
+                    if (!passaggioGraduata && curvaGiaGraduata(poolState)) {
+                        const passaggio = passaAllaPoolGraduata(tokenMint);
+                        if (passaggio) {
+                            passaggioGraduata = true;
+                            poolAddress = passaggio.poolAddress;
+                            poolKey = new PublicKey(poolAddress);
+                            ACTIVE_ADAPTER = passaggio.adapter;
+                            stageLog(ctx, "GRADUATA", JSON.stringify({
+                                curva: resolved.poolAddress,
+                                pool: poolAddress,
+                                dex: passaggio.adapter.name,
+                            }));
+                            console.log(`🎓 curva gia' graduata: passo su ${passaggio.adapter.name} pool ${poolAddress}`);
+                            continue;
+                        }
                     }
 
                     stageLog(ctx, "NOWSOL", `missing WSOL side, skipping (${mintInfo})`);
@@ -587,6 +614,23 @@ async function handleNewPool(connection: Connection, signature: string) {
             stageLog(ctx, "LIQ", `${liqSolFmt} SOL (~$${liquidityUSD.toFixed(0)})`);
         } else {
             stageLog(ctx, "LIQ", `${liqSolFmt} SOL (USD unavailable)`);
+        }
+
+        // Su una pool appena graduata la liquidita' letta e' il seed del lancio: si registra
+        // sempre, si filtra solo se PUMP_MIGRATO_MIN_SEED_SOL e' stato alzato. Vedi
+        // services/dex/pumpMigrato.ts e docs/controls.md 48.
+        if (passaggioGraduata) {
+            const seed = valutaSeedGraduata(liquiditySOL);
+            stageLog(ctx, "SEED", JSON.stringify({
+                seedSol: Number(liquiditySOL.toFixed(6)),
+                soglia: seed.soglia,
+                ok: seed.ok,
+            }));
+            if (!seed.ok) {
+                console.log(`🛑 SKIP: seed pool graduata insufficiente (${seed.motivo})`);
+                finalStatus = "SKIP: seed graduata";
+                return;
+            }
         }
 
         if (liquiditySOL < CONFIG.MIN_POOL_LIQUIDITY_SOL) {
@@ -1074,10 +1118,12 @@ async function handleNewPool(connection: Connection, signature: string) {
                  signature,
                  tx.blockTime || null,
                  creatorRisk,
-                 creatorRiskProbation
+                 creatorRiskProbation || passaggioGraduata
                      ? {
-                         forceHoldMs: creatorRiskProbationHoldMs,
-                         suppressCreatorRiskRecheck: true,
+                         ...(creatorRiskProbation
+                             ? { forceHoldMs: creatorRiskProbationHoldMs, suppressCreatorRiskRecheck: true }
+                             : {}),
+                         ...(passaggioGraduata ? { poolGraduata: true } : {}),
                      }
                      : undefined,
                  forceEntryNoWsolBypass,
