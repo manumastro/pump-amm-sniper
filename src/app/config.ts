@@ -100,6 +100,10 @@ export const CONFIG = {
     // Quando la curva risulta gia' completa il worker passa sulla pool PumpSwap canonica
     // invece di scartare il token.
     PUMP_MIGRATO_ENABLED: envBool("PUMP_MIGRATO_ENABLED", true),
+    // Compra SOLO le pool gia' graduate. Su 4 ore di sessione i 122 token non graduati
+    // comprati hanno preso il 60% del tempo di worker per -0,208 SOL e nessun vincitore,
+    // mentre 5 delle 12 pool graduate sono diventate razzi. Vedi controls.md 50.
+    SOLO_POOL_GRADUATE: envBool("SOLO_POOL_GRADUATE", false),
     // Soglia sulla SOL nella pool quando il worker la legge, cioe' dopo ~1 secondo di
     // vita. NON e' il seed di graduazione: quello e' 67,4 SOL per tutti e non discrimina
     // niente (misurato su 28 pool, controls.md 48). Questa e' la domanda arrivata nel
@@ -109,7 +113,10 @@ export const CONFIG = {
     // di guadagno. 0 = nessun take profit, si esce solo col trailing.
     PUMP_MIGRATO_HARD_TAKE_PROFIT_PCT: Number(process.env.PUMP_MIGRATO_HARD_TAKE_PROFIT_PCT ?? 0),
     PUMP_MIGRATO_TRAILING_DROP_PCT: Number(process.env.PUMP_MIGRATO_TRAILING_DROP_PCT ?? 25),
-    PUMP_MIGRATO_HOLD_MS: Number(process.env.PUMP_MIGRATO_HOLD_MS ?? 600000),
+    // 600s erano troppo pochi: tutte e 8 le posizioni uscite per scadenza hanno preso
+    // fra +0,5% e +5% su token che nell'ora successiva hanno fatto +129.629%, +121.947%
+    // e +217.636%. Il movimento arriva DOPO i dieci minuti. Vedi controls.md 50.
+    PUMP_MIGRATO_HOLD_MS: Number(process.env.PUMP_MIGRATO_HOLD_MS ?? 1800000),
     // Price path recorder: campiona il quote di uscita durante l'hold per rendere
     // le sessioni paper ri-simulabili offline (trailing, floor, exit anticipate).
     HOLD_PRICE_PATH_RECORD_ENABLED: envBool("HOLD_PRICE_PATH_RECORD_ENABLED", true),
@@ -451,7 +458,7 @@ export const CONFIG = {
     // ritorna mai tiene lo slot per sempre, e con MAX_CONCURRENT_OPERATIONS=2 ne bastano due
     // per fermare l'intero bot (successo il 2026-09-12, vedi controls.md 26). Deve restare
     // sopra AUTO_SELL_DELAY_MS (900s) piu il tempo di valutazione, altrimenti tronca gli hold.
-    WORKER_MAX_LIFETIME_MS: Number(process.env.WORKER_MAX_LIFETIME_MS || 1200000),
+    WORKER_MAX_LIFETIME_MS: Number(process.env.WORKER_MAX_LIFETIME_MS || 2400000),
     // Con 2.856 creazioni/ora contro 360 di capacita la coda e sempre piena: senza TTL
     // il worker riceve pool vecchie di ~50 minuti, gia migrate o gia ruggate. Scartare
     // e corretto, non e una perdita: quella firma non era comunque valutabile in tempo.

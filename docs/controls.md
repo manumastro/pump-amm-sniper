@@ -2700,3 +2700,49 @@ passa ad aspettare. Aggiungere un secondo worker raddoppierebbe anche quello, e 
 contesa che il modello seriale (sezione 38) serviva a togliere, piu' il rischio dei worker appesi
 (sezione 26 — e sopra si vedono 3 cicli da 1.109s di mediana, il 13% del tempo). Togliere l'attesa
 inutile e' lo stesso guadagno senza nessuno dei due rischi.
+
+### 50. Il problema non era l'ingresso, era l'uscita (2026-09-13)
+
+Prima sessione con le pool graduate comprate davvero: 4 ore, 12 graduate, 10 comprate, **8 vincenti
+su 10**. Sembrava un buon risultato — pnl medio **+0,77%**. Poi il controllo on-chain su dove sono
+finiti quegli stessi token:
+
+| token | SOL1S | **noi** | mc dopo qualche ora |
+|---|---|---|---|
+| `6agyG6m2` | 3.038 | **+3,73%** | **$90.278.933** (+217.636%) |
+| `67qfLVFw` | 3.039 | **+0,54%** | **$54.114.230** (+129.629%) |
+| `MMcjZrgr` | 2.998 | **+0,89%** | **$50.492.324** (+121.947%) |
+| `cGxbj7Sa` | 365 | +8,32% | $931.004 (+2.135%) |
+| `2HFakYaU` | 132 | -12,03% | $543.408 (+662%) |
+| gli altri 7 | — | da -0,89% a +5,09% | $383 - $1.951 (morti) |
+
+**Cinque razzi su dodici.** Su `6agyG6m2` abbiamo preso il **0,0017%** del movimento.
+
+**Quando si muovono.** `67qfLVFw` nasce alle 15:06 e fa +129.629% *entro l'ora*; `cGxbj7Sa` +2.135%
+entro l'ora. Le otto posizioni uscite per scadenza sono uscite tutte a `hold timeout` con picco
+uguale al valore finale: nei primi dieci minuti **non era ancora successo niente**. Il movimento
+arriva dopo.
+
+Conseguenze applicate:
+
+- `PUMP_MIGRATO_HOLD_MS` 600s -> **1.800s**, e `WORKER_MAX_LIFETIME_MS` 1.200s -> 2.400s perche' deve
+  restare sopra l'hold piu' il tempo di valutazione.
+- `SOLO_POOL_GRADUATE=true`: non si comprano piu' le curve non graduate. In 4 ore i 122 token non
+  graduati comprati hanno preso il **60% del tempo di worker** per **-0,208 SOL** e nessun
+  vincitore, mentre la valutazione completa di tutto (creator risk compreso) costava l'11 minuti, il
+  5%. Non era il creator risk a rallentare: erano gli hold da 90s su una popolazione gia' misurata a
+  zero (studio curva: 0 vincitori su 194).
+- `CREATOR_RISK_CHECK_ENABLED=false`: con `FILTERS_MONITOR_ONLY` non blocca comunque, e l'unica cosa
+  che produceva — l'attribuzione — si ricostruisce a posteriori su solscan per i soli token
+  effettivamente comprati, che ora sono pochi e tutti interessanti. Vale ~6s e ~60 chiamate RPC per
+  ciclo.
+
+**Il vincolo si e' spostato, e va detto chiaro.** Con un worker solo e un hold da 30 minuti si
+tengono **2 posizioni all'ora**, mentre le graduate che troveremo saranno molte di piu'. Da adesso il
+limite non e' ne' l'RPC (0 errori 429 in 4 ore) ne' la valutazione: sono gli hold in serie. Il passo
+successivo e' tenerne piu' d'una insieme — alzare `MAX_CONCURRENT_OPERATIONS`, o spostare il
+monitoraggio dell'hold fuori dal worker. Non ancora fatto.
+
+**Da rifare con questi dati:** il confronto fra i 5 razzi e i 7 morti, sia dopo la graduazione sia
+*prima* (sulla curva, on-chain), per cercare un discriminante d'ingresso. `SOL1S` da solo non lo e':
+i tre razzi da $50M+ stanno a ~3.000 SOL, ma `tpW7rsb7` con 7.988 SOL e' morto a $383.

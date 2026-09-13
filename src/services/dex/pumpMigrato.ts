@@ -81,3 +81,16 @@ export function valutaSol1s(sol1s: number): { ok: boolean; soglia: number; motiv
     if (sol1s >= soglia) return { ok: true, soglia, motivo: "sopra soglia" };
     return { ok: false, soglia, motivo: `${sol1s.toFixed(2)} SOL nel primo secondo < ${soglia} SOL` };
 }
+
+/**
+ * Questo token va comprato, o e' della popolazione che abbiamo gia' misurato a zero?
+ *
+ * Con `SOLO_POOL_GRADUATE` il bot valuta tutto ma compra solo le pool graduate. Non e'
+ * un filtro di qualita': e' il riconoscimento che la curva non graduata e' un'altra
+ * partita, gia' misurata due volte con lo stesso esito (0 vincitori su 194 nello studio,
+ * 24 vincenti su 122 per -0,208 SOL in sessione) e che costa il 60% del tempo dell'unico
+ * worker. Vedi docs/controls.md 50.
+ */
+export function daComprare(passaggioGraduata: boolean): boolean {
+    return !CONFIG.SOLO_POOL_GRADUATE || passaggioGraduata;
+}

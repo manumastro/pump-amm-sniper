@@ -4,7 +4,7 @@ import path from "path";
 import bs58 from "bs58";
 import { OnlinePumpAmmSdk, PumpAmmSdk, buyQuoteInput, sellBaseInput } from "@pump-fun/pump-swap-sdk";
 import { getActiveAdapter, getAdapterForProgram, initAdapters, listAdapters, listMonitoredProgramIds } from "./services/dex";
-import { curvaGiaGraduata, passaAllaPoolGraduata, valutaSol1s } from "./services/dex/pumpMigrato";
+import { curvaGiaGraduata, daComprare, passaAllaPoolGraduata, valutaSol1s } from "./services/dex/pumpMigrato";
 
 // L'adapter del DEX su cui gira questo processo, risolto da WORKER_TASK_PROGRAM_ID.
 // Non e' una costante: una curva pump gia' graduata sposta il worker su PumpSwap a meta'
@@ -710,6 +710,12 @@ async function handleNewPool(connection: Connection, signature: string) {
         }
 
         let creatorRisk: CreatorRiskResult = { ok: true, reason: "creator unresolved (fail-open)" };
+        if (!daComprare(passaggioGraduata)) {
+            stageLog(ctx, "SOLOGRAD", "curva non graduata: non si compra (controls.md 50)");
+            finalStatus = "SKIP: non graduata";
+            return;
+        }
+
         stageLog(ctx, "STEP 5/7", "creator risk");
         if (creatorAddress) {
             creatorRisk = await creatorRiskService.runCheckWithRetry(connection, creatorAddress, ctx, {
