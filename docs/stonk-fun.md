@@ -548,6 +548,43 @@ esprimere come **quota del bersaglio**, l'unica unita' confrontabile fra 21 quot
 L'unica cosa che l'evento non contiene e' il portafoglio, che sta nella transazione. Per questo il
 nome si chiede solo sopra `STONK_COMPRA_MINIMA`: una chiamata per acquisto grosso, zero per gli altri.
 
+## Gli otto precoci: comprare presto e' necessario, non basta
+
+Dal flusso dei compratori (2026-09-14, 22 minuti, 1.436 acquisti sopra lo 0,5% del bersaglio, 721
+portafogli, 72 curve) sono usciti **95 portafogli con almeno 4 acquisti**. Di questi solo **7**
+comprano sempre sotto il 3% di raccolta; **43** comprano sempre sopra il 30%. I precoci hanno tutti
+la stessa firma: **una compra per curva, mai ripetuta**.
+
+Misurati poi uno per uno sulla catena — giri completi ricavati dall'`amount_in`/`amount_out`
+dell'evento di LaunchLab, non dai saldi del portafoglio:
+
+| portafoglio | giri | in guadagno | mediano | peggiore | durata | entra a |
+|---|---|---|---|---|---|---|
+| `EXWn4ZX2…` | 16 | **15/16** | **+13,8%** | -0,3% | 3s | **0,00%** |
+| `FiFawHqx…` | 19 | **18/19** | **+8,7%** | -1,6% | 3s | **0,45%** |
+| `Hup7Zc57…` | 31 | 18/31 | +1,6% | -10,3% | 1s | 1,01% |
+| `bwamJzzt…` | 5 | 2/5 | -3,0% | -3,9% | 6s | 0,00% |
+| `BaxXrniy…` | 6 | 0/6 | -4,2% | -4,3% | 12s | 0,00% |
+| `4U6pdNLK…` | 36 | 4/36 | -8,3% | -22,7% | 166s | 3,06% |
+| `Kero7NLo…` | 36 | 1/36 | -8,4% | -19,5% | 11s | 2,51% |
+| `3TeYxuMH…` | 23 | 1/23 | -9,6% | -34,8% | 7s | 1,00% |
+
+**Cinque su otto perdono.** Copiare il profilo — presto, una volta sola, dentro e fuori — non basta:
+e' un mestiere affollato in cui la maggioranza ci rimette. I due che vincono stanno tutti e due
+**sotto il mezzo punto** di raccolta e **escono in tre secondi**. Chi entra dal 2,5% in su perde
+sempre, in tutti e tre i casi misurati.
+
+### Cosa significa per noi
+
+Il nostro paper trade entra a **2,05%** di mediana, che e' esattamente la fascia dove tutti i
+portafogli misurati perdono. Il risultato negativo della simulazione non e' quindi un difetto della
+simulazione: sta misurando correttamente una strategia che perde anche per chi la fa coi soldi veri.
+
+E la fascia che paga — sotto lo 0,5% — richiede di essere nel blocco della creazione o subito dopo.
+Noi le nascite le prendiamo dai log e quando riusciamo a leggerle sono **gia' oltre l'1,5% in 17 casi
+su 17**. Con questa infrastruttura quella fascia non e' raggiungibile, e prima di cercare un'altra
+uscita va risolto questo.
+
 ## Cosa manca
 
 1. **Quanto si perde quando non ce la fa, tenendo.** Misurato solo per lo stile mordi-e-fuggi
