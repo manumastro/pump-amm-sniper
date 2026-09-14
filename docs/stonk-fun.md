@@ -724,6 +724,74 @@ da raccogliere.
 
 Script: `scratchpad/studio.js` (scarico) e `scratchpad/conti.js` (conto), usa-e-getta.
 
+## Guardare la curva invece dei portafogli: cosa si puo' prevedere (2026-09-14)
+
+Domanda diversa dalle precedenti: invece di chiedersi chi guadagna, si chiede **cosa distingue una
+curva che correra' da una che morira', nel momento in cui possiamo ancora agire**. Se un segnale
+esiste al 2-5% di raccolta, la latenza smette di essere il problema: due secondi di ritardo non
+contano se la decisione e' "questa curva ha la forma giusta".
+
+Il prezzo non va chiesto: sulla curva vale `(1 + 2,8333*f)^2`, quindi da `f` si simula l'acquisto e
+la vendita esatti senza una sola chiamata in piu'.
+
+### Il campione: 501 curve estratte a caso
+
+Il primo studio (127 curve) partiva dalle pool **piu' movimentate**, ed era distorto. Qui l'universo
+sono le 2.366 curve che i nostri log hanno visto in 7,6 ore, **mescolate** prima di scaricarle: ogni
+prefisso del lavoro e' quindi un campione casuale. Su 501 curve: 94.016 scambi, 15.336 portafogli,
+13.943 giri chiusi, **curva mediana arrivata al 9,8% del bersaglio, zero migrate, 249 mai oltre il 10%**.
+
+La differenza col campione distorto e' visibile: li' la mediana arrivava al 12,7%.
+
+### Due segnali, tutti e due veri
+
+- **La velocita' e' un segnale NEGATIVO**: le curve **lente** ad arrivare alla soglia rendono di
+  piu' di quelle veloci, da +4,4 a +12,3 punti di medio fra quartile lento e veloce, con p fra
+  0,000 e 0,007 su prova di permutazione in **tutte e sei** le combinazioni di soglia e uscita.
+  Quelle che schizzano sono gia' esaurite quando ci arriviamo.
+- **La fuga** — quanto e' salito il prezzo fra il momento in cui decidiamo e quello in cui l'ordine
+  entra — e' un secondo segnale, indipendente: +2,5 / +7,3 punti, significativo in 4 celle su 6.
+
+Non sono lo stesso effetto misurato due volte. Nella tabella a due entrate la lentezza aiuta dentro
+**entrambe** le colonne della fuga.
+
+**Attenzione al campione.** A 220 curve la velocita' sembrava sgonfiarsi (p = 0,26) e la fuga tenere;
+a 501 tengono entrambe. I quartili passavano da 40-54 casi a 62-109. Sotto quelle dimensioni le
+prove di permutazione su questi dati non decidono niente.
+
+### Ma non bastano: nessuna regola attraversa lo zero
+
+    337 curve al 5% · uscita +40%/-15%/300s · costo 5,4%
+                         fuga PICCOLA                fuga GRANDE
+                     n  in guad. mediano medio    n  in guad. mediano medio
+    curva LENTA     60    20/60   -9,7%  -2,3%   61    17/61  -20,4%  -4,6%
+    curva VELOCE   109   15/109  -20,4%  -9,4%  107    23/107 -20,4%  -8,6%
+
+Il filtro migliora il medio da **-7,0% a -2,3%**, e con la tassa al 3% a -6,1%. **Seleziona le curve
+meno peggio, non quelle buone.** Sulla griglia completa — quartile piu' lento incrociato col quartile
+di fuga piu' piccola, 5 soglie x 7 uscite — dove il campione e' abbastanza grande da contare (111 e
+116 curve, soglie 1% e 2%) **tutte e sette le uscite perdono, sempre, fra il 5 e il 7%**. L'unica
+cella positiva (+20,8%) sta su **15 curve dopo 35 combinazioni provate**: e' quello che produce il
+caso, non un risultato.
+
+**Conclusione: guardando la curva, fuori dal blocco di nascita non c'e' niente da prendere.**
+
+### La contraddizione che resta aperta
+
+Dal lato curve non si guadagna entrando tardi. Dal lato portafogli invece **si**: sulle loro storie
+complete, quattro operatori che entrano all'8-16% di raccolta chiudono in forte guadagno su centinaia
+di giri (`9su3UPQW` +24,8 bersagli su 570 giri, `mwamTohZ` +14,4 su 212, `DBALLQAe` +12,1 su 163,
+`C5EMTGGE` +11,2 su 203), con **mediano negativo** e medio positivo: perdono poco e spesso, vincono
+tanto e di rado, e stanno dentro 3-22 secondi.
+
+Le due cose stanno insieme solo se quegli operatori usano un'informazione che le **caratteristiche
+della curva non contengono**. Il candidato ovvio: non guardano la forma della curva, guardano **chi
+ha appena comprato**. E' la prossima cosa da misurare, e i dati ci sono gia' — il censimento contiene
+ogni scambio con il nome di chi l'ha fatto.
+
+Script: `scratchpad/censimento.js` (scarico), `curve.js` / `curve2.js` / `curve3.js` / `insieme.js` /
+`estremo.js` (segnali), `storici.js` (storie dei portafogli). Usa-e-getta.
+
 ## Cosa manca
 
 1. **Quanto si perde quando non ce la fa, tenendo.** Misurato solo per lo stile mordi-e-fuggi
