@@ -177,8 +177,8 @@ di cui stonk.fun           285 su 290
 ```
 
 Su CASHCAT, dal lancio alla migrazione sono passati **13 secondi**; 7.687 transazioni sul mint in 8
-minuti, di cui **4.154 fallite (54%)**. Ma 13 secondi e' il caso veloce: il tempo non e' garantito,
-ed e' irrilevante per il rendimento.
+minuti, di cui **4.154 fallite (54%)**. Ma quella corsa riguarda chi vuole entrare al secondo zero:
+entrando a curva gia' partita (vedi sotto) non c'e' nessuna gara da vincere.
 
 **Il dev buy non si puo' anticipare**: il creatore compra come prima operazione della pool, dentro
 lo stesso bundle Jito atomico, fino al 75% della supply.
@@ -186,15 +186,87 @@ lo stesso bundle Jito atomico, fino al 75% della supply.
 **Taglia.** L'impatto di un acquisto e' `((vq+q+d)/(vq+q))^2`. All'inizio della curva, mettere il 2%
 del bersaglio sposta il prezzo di circa il 6%. Si entra piccoli.
 
+## La popolazione intera
+
+`getProgramAccounts` sul programma LaunchLab filtrato per i due `platform_config` (offset 173).
+**46.030 pool**, cioe' tutto cio' che stonk.fun ha lanciato da quando e' su LaunchLab (~9 giorni,
+stimati dalla frequenza di migrazione: 1.146 / 5,3 all'ora).
+
+```
+pool totali      46.030      reward 36.390   standard 9.640
+migrate           1.146      2,49%
+lanci            213 all ora
+```
+
+### Quasi nessuna parte
+
+Mediana della raccolta raggiunta: **0,12%**. Il 90esimo percentile sta allo 0,62%. La stragrande
+maggioranza dei lanci non si muove di un centimetro.
+
+| soglia di raccolta | quante ci arrivano | su tutti i lanci | x dal fondo |
+|---|---|---|---|
+| 0,5% | 5.172 | 11,24% | 1,03x |
+| 1% | 3.644 | 7,92% | 1,06x |
+| 2% | 2.543 | 5,52% | 1,12x |
+| 5% | 1.621 | 3,52% | 1,30x |
+| 10% | 1.324 | 2,88% | 1,65x |
+| 20% | 1.210 | 2,63% | 2,45x |
+| 50% | 1.152 | 2,50% | 5,84x |
+| 100% | 1.146 | 2,49% | 14,69x |
+
+### Ma chi parte, arriva
+
+La distribuzione e' a due gobbe: o muore subito, o va fino in fondo. La probabilita' **condizionata**
+di migrare, sapendo fin dove e' gia' arrivata:
+
+| e' arrivata a | n | probabilita' di migrare |
+|---|---|---|
+| 0,5% | 5.172 | 22,2% |
+| 1% | 3.644 | 31,4% |
+| 2% | 2.543 | 45,1% |
+| 5% | 1.621 | **70,7%** |
+| 10% | 1.324 | **86,6%** |
+| 20% | 1.210 | 94,7% |
+| 30% | 1.170 | 97,9% |
+| 50% | 1.152 | 99,5% |
+
+**Non serve indovinare in anticipo, e non serve correre.** Si aspetta che la curva superi una soglia
+e la si compra li': al 5% di raccolta restano 11,27x davanti e sette su dieci ci arrivano.
+
+| entri a | P(migra) | x davanti | netto se va | occasioni all'ora |
+|---|---|---|---|---|
+| 2% | 45,1% | 13,16x | +1157% | 11,8 |
+| 5% | 70,7% | 11,27x | +977% | 7,5 |
+| 10% | 86,6% | 8,92x | +752% | 6,1 |
+| 20% | 94,7% | 5,99x | +472% | 5,6 |
+
+Il valore atteso e' positivo e largo in tutta la fascia, ma **dipende da quanto si perde sui
+fallimenti, che non e' misurato**: ipotizzando -30% su chi non ce la fa, l'attesa va da +505% (entrando
+al 2%) a +682% (al 5%). E' l'ipotesi piu' fragile di tutto il documento.
+
+### Il quote quasi mai e' SOL
+
+Su 25 pool migrate campionate: **21 quote diversi**, e nessuno dei 25 e' SOL. Compaiono xStocks
+(`Xs3oZwbH…`, `Xsc9qvGR…`), pre-IPO (`Prewe…`), cbBTC, Monero wrappato, JitoSOL, ORE, WEN, LINK,
+STONK stesso, token pump. I bersagli vanno da 11,04 a 31.194.712 unita' di quote.
+
+Due conseguenze operative: per comprare serve **prima procurarsi il quote**, e per valutare in
+dollari serve il prezzo di 21 asset diversi. La cifra di $40.000 di market cap alla graduation e'
+dichiarata dalla piattaforma ed e' verificata sull'unico caso quotato in USDC che ho misurato
+(CASHCAT, $41.510); il **rapporto** 14,69x invece e' misurato e vale per tutti.
+
 ## Cosa manca
 
-1. **Il denominatore**: quante curve non arrivano mai in fondo, e fin dove arrivano. Serve
-   `getProgramAccounts` sul programma LaunchLab filtrato per `platform_config` (offset 173).
-   publicnode lo rifiuta ("Indexed requests require a personal token"), Alchemy supera i compute
-   unit, dRPC free non serve Solana, Chainstack ha la quota mensile esaurita.
-2. **Il percorso nel tempo**: quanto ci mettono le curve ad avanzare, e quante tornano indietro.
-3. **Come si legge un lancio in diretta**: `initialize_with_token_2022` / `initialize_v2` su
-   LaunchLab con un `platform_config` di stonk.fun fra i conti.
+1. **Quanto si perde quando non ce la fa.** La tabella del valore atteso poggia su un -30%
+   ipotizzato. Serve seguire nel tempo un gruppo di curve che superano il 5% e poi si fermano, per
+   vedere di quanto tornano indietro e se si riesce a uscire.
+2. **Il percorso nel tempo**: quanto ci mettono ad andare dal 5% al 100%, e quanto capitale resta
+   fermo. La misura di popolazione e' una fotografia, non dice niente sulla durata.
+3. **Come si procura il quote**: 21 asset diversi, spesso illiquidi. Il costo di entrata e uscita
+   dal quote non e' nei 4,5% calcolati qui.
+4. **Come si legge un lancio in diretta**: `initialize_with_token_2022` / `initialize_v2` su
+   LaunchLab con un `platform_config` di stonk.fun fra i conti; poi si segue `real_quote/target`
+   sul `pool_state` con un semplice polling, senza bisogno di correre.
 
 ## Fonti
 
