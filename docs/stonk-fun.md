@@ -85,8 +85,17 @@ decimali                       6   uguale
 bersaglio / virtual_quote = 2,8333  uguale su 71 su 71
 ```
 
-I **decimali del quote** invece variano (6, 8, 9, 12): vanno letti dal `pool_state` (offset 19),
-altrimenti il prezzo esce sbagliato di ordini di grandezza.
+I **decimali del quote** invece variano molto. Su tutte le 46.144 pool esistenti:
+
+```
+4 decimali:      1      8 decimali: 19.083     ← il caso piu' comune
+5 decimali:    214      9 decimali: 12.152
+6 decimali: 13.721     11 decimali:    537
+                       12 decimali:    436
+```
+
+Vanno letti dal `pool_state` (offset 19). Darli per scontati a 6 sbaglia il prezzo di ordini di
+grandezza sul 70% delle pool.
 
 `virtual_quote` varia di sei ordini di grandezza (1,90 · 266 · 2.222 · 3.031 · 21.072 ·
 5.660.281): e' solo la scala del quote. Il **rapporto** e' fisso, quindi la forma della curva e'
@@ -311,6 +320,34 @@ perde resta non misurato.
 
 Un costo che questi numeri non contengono: i rendimenti sono in unita' di quote, e riportare il
 quote in SOL passa per un altro swap su Whirlpool o CLMM.
+
+### La matematica, verificata su tutte le pool
+
+`src/services/stonk/curva.ts` implementa il prodotto costante sulle riserve virtuali:
+
+```
+base_eff  = virtual_base  - real_base
+quote_eff = virtual_quote + real_quote
+k         = virtual_base * virtual_quote        (costante)
+
+prezzo          = quote_eff / base_eff
+token comprando = base_eff  - k / (quote_eff + quote_in)
+quote vendendo  = quote_eff - k / (base_eff  + token_in)
+```
+
+`scripts/stonk-verifica-curva.js` lo controlla contro **tutte le 46.144 pool on-chain**, tre
+invarianti:
+
+```
+prodotto costante sulle riserve virtuali   46.144 / 46.144
+bersaglio / virtual_quote = 2,8333         46.144 / 46.144
+bersaglio comprato = totale da vendere     46.144 / 46.144
+```
+
+Il terzo e' il piu' stringente: comprando dal fondo esattamente il bersaglio si devono consumare
+esattamente i 793.100.000 token destinati alla curva. Torna su tutte. La tolleranza e' 1e-4 perche'
+la curva on-chain lavora in interi e sui quote a 6 e 8 decimali l'arrotondamento lascia qualche
+milionesimo di scarto.
 
 ## L'osservatorio live
 
