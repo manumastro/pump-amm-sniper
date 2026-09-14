@@ -2746,3 +2746,31 @@ monitoraggio dell'hold fuori dal worker. Non ancora fatto.
 **Da rifare con questi dati:** il confronto fra i 5 razzi e i 7 morti, sia dopo la graduazione sia
 *prima* (sulla curva, on-chain), per cercare un discriminante d'ingresso. `SOL1S` da solo non lo e':
 i tre razzi da $50M+ stanno a ~3.000 SOL, ma `tpW7rsb7` con 7.988 SOL e' morto a $383.
+
+## 51. I controlli del paper trade stonk.fun (2026-09-14)
+
+Nessuno di questi e' ancora giustificato da una misura nostra: sono il punto di partenza per
+misurare, non una conclusione. L'unico ancorato a un'osservazione e' `STONK_ENTRATA`, preso dalla
+mediana d'ingresso di `FiFawHqx` (1,58%), l'operatore studiato in `docs/stonk-fun.md`.
+
+| controllo | default | perche' |
+|---|---|---|
+| `STONK_ENTRATA` | 0,015 | dove entra chi questo mestiere lo fa gia'; da rimisurare sui nostri dati |
+| `STONK_USCITE` | 2,3,5,8,12,20,50,100% | non una soglia ma **tutte insieme**: su ogni ingresso si apre una posizione virtuale per ciascuna, cosi' una sessione misura tutte le uscite invece di una |
+| `STONK_RICADUTA` | 0,01 | si esce se la raccolta torna un punto sotto l'ingresso. E' la misura diretta dello svuotamento della curva, l'unica perdita vera osservata finora |
+| `STONK_SCADENZA_MS` | 1.800.000 | mezz'ora: oltre, la posizione dice piu' sul capitale fermo che sulla curva |
+| `STONK_TAGLIA_FRAZIONE` | 0,002 | lo 0,2% del bersaglio, **non** una cifra fissa: i quote sono 21 asset con scale da 11 a 31 milioni di unita', e solo rapportandosi al bersaglio l'impatto sul prezzo resta lo stesso su tutti (~1,1% a curva vuota) |
+| `STONK_FEE_SCAMBIO` | 0,0125 | l'1,25% dichiarato da Raydium+stonk, per lato |
+| `STONK_MAX_APERTE` | 400 | solo un tetto di memoria |
+| `STONK_CREAZIONI_AL_SEC` | 4 | ~150 nascite all'ora, ognuna con qualche ritentativo |
+
+La tassa sui trasferimenti **non** e' un controllo: si legge dal mint a ogni ingresso, perche' vale
+1% o 3% a scelta di chi lancia e sul giro completo la differenza e' 4 punti.
+
+**Tre trappole di commitment, tutte trovate sul campo.** I log arrivano a `processed`: la
+transazione di creazione non e' leggibile subito (`getTransaction` va chiesto a `confirmed` e
+ritentato, la prima volta torna `null` circa una volta su due), e **nemmeno l'account appena creato**
+(`getAccountInfo` va chiesto a `confirmed`, altrimenti torna `null` e la nascita sparisce in
+silenzio). La terza: non si puo' scartare una pool perche' "gia' conosciuta", perche' fra la
+creazione e il momento in cui riusciamo a leggerla passano uno o due secondi e in quel tempo ha gia'
+scambiato ed e' arrivata da `programSubscribe`.
