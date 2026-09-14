@@ -61,11 +61,12 @@ const REGOLE = (process.env.STONK_USCITE || '0.10,0.15,0.25,0.40,0.60,1.00,3.00,
     scadenzaMs: SCADENZA_MS,
   }));
 
-// A tempo: si esce dopo N secondi comunque sia andata, senza aspettare nessun obiettivo.
-// FiFawHqx sta dentro 4 secondi di mediana e il suo caso peggiore e' -4,7%: a quella velocita'
-// lo stop non serve, si esce prima che la curva possa svuotarsi. Il nostro -10% di stop invece
-// ci fa uscire a -15/-21% per lo scivolamento, ed e' li' che se ne va il conto.
-for (const secondi of (process.env.STONK_USCITE_TEMPO || '5,10,30').split(',').map(Number).filter((x) => x > 0)) {
+// A tempo secco: spente, e non per opinione. Su 58 posizioni ciascuna hanno fatto -4,4%, -5,4%
+// e -5,6%, il campione piu' grande che avessimo. Appaiando le stesse pool si vede perche': uscire
+// sempre a 5 secondi salva 10 punti quando la pool sta morendo ma ne butta 16 quando sta correndo,
+// perche' vende anche le vincenti. Resta la versione condizionata (le `b`), che taglia solo quelle
+// ferme. La chiave resta, con default vuoto: basta valorizzarla nel .env per riaccenderle.
+for (const secondi of (process.env.STONK_USCITE_TEMPO ?? '').split(',').map(Number).filter((x) => x > 0)) {
   REGOLE.push({ nome: `t${secondi}`, guadagno: Infinity, stop: RICADUTA, scadenzaMs: secondi * 1000 });
 }
 
