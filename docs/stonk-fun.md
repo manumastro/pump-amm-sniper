@@ -805,6 +805,26 @@ perde ~9% (paga il pedaggio), perche' nessun filtro sulla curva attraversa lo ze
 correttamente le curve migliori (migliora il lordo ma non abbastanza), e perche' il blocco di nascita
 e' l'unica fascia che paga (li' il movimento lordo e' molto piu' grande del pedaggio).
 
+### "Tenere poco fa vincere" e' una conseguenza, non una regola
+
+Trappola in cui si cade guardando i portafogli veri. Nei dati osservati la durata piu' corta e' sempre
+la migliore; a regola fissa — dove la durata si decide **prima** — e' la peggiore:
+
+    durata OSSERVATA (19.360 giri veri)     durata DECISA PRIMA (stessa uscita per tutti)
+    0-5s       -1,7% medio                  esce a   3s    -4,5%
+    5-15s      -2,5%                        esce a  10s    -3,5%
+    15-60s     -3,1%                        esce a  30s    -3,0%
+    60-300s    -6,8%                        esce a  60s    -2,0%
+    oltre 300s -14,0%                       esce a 300s    -8,5%
+
+Chi esce in cinque secondi lo fa **perche'** e' successo qualcosa di buono: la durata e' in parte un
+effetto del risultato. Imporre cinque secondi a tutti da' il risultato peggiore della tabella, e
+l'ottimo a regola fissa sta a **30-60 secondi**. Sulle durate lunghe le due letture concordano: oltre
+cinque minuti si perde comunque.
+
+Vale per tutte le tabelle "tenuta" di questo documento, comprese quelle dei portafogli seguiti: la
+colonna dice quanto sono stati dentro, non quanto conviene starci.
+
 ### Copiare chi guadagna non funziona, e non e' per il ritardo
 
 Provato a parte, perche' era l'ipotesi piu' promettente. Si sceglie sulla prima meta' del tempo e si
