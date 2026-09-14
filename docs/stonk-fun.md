@@ -458,12 +458,12 @@ sessione, invece di una per volta. Le regole sono tre famiglie, e i nomi nel rep
 | `p10 … p1000` | si esce quando il **prezzo** e' salito del 10, 15, 25, 40, 60, 100, 300, 1000% dall'ingresso |
 | `m25 m60` | si vende **meta'** all'obiettivo e il resto corre fino allo stop o alla scadenza |
 | `r5 … r100` | si esce al **completamento**: quando la curva arriva al 5, 10, 20, 50, 100% del suo bersaglio (r100 = si tiene fino alla migrazione) |
-| `b5 b10 b30` | **pareggio ritardato**: dopo 5, 10, 30 secondi si esce appena non si e' in guadagno |
-
 Le uscite a tempo secco (`t5 t10 t30`, "esci dopo N secondi comunque sia andata") sono state provate
 e **tolte**: -4,4%, -5,4% e -5,6% su 58 posizioni ciascuna. Sulle stesse pool uscire sempre a 5
 secondi salva 10 punti quando la pool muore e ne butta 16 quando corre. Resta la versione
-condizionata, che taglia solo quelle ferme.
+condizionata (`b5 b10 b30`, "dopo N secondi esci appena non sei in guadagno"), che pero' e' **anche
+lei spenta**: com'e' scritta non ha nessuna uscita in guadagno, chi a N secondi e' sopra resta dentro
+finche' non ha restituito tutto. Prima di riaccenderla va deciso cosa fa uscire una vincente.
 
 Su tutte vale lo stesso stop: -10% di prezzo dall'ingresso. E si compra solo fra l'1,5% e il **2,5%**
 di raccolta: sopra non si entra affatto.

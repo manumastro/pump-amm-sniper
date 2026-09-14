@@ -81,11 +81,12 @@ for (const quota of (process.env.STONK_USCITE_RACCOLTA || '0.05,0.10,0.20,0.50,1
   });
 }
 
-// A pareggio ritardato: dopo N secondi si esce appena non si e' in guadagno. Le vincite arrivano
-// in ~6 secondi e le perdite marciscono per 24-89: chi a dieci secondi non e' ancora sopra quasi
-// sempre sta solo scendendo piano. Uscire SEMPRE a N secondi invece non paga (t5 fa -5,4%: sulle
-// stesse pool salva 10 punti sulle perdenti ma ne butta 16 sulle vincenti).
-for (const secondi of (process.env.STONK_USCITE_PAREGGIO || '5,10,30').split(',').map(Number).filter((x) => x > 0)) {
+// A pareggio ritardato: spente. L'idea era giusta (le vincite arrivano in ~6 secondi, le perdite
+// marciscono per 24-89), ma la regola cosi' com'e' non ha nessuna uscita in guadagno: se a N secondi
+// sei sopra, resti dentro finche' non scendi del 10% SOTTO l'ingresso, cioe' finche' non hai
+// restituito tutto. Per rimetterle serve prima decidere cosa fa uscire una vincente: un obiettivo
+// abbinato o uno stop mobile. La chiave resta, con default vuoto.
+for (const secondi of (process.env.STONK_USCITE_PAREGGIO ?? '').split(',').map(Number).filter((x) => x > 0)) {
   REGOLE.push({
     nome: `b${secondi}`,
     guadagno: Infinity, stop: RICADUTA, scadenzaMs: SCADENZA_MS, verificaMs: secondi * 1000,
