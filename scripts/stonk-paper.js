@@ -46,6 +46,13 @@ const MAX_INGRESSO = Number(process.env.STONK_MAX_INGRESSO || '0.025');
 const INDICE_POOL_STATE = 5;
 const CREAZIONI_AL_SEC = Number(process.env.STONK_CREAZIONI_AL_SEC || '4');
 const SCADENZE_AL_SEC = Number(process.env.STONK_SCADENZE_AL_SEC || '10');
+// Il segnale: un acquisto che sposta la curva di almeno tanti punti di raccolta in un solo
+// aggiornamento. FiFawHqx, l'unico operatore in guadagno che abbiamo studiato, ne muove 1,75 a
+// botta. Comprare su una soglia invece non seleziona niente: la meta' delle posizioni chiude dopo
+// mezz'ora col prezzo fermo esattamente dov'era, pagando 5,4-9,2% di costi per niente.
+const SALTO_MINIMO = Number(process.env.STONK_SALTO_MINIMO || '0.01');
+// il salto puo' far atterrare la curva ben oltre il 2,5% della soglia, quindi ha un tetto suo
+const SALTO_MAX_INGRESSO = Number(process.env.STONK_SALTO_MAX_INGRESSO || '0.10');
 
 // Le uscite in prova: stessa entrata, tutte misurate insieme. Sono guadagni di PREZZO
 // rispetto all'ingresso, non livelli di raccolta: cosi' la stessa regola vuol dire la stessa
@@ -111,7 +118,7 @@ const stream = fs.createWriteStream(OUT, { flags: 'a' });
 const seguite = new Map();   // pool -> { sottoSoglia, aperte: Map<regola, Posizione> }
 const tasse = new Map();     // mint -> aliquota per lato
 const contatori = {
-  notifiche: 0, aperte: 0, chiuse: 0, parziali: 0, scadenzeRisolte: 0, ingressi: 0, ingressiSopra: 0,
+  notifiche: 0, aperte: 0, chiuse: 0, parziali: 0, scadenzeRisolte: 0, ingressi: 0, ingressiSopra: 0, ingressiSalto: 0,
   poolSotto: 0, poolSopra: 0, troppoAlte: 0,
   nate: 0, nateSopra: 0, log: 0, logCreazioni: 0, sottoscrizioni: 0, scartate: {},
 };
@@ -193,7 +200,7 @@ async function registraCreazione(voce) {
   const f = curva.raccolta(c);
   contatori.nate += 1;
   let s = seguite.get(pool);
-  if (!s) { s = { sottoSoglia: false, aperte: new Map() }; seguite.set(pool, s); }
+  if (!s) { s = { sottoSoglia: false, aperte: new Map(), entrate: new Set() }; seguite.set(pool, s); }
   s.nascita = (tx.blockTime || 0) * 1000;
   // se quando riusciamo a leggerla e' gia' oltre la soglia l'attraversamento e' perso: puo'
   // essere nata sopra (dev buy grosso) o averla superata in quei due secondi. Contate insieme.
@@ -249,8 +256,8 @@ async function giroScadenze() {
   const dovute = [];
   for (const [pool, s] of seguite) {
     if (!s.aperte.size || scadenzeInCorso.has(pool)) continue;
-    for (const [nome, p] of s.aperte) {
-      const regola = REGOLE.find((r) => r.nome === nome);
+    for (const [chiave, p] of s.aperte) {
+      const regola = REGOLE.find((r) => r.nome === chiave.split('|')[1]);
       if (!regola) continue;
       if (ora - p.apertaIl >= regola.scadenzaMs) { dovute.push(pool); break; }
       // le regole a pareggio ritardato vanno guardate anche loro all'ora giusta, altrimenti la
@@ -299,10 +306,11 @@ function chiudiPosizione(pool, nome, p, c, motivo, ora) {
 async function aggiorna(pool, c) {
   const ora = Date.now();
   let s = seguite.get(pool);
-  if (!s) { s = { sottoSoglia: false, aperte: new Map() }; seguite.set(pool, s); }
+  if (!s) { s = { sottoSoglia: false, aperte: new Map(), entrate: new Set() }; seguite.set(pool, s); }
   const f = curva.raccolta(c);
 
-  for (const [nome, p] of s.aperte) {
+  for (const [chiave, p] of s.aperte) {
+    const nome = chiave.split('|')[1];
     paper.segui(p, c, ora);
     const regola = REGOLE.find((r) => r.nome === nome);
     if (paper.daVendereParziale(p, c, regola)) {
@@ -310,37 +318,56 @@ async function aggiorna(pool, c) {
       contatori.parziali += 1;
     }
     const motivo = paper.motivoChiusura(p, c, regola, ora);
-    if (motivo) { chiudiPosizione(pool, nome, p, c, motivo, ora); s.aperte.delete(nome); }
+    if (motivo) { chiudiPosizione(pool, nome, p, c, motivo, ora); s.aperte.delete(chiave); }
   }
 
   registraVista(pool, s, c, f, ora, 'scambio');
 
-  if (c.stato === 2) return;
-  if (f < ENTRATA) { s.sottoSoglia = true; return; }
-  if (s.giaEntrata || s.aperte.size) return;
-  // due ingressi diversi, misurati insieme: l'attraversamento vero (l'avevamo vista sotto) e
-  // la pool incontrata quando era gia' oltre. Sopra MAX_INGRESSO non si entra comunque.
-  let modo = null;
-  if (s.sottoSoglia) modo = 'attraversamento';
-  else if (ANCHE_SOPRA && f <= MAX_INGRESSO) modo = 'sopra';
-  else { if (!s.troppoAlta) { s.troppoAlta = true; contatori.troppoAlte += 1; } return; }
-  if (contatori.aperte - contatori.chiuse >= MAX_APERTE) return;
+  if (c.stato === 2) { s.ultimaF = f; return; }
 
-  s.giaEntrata = true;
+  // due canali d'ingresso indipendenti sulla stessa pool, per confrontarli sugli stessi token:
+  // la SOGLIA (compra quando la raccolta sta fra ENTRATA e MAX_INGRESSO) e il SALTO (compra
+  // subito dopo che qualcuno ha spostato la curva di almeno SALTO_MINIMO in un colpo solo).
+  const precedente = s.ultimaF;
+  s.ultimaF = f;
+
+  if (precedente !== undefined && f - precedente >= SALTO_MINIMO && f <= SALTO_MAX_INGRESSO
+      && !s.entrate.has('salto')) {
+    await entra(pool, s, c, f, 'salto', ora, Number((f - precedente).toFixed(6)));
+  }
+
+  if (f >= ENTRATA && f <= MAX_INGRESSO && !s.entrate.has('soglia')) {
+    let modo = null;
+    if (s.sottoSoglia) modo = 'attraversamento';
+    else if (ANCHE_SOPRA) modo = 'sopra';
+    if (modo) await entra(pool, s, c, f, modo, ora, null);
+  } else if (f > MAX_INGRESSO && !s.sottoSoglia && !s.troppoAlta) {
+    s.troppoAlta = true; contatori.troppoAlte += 1;
+  }
+  if (f < ENTRATA) s.sottoSoglia = true;
+}
+
+/** apre le 15 posizioni virtuali di un canale d'ingresso */
+async function entra(pool, s, c, f, modo, ora, salto) {
+  if (contatori.aperte - contatori.chiuse >= MAX_APERTE) return;
+  s.entrate.add(modo === 'salto' ? 'salto' : 'soglia');
   contatori.ingressi += 1;
   if (modo === 'sopra') contatori.ingressiSopra += 1;
+  if (modo === 'salto') contatori.ingressiSalto += 1;
   const tassa = await leggiTassa(c.baseMint, c.piattaforma);
   const costi = { scambioPerLato: SCAMBIO_PER_LATO, trasferimentoPerLato: tassa };
+  let quante = 0;
   for (const regola of REGOLE) {
     const p = paper.apri(pool, c, regola, TAGLIA, costi, ora);
     p.modo = modo;
-    s.aperte.set(regola.nome, p);
+    s.aperte.set(`${modo}|${regola.nome}`, p);
     contatori.aperte += 1;
+    quante += 1;
   }
   scrivi({
-    tipo: 'ingresso', t: ora, pool, mint: c.baseMint, quote: c.quoteMint, modo,
+    tipo: 'ingresso', t: ora, pool, mint: c.baseMint, quote: c.quoteMint, modo, salto,
     piattaforma: c.piattaforma, tassa, f: Number(f.toFixed(6)),
-    bersaglio: c.bersaglio, quoteDecimali: c.quoteDecimali, regole: s.aperte.size,
+    bersaglio: c.bersaglio, quoteDecimali: c.quoteDecimali, regole: quante,
     dallaNascita: !!s.nascita,
     secondiDallaNascita: s.nascita ? Number(((ora - s.nascita) / 1000).toFixed(1)) : null,
   });
@@ -357,14 +384,15 @@ function battito() {
     `log=${contatori.log}/${contatori.logCreazioni}`, `sub=${contatori.sottoscrizioni}`,
     `nate=${contatori.nate}`, `scartate=${JSON.stringify(contatori.scartate)}`, `nate_gia_sopra=${contatori.nateSopra}`,
     `pool_sotto=${contatori.poolSotto}`, `pool_sopra=${contatori.poolSopra}`,
-    `ingressi_sopra=${contatori.ingressiSopra}`, `troppo_alte=${contatori.troppoAlte}`,
+    `ingressi_sopra=${contatori.ingressiSopra}`, `ingressi_salto=${contatori.ingressiSalto}`, `troppo_alte=${contatori.troppoAlte}`,
     `coda=${codaCreazioni.length}`,
   ].join(' '));
 }
 
 function collega() {
   const url = endpointWs();
-  console.log(`paper stonk.fun -> ingresso ${(100 * ENTRATA).toFixed(1)}-${(100 * MAX_INGRESSO).toFixed(1)}%, `
+  console.log(`paper stonk.fun -> soglia ${(100 * ENTRATA).toFixed(1)}-${(100 * MAX_INGRESSO).toFixed(1)}% `
+    + `oppure salto >=${(100 * SALTO_MINIMO).toFixed(1)} punti fino al ${(100 * SALTO_MAX_INGRESSO).toFixed(0)}%, `
     + `${REGOLE.length} regole: ${REGOLE.map((r) => r.nome).join(' ')}, stop -${(100 * RICADUTA).toFixed(0)}%`);
   const ws = new WebSocket(url);
   let vivo = null;

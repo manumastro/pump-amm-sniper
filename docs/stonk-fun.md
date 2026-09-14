@@ -468,6 +468,19 @@ finche' non ha restituito tutto. Prima di riaccenderla va deciso cosa fa uscire 
 Su tutte vale lo stesso stop: -10% di prezzo dall'ingresso. E si compra solo fra l'1,5% e il **2,5%**
 di raccolta: sopra non si entra affatto.
 
+Gli ingressi sono **due canali indipendenti sulla stessa pool**, cosi' si confrontano sugli stessi
+token: la **soglia** (si compra quando la raccolta sta fra l'1,5% e il 2,5%) e il **salto** (si compra
+subito dopo che qualcuno ha spostato la curva di almeno un punto di raccolta in un colpo solo).
+
+Il secondo nasce dal fallimento del primo, misurato su 65 acquisti: comprando in un momento qualsiasi
+dopo l'1,5%, **165 chiusure su 367 sono arrivate a scadenza col prezzo fermo esattamente dov'era**,
+pagando 5,4% (token all'1%) o 9,2% (token al 3%) di costi per niente. Solo 45 su 367 hanno visto la
+curva muoversi abbastanza da incassare. Il movimento tipico dopo un ingresso a soglia e' zero.
+
+FiFawHqx invece fa +8,8% mediano in quattro secondi con le stesse commissioni e le stesse tasse: non
+aspetta che il movimento arrivi, compra a 0,85% di raccolta e con 1,75 punti a botta **e' lui il
+movimento**. Il canale `salto` prova la versione possibile per noi: non anticiparlo, ma accodarsi.
+
 Quando una posizione scade, la pool **si chiede all'RPC** invece di aspettare che passi qualcuno:
 la curva si vede solo sugli scambi altrui, e senza questa chiamata `t10` chiudeva dopo 24 secondi di
 mediana e `t30` dopo 59. Resta comunque una differenza dal vero: noi leggiamo un prezzo, un bot vero
