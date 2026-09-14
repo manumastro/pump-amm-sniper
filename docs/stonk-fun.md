@@ -388,6 +388,39 @@ entra-a/esci-a con i costi.
 
 Usa `SVS_INDEX_RPC` (websocket ricavato dall'URL), con `SVS_UNSTAKED_RPC` come ripiego.
 
+## Il paper trade live
+
+`scripts/stonk-paper.js` — ha preso il posto dell'osservatorio, che e' spento. Non registra piu'
+tutto quello che passa: apre posizioni simulate quando la raccolta **attraversa** la soglia
+d'ingresso e le chiude quando ne attraversa una d'uscita. Su ogni ingresso apre una posizione per
+ciascuna regola d'uscita in prova (2, 3, 5, 8, 12, 20, 50, 100%): costano zero e fanno misurare
+tutte le uscite sulla stessa sessione, invece di una per volta.
+
+La logica di decisione sta in `src/services/stonk/paper.ts` ed e' pura: lo script e' solo il
+daemon che le porta i dati. Le soglie e il perche' di ognuna stanno in `docs/controls.md` §51.
+
+```
+./scripts/bot stonk            # cruscotto: una schermata che si ridisegna
+./scripts/bot stonk live       # il battito del daemon
+./scripts/bot stonk flusso     # ogni ingresso e ogni chiusura appena avvengono
+./scripts/bot stonk report     # la misura completa sul jsonl
+./scripts/bot stonk su | giu | riavvia | reset
+```
+
+Scrive `logs/stonk-paper.jsonl`: una riga `tipo: "ingresso"` per attraversamento (con `f`,
+bersaglio, decimali del quote, piattaforma, aliquota della tassa letta dal mint, e se la pool era
+seguita dalla nascita) e una riga `tipo: "chiusa"` per ogni posizione (f d'ingresso e d'uscita,
+massima e minima toccate, secondi, quote spesa e incassata, rendimento, motivo).
+
+Il cruscotto (`scripts/stonk-cruscotto.js`) legge quel jsonl in modo incrementale e il battito da
+`logs/stonk-paper.log`. E' separato da `scripts/dashboard.js` perche' quello legge i log Docker del
+container `sniper` e `logs/paper-report.json`, che qui non esistono.
+
+La cosa che mostra e che non si vedeva prima e' **l'imbuto d'ingresso**: quante curve riusciamo a
+vedere da sotto la soglia — le uniche che potremmo davvero prendere all'attraversamento — contro
+quante ci arrivano quando il punto d'ingresso e' gia' passato. Su `programSubscribe` una pool
+compare solo quando qualcuno la scambia, e a quel punto e' quasi sempre gia' oltre.
+
 ## Cosa manca
 
 1. **Quanto si perde quando non ce la fa, tenendo.** Misurato solo per lo stile mordi-e-fuggi

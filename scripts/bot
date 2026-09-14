@@ -10,6 +10,14 @@ uso() {
     cat <<'EOF'
 uso: ./scripts/bot <comando>
 
+  stonk <x>   il paper trade stonk.fun (scope attuale), sotto-comandi:
+                cruscotto  UNA schermata che si ridisegna: imbuto, uscite, chiusure (default)
+                live       il battito del daemon in tempo reale
+                flusso     ogni ingresso e ogni chiusura appena avvengono
+                report     la misura completa sul jsonl
+                stato      fotografia: e' vivo? da quanto? ultimo battito
+                su | giu | riavvia | reset
+
   cruscotto   UNA schermata che si ridisegna: stato, esiti, RPC, shadow (default)
   live        tutti i log in tempo reale, supervisore + worker
   flusso      solo le decisioni: dispatch, skip, trade, riga SERIALE
@@ -49,6 +57,87 @@ tutti_i_log() {
 }
 
 case "${1:-cruscotto}" in
+
+# Il paper trade stonk NON gira in Docker: e' un processo nudo che scrive
+# logs/stonk-paper.log (il battito) e logs/stonk-paper.jsonl (ingressi e chiusure).
+# Nessuna delle due e' una fonte del cruscotto pump, per questo ha il suo.
+stonk)
+    vivo_stonk() { pgrep -f "scripts/stonk-paper.js" >/dev/null 2>&1; }
+    case "${2:-cruscotto}" in
+
+    cruscotto) exec node scripts/stonk-cruscotto.js ;;
+
+    live)
+        vivo_stonk || echo "(il daemon non gira: ./scripts/bot stonk su)" >&2
+        tail -F -n 30 logs/stonk-paper.log
+        ;;
+
+    flusso)
+        tail -F -n 20 logs/stonk-paper.jsonl | node -e '
+          let buf="";
+          const pc=(x)=>(100*x).toFixed(2)+"%";
+          process.stdin.on("data",(c)=>{
+            buf+=c; const righe=buf.split("\n"); buf=righe.pop();
+            for (const r of righe) {
+              let d; try { d=JSON.parse(r); } catch { continue; }
+              const t=new Date(d.t).toISOString().slice(11,19);
+              if (d.tipo==="ingresso")
+                console.log(`${t}  ENTRA  ${String(d.mint).slice(0,8)}  raccolta ${pc(d.f)}  ${d.piattaforma} ${(100*d.tassa).toFixed(0)}%  ${d.regole} regole${d.dallaNascita?"  (dalla nascita, "+d.secondiDallaNascita+"s)":""}`);
+              else if (d.tipo==="chiusa")
+                console.log(`${t}  esce   ${String(d.mint).slice(0,8)}  ${d.regola.padEnd(5)}${pc(d.fIngresso)} -> ${pc(d.fUscita)}  ${(d.rendimento>=0?"+":"")+(100*d.rendimento).toFixed(1)}%  ${d.motivo}  ${d.secondi}s`);
+            }
+          });
+        '
+        ;;
+
+    report) exec node scripts/stonk-paper-report.js ;;
+
+    stato)
+        if vivo_stonk; then
+            echo "daemon: vivo (pid $(pgrep -f 'scripts/stonk-paper.js' | head -1))"
+        else
+            echo "daemon: fermo"
+        fi
+        echo "ultimo battito:"
+        grep " PAPER " logs/stonk-paper.log 2>/dev/null | tail -1 || echo "  (nessuno)"
+        if [ -s logs/stonk-paper.jsonl ]; then
+            echo "record: $(grep -c '"tipo":"ingresso"' logs/stonk-paper.jsonl) ingressi, $(grep -c '"tipo":"chiusa"' logs/stonk-paper.jsonl) chiusure"
+        fi
+        ;;
+
+    su)
+        vivo_stonk && { echo "gia' vivo (pid $(pgrep -f 'scripts/stonk-paper.js' | head -1))"; exit 0; }
+        node --check scripts/stonk-paper.js
+        nohup node scripts/stonk-paper.js >> logs/stonk-paper.log 2>&1 &
+        sleep 2
+        vivo_stonk && echo "avviato (pid $(pgrep -f 'scripts/stonk-paper.js' | head -1))" \
+                   || { echo "non e' partito, guarda logs/stonk-paper.log" >&2; exit 1; }
+        ;;
+
+    giu)
+        pkill -f "scripts/stonk-paper.js" 2>/dev/null && echo "fermato." || echo "non girava."
+        ;;
+
+    riavvia) "$0" stonk giu; "$0" stonk su ;;
+
+    reset)
+        # come per il pump: il backup datato viene PRIMA di qualunque azzeramento, e il
+        # daemon va giu' davvero, altrimenti continua ad appendere sul file appena svuotato.
+        stamp=$(date +%Y-%m-%d-%H%M)
+        pkill -f "scripts/stonk-paper.js" 2>/dev/null || true
+        for _ in $(seq 1 15); do vivo_stonk || break; sleep 1; done
+        if vivo_stonk; then echo "ATTENZIONE: daemon ancora vivo, reset annullato" >&2; exit 1; fi
+        [ -s logs/stonk-paper.jsonl ] && cp logs/stonk-paper.jsonl "logs/stonk-paper-$stamp.jsonl" \
+            && echo "backup -> logs/stonk-paper-$stamp.jsonl"
+        : > logs/stonk-paper.jsonl
+        : > logs/stonk-paper.log
+        "$0" stonk su
+        ;;
+
+    -h|--help|help) uso ;;
+    *) echo "sotto-comando stonk sconosciuto: $2" >&2; echo; uso; exit 1 ;;
+    esac
+    ;;
 
 cruscotto)
     richiede_container
