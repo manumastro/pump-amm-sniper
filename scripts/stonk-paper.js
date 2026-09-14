@@ -32,7 +32,7 @@ const SCADENZA_MS = Number(process.env.STONK_SCADENZA_MS || '1800000');
 const HEARTBEAT_MS = Number(process.env.STONK_HEARTBEAT_MS || '60000');
 // con l'ingresso `sopra` attivo le posizioni aperte insieme diventano migliaia: 400 veniva
 // toccato in dieci minuti e da li' in poi gli ingressi sparivano in silenzio, falsando la misura.
-const MAX_APERTE = Number(process.env.STONK_MAX_APERTE || '8000');
+const MAX_APERTE = Number(process.env.STONK_MAX_APERTE || '40000');
 // le curve che incontriamo gia' sopra la soglia: comprarle o no e' una domanda aperta, quindi
 // si comprano e si taggano `modo: sopra`, cosi' il report confronta i due ingressi sulla stessa
 // sessione invece di ragionarci sopra. MAX_INGRESSO evita di entrare su una curva quasi piena.
@@ -67,6 +67,21 @@ const REGOLE = (process.env.STONK_USCITE || '0.10,0.15,0.25,0.40,0.60,1.00,3.00,
     stop: RICADUTA,
     scadenzaMs: SCADENZA_MS,
   }));
+
+// A obiettivo largo, con stop e scadenza PROPRI. Il censimento delle 127 curve (docs/stonk-fun.md)
+// dice che sulle curve lente l'unica uscita che paga e' +60% / -20% / 600s: +14,4% medio contro
+// +1,2% di +25%/-10%/120s. Le regole qui sopra condividono tutte lo stesso stop globale
+// (RICADUTA) e la stessa scadenza, quindi quella combinazione non era esprimibile.
+// Formato: guadagno/stop/secondi, separati da virgola.
+for (const spec of (process.env.STONK_USCITE_LARGHE || '0.60/0.20/600,0.40/0.15/300,0.25/0.15/600')
+  .split(',').map((x) => x.trim()).filter(Boolean)) {
+  const [g, st, sec] = spec.split('/').map(Number);
+  if (!(g > 0) || !(st > 0) || !(sec > 0)) continue;
+  REGOLE.push({
+    nome: `L${(g * 100).toFixed(0)}s${(st * 100).toFixed(0)}`,
+    guadagno: g, stop: st, scadenzaMs: sec * 1000,
+  });
+}
 
 // A tempo secco: spente, e non per opinione. Su 58 posizioni ciascuna hanno fatto -4,4%, -5,4%
 // e -5,6%, il campione piu' grande che avessimo. Appaiando le stesse pool si vede perche': uscire
@@ -173,6 +188,43 @@ function scarta(perche) {
   contatori.scartate[perche] = (contatori.scartate[perche] || 0) + 1;
 }
 
+// I TRAGUARDI sono il motivo per cui questo daemon adesso serve a qualcosa di nuovo.
+// Il censimento all'indietro ha trovato che le curve LENTE ad arrivare al 5% rendono molto piu'
+// di quelle veloci (+13/+14 punti, p=0,000), ma il taglio cadeva a 4 secondi e il `blockTime`
+// on-chain ha risoluzione di UN secondo: distinguere 1s da 4s con quello strumento e' al limite
+// del possibile. Qui abbiamo Date.now(), cioe' millisecondi, e vediamo la curva dal vivo: la
+// stessa misura viene mille volte piu' fine. Si registra l'istante del primo attraversamento di
+// ogni traguardo e lo si porta dentro il record d'ingresso, cosi' il report puo' tagliare per
+// velocita' di salita senza che il daemon debba decidere niente adesso.
+const TRAGUARDI = (process.env.STONK_TRAGUARDI || '0.02,0.05,0.10,0.20')
+  .split(',').map(Number).filter((x) => x > 0);
+// Terzo canale d'ingresso: si compra al primo attraversamento di questo traguardo, comunque la
+// curva ci sia arrivata. Riproduce esattamente il test all'indietro sulle 127 curve, che entrava
+// al 5% e trovava il segnale della salita lenta. Serve un canale suo perche' gli altri due sono
+// limitati a MAX_INGRESSO (2,5%) e quel segnale al 2,5% non c'e'.
+const TRAGUARDO_INGRESSO = Number(process.env.STONK_TRAGUARDO_INGRESSO || '0.05');
+
+function nuovoStato(ora) {
+  return { sottoSoglia: false, aperte: new Map(), entrate: new Set(),
+    vistaIl: ora, fVista: null, traguardi: new Map() };
+}
+
+/** segna quando la curva supera per la prima volta ognuno dei traguardi */
+function segnaTraguardi(s, f, ora) {
+  if (s.fVista === null) s.fVista = f;
+  for (const t of TRAGUARDI) if (f >= t && !s.traguardi.has(t)) s.traguardi.set(t, ora);
+}
+
+/** i millisecondi impiegati dalla prima vista a ciascun traguardo, per il record d'ingresso */
+function salita(s) {
+  const out = {};
+  for (const t of TRAGUARDI) {
+    const q = s.traguardi.get(t);
+    out[`ms${(t * 100).toFixed(0)}`] = q === undefined ? null : q - s.vistaIl;
+  }
+  return out;
+}
+
 async function registraCreazione(voce) {
   const tx = await rpc('getTransaction', [voce.firma, {
     maxSupportedTransactionVersion: 0, encoding: 'jsonParsed', commitment: 'confirmed',
@@ -200,8 +252,10 @@ async function registraCreazione(voce) {
   const f = curva.raccolta(c);
   contatori.nate += 1;
   let s = seguite.get(pool);
-  if (!s) { s = { sottoSoglia: false, aperte: new Map(), entrate: new Set() }; seguite.set(pool, s); }
+  if (!s) { s = nuovoStato(Date.now()); seguite.set(pool, s); }
   s.nascita = (tx.blockTime || 0) * 1000;
+  s.daNascita = true;          // l'abbiamo presa dal log di creazione, non a meta' strada
+  segnaTraguardi(s, f, Date.now());
   // se quando riusciamo a leggerla e' gia' oltre la soglia l'attraversamento e' perso: puo'
   // essere nata sopra (dev buy grosso) o averla superata in quei due secondi. Contate insieme.
   if (f < ENTRATA) s.sottoSoglia = true;
@@ -306,8 +360,9 @@ function chiudiPosizione(pool, nome, p, c, motivo, ora) {
 async function aggiorna(pool, c) {
   const ora = Date.now();
   let s = seguite.get(pool);
-  if (!s) { s = { sottoSoglia: false, aperte: new Map(), entrate: new Set() }; seguite.set(pool, s); }
+  if (!s) { s = nuovoStato(ora); seguite.set(pool, s); }
   const f = curva.raccolta(c);
+  segnaTraguardi(s, f, ora);
 
   for (const [chiave, p] of s.aperte) {
     const nome = chiave.split('|')[1];
@@ -336,6 +391,13 @@ async function aggiorna(pool, c) {
     await entra(pool, s, c, f, 'salto', ora, Number((f - precedente).toFixed(6)));
   }
 
+  // solo se l'abbiamo vista SOTTO il traguardo: su una pool incontrata gia' al 31% questo
+  // scatterebbe subito, e non e' l'attraversamento che il test all'indietro misurava.
+  if (f >= TRAGUARDO_INGRESSO && s.fVista !== null && s.fVista < TRAGUARDO_INGRESSO
+      && !s.entrate.has('traguardo')) {
+    await entra(pool, s, c, f, 'traguardo', ora, null);
+  }
+
   if (f >= ENTRATA && f <= MAX_INGRESSO && !s.entrate.has('soglia')) {
     let modo = null;
     if (s.sottoSoglia) modo = 'attraversamento';
@@ -350,10 +412,11 @@ async function aggiorna(pool, c) {
 /** apre le 15 posizioni virtuali di un canale d'ingresso */
 async function entra(pool, s, c, f, modo, ora, salto) {
   if (contatori.aperte - contatori.chiuse >= MAX_APERTE) return;
-  s.entrate.add(modo === 'salto' ? 'salto' : 'soglia');
+  s.entrate.add(modo === 'salto' ? 'salto' : (modo === 'traguardo' ? 'traguardo' : 'soglia'));
   contatori.ingressi += 1;
   if (modo === 'sopra') contatori.ingressiSopra += 1;
   if (modo === 'salto') contatori.ingressiSalto += 1;
+  if (modo === 'traguardo') contatori.ingressiTraguardo = (contatori.ingressiTraguardo || 0) + 1;
   const tassa = await leggiTassa(c.baseMint, c.piattaforma);
   const costi = { scambioPerLato: SCAMBIO_PER_LATO, trasferimentoPerLato: tassa };
   let quante = 0;
@@ -370,6 +433,11 @@ async function entra(pool, s, c, f, modo, ora, salto) {
     bersaglio: c.bersaglio, quoteDecimali: c.quoteDecimali, regole: quante,
     dallaNascita: !!s.nascita,
     secondiDallaNascita: s.nascita ? Number(((ora - s.nascita) / 1000).toFixed(1)) : null,
+    // la velocita' di salita, a millisecondi: e' la misura che il censimento non poteva fare
+    daNascita: !!s.daNascita,
+    fVista: s.fVista === null ? null : Number(s.fVista.toFixed(6)),
+    msDaVista: ora - s.vistaIl,
+    ...salita(s),
   });
 }
 
@@ -393,6 +461,8 @@ function collega() {
   const url = endpointWs();
   console.log(`paper stonk.fun -> soglia ${(100 * ENTRATA).toFixed(1)}-${(100 * MAX_INGRESSO).toFixed(1)}% `
     + `oppure salto >=${(100 * SALTO_MINIMO).toFixed(1)} punti fino al ${(100 * SALTO_MAX_INGRESSO).toFixed(0)}%, `
+    + `oppure traguardo ${(100 * TRAGUARDO_INGRESSO).toFixed(0)}%, salita misurata ai traguardi `
+    + `${TRAGUARDI.map((t) => (100 * t).toFixed(0) + '%').join(' ')}, `
     + `${REGOLE.length} regole: ${REGOLE.map((r) => r.nome).join(' ')}, stop -${(100 * RICADUTA).toFixed(0)}%`);
   const ws = new WebSocket(url);
   let vivo = null;

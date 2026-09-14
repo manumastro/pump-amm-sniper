@@ -2786,3 +2786,39 @@ ritentato, la prima volta torna `null` circa una volta su due), e **nemmeno l'ac
 silenzio). La terza: non si puo' scartare una pool perche' "gia' conosciuta", perche' fra la
 creazione e il momento in cui riusciamo a leggerla passano uno o due secondi e in quel tempo ha gia'
 scambiato ed e' arrivata da `programSubscribe`.
+
+### `STONK_TRAGUARDO_INGRESSO` = 0,05 · `STONK_TRAGUARDI` = 0,02/0,05/0,10/0,20
+
+Terzo canale d'ingresso del paper trade: si compra al **primo attraversamento del 5%** di raccolta,
+e solo se la curva l'avevamo vista sotto (su una pool incontrata gia' al 31% scatterebbe subito, che
+non e' un attraversamento).
+
+**La misura che lo giustifica.** Il censimento delle 127 curve ha trovato che le curve **lente** ad
+arrivare al 5% rendono molto piu' di quelle veloci: +11,9 / +14,5 / +12,9 punti di rendimento medio
+fra quartile lento e quartile veloce alle soglie 2/5/10%, con p = 0,000 su prova di permutazione a
+due soglie, e segno positivo in 10 combinazioni su 10 di soglia e regola d'uscita.
+
+**Perche' serve provarlo in avanti.** Il taglio fra lente e veloci cade a **4 secondi** mentre la
+curva mediana arriva al 5% in **1 secondo**, e il `blockTime` on-chain ha risoluzione di un secondo:
+la misura all'indietro e' al limite del suo strumento. Il daemon usa `Date.now()`, quindi misura la
+stessa cosa in millisecondi. Ogni ingresso porta con se' `fVista`, `msDaVista` e `ms2/ms5/ms10/ms20`
+— l'istante di ogni attraversamento — cosi' il report taglia per velocita' di salita **dopo**, senza
+che il daemon debba scegliere una soglia adesso.
+
+### `STONK_USCITE_LARGHE` = `0.60/0.20/600,0.40/0.15/300,0.25/0.15/600`
+
+Uscite con **stop e scadenza propri** (formato `guadagno/stop/secondi`), affiancate alle famiglie
+`p`/`r`/`m` che condividono tutte lo stop globale `STONK_RICADUTA` e la scadenza `STONK_SCADENZA_MS`.
+
+**La misura.** Sul quartile lento delle 127 curve, +60% / -20% / 600s fa **+14,4% medio** contro
++1,2% di +25%/-10%/120s e +3,2% di +40%/-15%/300s. Quella combinazione non era esprimibile con le
+chiavi esistenti: serviva uno stop piu' largo **e** una scadenza piu' corta della mezz'ora.
+
+**Cautela.** Una regola su quattro che funziona e' il profilo tipico del rumore, e con la tassa al
+3% quasi tutto il vantaggio evapora. E' un candidato da provare, non una soglia da adottare.
+
+### `STONK_MAX_APERTE` = 40.000 (era 8.000)
+
+Con tre canali d'ingresso e 18 regole le posizioni aperte insieme triplicano. Il tetto serve solo a
+non far esplodere la memoria: quando viene toccato gli ingressi spariscono **in silenzio** e la
+misura risulta falsata (successo con 400, che veniva toccato in dieci minuti).
