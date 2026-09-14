@@ -895,6 +895,54 @@ pedaggio. Non c'e' un'informazione che ci manca: c'e' un costo che non riusciamo
 Script: `scratchpad/censimento.js` (scarico), `curve.js` / `curve2.js` / `curve3.js` / `insieme.js` /
 `estremo.js` (segnali), `storici.js` (storie dei portafogli). Usa-e-getta.
 
+## Dove sta il vantaggio: nell'uscita, non nella scelta (2026-09-14)
+
+Due fatti che insieme circoscrivono il problema: i portafogli che guadagnano **continuano** a
+guadagnare fuori campione, ma **copiare i loro acquisti rende -7%**. Quindi il vantaggio non e'
+nello scegliere quale token comprare.
+
+### La prova che separa uscita e ingresso
+
+Per ogni loro giro si confronta il rendimento vero con quello di una regola meccanica applicata
+allo **stesso ingresso**: stessa curva, stesso istante, stesso prezzo di partenza. I "bravi" sono
+scelti sulla **prima meta'** del tempo e misurati sulla **seconda**, cosi' non c'e' selezione a
+posteriori.
+
+    I BRAVI (267 portafogli, 1.114 giri nella seconda meta')    mediano    medio
+    quello che hanno fatto LORO                                  -4,3%     +2,4%
+    regola meccanica +25% / -15% / 60s                          -15,0%     -1,8%
+    regola meccanica +25% / -15% / 300s                         -15,0%     -1,9%
+    regola meccanica +60% / -20% / 600s                         -20,0%     -0,4%
+
+    GLI SCARSI (332 portafogli, 617 giri)                        mediano    medio
+    quello che hanno fatto LORO                                  -8,3%     -4,4%
+    regola meccanica +25% / -15% / 60s                           +0,0%     +2,5%
+    regola meccanica +25% / -15% / 300s                          -9,0%     +1,9%
+
+**I bravi battono ogni regola meccanica sui propri ingressi** di 4-11 punti sul medio e 11-16 sul
+mediano. **Gli scarsi fanno peggio di una regola meccanica sui propri**: comprando le stesse cose e
+applicando una regola fissa guadagnerebbero invece di perdere.
+
+Il confronto e' prudente a favore di questa conclusione: il rendimento **loro** e' al netto delle
+commissioni del pool (viene dagli importi veri dell'evento), quello **meccanico** e' lordo (viene
+dal prezzo di curva). Il metro e' truccato a loro sfavore e vincono lo stesso.
+
+Spiega anche perche' copiarli non funziona: si copia l'acquisto e poi ci si applica la **propria**
+uscita, che e' quella meccanica — cioe' la parte in cui perdono anche loro.
+
+Differenza di comportamento all'uscita: i bravi stanno dentro **13 secondi** di mediana, gli scarsi
+**66**. Entrambi fanno una compra e una vendita sola, con taglie quasi uguali (0,62% contro 0,78%
+del bersaglio): la taglia non li distingue.
+
+### Cosa resta da capire
+
+**Su cosa decidono di uscire.** Non su un livello di prezzo fisso, altrimenti una regola a livello
+fisso li eguaglierebbe. I candidati misurabili coi dati che abbiamo: il flusso di acquisti che si
+ferma, l'arrivo di una vendita grossa, il ritmo degli scambi che cala. E' la prossima misura, ed e'
+lo scope da qui in avanti.
+
+Script: `scratchpad/uscita.js` (il confronto), `tardivi.js` e `persiste2.js` (la persistenza).
+
 ## Cosa manca
 
 1. **Quanto si perde quando non ce la fa, tenendo.** Misurato solo per lo stile mordi-e-fuggi
