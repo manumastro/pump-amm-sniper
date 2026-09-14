@@ -70,6 +70,17 @@ const ordinaRegole = (x, y) => (x[0] === y[0]
   : 'ptbrm'.indexOf(x[0]) - 'ptbrm'.indexOf(y[0]));
 
 
+/** il nome della regola tradotto: p10 -> "prezzo +10%", r5 -> "curva al 5%" */
+function cosaAspetta(nome) {
+    const n = Number(nome.slice(1));
+    if (nome[0] === "p") return `prezzo +${n}%`;
+    if (nome[0] === "r") return n >= 100 ? "migrazione" : `curva al ${n}%`;
+    if (nome[0] === "m") return `meta' a +${n}%`;
+    if (nome[0] === "t") return `dopo ${n}s`;
+    if (nome[0] === "b") return `fermo a ${n}s`;
+    return nome;
+}
+
 function barra(n, tot, w) {
     if (!tot) return C.grigio + "░".repeat(w) + C.r;
     const p = Math.max(0, Math.min(w, Math.round((n / tot) * w)));
@@ -194,8 +205,13 @@ function vistaAdesso(b, pid) {
         return righe;
     }
     const oreVive = b.avvio ? (Date.now() - b.avvio) / 3600000 : 0;
+    const fam = {};
+    for (const nome of stato.regole.keys()) fam[nome[0]] = (fam[nome[0]] || 0) + 1;
+    const eti = { p: "a prezzo", r: "a completamento", m: "a meta'", t: "a tempo", b: "a pareggio" };
+    const elenco = Object.entries(fam).map(([k, v]) => `${v} ${eti[k] || k}`).join(" · ");
     righe.push(" acceso da   " + (oreVive ? oreVive.toFixed(2) + " ore" : "?")
-        + C.grigio + `   soglia ${b.ingresso || "?"}  uscite ${b.uscite || "?"}` + C.r);
+        + C.grigio + `   si compra fra ${b.ingresso || "?"} di raccolta` + C.r);
+    if (elenco) righe.push(" uscite      " + C.grigio + elenco + C.r);
     righe.push("");
     righe.push(" pool viste  " + String(b.pool).padStart(6)
         + C.grigio + `   notifiche ${b.notifiche}`
@@ -224,62 +240,70 @@ function vistaImbuto(b, w) {
     const sotto = b.poolSotto || 0;
     const sopra = b.poolSopra || 0;
     const viste = sotto + sopra;
-    const largo = Math.max(8, w - 36);
-    const riga = (et, n2, max) => ` ${riempi(et, 23)}${String(n2).padStart(6)}  ${barra(n2, max, largo)}`;
+    const largo = Math.max(8, w - 41);
+    const riga = (et, n2, max) => ` ${riempi(et, 26)}${String(n2).padStart(6)}  ${barra(n2, max, largo)}`;
     const righe = [
-        riga("pool incontrate", viste, viste || 1),
-        riga("  sotto soglia", sotto, viste || 1),
-        riga("  gia' oltre", sopra, viste || 1),
+        riga("curve incontrate", viste, viste || 1),
+        riga("  viste da sotto l'1,5%", sotto, viste || 1),
+        riga("  trovate gia' piu' su", sopra, viste || 1),
         "",
-        riga("nascite dai log", b.nate, Math.max(b.nate, 1)),
-        riga("  gia' oltre a 1a lettura", b.nateSopra, Math.max(b.nate, 1)),
+        riga("nascite prese al volo", b.nate, Math.max(b.nate, 1)),
+        riga("  gia' oltre quando le", b.nateSopra, Math.max(b.nate, 1)),
+        "   " + C.grigio + "leggiamo, 1-2s dopo" + C.r,
     ];
     const f = stato.visteSopra.slice().sort((x, y) => x - y);
     if (f.length) {
         righe.push("");
-        righe.push(C.grigio + " quando le troviamo gia' oltre, sono a:" + C.r);
-        righe.push(`   mediana ${pc(q(f, 0.5))}   25esimo ${pc(q(f, 0.25))}   75esimo ${pc(q(f, 0.75))}`);
+        righe.push(C.grigio + " a che punto sono quando le troviamo gia' piu' su:" + C.r);
+        righe.push(`   meta' oltre il ${pc(q(f, 0.5))}, un quarto oltre il ${pc(q(f, 0.75))}`);
     }
     righe.push("");
-    righe.push(" " + riempi("ingressi", 23) + C.b + String(b.ingressi).padStart(6) + C.r
-        + C.grigio + `   di cui ${b.ingressiSopra || 0} comprate gia' sopra`
-        + (b.troppoAlte ? `, ${b.troppoAlte} scartate troppo alte` : "") + C.r);
+    righe.push(" " + riempi("COMPRATE", 26) + C.b + String(b.ingressi).padStart(6) + C.r
+        + (b.troppoAlte ? C.grigio + `   ${b.troppoAlte} rifiutate: gia' troppo avanti` + C.r : ""));
     return righe;
 }
 
 function vistaIngressi() {
     const righe = [];
     const f = stato.fIngresso.slice().sort((x, y) => x - y);
-    righe.push(" ingressi  " + String(stato.ingressi).padStart(5)
-        + C.grigio + `   di cui ${stato.dallaNascita} seguiti dalla nascita` + C.r);
+    righe.push(" comprate  " + String(stato.ingressi).padStart(5)
+        + C.grigio + `   di cui ${stato.dallaNascita} seguite dalla nascita` + C.r);
     if (f.length) {
-        righe.push(" raccolta  " + C.grigio
-            + `  mediana ${pc(q(f, 0.5))}   min ${pc(q(f, 0))}   max ${pc(q(f, 1))}` + C.r);
+        righe.push(" comprate a" + C.grigio
+            + ` ${pc(q(f, 0.5))} di raccolta (da ${pc(q(f, 0))} a ${pc(q(f, 1))})` + C.r);
     }
     const m = Object.entries(stato.modi).sort((a, b2) => b2[1] - a[1]);
-    if (m.length) righe.push(" modo      " + C.grigio + "  " + m.map(([k, v]) => `${k} x${v}`).join("   ") + C.r);
+    if (m.length) righe.push(" trovate   " + C.grigio + "  "
+        + m.map(([k, v]) => `${k === "sopra" ? "gia' piu' su" : "mentre salivano"} ${v}`).join("   ") + C.r);
     const e = stato.etaPrimoIncontro.slice().sort((x, y) => x - y);
-    if (e.length) righe.push(" eta'      " + C.grigio + `  primo incontro a ${q(e, 0.5).toFixed(1)}s dalla nascita (n=${e.length})` + C.r);
+    if (e.length) righe.push(" eta'      " + C.grigio + `  incontrate ${q(e, 0.5).toFixed(1)}s dopo la nascita (n=${e.length})` + C.r);
     const p = Object.entries(stato.piattaforme).sort((a, b2) => b2[1] - a[1]);
-    if (p.length) righe.push(" tipo      " + C.grigio + "  " + p.map(([k, v]) => `${k} x${v}`).join("   ") + C.r);
+    if (p.length) righe.push(" tassa     " + C.grigio + "  " + p.map(([k, v]) => `${k} x${v}`).join("   ") + C.r);
     return righe;
 }
 
 function vistaRegole() {
     if (!stato.regole.size) return [C.grigio + " (nessuna posizione chiusa)" + C.r];
-    const righe = [C.grigio + " regola    n  bene  ricad  scad    mediano    medio   sec" + C.r];
+    const righe = [C.grigio
+        + " regola  aspetta           n   ok  stop  altro    mediano     medio   sec" + C.r];
     const nomi = [...stato.regole.keys()].sort(ordinaRegole);
+    let famiglia = null;
     for (const nome of nomi) {
         const g = stato.regole.get(nome);
+        if (famiglia && nome[0] !== famiglia) righe.push("");
+        famiglia = nome[0];
         const r = g.rend.slice().sort((x, y) => x - y);
-        const s = g.secondi.slice().sort((x, y) => x - y);
-        const m = (k) => String(g.motivi[k] || 0).padStart(6);
+        const s2 = g.secondi.slice().sort((x, y) => x - y);
         const bene = (g.motivi.obiettivo || 0) + (g.motivi.completamento || 0) + (g.motivi.migrata || 0);
-        righe.push(" " + riempi(nome, 7) + String(g.n).padStart(3)
-            + String(bene).padStart(5) + m("ricaduta") + String((g.motivi.scadenza || 0) + (g.motivi.stagnante || 0)).padStart(6)
-            + "   " + riempi(rend(q(r, 0.5)), 9) + riempi(rend(g.somma / g.n), 9)
-            + String(Math.round(q(s, 0.5))).padStart(5));
+        const altro = (g.motivi.scadenza || 0) + (g.motivi.stagnante || 0);
+        righe.push(" " + riempi(nome, 8) + riempi(cosaAspetta(nome), 15)
+            + String(g.n).padStart(4) + String(bene).padStart(5)
+            + String(g.motivi.ricaduta || 0).padStart(6) + String(altro).padStart(6)
+            + "   " + riempi(rend(q(r, 0.5)), 10) + riempi(rend(g.somma / g.n), 10)
+            + String(Math.round(q(s2, 0.5))).padStart(5));
     }
+    righe.push("");
+    righe.push(C.grigio + " ok = uscita riuscita · stop = -10% dal prezzo d'ingresso" + C.r);
     return righe;
 }
 
@@ -310,20 +334,20 @@ function disegna() {
         const wdx = tot - 2 - wsx;
         const sx = [
             ...riquadro("ADESSO", vistaAdesso(b, pid), wsx),
-            ...riquadro("IMBUTO D'INGRESSO", vistaImbuto(b, wsx), wsx),
+            ...riquadro("QUANTE NE VEDIAMO, QUANTE NE PRENDIAMO", vistaImbuto(b, wsx), wsx),
         ];
         const dx = [
-            ...riquadro("INGRESSI", vistaIngressi(), wdx),
-            ...riquadro("USCITE IN PROVA", vistaRegole(), wdx),
+            ...riquadro("COSA ABBIAMO COMPRATO", vistaIngressi(), wdx),
+            ...riquadro("LE USCITE IN PROVA", vistaRegole(), wdx),
         ];
         out.push(...affianca(sx, dx, wsx));
     } else {
         out.push(...riquadro("ADESSO", vistaAdesso(b, pid), tot));
-        out.push(...riquadro("IMBUTO D'INGRESSO", vistaImbuto(b, tot), tot));
-        out.push(...riquadro("INGRESSI", vistaIngressi(), tot));
-        out.push(...riquadro("USCITE IN PROVA", vistaRegole(), tot));
+        out.push(...riquadro("QUANTE NE VEDIAMO, QUANTE NE PRENDIAMO", vistaImbuto(b, tot), tot));
+        out.push(...riquadro("COSA ABBIAMO COMPRATO", vistaIngressi(), tot));
+        out.push(...riquadro("LE USCITE IN PROVA", vistaRegole(), tot));
     }
-    out.push(...riquadro("ULTIME CHIUSURE", vistaUltime(), tot));
+    out.push(...riquadro("LE ULTIME USCITE", vistaUltime(), tot));
     out.push(C.grigio + "  q per uscire · ./scripts/bot stonk report per la misura completa" + C.r);
 
     process.stdout.write("\x1b[H\x1b[2J" + out.join("\n") + "\n");
