@@ -776,7 +776,52 @@ caso, non un risultato.
 
 **Conclusione: guardando la curva, fuori dal blocco di nascita non c'e' niente da prendere.**
 
-### La contraddizione che resta aperta
+### Perche' non funziona niente: il pedaggio e' piu' grande del segnale
+
+La contraddizione si risolve, e la risposta vale per tutto il resto del documento.
+
+Si simula la cosa piu' semplice possibile: **entrare dietro a ogni acquisto di chiunque** (54.392
+occasioni sulle 501 curve) e uscire con una regola fissa.
+
+    uscita              SENZA costi     con costo 5,4%   con costo 3,3% (tassa 0)
+    esci a 3s secchi      +0,9%             -4,5%              -2,4%
+    esci a 10s secchi     +1,9%             -3,5%              -1,4%
+    esci a 60s secchi     +3,5%             -1,9%              +0,2%
+
+**Il prezzo dopo un acquisto sale davvero**: da +0,9% a +3,5% lordo, in modo consistente. Il segnale
+esiste. Ma il costo del giro completo e' **piu' grande del segnale**: 3,3% sul token migliore (tassa
+zero) contro +3,5% lordo nel caso migliore.
+
+E il ritardo si mangia quasi tutto quello che resta:
+
+    token senza tassa, uscita a 60s
+      con i nostri 2 secondi di ritardo:   +0,2% medio
+      a ritardo zero (irraggiungibile):    +4,7% medio
+
+**I due secondi valgono 4,5 punti.**
+
+Questo spiega tutti i risultati precedenti senza bisogno d'altro: perche' il partecipante mediano
+perde ~9% (paga il pedaggio), perche' nessun filtro sulla curva attraversa lo zero pur selezionando
+correttamente le curve migliori (migliora il lordo ma non abbastanza), e perche' il blocco di nascita
+e' l'unica fascia che paga (li' il movimento lordo e' molto piu' grande del pedaggio).
+
+### Copiare chi guadagna non funziona, e non e' per il ritardo
+
+Provato a parte, perche' era l'ipotesi piu' promettente. Si sceglie sulla prima meta' del tempo e si
+misura sulla seconda, che e' l'unico modo di non trovare "bravi" per caso fra 9.426 portafogli:
+
+    scelti perche' in guadagno nella prima meta'   62 portafogli   385 occasioni   medio -7,0%
+    gli scartati, come controllo                  263 portafogli  4104 occasioni   medio -6,7%
+
+**Zero persistenza**: chi era in guadagno fa nella seconda meta' esattamente come chi era in perdita.
+Seguire le compre piu' grosse e' anche peggio (-10,6%). E non e' un problema di latenza: anche
+entrando **allo stesso istante** dell'acquisto (impossibile per noi, ma diagnostico) seguire chiunque
+fa -3,8%.
+
+Quindi il vantaggio dei portafogli in guadagno non sta in *quali* acquisti fanno, e non e' copiabile
+osservandoli. Sta altrove — nel costo che pagano, nella taglia, o nell'essere loro a muovere il prezzo.
+
+### La contraddizione, risolta
 
 Dal lato curve non si guadagna entrando tardi. Dal lato portafogli invece **si**: sulle loro storie
 complete, quattro operatori che entrano all'8-16% di raccolta chiudono in forte guadagno su centinaia
@@ -784,10 +829,10 @@ di giri (`9su3UPQW` +24,8 bersagli su 570 giri, `mwamTohZ` +14,4 su 212, `DBALLQ
 `C5EMTGGE` +11,2 su 203), con **mediano negativo** e medio positivo: perdono poco e spesso, vincono
 tanto e di rado, e stanno dentro 3-22 secondi.
 
-Le due cose stanno insieme solo se quegli operatori usano un'informazione che le **caratteristiche
-della curva non contengono**. Il candidato ovvio: non guardano la forma della curva, guardano **chi
-ha appena comprato**. E' la prossima cosa da misurare, e i dati ci sono gia' — il censimento contiene
-ogni scambio con il nome di chi l'ha fatto.
+Le due cose stanno insieme perche' quegli operatori **non pagano quello che paghiamo noi**: il
+segnale lordo dopo un acquisto e' +1/+4,7%, e chi lo raccoglie senza ritardo e senza tassa ci sta
+dentro. Noi arriviamo due secondi dopo — che valgono 4,5 punti — e quello che resta non copre il
+pedaggio. Non c'e' un'informazione che ci manca: c'e' un costo che non riusciamo a evitare.
 
 Script: `scratchpad/censimento.js` (scarico), `curve.js` / `curve2.js` / `curve3.js` / `insieme.js` /
 `estremo.js` (segnali), `storici.js` (storie dei portafogli). Usa-e-getta.
