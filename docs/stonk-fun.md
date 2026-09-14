@@ -75,17 +75,20 @@ cambiarla esiste comunque**. Un controllo che guarda solo mint e freeze authorit
 
 `status` 2 = migrata.
 
-Su **14 pool** prese in ore diverse e su entrambe le piattaforme:
+Su **71 pool** prese in ore diverse e su entrambe le piattaforme:
 
 ```
 supply           1.000.000.000     uguale
 total_base_sell    793.100.000     uguale  (il resto, 206.900.000, va alla pool nuova)
 virtual_base     1.073.025.605,6   uguale
 decimali                       6   uguale
-bersaglio / virtual_quote = 2,8333  uguale su 14 su 14
+bersaglio / virtual_quote = 2,8333  uguale su 71 su 71
 ```
 
-`virtual_quote` invece varia di sei ordini di grandezza (1,90 · 266 · 2.222 · 3.031 · 21.072 ·
+I **decimali del quote** invece variano (6, 8, 9, 12): vanno letti dal `pool_state` (offset 19),
+altrimenti il prezzo esce sbagliato di ordini di grandezza.
+
+`virtual_quote` varia di sei ordini di grandezza (1,90 · 266 · 2.222 · 3.031 · 21.072 ·
 5.660.281): e' solo la scala del quote. Il **rapporto** e' fisso, quindi la forma della curva e'
 identica per ogni token.
 
@@ -255,11 +258,44 @@ dollari serve il prezzo di 21 asset diversi. La cifra di $40.000 di market cap a
 dichiarata dalla piattaforma ed e' verificata sull'unico caso quotato in USDC che ho misurato
 (CASHCAT, $41.510); il **rapporto** 14,69x invece e' misurato e vale per tutti.
 
+## Un operatore vero: `FiFawHqxeTVBhv6YbqbLwDVuvokRpPUM1bNwAyxhGc6W`
+
+1.144 transazioni in 29 ore, 25% fallite, 62 SOL a saldo. Opera su stonk (442 tx) e su pump (376),
+e usa Orca Whirlpool, Raydium CLMM e Meteora DLMM per procurarsi i quote. Su stonk: **57 pool, 440
+scambi, 56 posizioni aperte e chiuse.**
+
+```
+                        min      25%    mediana     75%       max
+entra alla raccolta    -0,87%    0,84%    1,58%    2,32%     8,87%
+esce alla raccolta      1,07%    4,49%    7,73%   12,19%    55,72%
+rendimento             -0,70%    4,49%   16,30%   24,91%   112,45%
+minuti in posizione        0,0      0,1      0,2    516,5    1672,4
+```
+
+**53 posizioni su 56 in guadagno (95%), e la peggiore perde lo 0,70%.** Mediana: un acquisto, due
+vendite, dodici secondi. 29 su 56 chiuse entro il minuto. 2,1 posizioni all'ora.
+
+Non prevede niente: delle 57 pool che ha toccato ne sono migrate **3 (5,4%)**, contro il 2,49% della
+popolazione — meglio del caso, ma non abbastanza da chiamarlo un segnale. Su quelle tre ha preso
++3,9%, +3,5% e +20,0%, dove tenendo avrebbe fatto 12,03x, 13,95x e 9,38x.
+
+**Raccoglie il primo movimento della curva e se ne va**, dove la perdita e' tappata dai costi.
+Rinuncia completamente alla coda. E' la conferma sul campo della riga piu' importante di questo
+documento: entrando presto, il margine non e' il problema.
+
+Sostituisce anche l'ipotesi del -30% sui fallimenti, **ma solo per questo stile**: uscendo entro
+pochi secondi, la perdita peggiore misurata su 56 posizioni e' -0,70%. Per chi tiene, quanto si
+perde resta non misurato.
+
+Un costo che questi numeri non contengono: i rendimenti sono in unita' di quote, e riportare il
+quote in SOL passa per un altro swap su Whirlpool o CLMM.
+
 ## Cosa manca
 
-1. **Quanto si perde quando non ce la fa.** La tabella del valore atteso poggia su un -30%
-   ipotizzato. Serve seguire nel tempo un gruppo di curve che superano il 5% e poi si fermano, per
-   vedere di quanto tornano indietro e se si riesce a uscire.
+1. **Quanto si perde quando non ce la fa, tenendo.** Misurato solo per lo stile mordi-e-fuggi
+   (-0,70% nel caso peggiore su 56 posizioni). Per chi tiene oltre il minuto la tabella del valore
+   atteso poggia ancora su un -30% ipotizzato: serve seguire nel tempo curve che superano il 5% e
+   poi si fermano.
 2. **Il percorso nel tempo**: quanto ci mettono ad andare dal 5% al 100%, e quanto capitale resta
    fermo. La misura di popolazione e' una fotografia, non dice niente sulla durata.
 3. **Come si procura il quote**: 21 asset diversi, spesso illiquidi. Il costo di entrata e uscita
