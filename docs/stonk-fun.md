@@ -312,6 +312,45 @@ perde resta non misurato.
 Un costo che questi numeri non contengono: i rendimenti sono in unita' di quote, e riportare il
 quote in SOL passa per un altro swap su Whirlpool o CLMM.
 
+## L'osservatorio live
+
+`scripts/stonk-osservatorio.js` — si iscrive con `programSubscribe` a tutti i `pool_state` di
+LaunchLab filtrati per i due `platform_config` di stonk.fun (dataSize 429, memcmp all'offset 173) e
+registra il percorso di ogni curva. Non compra niente, non tocca il bot.
+
+```
+node scripts/stonk-osservatorio.js          # scrive in logs/, va lasciato girare
+node scripts/stonk-analisi.js               # legge i log e misura
+```
+
+Volume misurato: **~9 aggiornamenti al secondo**, cioe' ogni singolo acquisto e vendita su ogni
+curva stonk viva, spinti dal nodo. Nessun polling.
+
+Scrive due file (in `logs/`, gia' fuori da git):
+
+- `stonk-pools.jsonl` — una riga per pool nuova (mint, quote, decimali, `virtual_quote`, bersaglio,
+  la `f` a cui l'abbiamo vista la prima volta) piu' una riga `tipo: "nascita"` con l'istante di
+  creazione. La nascita si risolve con una sola chiamata per pool: se `getSignaturesForAddress`
+  restituisce meno di 1000 firme, la piu' vecchia **e'** la creazione; altrimenti la pool era gia'
+  vecchia quando l'abbiamo incontrata e viene marcata come tale.
+- `stonk-curva.jsonl` — un campione ogni volta che la raccolta si muove di almeno
+  `STONK_PASSO_MINIMO` (default 0,02% del bersaglio) o cambia stato: `{t, pool, f, real_quote, stato}`.
+
+`scripts/stonk-analisi.js` ne ricava: fin dove arrivano, quanti secondi ci mettono a superare
+ciascuna soglia **contando dalla nascita vera**, di quanto ricadono dal massimo, e la simulazione
+entra-a/esci-a con i costi.
+
+### Controlli
+
+| variabile | default | cosa fa |
+|---|---|---|
+| `STONK_PASSO_MINIMO` | 0,0002 | quanto deve muoversi `f` per registrare un campione |
+| `STONK_HEARTBEAT_MS` | 60000 | ogni quanto stampa la riga di stato |
+| `STONK_NASCITE_AL_SEC` | 2 | quante nascite risolvere al secondo via RPC |
+| `STONK_COSTI` | 0,045 | costo andata e ritorno usato nella simulazione |
+
+Usa `SVS_INDEX_RPC` (websocket ricavato dall'URL), con `SVS_UNSTAKED_RPC` come ripiego.
+
 ## Cosa manca
 
 1. **Quanto si perde quando non ce la fa, tenendo.** Misurato solo per lo stile mordi-e-fuggi
@@ -319,12 +358,12 @@ quote in SOL passa per un altro swap su Whirlpool o CLMM.
    atteso poggia ancora su un -30% ipotizzato: serve seguire nel tempo curve che superano il 5% e
    poi si fermano.
 2. **Il percorso nel tempo**: quanto ci mettono ad andare dal 5% al 100%, e quanto capitale resta
-   fermo. La misura di popolazione e' una fotografia, non dice niente sulla durata.
+   fermo. E' quello che sta raccogliendo l'osservatorio: servono ore di dati prima di leggerlo.
 3. **Come si procura il quote**: 21 asset diversi, spesso illiquidi. Il costo di entrata e uscita
    dal quote non e' nei 4,5% calcolati qui.
-4. **Come si legge un lancio in diretta**: `initialize_with_token_2022` / `initialize_v2` su
-   LaunchLab con un `platform_config` di stonk.fun fra i conti; poi si segue `real_quote/target`
-   sul `pool_state` con un semplice polling, senza bisogno di correre.
+4. **Se l'uscita e' davvero raggiungibile**: la simulazione dell'osservatorio guarda il prezzo del
+   pool, non il riempimento di un ordine. Slippage, taglia e transazioni fallite (il 54% su CASHCAT)
+   non ci sono dentro.
 
 ## Fonti
 
