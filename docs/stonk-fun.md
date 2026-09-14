@@ -283,6 +283,28 @@ popolazione — meglio del caso, ma non abbastanza da chiamarlo un segnale. Su q
 Rinuncia completamente alla coda. E' la conferma sul campo della riga piu' importante di questo
 documento: entrando presto, il margine non e' il problema.
 
+### Dove guadagna: sulle pool che NON migrano
+
+| gruppo | n | in guadagno | rendim. mediano | peggiore | migliore | minuti | entra a | esce a |
+|---|---|---|---|---|---|---|---|---|
+| tutte | 56 | 95% | +16,3% | -0,7% | +112,5% | 0,2 | 1,58% | 7,73% |
+| poi migrate | 3 | 100% | +3,9% | +3,5% | +20,0% | 0,1 | 3,71% | 5,70% |
+| **non migrate** | **53** | **94%** | **+16,9%** | -0,7% | +112,5% | 4,1 | 1,58% | 7,80% |
+
+Le non migrate rendono **piu'** delle migrate. Non e' un paradosso: le migrate le ha mollate dopo
+pochi secondi, sulle altre ha lasciato correre qualche minuto.
+
+E le 53 pool non migrate, oggi, stanno alla **mediana dello 0,35% di raccolta** (42 sotto l'1%),
+mentre lui era uscito al 7,80%. **Ha venduto piu' in alto di dove la pool e' poi rimasta in 52 casi
+su 53.**
+
+Questo misura la cosa che mancava: **la curva torna indietro.** Non e' una scala mobile a senso
+unico — si riempie, e poi si svuota quando chi e' entrato vende. Tenendo dall'ingresso fino a oggi,
+sulle stesse 53 posizioni, avrebbe fatto **-9,6% mediano, peggiore -31,8%, e 47 su 53 in perdita.**
+
+Le stesse curve, quindi, pagano bene chi entra presto e esce presto, e puniscono chi tiene. Il -30%
+che avevo ipotizzato sui fallimenti e' vicino al **caso peggiore** misurato, non alla mediana.
+
 Sostituisce anche l'ipotesi del -30% sui fallimenti, **ma solo per questo stile**: uscendo entro
 pochi secondi, la perdita peggiore misurata su 56 posizioni e' -0,70%. Per chi tiene, quanto si
 perde resta non misurato.
