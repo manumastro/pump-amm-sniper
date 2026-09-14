@@ -16,6 +16,7 @@ Sniper su token appena creati su Solana. **Scope attuale: stonk.fun** (Raydium L
 - **`docs/controls.md`** — ogni controllo, soglia e toggle, con la misura che lo giustifica. Obbligatorio prima di toccare qualunque parametro.
 - **`docs/verifica-onchain.md`** — come si misura: punto zero al nostro ingresso, ordine cronologico delle firme, prezzo ricostruito dalle riserve del pool. Poi gmgn/dexscreener/solscan via **MCP Playwright** (`browser_navigate` + `browser_evaluate` su `innerText`), altrimenti via RPC.
 - `docs/regole.md` — le tre trappole note, modello di esecuzione, stato del passaggio a live. `docs/architecture.md` — struttura del codice.
+- **`docs/programmi.md`** — i program id che si incontrano su una transazione di memecoin (DEX e router), identificati empiricamente, e come leggere una transazione senza sapere nulla del DEX.
 - `docs/rpc.md` — endpoint e trappole dei provider. `docs/rpc-audit-2026-09-12.md` — costo RPC per controllo e cosa vale tenere.
 - `docs/cc-shadow-tracker.md` — lo shadow tracking. `docs/expansion-sources-2026-09-12.md` — i launchpad valutati e perche'.
 - `docs/docker-runbook.md` · `docs/systemd-runbook.md` · `docs/DEPLOYMENT-2026-03-28.md` — esecuzione. `docs/profit-roadmap.md` — priorita'.
