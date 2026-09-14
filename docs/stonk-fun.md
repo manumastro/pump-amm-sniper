@@ -677,12 +677,41 @@ Quello che il conto **non** contiene: il costo di procurarsi il quote (21 asset,
 lo slippage, le transazioni fallite, e chi non ha ancora venduto (5.418 giri, entrati al 32,5% di
 mediana, che non sono contati ne' come vincita ne' come perdita).
 
+### La fascia buona non e' un prezzo, e' un blocco
+
+La fascia 0-0,5% tagliata per distanza in slot dalla nascita della curva (misurata coi `slot` delle
+transazioni, non col `blockTime` che ha risoluzione di un secondo):
+
+    quando entra                        casi   chiusi  in guadagno   mediano    medio   peggiore
+    nel blocco di nascita (<=1 slot)     143       75        48/75     +8,5%   +25,5%     -4,4%
+    da 2 a 100 slot (0,8-40s)              9        8          1/8     -4,4%   +10,9%     -5,8%
+    oltre 100 slot (piu' di 40s)          16       10         2/10     -4,4%    +0,7%     -4,4%
+
+**Tutto il vantaggio e' nel blocco di nascita.** Ottocento millisecondi dopo e' gia' finito. Gli
+ingressi lontani dalla nascita che stanno comunque sotto lo 0,5% non sono precoci: sono curve morte
+rimaste ferme per ore, e infatti rendono come le curve morte.
+
+Dei 143 ingressi nel blocco di nascita, **solo 21 sono nella stessa transazione del lancio**: gli
+altri 122 non sono il lanciatore ne' il suo bundle, sono arrivati di velocita' con una transazione
+separata nello stesso blocco o in quello dopo. Il che vuol dire che non e' un gioco chiuso per
+appartenenza — e' un gioco di latenza — ma il budget e' **un slot, 400 ms**.
+
+Noi arriviamo 1-2 secondi dopo la nascita, cioe' nella riga da -4,4%. Con `logsSubscribe` su RPC
+pubblico quel budget non e' avvicinabile: la notifica arriva dopo che il blocco e' stato costruito.
+Entrare in quella fascia richiede di vedere la creazione a livello di shred (ShredStream / Laserstream)
+e di spedire da una macchina vicina al leader, non un endpoint piu' veloce.
+
 ### Cosa cambia per noi
 
-Conferma e precisa la conclusione degli otto precoci, ora su 6.468 portafogli invece che su otto:
-la fascia che paga e' **sotto lo 0,5%**, dove entriamo noi (2,05%) si perde, e il margine fra le due
-e' un secondo o due di curva. Ma aggiunge che anche sotto lo 0,5% il giro mediano e' quasi nulla:
-il valore sta nella coda, non nel caso normale.
+Conferma e precisa la conclusione degli otto precoci, ora su 6.468 portafogli invece che su otto,
+e ne sposta il bersaglio. Non e' "entrare sotto lo 0,5%": e' **entrare nel blocco di nascita**, e il
+prezzo basso e' solo la conseguenza. La differenza e' operativa: il prezzo lo si puo' inseguire con
+un endpoint piu' veloce, il blocco no.
+
+Il valore sta nella coda e non nel caso normale (+8,5% mediano nel blocco di nascita, che con la
+tassa al 3% diventa +2,4%; il medio e' +25,5% perche' lo fanno pochi colpi). Serve quindi volume e
+taglia costante — e serve prima risolvere la latenza, perche' senza quella non c'e' nessuna coda
+da raccogliere.
 
 Script: `scratchpad/studio.js` (scarico) e `scratchpad/conti.js` (conto), usa-e-getta.
 
