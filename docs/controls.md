@@ -2849,7 +2849,25 @@ resta come ripiego per le creazioni il cui log non porta l'evento.
 **Effetto collaterale che conta.** Prima di questa modifica il registro conteneva **zero** viste
 `da: "nascita"` su 2.067 curve: nel tempo che impiegavamo a leggere la creazione la curva aveva
 gia' scambiato e ci arrivava da `programSubscribe`, quindi ogni misura "dalla nascita" partiva in
-realta' da meta' strada. Con la strada breve le nascite si registrano come tali.
+realta' da meta' strada.
+
+Togliere `getTransaction` da solo **non** bastava a risolverlo: le nascite restavano zero, perche'
+`programSubscribe` ci consegna lo stato della pool prima che la coda delle creazioni arrivi a
+elaborarla. La nascita va marcata **nell'istante in cui arriva la notifica**, prima di qualunque
+chiamata — l'indirizzo della pool a quel punto ce l'abbiamo gia' dal log, quindi lo stato si crea
+subito e `vistaIl` parte dall'istante vero.
+
+Effetto misurato sulle prime nascite registrate correttamente:
+
+    prima:  787 nascite su 896 (88%) erano gia' oltre la soglia quando riuscivamo a leggerle,
+            raccolta mediana 4,33%
+    dopo:   raccolta mediana 1,12% · sotto l'1,5% 10 su 15 · sotto lo 0,5% 4 su 15
+
+Il mezzo secondo tolto e' la differenza fra vedere la curva al 4,33% e vederla all'1,12%.
+
+**Cautela.** Vedere la curva sotto lo 0,5% non basta: il censimento dice che gli ingressi "sotto lo
+0,5% ma da 2 a 100 slot dopo la nascita" fanno 0 vincite su 7. Restiamo a ~1,0s dal blocco, cioe'
+due slot e mezzo. Vediamo il prezzo giusto, non siamo nel blocco giusto.
 
 Sulla strada breve non c'e' il `blockTime`, quindi l'orologio parte dall'**arrivo della notifica**
 (campo `nascitaDa: "notifica"`): e' ~1,0s dopo il blocco, ma ha risoluzione di millisecondi invece

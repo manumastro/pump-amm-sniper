@@ -281,8 +281,10 @@ async function registraCreazione(voce) {
   // Sulla strada breve non abbiamo il blockTime: si usa l'istante in cui la notifica e'
   // arrivata. E' ~1,0s DOPO il blocco (misurato), ma ha risoluzione di millisecondi invece che
   // di un secondo, ed e' l'istante da cui parte davvero il nostro orologio.
-  s.nascita = voce.pool ? voce.t : (voce.nascitaMs || 0);
-  s.nascitaDa = voce.pool ? 'notifica' : 'blocco';
+  if (!s.nascita) {
+    s.nascita = voce.pool ? voce.t : (voce.nascitaMs || 0);
+    s.nascitaDa = voce.pool ? 'notifica' : 'blocco';
+  }
   s.daNascita = true;          // l'abbiamo presa dal log di creazione, non a meta' strada
   segnaTraguardi(s, f, Date.now());
   // se quando riusciamo a leggerla e' gia' oltre la soglia l'attraversamento e' perso: puo'
@@ -315,6 +317,9 @@ async function giroCreazioni() {
 function registraVista(pool, s, c, f, ora, da) {
   if (s.vista) return;
   s.vista = true;
+  // se la nascita era gia' marcata dal log, questa prima vista E' la nascita, comunque sia
+  // arrivato lo stato della pool (di solito da programSubscribe, che ci batte sul tempo)
+  if (s.daNascita && da === 'scambio') da = 'nascita';
   const sopra = f >= ENTRATA;
   if (sopra) contatori.poolSopra += 1; else contatori.poolSotto += 1;
   scrivi({
@@ -533,7 +538,17 @@ function collega() {
       const dalLog = poolDalLog(v.logs);
       if (dalLog) contatori.poolDalLog = (contatori.poolDalLog || 0) + 1;
       else contatori.poolDaTx = (contatori.poolDaTx || 0) + 1;
-      codaCreazioni.push({ firma: v.signature, pool: dalLog, t: Date.now(), tentativi: 0 });
+      const ora = Date.now();
+      // La nascita va marcata ADESSO, non quando la coda arrivera' a elaborarla: programSubscribe
+      // ci consegna lo stato della pool prima che noi finiamo, e la curva risultava "vista da uno
+      // scambio" su 2.067 casi su 2.067. Qui l'indirizzo ce l'abbiamo gia' dal log, quindi lo
+      // stato si crea subito: `vistaIl` parte dall'istante vero e i traguardi si misurano da li'.
+      if (dalLog) {
+        let s = seguite.get(dalLog);
+        if (!s) { s = nuovoStato(ora); seguite.set(dalLog, s); }
+        if (!s.nascita) { s.nascita = ora; s.nascitaDa = 'notifica'; s.daNascita = true; }
+      }
+      codaCreazioni.push({ firma: v.signature, pool: dalLog, t: ora, tentativi: 0 });
       return;
     }
     if (msg.method !== 'programNotification') return;
