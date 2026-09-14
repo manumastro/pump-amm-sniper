@@ -29,7 +29,9 @@ const OUT_CURVA = path.join(LOG_DIR, 'stonk-curva.jsonl');
 const PASSO_MINIMO = Number(process.env.STONK_PASSO_MINIMO || '0.0002');
 const HEARTBEAT_MS = Number(process.env.STONK_HEARTBEAT_MS || '60000');
 // quante nascite al secondo andiamo a risolvere via RPC (una chiamata per pool nuova)
-const NASCITE_AL_SEC = Number(process.env.STONK_NASCITE_AL_SEC || '2');
+const NASCITE_AL_SEC = Number(process.env.STONK_NASCITE_AL_SEC || '4');
+// il pool_state e' l'indice 5 dei conti dell'istruzione di creazione di LaunchLab
+const INDICE_POOL_STATE = 5;
 
 function endpointWs() {
   const http = process.env.SVS_INDEX_RPC || process.env.SVS_UNSTAKED_RPC;
@@ -75,10 +77,13 @@ const viste = new Map(); // pool -> { primoTs, primaF, maxF, maxTs, ultimaF, cam
 let scritteCurva = 0;
 let notifiche = 0;
 let nasciteRisolte = 0;
+let logRicevuti = 0;
+let logConCreazione = 0;
 
 // Una pool vista per la prima volta puo' essere appena nata o gia' vecchia: lo dice la sua
 // storia. Una pagina sola di firme (<1000) significa che la piu' vecchia e' la creazione.
 const codaNascite = [];
+const nateQui = new Map(); // pool -> { nascita, firma }  dalle creazioni viste in diretta
 async function rpc(metodo, params) {
   const url = process.env.SVS_INDEX_RPC || process.env.SVS_UNSTAKED_RPC;
   const r = await fetch(url, {
@@ -92,24 +97,78 @@ async function rpc(metodo, params) {
   return j.result;
 }
 
+/**
+ * L'istante di nascita preso dai log, con la firma a prova.
+ *
+ * Dedurlo da getSignaturesForAddress non basta: una pool calda supera le 1000 firme in
+ * pochi minuti e allora la piu' vecchia che vediamo non e' piu' la creazione. I log invece
+ * la danno esatta, costano 47 KB/s e il ritmo torna con la crescita on-chain (~150 all'ora).
+ */
+async function registraCreazione(voce) {
+  // i log arrivano a commitment 'processed': la transazione non e' ancora leggibile per
+  // qualche secondo, e chiedendola subito torna null. Si rimette in coda e si riprova.
+  const tx = await rpc('getTransaction', [voce.firma, {
+    maxSupportedTransactionVersion: 0, encoding: 'jsonParsed', commitment: 'confirmed',
+  }]);
+  if (!tx || !tx.meta) {
+    voce.tentativi = (voce.tentativi || 0) + 1;
+    if (voce.tentativi <= 15) codaCreazioni.push(voce);
+    return;
+  }
+  const dentro = [...tx.transaction.message.instructions];
+  for (const g of tx.meta.innerInstructions || []) dentro.push(...g.instructions);
+  const istr = dentro.find((i) => i.programId === LAUNCHLAB && Array.isArray(i.accounts) && i.accounts.length > INDICE_POOL_STATE);
+  if (!istr) return;
+  const pool = istr.accounts[INDICE_POOL_STATE];
+  if (nateQui.has(pool)) return;
+  const nascita = (tx.blockTime || Math.floor(Date.now() / 1000)) * 1000;
+  nateQui.set(pool, { nascita, firma: voce.firma });
+  streamPools.write(JSON.stringify({
+    t: Date.now(), pool, tipo: 'nascita', fonte: 'log', nascita, firma: voce.firma, completo: true,
+  }) + '\n');
+  nasciteRisolte += 1;
+}
+
 async function risolviNascita(pool) {
+  if (nateQui.has(pool)) return;
   const firme = await rpc('getSignaturesForAddress', [pool, { limit: 1000 }]);
   if (!firme || !firme.length) return;
   const completo = firme.length < 1000;
   const piuVecchia = firme[firme.length - 1];
   streamPools.write(JSON.stringify({
-    t: Date.now(), pool, tipo: 'nascita',
+    t: Date.now(), pool, tipo: 'nascita', fonte: 'firme',
     nascita: completo ? piuVecchia.blockTime * 1000 : null,
     firmeViste: firme.length, completo,
   }) + '\n');
   nasciteRisolte += 1;
 }
 
+const codaCreazioni = [];
+
 async function giroNascite() {
   const quante = Math.max(1, NASCITE_AL_SEC);
+  // le creazioni viste nei log hanno la precedenza: sono l'istante vero
+  for (let i = 0; i < quante && codaCreazioni.length; i += 1) {
+    const voce = codaCreazioni.shift();
+    try {
+      await registraCreazione(voce);
+    } catch (e) {
+      // un catch muto qui ha nascosto per mezz'ora un ReferenceError: l'errore si stampa
+      voce.errori = (voce.errori || 0) + 1;
+      if (voce.errori <= 3) console.error('creazione, tentativo fallito:', String(e).slice(0, 140));
+      if (voce.errori <= 5) codaCreazioni.push(voce);
+      break;
+    }
+  }
   for (let i = 0; i < quante && codaNascite.length; i += 1) {
     const pool = codaNascite.shift();
-    try { await risolviNascita(pool); } catch { codaNascite.push(pool); break; }
+    try {
+      await risolviNascita(pool);
+    } catch (e) {
+      console.error('nascita dedotta, tentativo fallito:', String(e).slice(0, 140));
+      codaNascite.push(pool);
+      break;
+    }
   }
 }
 
@@ -161,7 +220,9 @@ function battito() {
     `max>=20%=${sopra(0.2)}`,
     `migrate=${vive.filter((v) => v.ultimoStato === 2).length}`,
     `nascite=${nasciteRisolte}/${viste.size}`,
-    `coda=${codaNascite.length}`,
+    `nateQui=${nateQui.size}`,
+    `log=${logRicevuti}/${logConCreazione}`,
+    `coda=${codaNascite.length}+${codaCreazioni.length}`,
   ].join(' '));
 }
 
@@ -181,6 +242,12 @@ function collega() {
         }],
       }));
     });
+    Object.keys(PIATTAFORME).forEach((plat, i) => {
+      ws.send(JSON.stringify({
+        jsonrpc: '2.0', id: 100 + i, method: 'logsSubscribe',
+        params: [{ mentions: [plat] }, { commitment: 'processed' }],
+      }));
+    });
     vivo = setInterval(() => { try { ws.ping(); } catch { /* chiuso */ } }, 20000);
   });
 
@@ -188,6 +255,16 @@ function collega() {
     let msg;
     try { msg = JSON.parse(raw); } catch { return; }
     if (msg.error) { console.error('errore sottoscrizione:', msg.error.message); return; }
+    if (msg.method === 'logsNotification') {
+      logRicevuti += 1;
+      const v = msg.params.result.value;
+      if (v.err) return;
+      const nomi = (v.logs || []).filter((r) => r.includes('Instruction:')).map((r) => r.split(': ').pop());
+      if (!nomi.includes('InitializeWithToken2022') && !nomi.includes('InitializeV2')) return;
+      logConCreazione += 1;
+      codaCreazioni.push({ firma: v.signature, tentativi: 0 });
+      return;
+    }
     if (msg.method !== 'programNotification') return;
     notifiche += 1;
     const v = msg.params.result.value;

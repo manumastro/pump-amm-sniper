@@ -33,14 +33,17 @@ function costruisci() {
   for (const r of leggi('stonk-pools.jsonl')) {
     if (r.tipo === 'nascita') {
       const p = pools.get(r.pool);
-      if (p) { p.nascita = r.nascita; p.storiaCompleta = r.completo; }
+      // la creazione vista nei log e' l'istante vero e ha la precedenza su quella dedotta
+      if (p && (r.fonte === 'log' || p.fonteNascita !== 'log')) {
+        p.nascita = r.nascita; p.storiaCompleta = r.completo; p.fonteNascita = r.fonte || 'firme';
+      }
       continue;
     }
     if (pools.has(r.pool)) continue;
     pools.set(r.pool, {
       pool: r.pool, mint: r.mint, quote: r.quote, piattaforma: r.piattaforma,
       target: r.target, primoTs: r.t, fIniziale: r.fIniziale, punti: [],
-      nascita: null, storiaCompleta: null,
+      nascita: null, storiaCompleta: null, fonteNascita: null,
     });
   }
   for (const c of leggi('stonk-curva.jsonl')) {
@@ -51,8 +54,10 @@ function costruisci() {
   return [...pools.values()].filter((p) => p.punti.length);
 }
 
-// una pool e' "presa dalla nascita" se abbiamo la sua creazione e l'abbiamo vista subito dopo
+// una pool e' "presa dalla nascita" se ne abbiamo visto la creazione nei log, oppure se la
+// sua storia era ancora corta e l'abbiamo incontrata subito dopo
 function dallaNascita(p) {
+  if (p.fonteNascita === 'log') return true;
   return p.storiaCompleta === true && p.nascita !== null && (p.primoTs - p.nascita) <= 120000;
 }
 
@@ -63,9 +68,14 @@ function tempoASoglia(p, soglia) {
   return (punto.t - zero) / 1000;
 }
 
+/**
+ * Entrare alla soglia f0 significa vedere la curva ATTRAVERSARE f0, non incontrarla gia' sopra:
+ * una pool vista per la prima volta al 30% non e' un ingresso allo 0,5%, e contarla come tale
+ * falsava il prezzo d'ingresso e quindi tutta la simulazione.
+ */
 function simula(p, f0, f1) {
   const iEntra = p.punti.findIndex((x) => x.f >= f0);
-  if (iEntra < 0) return null;
+  if (iEntra <= 0) return null;           // mai vista sotto la soglia: non e' un attraversamento
   const entra = p.punti[iEntra];
   if (entra.f > f1) return null; // gia' oltre l'uscita quando l'abbiamo vista
   for (let i = iEntra + 1; i < p.punti.length; i += 1) {
@@ -112,6 +122,24 @@ function main() {
       if (!t.length) { console.log(`  ${pct(s, 0).padStart(6)}                    0`); continue; }
       console.log(`  ${pct(s, 0).padStart(6)} ${String(t.length).padStart(18)}   ${n(quantile(t, 0.5), 1).padStart(14)} ${n(quantile(t, 0.25), 1).padStart(8)} ${n(quantile(t, 0.75), 1).padStart(8)}`);
     }
+  }
+
+  console.log('\n=== QUANTO CI METTONO FRA UNA SOGLIA E L ALTRA ===');
+  console.log('(solo attraversamenti veri: la pool e stata vista sotto la soglia prima di superarla)');
+  console.log('  da -> a        quante    secondi: mediana      25%      75%');
+  for (const [a, b] of [[0.01, 0.02], [0.015, 0.05], [0.015, 0.08], [0.02, 0.05], [0.05, 0.10], [0.05, 0.20], [0.10, 0.50]]) {
+    const t = [];
+    for (const p of pools) {
+      const iA = p.punti.findIndex((x) => x.f >= a);
+      if (iA <= 0) continue;
+      const iB = p.punti.findIndex((x, k) => k > iA && x.f >= b);
+      if (iB < 0) continue;
+      t.push((p.punti[iB].t - p.punti[iA].t) / 1000);
+    }
+    t.sort((x, y) => x - y);
+    const eti = `${pct(a, 1)} -> ${pct(b, 0)}`;
+    if (!t.length) { console.log(`  ${eti.padEnd(14)} ${String(0).padStart(6)}`); continue; }
+    console.log(`  ${eti.padEnd(14)} ${String(t.length).padStart(6)}   ${n(quantile(t, 0.5), 1).padStart(14)} ${n(quantile(t, 0.25), 1).padStart(8)} ${n(quantile(t, 0.75), 1).padStart(8)}`);
   }
 
   console.log('\n=== DI QUANTO TORNANO INDIETRO ===');
