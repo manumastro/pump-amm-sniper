@@ -585,6 +585,107 @@ Noi le nascite le prendiamo dai log e quando riusciamo a leggerle sono **gia' ol
 su 17**. Con questa infrastruttura quella fascia non e' raggiungibile, e prima di cercare un'altra
 uscita va risolto questo.
 
+## Il censimento: 6.468 portafogli su 127 curve (2026-09-14)
+
+Gli otto precoci qui sopra erano otto portafogli scelti perche' li avevamo notati. Questo studio
+inverte il punto di partenza: si scaricano **tutte** le transazioni di **tutte** le 127 curve del
+campione e si ricostruisce il conto di ogni portafoglio che le ha toccate, chiunque sia.
+
+    36.994 scambi · 127 curve · 6.468 portafogli · 11.057 giri (un portafoglio su una curva)
+    5.639 giri chiusi, 5.418 ancora dentro
+
+Metodo: `getSignaturesForAddress` **paginato** su ogni pool, poi l'evento di LaunchLab dentro i log
+(vedi la tabella dei 147 byte sopra). Gli importi sono `amount_in` / `amount_out` dell'evento, non
+dedotti dai saldi: il SOL nativo non compare in `pre/postTokenBalances` e quel metodo dava -100% e
++10.724.546%.
+
+### La forma generale
+
+Il partecipante tipico perde:
+
+    entra a         giri   in guadagno   mediano     medio   peggiore    durata
+    0,0-0,5%          97       54/97      +4,3%    +22,8%     -11,9%       14s
+    0,5-1,0%          28       11/28      -1,5%    +24,6%      -7,4%       35s
+    1,0-2,5%          82       31/82      -2,5%     +7,3%     -22,8%       34s
+    2,5-5,0%         183       87/183     -1,0%    +20,2%     -23,6%       69s
+    5-10%            488      210/488     -3,8%    +35,3%     -44,3%       33s
+    10-20%           948      438/948     -3,5%    +13,7%     -62,5%       65s
+    20-35%          1197      490/1197    -6,3%     +6,3%     -73,5%      130s
+    35-60%          1947      631/1947   -15,5%    -10,6%     -84,3%      124s
+    60-101%          669      124/669    -36,1%    -26,6%     -90,7%       83s
+    TUTTI           5639     2076/5639    -8,7%     +1,2%     -90,7%       93s
+
+**-8,7% mediano su 5.639 giri completati**, ed e' dell'ordine del costo di andata e ritorno misurato
+(5,4% con tassa 1%, 9,2% con tassa 3%). La tassa qui non e' inclusa, quindi il vero mediano e' peggiore.
+Il gioco e' a somma negativa per chi ci sta dentro, e il grosso di quel -8,7% e' pedaggio.
+
+### La fascia d'ingresso conta meno di dove va la curva
+
+Incrociando ingresso ed esito della curva si vede che quasi tutto il rendimento di quasi tutte le
+fasce e' il rendimento della curva, non della bravura:
+
+    curve morte (mai oltre il 10%) — 57 curve su 127, 140 giri
+      0,0-0,5%   50    14/50    -2,5%   peggiore  -5,8%
+      1,0-2,5%   19     6/19    -3,2%   peggiore -15,7%
+      2,5-5%     37     2/37    -8,2%   peggiore -23,3%
+      5-10%      25     0/25   -16,6%   peggiore -34,6%
+
+    curve tiepide (10-40%) — 39 curve, 985 giri
+      0,0-0,5%   27    23/27   +30,4%        10-20%   403    85/403   -13,4%
+      2,5-5%     75    38/75    +0,4%        20-35%   152    28/152   -27,1%
+      5-10%     271    93/271   -4,4%
+
+    curve corse (oltre il 40%) — 31 curve, 4.514 giri
+      0,0-0,5%   20    17/20   +50,4%        20-35%  1045   462/1045   -4,3%
+      5-10%     192   117/192  +10,0%        35-60%  1945   631/1945  -15,4%
+      10-20%    545   353/545  +13,5%        60-101%  669   124/669   -36,1%
+
+Chi entra sotto lo 0,5% guadagna su entrambi i tipi di curva viva (+50% se corre, +30% se si ferma a
+meta') e pareggia su quelle morte (-2,5%). Tutte le altre fasce guadagnano **solo** se la curva corre:
+non stanno guadagnando, stanno scommettendo. Il meccanismo si legge nella colonna della durata: i
+precoci stanno dentro **8-14 secondi** e non aspettano di sapere come va a finire. Il loro vantaggio
+non e' scegliere le curve giuste, e' non prendersi il ritardo.
+
+### Non e' il creatore, e non e' un bot solo
+
+Due controlli che potevano demolire il risultato, e non lo demoliscono:
+
+- **Il primo acquirente di ogni curva** (il presunto creatore, 76 giri) fa **-4,4% mediano, 20/76**.
+  I soldi non li fa chi lancia. Togliendolo, la fascia 0-0,5% passa da +4,3% a **+6,9%**: migliora.
+- **85 giri fatti da 57 portafogli diversi**: non e' un bot che ripete. I piu' assidui sono
+  `EXWn4ZX2`x8, `BaxXrniy`x6, `bwamJzzt`x4 — gli stessi che avevamo isolato a mano, ricomparsi qui
+  senza che nessuno li cercasse.
+
+### Quanto vale davvero, tassa inclusa
+
+    tassa   mediano     medio   in guadagno   peggiore   somma su 100 giri
+    0%        +4,3%    +22,8%        54/97     -11,9%           +2.212%
+    1%        +2,3%    +20,4%        52/97     -13,7%           +1.975%
+    3%        -1,8%    +15,6%        46/97     -17,1%           +1.508%
+
+La forma, senza tassa: peggiore -11,9% · 10% -4,4% · 25% -3,9% · **meta' +4,3%** · 75% +32,9% ·
+90% +67,5% · migliore +194,6%. **43 giri in perdita su 97**, e i **10 giri migliori valgono
++1.192% dei +2.212% totali.**
+
+Va letto per quello che e': **il giro tipico non guadagna**. Con la tassa al 3% il mediano e'
+negativo. Quello che rende la fascia interessante non e' il caso tipico ma l'asimmetria — la coda
+sinistra e' corta e stabile (-11,9% nel caso peggiore su 97 giri, contro -44%, -73% e -90% delle
+altre fasce) mentre la destra arriva a +194%. E' una strategia che vive di pochi colpi, quindi
+richiede molti tentativi e una taglia costante: farne dieci non dice niente.
+
+Quello che il conto **non** contiene: il costo di procurarsi il quote (21 asset, spesso illiquidi),
+lo slippage, le transazioni fallite, e chi non ha ancora venduto (5.418 giri, entrati al 32,5% di
+mediana, che non sono contati ne' come vincita ne' come perdita).
+
+### Cosa cambia per noi
+
+Conferma e precisa la conclusione degli otto precoci, ora su 6.468 portafogli invece che su otto:
+la fascia che paga e' **sotto lo 0,5%**, dove entriamo noi (2,05%) si perde, e il margine fra le due
+e' un secondo o due di curva. Ma aggiunge che anche sotto lo 0,5% il giro mediano e' quasi nulla:
+il valore sta nella coda, non nel caso normale.
+
+Script: `scratchpad/studio.js` (scarico) e `scratchpad/conti.js` (conto), usa-e-getta.
+
 ## Cosa manca
 
 1. **Quanto si perde quando non ce la fa, tenendo.** Misurato solo per lo stile mordi-e-fuggi
