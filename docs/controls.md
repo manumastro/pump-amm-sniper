@@ -2756,14 +2756,14 @@ mediana d'ingresso di `FiFawHqx` (1,58%), l'operatore studiato in `docs/stonk-fu
 | controllo | default | perche' |
 |---|---|---|
 | `STONK_ENTRATA` | 0,015 | dove entra chi questo mestiere lo fa gia'; da rimisurare sui nostri dati |
-| `STONK_USCITE` | 2,3,5,8,12,20,50,100% | non una soglia ma **tutte insieme**: su ogni ingresso si apre una posizione virtuale per ciascuna, cosi' una sessione misura tutte le uscite invece di una |
-| `STONK_RICADUTA` | 0,01 | si esce se la raccolta torna un punto sotto l'ingresso. E' la misura diretta dello svuotamento della curva, l'unica perdita vera osservata finora |
+| `STONK_USCITE` | +10,15,25,40,60,100,300,1000% | non una soglia ma **tutte insieme**: su ogni ingresso si apre una posizione virtuale per ciascuna, cosi' una sessione misura tutte le uscite invece di una. Sono guadagni di **prezzo dall'ingresso**, non livelli di raccolta: erano livelli assoluti (2%, 3%, 5%...) e con quelli chi entrava su una curva gia' al 7% non aveva piu' nessuna uscita vicina — gli restavano solo le lontane, che sulle prime 180 posizioni centravano il bersaglio nel 3% dei casi contro il 73-82% delle vicine. Nessuna scende sotto il +10%: i costi del giro completo misurati sono 6,6 punti, sotto quella soglia si perde anche indovinando |
+| `STONK_RICADUTA` | 0,10 | si esce se il **prezzo** scende del 10% dall'ingresso. Era un punto di raccolta, ma un punto vale movimenti diversi a seconda di dove si entra (-5,3% di prezzo al 2% di raccolta, -3,6% al 20%): la stessa regola era una cosa diversa per ogni ingresso. Misurato su 132 uscite per ricaduta: il prezzo era sceso del 6,8% e incassavamo -13,3%, cioe' **meta' della perdita tipica sono i nostri costi**, e scala con la tassa del token (-10,5% senza tassa, -11,6% all'1%, -14,8% al 3%) |
 | `STONK_SCADENZA_MS` | 1.800.000 | mezz'ora: oltre, la posizione dice piu' sul capitale fermo che sulla curva |
 | `STONK_TAGLIA_FRAZIONE` | 0,002 | lo 0,2% del bersaglio, **non** una cifra fissa: i quote sono 21 asset con scale da 11 a 31 milioni di unita', e solo rapportandosi al bersaglio l'impatto sul prezzo resta lo stesso su tutti (~1,1% a curva vuota) |
 | `STONK_FEE_SCAMBIO` | 0,0125 | l'1,25% dichiarato da Raydium+stonk, per lato |
 | `STONK_ANCHE_SOPRA` | true | compra anche le curve incontrate **gia'** oltre la soglia, taggandole `modo: sopra`. Non e' una scelta: e' la domanda "varrebbe la pena comprarle lo stesso?" girata al campo, cosi' il report confronta i due ingressi sulla stessa sessione |
 | `STONK_MAX_INGRESSO` | 0,30 | oltre il 30% di raccolta non si entra comunque: sopra di li' il margine che resta fino alla migrazione non copre i costi piu' il rischio di ricaduta |
-| `STONK_MAX_APERTE` | 400 | solo un tetto di memoria |
+| `STONK_MAX_APERTE` | 8.000 | solo un tetto di memoria. Era 400: con `STONK_ANCHE_SOPRA` le posizioni vive insieme sono migliaia (mezz'ora di scadenza per decine di ingressi al minuto), il tetto veniva toccato in dieci minuti e gli ingressi sparivano in silenzio |
 | `STONK_CREAZIONI_AL_SEC` | 4 | ~150 nascite all'ora, ognuna con qualche ritentativo |
 
 La tassa sui trasferimenti **non** e' un controllo: si legge dal mint a ogni ingresso, perche' vale

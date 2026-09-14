@@ -25,10 +25,14 @@ const OUT = path.join(LOG_DIR, 'stonk-paper.jsonl');
 const ENTRATA = Number(process.env.STONK_ENTRATA || '0.015');
 const TAGLIA = Number(process.env.STONK_TAGLIA_FRAZIONE || '0.002');
 const SCAMBIO_PER_LATO = Number(process.env.STONK_FEE_SCAMBIO || '0.0125');
-const RICADUTA = Number(process.env.STONK_RICADUTA || '0.01');
+// lo stop e' una caduta di PREZZO dall'ingresso, non un punto di raccolta: un punto vale
+// -5,3% di prezzo se sei entrato al 2% e -3,6% se sei entrato al 20%.
+const RICADUTA = Number(process.env.STONK_RICADUTA || '0.10');
 const SCADENZA_MS = Number(process.env.STONK_SCADENZA_MS || '1800000');
 const HEARTBEAT_MS = Number(process.env.STONK_HEARTBEAT_MS || '60000');
-const MAX_APERTE = Number(process.env.STONK_MAX_APERTE || '400');
+// con l'ingresso `sopra` attivo le posizioni aperte insieme diventano migliaia: 400 veniva
+// toccato in dieci minuti e da li' in poi gli ingressi sparivano in silenzio, falsando la misura.
+const MAX_APERTE = Number(process.env.STONK_MAX_APERTE || '8000');
 // le curve che incontriamo gia' sopra la soglia: comprarle o no e' una domanda aperta, quindi
 // si comprano e si taggano `modo: sopra`, cosi' il report confronta i due ingressi sulla stessa
 // sessione invece di ragionarci sopra. MAX_INGRESSO evita di entrare su una curva quasi piena.
@@ -38,13 +42,17 @@ const MAX_INGRESSO = Number(process.env.STONK_MAX_INGRESSO || '0.30');
 const INDICE_POOL_STATE = 5;
 const CREAZIONI_AL_SEC = Number(process.env.STONK_CREAZIONI_AL_SEC || '4');
 
-// le uscite in prova: stessa entrata, tutte misurate insieme
-const REGOLE = (process.env.STONK_USCITE || '0.02,0.03,0.05,0.08,0.12,0.20,0.50,1.00')
+// Le uscite in prova: stessa entrata, tutte misurate insieme. Sono guadagni di PREZZO
+// rispetto all'ingresso, non livelli di raccolta: cosi' la stessa regola vuol dire la stessa
+// cosa per chi entra all'1,5% e per chi entra al 20%, che prima non era vero.
+// Nessuna scende sotto il 10%: i costi del giro completo misurati sono ~6,6 punti, sotto quella
+// soglia l'operazione perde anche quando indovina.
+const REGOLE = (process.env.STONK_USCITE || '0.10,0.15,0.25,0.40,0.60,1.00,3.00,10.00')
   .split(',').map(Number).filter((x) => x > 0)
-  .map((obiettivo) => ({
-    nome: `u${(obiettivo * 100).toFixed(0)}`,
-    obiettivo,
-    ricaduta: RICADUTA,
+  .map((guadagno) => ({
+    nome: `p${(guadagno * 100).toFixed(0)}`,
+    guadagno,
+    stop: RICADUTA,
     scadenzaMs: SCADENZA_MS,
   }));
 
@@ -185,6 +193,7 @@ function chiudiPosizione(pool, nome, p, c, motivo, ora) {
     tipo: 'chiusa', t: ora, pool, regola: nome, mint: p.mint, quote: p.quoteMint, modo: p.modo,
     piattaforma: p.piattaforma, tassa: p.costi.trasferimentoPerLato,
     fIngresso: Number(p.fIngresso.toFixed(6)), fUscita: Number(p.chiusa.fUscita.toFixed(6)),
+    movimento: Number((p.chiusa.prezzoUscita / p.prezzoIngresso - 1).toFixed(6)),
     fMassima: Number(p.fMassima.toFixed(6)), fMinima: Number(p.fMinima.toFixed(6)),
     secondi: Number(((ora - p.apertaIl) / 1000).toFixed(1)),
     secondiAlMassimo: Number(((p.fMassimaIl - p.apertaIl) / 1000).toFixed(1)),
@@ -226,7 +235,6 @@ async function aggiorna(pool, c) {
   const tassa = await leggiTassa(c.baseMint, c.piattaforma);
   const costi = { scambioPerLato: SCAMBIO_PER_LATO, trasferimentoPerLato: tassa };
   for (const regola of REGOLE) {
-    if (regola.obiettivo <= f) continue;
     const p = paper.apri(pool, c, regola, TAGLIA, costi, ora);
     p.modo = modo;
     s.aperte.set(regola.nome, p);
@@ -258,7 +266,7 @@ function battito() {
 
 function collega() {
   const url = endpointWs();
-  console.log(`paper stonk.fun -> ingresso ${(100 * ENTRATA).toFixed(1)}%, uscite ${REGOLE.map((r) => (100 * r.obiettivo).toFixed(0) + '%').join(' ')}`);
+  console.log(`paper stonk.fun -> ingresso ${(100 * ENTRATA).toFixed(1)}%, uscite ${REGOLE.map((r) => '+' + (100 * r.guadagno).toFixed(0) + '%').join(' ')}, stop -${(100 * RICADUTA).toFixed(0)}%`);
   const ws = new WebSocket(url);
   let vivo = null;
   ws.on('open', () => {

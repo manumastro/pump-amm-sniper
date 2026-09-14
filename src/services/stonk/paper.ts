@@ -1,13 +1,14 @@
 /**
  * Paper trade sulle curve stonk.fun.
  *
- * La posizione non si apre al tempo ne' al prezzo in dollari: si apre quando la raccolta
- * ATTRAVERSA una soglia, e si chiude quando ne attraversa un'altra. Sulla curva stonk
- * quella e' l'unica coordinata che conta, perche' il prezzo e' una funzione nota della
- * raccolta e non dipende dal token (docs/stonk-fun.md).
+ * La posizione si apre sulla raccolta — e' l'unica coordinata che conta su una curva stonk,
+ * perche' il prezzo e' una funzione nota della raccolta e non dipende dal token
+ * (docs/stonk-fun.md) — ma si chiude sul PREZZO, relativo a quello d'ingresso, cosi' la
+ * stessa regola vuol dire la stessa cosa per chi entra all'1,5% e per chi entra al 20%.
  *
  * Un attraversamento e' tale solo se la curva e' stata vista SOTTO la soglia prima di
- * superarla: incontrare una pool gia' al 30% non e' un ingresso all'1,5%.
+ * superarla: incontrare una pool gia' al 30% non e' un ingresso all'1,5%. Le due cose si
+ * comprano tutte e due e si taggano (`modo`), cosi' il confronto e' una misura.
  *
  * Su ogni ingresso si aprono piu' posizioni virtuali, una per ciascuna regola d'uscita in
  * prova: costano zero e fanno misurare tutte le uscite sulla stessa sessione invece che
@@ -19,10 +20,19 @@ import { CurvaStonk, prezzo, raccolta, tokenPerQuote, quotePerToken } from "./cu
 export type RegolaUscita = {
     /** etichetta nel report */
     nome: string;
-    /** si esce quando la raccolta arriva qui */
-    obiettivo: number;
-    /** si esce anche se la raccolta ricade di questa frazione sotto l'ingresso */
-    ricaduta: number;
+    /**
+     * si esce quando il prezzo e' salito di questa frazione DALL'INGRESSO.
+     *
+     * Era un livello assoluto di raccolta ("esci quando arriva al 5%") e non poteva
+     * funzionare: chi entra su una curva gia' al 7% non ha piu' nessuna uscita vicina, gli
+     * restano solo quelle lontane, cioe' proprio quelle che falliscono l'80% delle volte.
+     * L'esperimento obbligava chi entrava tardi a giocare alla lotteria. Misurato sulle
+     * prime 180 posizioni: u3 e u5 centrano il bersaglio nel 73-82% dei casi, u50 e u100
+     * nel 3%.
+     */
+    guadagno: number;
+    /** si esce quando il prezzo e' sceso di questa frazione dall'ingresso */
+    stop: number;
     /** si esce comunque dopo questi millisecondi */
     scadenzaMs: number;
 };
@@ -109,9 +119,12 @@ export function motivoChiusura(
     ora: number,
 ): MotivoChiusura | null {
     if (c.stato === 2) return "migrata";
-    const f = raccolta(c);
-    if (f >= regola.obiettivo) return "obiettivo";
-    if (f <= p.fIngresso - regola.ricaduta) return "ricaduta";
+    // il confronto e' sul prezzo, non sulla raccolta: un punto di raccolta vale un movimento
+    // di prezzo diverso a seconda di dove si e' entrati (-5,3% al 2% di raccolta, -3,6% al 20%),
+    // e con soglie assolute la stessa regola era una cosa diversa per ogni ingresso.
+    const r = p.prezzoIngresso > 0 ? prezzo(c) / p.prezzoIngresso : 1;
+    if (r >= 1 + regola.guadagno) return "obiettivo";
+    if (r <= 1 - regola.stop) return "ricaduta";
     if (ora - p.apertaIl >= regola.scadenzaMs) return "scadenza";
     return null;
 }
