@@ -599,23 +599,32 @@ Metodo: `getSignaturesForAddress` **paginato** su ogni pool, poi l'evento di Lau
 dedotti dai saldi: il SOL nativo non compare in `pre/postTokenBalances` e quel metodo dava -100% e
 +10.724.546%.
 
+**Un giro vale solo se i conti tornano da tutte e due le parti.** Si tiene un portafoglio su una
+curva quando ha rivenduto quasi tutto quello che ci aveva comprato — ma serve il limite anche
+dall'altro lato: chi risulta con un saldo di token molto **negativo** ha venduto roba che su quella
+curva non aveva comprato (arrivata per trasferimento, o comprata prima della finestra di firme), e il
+suo "rendimento" e' privo di senso. Uno solo di questi portava il medio di una fascia a +1.085% con
+un massimo di +1.202.016%. I numeri qui sotto li escludono; e' anche il motivo per cui i "migliore"
+di fascia sono tutti sotto il +500% invece dei +4.700% che si vedono senza la guardia.
+
 ### La forma generale
 
 Il partecipante tipico perde:
 
-    entra a         giri   in guadagno   mediano     medio   peggiore    durata
-    0,0-0,5%          97       54/97      +4,3%    +22,8%     -11,9%       14s
-    0,5-1,0%          28       11/28      -1,5%    +24,6%      -7,4%       35s
-    1,0-2,5%          82       31/82      -2,5%     +7,3%     -22,8%       34s
-    2,5-5,0%         183       87/183     -1,0%    +20,2%     -23,6%       69s
-    5-10%            488      210/488     -3,8%    +35,3%     -44,3%       33s
-    10-20%           948      438/948     -3,5%    +13,7%     -62,5%       65s
-    20-35%          1197      490/1197    -6,3%     +6,3%     -73,5%      130s
-    35-60%          1947      631/1947   -15,5%    -10,6%     -84,3%      124s
-    60-101%          669      124/669    -36,1%    -26,6%     -90,7%       83s
-    TUTTI           5639     2076/5639    -8,7%     +1,2%     -90,7%       93s
+    entra a         giri   in guadagno   mediano     medio   peggiore   migliore   durata
+    0,0-0,5%          95       52/95      +3,5%    +20,4%     -11,9%    +194,6%      13s
+    0,5-1,0%          28       11/28      -1,5%    +24,6%      -7,4%    +261,7%      35s
+    1,0-2,5%          81       30/81      -2,5%     +6,2%     -22,8%    +130,9%      34s
+    2,5-5,0%         182       87/182     -1,0%    +20,3%     -23,6%    +413,4%      68s
+    5-10%            482      204/482     -3,9%    +11,7%     -44,3%    +402,1%      33s
+    10-20%           933      425/933     -3,8%    +11,7%     -62,5%    +453,2%      62s
+    20-35%          1178      476/1178    -6,6%     -0,2%     -73,5%    +211,7%     126s
+    35-60%          1923      616/1923   -15,7%    -11,9%     -84,3%    +206,1%     124s
+    60-101%          664      121/664    -36,2%    -33,1%     -90,7%     +56,4%      82s
 
-**-8,7% mediano su 5.639 giri completati**, ed e' dell'ordine del costo di andata e ritorno misurato
+Il **medio** cala in modo monotono con la fascia d'ingresso, non solo il mediano: da +20% a -33%.
+
+**-8,7% mediano su 5.566 giri completati**, ed e' dell'ordine del costo di andata e ritorno misurato
 (5,4% con tassa 1%, 9,2% con tassa 3%). La tassa qui non e' inclusa, quindi il vero mediano e' peggiore.
 Il gioco e' a somma negativa per chi ci sta dentro, e il grosso di quel -8,7% e' pedaggio.
 
@@ -659,13 +668,13 @@ Due controlli che potevano demolire il risultato, e non lo demoliscono:
 ### Quanto vale davvero, tassa inclusa
 
     tassa   mediano     medio   in guadagno   peggiore   somma su 100 giri
-    0%        +4,3%    +22,8%        54/97     -11,9%           +2.212%
-    1%        +2,3%    +20,4%        52/97     -13,7%           +1.975%
-    3%        -1,8%    +15,6%        46/97     -17,1%           +1.508%
+    0%        +3,5%    +20,4%        52/95     -11,9%           +1.942%
+    1%        +1,5%    +18,0%        50/95     -13,7%           +1.715%
+    3%        -2,6%    +13,3%        44/95     -17,1%           +1.266%
 
-La forma, senza tassa: peggiore -11,9% · 10% -4,4% · 25% -3,9% · **meta' +4,3%** · 75% +32,9% ·
-90% +67,5% · migliore +194,6%. **43 giri in perdita su 97**, e i **10 giri migliori valgono
-+1.192% dei +2.212% totali.**
+La forma, senza tassa: peggiore -11,9% · 10% -4,4% · 25% -4,0% · **meta' +3,5%** · 75% +30,4% ·
+90% +64,9% · migliore +194,6%. **43 giri in perdita su 95**, e i **10 giri migliori valgono
++1.056% dei +1.942% totali.**
 
 Va letto per quello che e': **il giro tipico non guadagna**. Con la tassa al 3% il mediano e'
 negativo. Quello che rende la fascia interessante non e' il caso tipico ma l'asimmetria — la coda
@@ -684,7 +693,7 @@ transazioni, non col `blockTime` che ha risoluzione di un secondo):
 
     quando entra                        casi   chiusi  in guadagno   mediano    medio   peggiore
     nel blocco di nascita (<=1 slot)     143       75        48/75     +8,5%   +25,5%     -4,4%
-    da 2 a 100 slot (0,8-40s)              9        8          1/8     -4,4%   +10,9%     -5,8%
+    da 2 a 100 slot (0,8-40s)              9        7          0/7     -4,4%    -4,1%     -5,8%
     oltre 100 slot (piu' di 40s)          16       10         2/10     -4,4%    +0,7%     -4,4%
 
 **Tutto il vantaggio e' nel blocco di nascita.** Ottocento millisecondi dopo e' gia' finito. Gli
