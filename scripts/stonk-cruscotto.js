@@ -64,6 +64,11 @@ const rend = (x, d = 1) => (x >= 0 ? C.verde : C.rosso) + (x >= 0 ? "+" : "") + 
 const pc = (x, d = 2) => (100 * x).toFixed(d) + "%";
 const q = (a, p) => (a.length ? a[Math.min(a.length - 1, Math.floor((a.length - 1) * p))] : null);
 const ora = (t) => new Date(t).toISOString().slice(11, 19);
+// p = uscita a prezzo, t = uscita a tempo, m = meta' all'obiettivo e il resto corre
+const ordinaRegole = (x, y) => (x[0] === y[0]
+  ? Number(x.slice(1)) - Number(y.slice(1))
+  : 'ptm'.indexOf(x[0]) - 'ptm'.indexOf(y[0]));
+
 
 function barra(n, tot, w) {
     if (!tot) return C.grigio + "░".repeat(w) + C.r;
@@ -89,7 +94,7 @@ function leggiBattito() {
     const lg = /log=(\d+)\/(\d+)/.exec(ultima);
     const t = /^\[([^\]]+)\]/.exec(ultima);
     const prima = /^\[([^\]]+)\]/.exec(righe[0]);
-    const cfg = /ingresso ([\d.]+%), uscite (.+)$/.exec(tutte.find((r) => r.startsWith("paper stonk.fun")) || "");
+    const cfg = /ingresso ([\d.\-]+%), (.+)$/.exec(tutte.find((r) => r.startsWith("paper stonk.fun")) || "");
     let scartate = {};
     if (scar) { try { scartate = JSON.parse(scar[1]); } catch { scartate = {}; } }
     return {
@@ -263,7 +268,7 @@ function vistaIngressi() {
 function vistaRegole() {
     if (!stato.regole.size) return [C.grigio + " (nessuna posizione chiusa)" + C.r];
     const righe = [C.grigio + " regola    n  obiett ricad  scad  migr    mediano    medio   sec" + C.r];
-    const nomi = [...stato.regole.keys()].sort((x, y) => Number(x.slice(1)) - Number(y.slice(1)));
+    const nomi = [...stato.regole.keys()].sort(ordinaRegole);
     for (const nome of nomi) {
         const g = stato.regole.get(nome);
         const r = g.rend.slice().sort((x, y) => x - y);

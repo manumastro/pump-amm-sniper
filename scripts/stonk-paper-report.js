@@ -9,6 +9,11 @@ const FILE = path.join(process.cwd(), 'logs', 'stonk-paper.jsonl');
 const n = (x, d = 2) => x.toLocaleString('it', { minimumFractionDigits: d, maximumFractionDigits: d });
 const pct = (x, d = 1) => `${(100 * x).toFixed(d)}%`;
 const q = (a, p) => (a.length ? a[Math.min(a.length - 1, Math.floor((a.length - 1) * p))] : null);
+// p = uscita a prezzo, t = uscita a tempo, m = meta' all'obiettivo e il resto corre
+const ordinaRegole = (x, y) => (x[0] === y[0]
+  ? Number(x.slice(1)) - Number(y.slice(1))
+  : 'ptm'.indexOf(x[0]) - 'ptm'.indexOf(y[0]));
+
 
 function leggi() {
   if (!fs.existsSync(FILE)) return { ingressi: [], chiuse: [] };
@@ -69,7 +74,7 @@ function main() {
   console.log('regola    n   raggiunta  ricaduta  scadenza  migrata |  rend.medio  mediano  peggiore  migliore |  secondi');
   const perRegola = {};
   for (const c of chiuse) (perRegola[c.regola] = perRegola[c.regola] || []).push(c);
-  const ordine = Object.keys(perRegola).sort((x, y) => Number(x.slice(1)) - Number(y.slice(1)));
+  const ordine = Object.keys(perRegola).sort(ordinaRegole);
   for (const nome of ordine) {
     const g = perRegola[nome];
     const r = g.map((c) => c.rendimento).sort((x, y) => x - y);

@@ -35,6 +35,14 @@ export type RegolaUscita = {
     stop: number;
     /** si esce comunque dopo questi millisecondi */
     scadenzaMs: number;
+    /**
+     * quanta parte si vende quando il prezzo arriva a `guadagno`; il resto continua a correre
+     * fino allo stop, alla scadenza o alla migrazione. 1 (il default) = si esce tutti insieme.
+     *
+     * Serve a mettere in prova quello che fa FiFawHqx, l'unico portafoglio che abbiamo visto
+     * lavorare davvero su queste curve: vende in piu' pezzi (fino a 7) invece che in colpo solo.
+     */
+    frazioneAlObiettivo?: number;
 };
 
 export type CostiCurva = {
@@ -58,6 +66,11 @@ export type Posizione = {
     quoteSpesa: number;
     tokenRicevuti: number;
     costi: CostiCurva;
+    /** token ancora in mano: scende sotto `tokenRicevuti` dopo una vendita parziale */
+    tokenRestanti: number;
+    /** quote gia' incassata dalle vendite parziali */
+    incassatoParziale: number;
+    parzialeIl?: number;
     /** aggiornati a ogni campione finche' la posizione e' aperta */
     fMassima: number;
     fMassimaIl: number;
@@ -105,10 +118,34 @@ export function apri(
         quoteSpesa,
         tokenRicevuti: lordo * netta(costi),
         costi,
+        tokenRestanti: lordo * netta(costi),
+        incassatoParziale: 0,
         fMassima: f,
         fMassimaIl: ora,
         fMinima: f,
     };
+}
+
+/** quanto vale adesso, rispetto al prezzo d'ingresso */
+function rapporto(p: Posizione, c: CurvaStonk): number {
+    return p.prezzoIngresso > 0 ? prezzo(c) / p.prezzoIngresso : 1;
+}
+
+/** la posizione ha una vendita parziale da fare adesso? */
+export function daVendereParziale(p: Posizione, c: CurvaStonk, regola: RegolaUscita): boolean {
+    const frazione = regola.frazioneAlObiettivo ?? 1;
+    if (frazione >= 1 || p.parzialeIl !== undefined) return false;
+    return rapporto(p, c) >= 1 + regola.guadagno;
+}
+
+/** vende una frazione dei token ancora in mano e tiene il resto */
+export function vendiParziale(p: Posizione, c: CurvaStonk, frazione: number, ora: number): void {
+    const venduti = p.tokenRestanti * frazione;
+    const inviati = venduti * netta(p.costi);
+    const lordo = quotePerToken(c, inviati);
+    p.incassatoParziale += lordo * (1 - p.costi.scambioPerLato);
+    p.tokenRestanti -= venduti;
+    p.parzialeIl = ora;
 }
 
 /** perche' questa posizione andrebbe chiusa adesso, o null se resta aperta */
@@ -122,8 +159,10 @@ export function motivoChiusura(
     // il confronto e' sul prezzo, non sulla raccolta: un punto di raccolta vale un movimento
     // di prezzo diverso a seconda di dove si e' entrati (-5,3% al 2% di raccolta, -3,6% al 20%),
     // e con soglie assolute la stessa regola era una cosa diversa per ogni ingresso.
-    const r = p.prezzoIngresso > 0 ? prezzo(c) / p.prezzoIngresso : 1;
-    if (r >= 1 + regola.guadagno) return "obiettivo";
+    const r = rapporto(p, c);
+    // per le regole a uscita parziale l'obiettivo non chiude: fa vendere un pezzo (vedi
+    // daVendereParziale) e il resto resta in piedi fino allo stop, alla scadenza o alla migrazione.
+    if ((regola.frazioneAlObiettivo ?? 1) >= 1 && r >= 1 + regola.guadagno) return "obiettivo";
     if (r <= 1 - regola.stop) return "ricaduta";
     if (ora - p.apertaIl >= regola.scadenzaMs) return "scadenza";
     return null;
@@ -143,9 +182,9 @@ export function chiudi(
     motivo: MotivoChiusura,
     ora: number,
 ): Posizione {
-    const inviati = p.tokenRicevuti * netta(p.costi);
+    const inviati = p.tokenRestanti * netta(p.costi);
     const lordo = quotePerToken(c, inviati);
-    const quoteIncassata = lordo * (1 - p.costi.scambioPerLato);
+    const quoteIncassata = p.incassatoParziale + lordo * (1 - p.costi.scambioPerLato);
     p.chiusa = {
         il: ora,
         fUscita: raccolta(c),

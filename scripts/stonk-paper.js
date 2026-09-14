@@ -37,7 +37,11 @@ const MAX_APERTE = Number(process.env.STONK_MAX_APERTE || '8000');
 // si comprano e si taggano `modo: sopra`, cosi' il report confronta i due ingressi sulla stessa
 // sessione invece di ragionarci sopra. MAX_INGRESSO evita di entrare su una curva quasi piena.
 const ANCHE_SOPRA = process.env.STONK_ANCHE_SOPRA !== 'false';
-const MAX_INGRESSO = Number(process.env.STONK_MAX_INGRESSO || '0.30');
+// FiFawHqx, l'unico portafoglio che abbiamo visto lavorare davvero su queste curve, su 25
+// acquisti verificati non ha MAI comprato sopra il 2,33% di raccolta (mediana 0,85%). E la
+// nostra misura sulle 95 pool dice lo stesso: sotto il 3% il prezzo sale del 10% tre volte su
+// quattro con discesa mediana zero, fra il 10 e il 30% ci arriva una volta su quattro.
+const MAX_INGRESSO = Number(process.env.STONK_MAX_INGRESSO || '0.025');
 // il pool_state e' l'indice 5 dei conti dell'istruzione di creazione di LaunchLab
 const INDICE_POOL_STATE = 5;
 const CREAZIONI_AL_SEC = Number(process.env.STONK_CREAZIONI_AL_SEC || '4');
@@ -56,11 +60,33 @@ const REGOLE = (process.env.STONK_USCITE || '0.10,0.15,0.25,0.40,0.60,1.00,3.00,
     scadenzaMs: SCADENZA_MS,
   }));
 
+// A tempo: si esce dopo N secondi comunque sia andata, senza aspettare nessun obiettivo.
+// FiFawHqx sta dentro 4 secondi di mediana e il suo caso peggiore e' -4,7%: a quella velocita'
+// lo stop non serve, si esce prima che la curva possa svuotarsi. Il nostro -10% di stop invece
+// ci fa uscire a -15/-21% per lo scivolamento, ed e' li' che se ne va il conto.
+for (const secondi of (process.env.STONK_USCITE_TEMPO || '5,10,30').split(',').map(Number).filter((x) => x > 0)) {
+  REGOLE.push({ nome: `t${secondi}`, guadagno: Infinity, stop: RICADUTA, scadenzaMs: secondi * 1000 });
+}
+
+// A meta': si vende una parte all'obiettivo e il resto continua a correre fino allo stop o alla
+// scadenza. E' l'unica differenza vera fra una regola secca e quello che fa FiFawHqx, che vende
+// in piu' pezzi (fino a 7 sullo stesso token).
+const FRAZIONE_META = Number(process.env.STONK_FRAZIONE_META || '0.5');
+for (const guadagno of (process.env.STONK_USCITE_META || '0.25,0.60').split(',').map(Number).filter((x) => x > 0)) {
+  REGOLE.push({
+    nome: `m${(guadagno * 100).toFixed(0)}`,
+    guadagno,
+    stop: RICADUTA,
+    scadenzaMs: SCADENZA_MS,
+    frazioneAlObiettivo: FRAZIONE_META,
+  });
+}
+
 const stream = fs.createWriteStream(OUT, { flags: 'a' });
 const seguite = new Map();   // pool -> { sottoSoglia, aperte: Map<regola, Posizione> }
 const tasse = new Map();     // mint -> aliquota per lato
 const contatori = {
-  notifiche: 0, aperte: 0, chiuse: 0, ingressi: 0, ingressiSopra: 0,
+  notifiche: 0, aperte: 0, chiuse: 0, parziali: 0, ingressi: 0, ingressiSopra: 0,
   poolSotto: 0, poolSopra: 0, troppoAlte: 0,
   nate: 0, nateSopra: 0, log: 0, logCreazioni: 0, sottoscrizioni: 0, scartate: {},
 };
@@ -198,6 +224,7 @@ function chiudiPosizione(pool, nome, p, c, motivo, ora) {
     secondi: Number(((ora - p.apertaIl) / 1000).toFixed(1)),
     secondiAlMassimo: Number(((p.fMassimaIl - p.apertaIl) / 1000).toFixed(1)),
     quoteSpesa: p.quoteSpesa, quoteIncassata: p.chiusa.quoteIncassata,
+    parziale: p.parzialeIl ? Number(((p.parzialeIl - p.apertaIl) / 1000).toFixed(1)) : null,
     rendimento: Number(p.chiusa.rendimento.toFixed(6)), motivo,
   });
   contatori.chiuse += 1;
@@ -212,6 +239,10 @@ async function aggiorna(pool, c) {
   for (const [nome, p] of s.aperte) {
     paper.segui(p, c, ora);
     const regola = REGOLE.find((r) => r.nome === nome);
+    if (paper.daVendereParziale(p, c, regola)) {
+      paper.vendiParziale(p, c, regola.frazioneAlObiettivo, ora);
+      contatori.parziali += 1;
+    }
     const motivo = paper.motivoChiusura(p, c, regola, ora);
     if (motivo) { chiudiPosizione(pool, nome, p, c, motivo, ora); s.aperte.delete(nome); }
   }
@@ -255,7 +286,7 @@ function battito() {
     `[${new Date().toISOString()}]`, 'PAPER',
     `pool=${seguite.size}`, `notifiche=${contatori.notifiche}`,
     `ingressi=${contatori.ingressi}`, `posizioni=${contatori.aperte}`,
-    `chiuse=${contatori.chiuse}`, `aperte=${aperte}`,
+    `chiuse=${contatori.chiuse}`, `aperte=${aperte}`, `parziali=${contatori.parziali}`,
     `log=${contatori.log}/${contatori.logCreazioni}`, `sub=${contatori.sottoscrizioni}`,
     `nate=${contatori.nate}`, `scartate=${JSON.stringify(contatori.scartate)}`, `nate_gia_sopra=${contatori.nateSopra}`,
     `pool_sotto=${contatori.poolSotto}`, `pool_sopra=${contatori.poolSopra}`,
@@ -266,7 +297,8 @@ function battito() {
 
 function collega() {
   const url = endpointWs();
-  console.log(`paper stonk.fun -> ingresso ${(100 * ENTRATA).toFixed(1)}%, uscite ${REGOLE.map((r) => '+' + (100 * r.guadagno).toFixed(0) + '%').join(' ')}, stop -${(100 * RICADUTA).toFixed(0)}%`);
+  console.log(`paper stonk.fun -> ingresso ${(100 * ENTRATA).toFixed(1)}-${(100 * MAX_INGRESSO).toFixed(1)}%, `
+    + `${REGOLE.length} regole: ${REGOLE.map((r) => r.nome).join(' ')}, stop -${(100 * RICADUTA).toFixed(0)}%`);
   const ws = new WebSocket(url);
   let vivo = null;
   ws.on('open', () => {

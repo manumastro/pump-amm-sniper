@@ -321,6 +321,63 @@ perde resta non misurato.
 Un costo che questi numeri non contengono: i rendimenti sono in unita' di quote, e riportare il
 quote in SOL passa per un altro swap su Whirlpool o CLMM.
 
+### Rimisurato dieci ore dopo (2026-09-14), ed e' da qui che copiamo
+
+Ricostruito di nuovo dalla catena sulle sue ultime dieci ore, per vedere se il quadro sopra regge e
+per guardare **come** opera, non solo con che risultati: 146 operazioni su LaunchLab, **55 giri
+completi**, ancora attivo mentre scrivevamo. Regge, e il rendimento mediano e' piu' basso di quello
+delle 56 posizioni di ieri (+8,8% contro +16,3%) su un campione tutto nuovo.
+
+| | |
+|---|---|
+| in guadagno | 42 su 55 |
+| rendimento mediano | **+8,8%** |
+| caso peggiore | **-4,7%** |
+| migliore | +125,2% |
+| durata mediana | **4 secondi** (prima vendita dopo 2s) |
+
+#### Come lo fa
+
+**Compra prestissimo, e non sgarra.** Su 25 acquisti verificati leggendo il vault del quote prima
+della sua transazione: raccolta mediana **0,85%**, massimo **2,33%**, 25 su 25 sotto il 3%.
+
+**Compra grosso.** Ogni suo acquisto muove la curva di **1,75 punti** di raccolta: quasi dieci volte
+la taglia che simuliamo noi (0,2% del bersaglio). Compra abbastanza da muovere il prezzo che incassa.
+
+**Una compra sola per token.** Mai una media al ribasso: se va male esce.
+
+**Vende in piu' pezzi e vende tutto.** Mediana 1 vendita, fino a 7 sullo stesso token; i token
+rivenduti sono il 100% — non tiene mai niente.
+
+**Risolve il problema dei 21 quote dentro la transazione.** Paga in SOL o USDC e lo scambio nel
+quote esotico avviene nella stessa transazione, atomicamente:
+
+```
+InitializeAccount3 · SwapV2 (Raydium CLMM) · TransferChecked · BuyExactIn (LaunchLab) · TransferChecked
+```
+
+Secondo dove sta la liquidita' di quel quote usa Raydium CLMM (`CAMMCzo5…`), Raydium CPMM
+(`675kPX9M…`) o Meteora DLMM (`LBUZKhRx…`). Se lo scambio fallisce fallisce tutto insieme, e non
+resta con un asset illiquido in mano. Paga 0,01 SOL di priorita' sugli acquisti.
+
+**Non evita i token tassati**: 21 dei 25 acquisti sono lanci reward con la tassa dell'1-3%.
+
+#### Cosa ce ne viene
+
+Il suo caso peggiore e' -4,7%, il nostro -21%. La differenza non e' la scelta dei token: e' che lui
+e' fuori in quattro secondi, mentre noi restiamo dentro finche' uno stop a -10% ci butta fuori a
+-15/-21% per lo scivolamento. A quella velocita' lo stop non gli serve.
+
+Da qui le tre regole messe in prova nel paper trade (vedi `docs/controls.md`):
+
+1. `STONK_MAX_INGRESSO` **0,025** — non si compra sopra il 2,5%, era 0,30.
+2. `STONK_USCITE_TEMPO` **5, 10, 30 secondi** — uscite a tempo, senza aspettare nessun obiettivo.
+3. `STONK_USCITE_META` **+25%, +60%** — si vende meta' all'obiettivo e il resto corre.
+
+Quello che **non** stiamo ancora replicando: la taglia (lui muove 1,75 punti di curva, noi 0,2), il
+percorso atomico nel quote, e la priorita' pagata. Tutti e tre cambiano il risultato vero, e nessuno
+dei tre e' nella simulazione.
+
 ### La matematica, verificata su tutte le pool
 
 `src/services/stonk/curva.ts` implementa il prodotto costante sulle riserve virtuali:
@@ -393,8 +450,17 @@ Usa `SVS_INDEX_RPC` (websocket ricavato dall'URL), con `SVS_UNSTAKED_RPC` come r
 `scripts/stonk-paper.js` — ha preso il posto dell'osservatorio, che e' spento. Non registra piu'
 tutto quello che passa: apre posizioni simulate quando la raccolta **attraversa** la soglia
 d'ingresso e le chiude quando ne attraversa una d'uscita. Su ogni ingresso apre una posizione per
-ciascuna regola d'uscita in prova (2, 3, 5, 8, 12, 20, 50, 100%): costano zero e fanno misurare
-tutte le uscite sulla stessa sessione, invece di una per volta.
+ciascuna regola d'uscita in prova: costano zero e fanno misurare tutte le uscite sulla stessa
+sessione, invece di una per volta. Le regole sono tre famiglie, e i nomi nel report dicono quale:
+
+| | |
+|---|---|
+| `p10 … p1000` | si esce quando il **prezzo** e' salito del 10, 15, 25, 40, 60, 100, 300, 1000% dall'ingresso |
+| `t5 t10 t30` | si esce dopo 5, 10, 30 **secondi**, comunque sia andata |
+| `m25 m60` | si vende **meta'** all'obiettivo e il resto corre fino allo stop o alla scadenza |
+
+Su tutte vale lo stesso stop: -10% di prezzo dall'ingresso. E si compra solo fra l'1,5% e il **2,5%**
+di raccolta: sopra non si entra affatto.
 
 La logica di decisione sta in `src/services/stonk/paper.ts` ed e' pura: lo script e' solo il
 daemon che le porta i dati. Le soglie e il perche' di ognuna stanno in `docs/controls.md` §51.
