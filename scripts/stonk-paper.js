@@ -225,21 +225,46 @@ function salita(s) {
   return out;
 }
 
-async function registraCreazione(voce) {
-  const tx = await rpc('getTransaction', [voce.firma, {
-    maxSupportedTransactionVersion: 0, encoding: 'jsonParsed', commitment: 'confirmed',
-  }]);
-  if (!tx || !tx.meta) {
-    voce.tentativi = (voce.tentativi || 0) + 1;
-    if (voce.tentativi <= 15) codaCreazioni.push(voce);
-    return;
+// L'evento di creazione di LaunchLab (discriminante 97d7e20976a173ae) arriva GIA' dentro la
+// notifica di logsSubscribe e porta l'indirizzo della pool all'offset 8. Verificato confrontandolo
+// con la pool vera (indice 5 dei conti dell'istruzione) su creazioni reali: coincide sempre.
+//
+// Serve perche' la chiamata a getTransaction che facevamo solo per sapere QUALE pool fosse nata
+// costa **0,53 secondi di mediana** su un ritardo totale di 1,54 (misurato su 103 creazioni,
+// docs/stonk-fun.md): e' un terzo del nostro ritardo speso a chiedere una cosa che avevamo gia'.
+const DISCR_CREAZIONE = '97d7e20976a173ae';
+
+function poolDalLog(righe) {
+  for (const r of righe || []) {
+    if (!r.startsWith('Program data: ')) continue;
+    let b;
+    try { b = Buffer.from(r.slice(14), 'base64'); } catch { continue; }
+    if (b.length < 40 || b.subarray(0, 8).toString('hex') !== DISCR_CREAZIONE) continue;
+    return b58(b.subarray(8, 40));
   }
-  const dentro = [...tx.transaction.message.instructions];
-  for (const g of tx.meta.innerInstructions || []) dentro.push(...g.instructions);
-  const istr = dentro.find((i) => i.programId === curva.LAUNCHLAB_PROGRAM
-    && Array.isArray(i.accounts) && i.accounts.length > INDICE_POOL_STATE);
-  if (!istr) { scarta('senza istruzione launchlab'); return; }
-  const pool = istr.accounts[INDICE_POOL_STATE];
+  return null;
+}
+
+async function registraCreazione(voce) {
+  // strada breve: la pool era gia' nel log, si salta getTransaction
+  let pool = voce.pool || null;
+  if (!pool) {
+    const tx = await rpc('getTransaction', [voce.firma, {
+      maxSupportedTransactionVersion: 0, encoding: 'jsonParsed', commitment: 'confirmed',
+    }]);
+    if (!tx || !tx.meta) {
+      voce.tentativi = (voce.tentativi || 0) + 1;
+      if (voce.tentativi <= 15) codaCreazioni.push(voce);
+      return;
+    }
+    const dentro = [...tx.transaction.message.instructions];
+    for (const g of tx.meta.innerInstructions || []) dentro.push(...g.instructions);
+    const istr = dentro.find((i) => i.programId === curva.LAUNCHLAB_PROGRAM
+      && Array.isArray(i.accounts) && i.accounts.length > INDICE_POOL_STATE);
+    if (!istr) { scarta('senza istruzione launchlab'); return; }
+    pool = istr.accounts[INDICE_POOL_STATE];
+    voce.nascitaMs = (tx.blockTime || 0) * 1000;   // risoluzione di un secondo
+  }
   // NON si esce se la pool e' gia' in `seguite`: fra la creazione e il momento in cui
   // riusciamo a leggerla passano uno o due secondi, e in quel tempo ha gia' scambiato ed e'
   // arrivata da programSubscribe. Uscire qui faceva perdere ogni nascita.
@@ -253,7 +278,11 @@ async function registraCreazione(voce) {
   contatori.nate += 1;
   let s = seguite.get(pool);
   if (!s) { s = nuovoStato(Date.now()); seguite.set(pool, s); }
-  s.nascita = (tx.blockTime || 0) * 1000;
+  // Sulla strada breve non abbiamo il blockTime: si usa l'istante in cui la notifica e'
+  // arrivata. E' ~1,0s DOPO il blocco (misurato), ma ha risoluzione di millisecondi invece che
+  // di un secondo, ed e' l'istante da cui parte davvero il nostro orologio.
+  s.nascita = voce.pool ? voce.t : (voce.nascitaMs || 0);
+  s.nascitaDa = voce.pool ? 'notifica' : 'blocco';
   s.daNascita = true;          // l'abbiamo presa dal log di creazione, non a meta' strada
   segnaTraguardi(s, f, Date.now());
   // se quando riusciamo a leggerla e' gia' oltre la soglia l'attraversamento e' perso: puo'
@@ -292,6 +321,7 @@ function registraVista(pool, s, c, f, ora, da) {
     tipo: 'vista', t: ora, pool, mint: c.baseMint, da, sopra, stato: c.stato,
     f: Number(f.toFixed(6)),
     secondiDallaNascita: s.nascita ? Number(((ora - s.nascita) / 1000).toFixed(1)) : null,
+    nascitaDa: s.nascitaDa || null,
   });
 }
 
@@ -450,7 +480,7 @@ function battito() {
     `chiuse=${contatori.chiuse}`, `aperte=${aperte}`, `parziali=${contatori.parziali}`,
     `scadenze=${contatori.scadenzeRisolte}`,
     `log=${contatori.log}/${contatori.logCreazioni}`, `sub=${contatori.sottoscrizioni}`,
-    `nate=${contatori.nate}`, `scartate=${JSON.stringify(contatori.scartate)}`, `nate_gia_sopra=${contatori.nateSopra}`,
+    `nate=${contatori.nate}`, `pool_dal_log=${contatori.poolDalLog || 0}/${(contatori.poolDalLog || 0) + (contatori.poolDaTx || 0)}`, `scartate=${JSON.stringify(contatori.scartate)}`, `nate_gia_sopra=${contatori.nateSopra}`,
     `pool_sotto=${contatori.poolSotto}`, `pool_sopra=${contatori.poolSopra}`,
     `ingressi_sopra=${contatori.ingressiSopra}`, `ingressi_salto=${contatori.ingressiSalto}`, `troppo_alte=${contatori.troppoAlte}`,
     `coda=${codaCreazioni.length}`,
@@ -500,7 +530,10 @@ function collega() {
       const nomi = (v.logs || []).filter((r) => r.includes('Instruction:')).map((r) => r.split(': ').pop());
       if (!nomi.includes('InitializeWithToken2022') && !nomi.includes('InitializeV2')) return;
       contatori.logCreazioni += 1;
-      codaCreazioni.push({ firma: v.signature, tentativi: 0 });
+      const dalLog = poolDalLog(v.logs);
+      if (dalLog) contatori.poolDalLog = (contatori.poolDalLog || 0) + 1;
+      else contatori.poolDaTx = (contatori.poolDaTx || 0) + 1;
+      codaCreazioni.push({ firma: v.signature, pool: dalLog, t: Date.now(), tentativi: 0 });
       return;
     }
     if (msg.method !== 'programNotification') return;

@@ -2822,3 +2822,35 @@ chiavi esistenti: serviva uno stop piu' largo **e** una scadenza piu' corta dell
 Con tre canali d'ingresso e 18 regole le posizioni aperte insieme triplicano. Il tetto serve solo a
 non far esplodere la memoria: quando viene toccato gli ingressi spariscono **in silenzio** e la
 misura risulta falsata (successo con 400, che veniva toccato in dieci minuti).
+
+### La pool si legge dal log, non si chiede (percorso di creazione)
+
+Il daemon chiedeva `getTransaction` su ogni creazione **solo per sapere quale pool fosse nata**.
+Quella chiamata e' stata tolta: l'evento di creazione di LaunchLab (discriminante
+`97d7e20976a173ae`) arriva gia' dentro la notifica di `logsSubscribe` e porta l'indirizzo della
+pool all'**offset 8**.
+
+**La misura che lo giustifica.** Cronometraggio di 103 creazioni vere, passaggio per passaggio:
+
+    passaggio                                25%     meta'     75%      90%
+    dal blocco alla notifica               0,83s    1,01s    1,28s    1,46s
+    + leggere la transazione               0,28s    0,53s    0,61s    0,68s
+    + leggere lo stato del pool            0,05s    0,05s    0,06s    0,13s
+    TOTALE dal blocco al poter comprare    1,27s    1,54s    1,89s    1,97s
+
+**Un terzo del nostro ritardo era una chiamata di rete per un dato che avevamo gia'.** Tolta,
+il totale scende a circa 1,0s, che e' il secondo della notifica: quello non si batte restando su
+`logsSubscribe`, perche' per costruzione parla dopo che il blocco e' stato costruito.
+
+**Verifica prima di implementare.** Su creazioni reali si e' confrontato l'offset 8 dell'evento
+con la pool vera (indice 5 dei conti dell'istruzione LaunchLab): coincide. Il percorso vecchio
+resta come ripiego per le creazioni il cui log non porta l'evento.
+
+**Effetto collaterale che conta.** Prima di questa modifica il registro conteneva **zero** viste
+`da: "nascita"` su 2.067 curve: nel tempo che impiegavamo a leggere la creazione la curva aveva
+gia' scambiato e ci arrivava da `programSubscribe`, quindi ogni misura "dalla nascita" partiva in
+realta' da meta' strada. Con la strada breve le nascite si registrano come tali.
+
+Sulla strada breve non c'e' il `blockTime`, quindi l'orologio parte dall'**arrivo della notifica**
+(campo `nascitaDa: "notifica"`): e' ~1,0s dopo il blocco, ma ha risoluzione di millisecondi invece
+che di un secondo. Il campo dice sempre quale dei due orologi e' stato usato.
