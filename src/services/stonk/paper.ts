@@ -43,6 +43,23 @@ export type RegolaUscita = {
      * lavorare davvero su queste curve: vende in piu' pezzi (fino a 7) invece che in colpo solo.
      */
     frazioneAlObiettivo?: number;
+    /**
+     * si esce quando la RACCOLTA arriva qui, comunque sia andato il prezzo.
+     *
+     * E' la vecchia regola assoluta, tornata utile: aveva senso toglierla quando si comprava
+     * fino al 30% (chi entrava tardi non aveva piu' nessuna uscita vicina), ma ora che si compra
+     * solo sotto il 2,5% tutti gli ingressi partono dallo stesso punto e "esci al 10% di
+     * completamento" torna a voler dire la stessa cosa per tutti. Il 100% e' la migrazione.
+     */
+    obiettivoRaccolta?: number;
+    /**
+     * dopo questi millisecondi si esce appena NON si e' in guadagno: uno stop a pareggio
+     * ritardato. Nasce da una misura: le vincite arrivano in ~6 secondi, le perdite marciscono
+     * per 24-89. Chi dopo dieci secondi non e' ancora sopra quasi sempre sta solo scendendo piano.
+     */
+    verificaMs?: number;
+    /** quanto bisogna essere sopra alla verifica per restare dentro (0 = basta il pareggio) */
+    minimoAllaVerifica?: number;
 };
 
 export type CostiCurva = {
@@ -52,7 +69,7 @@ export type CostiCurva = {
     trasferimentoPerLato: number;
 };
 
-export type MotivoChiusura = "obiettivo" | "ricaduta" | "scadenza" | "migrata";
+export type MotivoChiusura = "obiettivo" | "completamento" | "stagnante" | "ricaduta" | "scadenza" | "migrata";
 
 export type Posizione = {
     pool: string;
@@ -163,7 +180,10 @@ export function motivoChiusura(
     // per le regole a uscita parziale l'obiettivo non chiude: fa vendere un pezzo (vedi
     // daVendereParziale) e il resto resta in piedi fino allo stop, alla scadenza o alla migrazione.
     if ((regola.frazioneAlObiettivo ?? 1) >= 1 && r >= 1 + regola.guadagno) return "obiettivo";
+    if (regola.obiettivoRaccolta !== undefined && raccolta(c) >= regola.obiettivoRaccolta) return "completamento";
     if (r <= 1 - regola.stop) return "ricaduta";
+    if (regola.verificaMs !== undefined && ora - p.apertaIl >= regola.verificaMs
+        && r - 1 < (regola.minimoAllaVerifica ?? 0)) return "stagnante";
     if (ora - p.apertaIl >= regola.scadenzaMs) return "scadenza";
     return null;
 }

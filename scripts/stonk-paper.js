@@ -69,6 +69,28 @@ for (const secondi of (process.env.STONK_USCITE_TEMPO || '5,10,30').split(',').m
   REGOLE.push({ nome: `t${secondi}`, guadagno: Infinity, stop: RICADUTA, scadenzaMs: secondi * 1000 });
 }
 
+// A completamento: si esce quando la curva arriva a quella quota del suo bersaglio, comunque sia
+// andato il prezzo. Ha senso di nuovo adesso che si compra solo sotto il 2,5%: tutti gli ingressi
+// partono dallo stesso punto, quindi la stessa soglia vuol dire la stessa cosa per tutti. r100 =
+// tenere fino alla migrazione.
+for (const quota of (process.env.STONK_USCITE_RACCOLTA || '0.05,0.10,0.20,0.50,1.00').split(',').map(Number).filter((x) => x > 0)) {
+  REGOLE.push({
+    nome: `r${(quota * 100).toFixed(0)}`,
+    guadagno: Infinity, stop: RICADUTA, scadenzaMs: SCADENZA_MS, obiettivoRaccolta: quota,
+  });
+}
+
+// A pareggio ritardato: dopo N secondi si esce appena non si e' in guadagno. Le vincite arrivano
+// in ~6 secondi e le perdite marciscono per 24-89: chi a dieci secondi non e' ancora sopra quasi
+// sempre sta solo scendendo piano. Uscire SEMPRE a N secondi invece non paga (t5 fa -5,4%: sulle
+// stesse pool salva 10 punti sulle perdenti ma ne butta 16 sulle vincenti).
+for (const secondi of (process.env.STONK_USCITE_PAREGGIO || '5,10,30').split(',').map(Number).filter((x) => x > 0)) {
+  REGOLE.push({
+    nome: `b${secondi}`,
+    guadagno: Infinity, stop: RICADUTA, scadenzaMs: SCADENZA_MS, verificaMs: secondi * 1000,
+  });
+}
+
 // A meta': si vende una parte all'obiettivo e il resto continua a correre fino allo stop o alla
 // scadenza. E' l'unica differenza vera fra una regola secca e quello che fa FiFawHqx, che vende
 // in piu' pezzi (fino a 7 sullo stesso token).
@@ -227,7 +249,12 @@ async function giroScadenze() {
     if (!s.aperte.size || scadenzeInCorso.has(pool)) continue;
     for (const [nome, p] of s.aperte) {
       const regola = REGOLE.find((r) => r.nome === nome);
-      if (regola && ora - p.apertaIl >= regola.scadenzaMs) { dovute.push(pool); break; }
+      if (!regola) continue;
+      if (ora - p.apertaIl >= regola.scadenzaMs) { dovute.push(pool); break; }
+      // le regole a pareggio ritardato vanno guardate anche loro all'ora giusta, altrimenti la
+      // verifica slitta al prossimo scambio di qualcun altro; una volta ogni 5s basta e avanza
+      if (regola.verificaMs !== undefined && ora - p.apertaIl >= regola.verificaMs
+          && ora - (s.ultimaSpazzata || 0) >= 5000) { dovute.push(pool); break; }
     }
   }
   for (const pool of dovute.slice(0, SCADENZE_AL_SEC)) {
@@ -235,6 +262,8 @@ async function giroScadenze() {
     try {
       const conto = await rpc('getAccountInfo', [pool, { encoding: 'base64', commitment: 'confirmed' }]);
       const c = conto && conto.value && curva.leggiPoolState(Buffer.from(conto.value.data[0], 'base64'), b58);
+      const s2 = seguite.get(pool);
+      if (s2) s2.ultimaSpazzata = Date.now();
       if (c) { contatori.scadenzeRisolte += 1; await aggiorna(pool, c); }
     } catch (e) {
       console.error('scadenza:', String(e).slice(0, 140));

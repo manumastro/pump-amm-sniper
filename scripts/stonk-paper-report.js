@@ -12,7 +12,7 @@ const q = (a, p) => (a.length ? a[Math.min(a.length - 1, Math.floor((a.length - 
 // p = uscita a prezzo, t = uscita a tempo, m = meta' all'obiettivo e il resto corre
 const ordinaRegole = (x, y) => (x[0] === y[0]
   ? Number(x.slice(1)) - Number(y.slice(1))
-  : 'ptm'.indexOf(x[0]) - 'ptm'.indexOf(y[0]));
+  : 'ptbrm'.indexOf(x[0]) - 'ptbrm'.indexOf(y[0]));
 
 
 function leggi() {
@@ -71,7 +71,7 @@ function main() {
   }
 
   console.log('\n=== PER REGOLA D USCITA ===');
-  console.log('regola    n   raggiunta  ricaduta  scadenza  migrata |  rend.medio  mediano  peggiore  migliore |  secondi');
+  console.log('regola    n   obiett  compl  stagn  ricad  scad  migr |  rend.medio  mediano  peggiore  migliore |  secondi');
   const perRegola = {};
   for (const c of chiuse) (perRegola[c.regola] = perRegola[c.regola] || []).push(c);
   const ordine = Object.keys(perRegola).sort(ordinaRegole);
@@ -82,8 +82,9 @@ function main() {
     const conta = (m) => g.filter((c) => c.motivo === m).length;
     console.log(
       nome.padEnd(7), String(g.length).padStart(4),
-      String(conta('obiettivo')).padStart(10), String(conta('ricaduta')).padStart(9),
-      String(conta('scadenza')).padStart(9), String(conta('migrata')).padStart(9), ' |',
+      String(conta('obiettivo')).padStart(7), String(conta('completamento')).padStart(6),
+      String(conta('stagnante')).padStart(6), String(conta('ricaduta')).padStart(6),
+      String(conta('scadenza')).padStart(5), String(conta('migrata')).padStart(5), ' |',
       pct(r.reduce((x, y) => x + y, 0) / r.length).padStart(11),
       pct(q(r, 0.5)).padStart(8), pct(q(r, 0)).padStart(9), pct(q(r, 1)).padStart(9), ' |',
       n(q(s, 0.5), 1).padStart(8));
@@ -105,7 +106,7 @@ function main() {
   const modi = [...new Set(chiuse.map((c) => c.modo || 'attraversamento'))];
   if (modi.length > 1) {
     console.log('\n=== ATTRAVERSAMENTO CONTRO COMPRARLE GIA SOPRA ===');
-    console.log('modo               regola    n   raggiunta |  rend.medio  mediano  peggiore');
+    console.log('modo               regola    n   finite bene |  rend.medio  mediano  peggiore');
     for (const modo of modi.sort()) {
       for (const nome of ordine) {
         const g = chiuse.filter((c) => (c.modo || 'attraversamento') === modo && c.regola === nome);
@@ -113,7 +114,7 @@ function main() {
         const r = g.map((c) => c.rendimento).sort((x, y) => x - y);
         console.log(
           modo.padEnd(18), nome.padEnd(7), String(g.length).padStart(4),
-          String(g.filter((c) => c.motivo === 'obiettivo').length).padStart(10), ' |',
+          String(g.filter((c) => c.motivo === 'obiettivo' || c.motivo === 'completamento').length).padStart(12), ' |',
           pct(r.reduce((x, y) => x + y, 0) / r.length).padStart(11),
           pct(q(r, 0.5)).padStart(8), pct(q(r, 0)).padStart(9));
       }

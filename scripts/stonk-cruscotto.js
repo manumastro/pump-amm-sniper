@@ -67,7 +67,7 @@ const ora = (t) => new Date(t).toISOString().slice(11, 19);
 // p = uscita a prezzo, t = uscita a tempo, m = meta' all'obiettivo e il resto corre
 const ordinaRegole = (x, y) => (x[0] === y[0]
   ? Number(x.slice(1)) - Number(y.slice(1))
-  : 'ptm'.indexOf(x[0]) - 'ptm'.indexOf(y[0]));
+  : 'ptbrm'.indexOf(x[0]) - 'ptbrm'.indexOf(y[0]));
 
 
 function barra(n, tot, w) {
@@ -267,15 +267,16 @@ function vistaIngressi() {
 
 function vistaRegole() {
     if (!stato.regole.size) return [C.grigio + " (nessuna posizione chiusa)" + C.r];
-    const righe = [C.grigio + " regola    n  obiett ricad  scad  migr    mediano    medio   sec" + C.r];
+    const righe = [C.grigio + " regola    n  bene  ricad  scad    mediano    medio   sec" + C.r];
     const nomi = [...stato.regole.keys()].sort(ordinaRegole);
     for (const nome of nomi) {
         const g = stato.regole.get(nome);
         const r = g.rend.slice().sort((x, y) => x - y);
         const s = g.secondi.slice().sort((x, y) => x - y);
         const m = (k) => String(g.motivi[k] || 0).padStart(6);
+        const bene = (g.motivi.obiettivo || 0) + (g.motivi.completamento || 0) + (g.motivi.migrata || 0);
         righe.push(" " + riempi(nome, 7) + String(g.n).padStart(3)
-            + m("obiettivo") + m("ricaduta") + m("scadenza") + m("migrata")
+            + String(bene).padStart(5) + m("ricaduta") + String((g.motivi.scadenza || 0) + (g.motivi.stagnante || 0)).padStart(6)
             + "   " + riempi(rend(q(r, 0.5)), 9) + riempi(rend(g.somma / g.n), 9)
             + String(Math.round(q(s, 0.5))).padStart(5));
     }

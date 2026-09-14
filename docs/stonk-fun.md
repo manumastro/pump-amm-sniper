@@ -458,6 +458,8 @@ sessione, invece di una per volta. Le regole sono tre famiglie, e i nomi nel rep
 | `p10 … p1000` | si esce quando il **prezzo** e' salito del 10, 15, 25, 40, 60, 100, 300, 1000% dall'ingresso |
 | `t5 t10 t30` | si esce dopo 5, 10, 30 **secondi**, comunque sia andata |
 | `m25 m60` | si vende **meta'** all'obiettivo e il resto corre fino allo stop o alla scadenza |
+| `r5 … r100` | si esce al **completamento**: quando la curva arriva al 5, 10, 20, 50, 100% del suo bersaglio (r100 = si tiene fino alla migrazione) |
+| `b5 b10 b30` | **pareggio ritardato**: dopo 5, 10, 30 secondi si esce appena non si e' in guadagno |
 
 Su tutte vale lo stesso stop: -10% di prezzo dall'ingresso. E si compra solo fra l'1,5% e il **2,5%**
 di raccolta: sopra non si entra affatto.
