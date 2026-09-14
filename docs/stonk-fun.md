@@ -774,7 +774,45 @@ di fuga piu' piccola, 5 soglie x 7 uscite — dove il campione e' abbastanza gra
 cella positiva (+20,8%) sta su **15 curve dopo 35 combinazioni provate**: e' quello che produce il
 caso, non un risultato.
 
-**Conclusione: guardando la curva, fuori dal blocco di nascita non c'e' niente da prendere.**
+**Conclusione provvisoria — poi corretta, vedi sotto:** con questi tagli, guardando la curva,
+fuori dal blocco di nascita non si trovava niente.
+
+### Correzione: la coda lenta esiste, il quartile la nascondeva
+
+La conclusione qui sopra era sbagliata, e per un motivo preciso: i tagli usavano il **quartile** piu'
+lento, ma la mediana sta a **1 secondo**, quindi quel quartile partiva da 4 secondi e mescolava le
+curve davvero quiete con quelle rapide. Tagliando dove va tagliato:
+
+    566 curve del censimento · uscita +60% / -20% / 600s · costo 5,4%
+    quanto ci mette al 5%   curve  in guadagno  mediano   medio
+    0-1s                      312     64/312    -25,4%    -6,8%
+    1-5s                      130     48/130    -14,8%    +3,8%
+    5-30s                      73      19/73    -17,1%    -3,0%
+    30-300s                    24      12/24     +1,6%    +8,8%
+    oltre 300s                 27      12/27     -2,5%   +10,1%
+
+    taglio a 30s: 51 lente contro 515 veloci · differenza +13,1% · p = 0,0046
+
+Regge a **ogni** ipotesi di costo: al 9,2% (tassa 3%, il caso peggiore) la coda lenta fa comunque
++5,0% e +6,3%. Ed e' raggiungibile: una curva che impiega mezzo minuto ad arrivare al 5% lascia
+tutto il tempo di reagire, il che la rende l'unico candidato compatibile con la nostra latenza.
+
+**Confermato da una seconda misura indipendente.** Il paper trade dal vivo, con `Date.now()` invece
+del `blockTime` e su curve diverse, trova lo stesso andamento monotono: da -7,3% medio sotto i 100 ms
+a **+12,8% oltre i 30 secondi** (18 curve, 381 posizioni).
+
+**Ma attenzione a cosa e' stabile e cosa no.** Dividendo le curve in due meta' cronologiche:
+
+    periodo         curve lente  in guadagno  mediano   medio  |  le veloci, medio
+    prima meta'          39        20/39       +2,9%   +12,5%  |        +3,3%
+    seconda meta'        12         4/12       -8,8%    -0,2%  |        -9,7%
+
+Il **vantaggio relativo** e' stabile: +9,2 punti nella prima meta', +9,5 nella seconda, lo stesso
+numero due volte. Il **livello assoluto** no: nella seconda meta' tutto il mercato e' sceso e le
+lente sono scivolate a zero. Quindi "le curve lente rendono piu' delle veloci" e' solido; "le curve
+lente rendono" dipende da come va il mercato in quel momento.
+
+Frequenza: 51 curve su 830 scaricate, il **6,1%** — circa una ogni sedici nascite.
 
 ### Perche' non funziona niente: il pedaggio e' piu' grande del segnale
 
