@@ -6,6 +6,7 @@ Cartella per le analisi periodiche del bot pump-amm-sniper.
 
 | Data | File | Trades+Rug | WR | Net PnL | Note |
 |---|---|---|---|---|---|
+| 2026-09-14 | [2026-09-14-stonk-censimento.md](2026-09-14-stonk-censimento.md) | 30.757 giri | 33% | — | **stonk.fun.** 1.182 curve a caso, 26.581 portafogli. Il pedaggio e' piu' grande del segnale; la bravura sta nell'uscita. |
 | 2026-04-06 | [2026-04-06-full-analysis.md](2026-04-06-full-analysis.md) | 348+39 | 69.4% | **+0.645 SOL** | Analisi corretta. Metodologia definitiva. |
 | 2026-04-05 | [2026-04-05-full-analysis.md](2026-04-05-full-analysis.md) | 264+26 | 77.3%* | +0.826 SOL* | ⚠️ PnL sovrastimato (escludeva rug). Reale: +0.566 SOL |
 
