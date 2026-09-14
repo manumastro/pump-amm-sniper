@@ -511,6 +511,43 @@ vedere da sotto la soglia — le uniche che potremmo davvero prendere all'attrav
 quante ci arrivano quando il punto d'ingresso e' gia' passato. Su `programSubscribe` una pool
 compare solo quando qualcuno la scambia, e a quel punto e' quasi sempre gia' oltre.
 
+## Chi compra, letto dalla catena
+
+Il salto dedotto dallo stato della pool non dice **chi**, e non distingue un acquisto grosso da tre
+piccoli arrivati fra due nostre letture. LaunchLab pero' emette un evento su ogni scambio, e
+quell'evento arriva gia' dentro `logsSubscribe`: la dimensione di ogni singolo acquisto si legge a
+costo zero, senza nessuna chiamata.
+
+```
+node scripts/stonk-compratori.js     # il flusso, scrive logs/stonk-compratori.jsonl
+./scripts/bot stonk compratori       # lo guarda
+./scripts/bot stonk chi              # la classifica
+./scripts/bot stonk chi <portafoglio>  # tutti gli acquisti di uno
+```
+
+### L'evento (147 byte), ricavato confrontandolo coi saldi di transazioni vere
+
+| offset | campo |
+|---|---|
+| 0 | discriminante `bddb7fd34ee661ee` |
+| 8 | `pool_state` (32 byte) |
+| 40 / 48 / 56 | `total_base_sell`, `virtual_base`, `virtual_quote` |
+| 64 / 72 | `real_base` e `real_quote` **prima** |
+| 80 / 88 | `real_base` e `real_quote` **dopo** |
+| 96 / 104 | `amount_in`, `amount_out` |
+| 112 / 120 | commissione protocollo, commissione piattaforma |
+
+Torna al centesimo: su una compra verificata `real_quote` passa da 25.223.885 a 111.875.819, e
+`amount_in` 87.748.794 piu' le due commissioni (219.372 + 877.488) fa esattamente la differenza.
+
+Due cose importanti. La **direzione** si legge dalle riserve — se il quote entra e' una compra — non
+dai byte di coda, che dipendono da come Raydium ordina i suoi enum. E il **bersaglio** si ricava
+dall'evento stesso, perche' vale sempre 2,8333 volte `virtual_quote`: quindi ogni acquisto si puo'
+esprimere come **quota del bersaglio**, l'unica unita' confrontabile fra 21 quote diversi.
+
+L'unica cosa che l'evento non contiene e' il portafoglio, che sta nella transazione. Per questo il
+nome si chiede solo sopra `STONK_COMPRA_MINIMA`: una chiamata per acquisto grosso, zero per gli altri.
+
 ## Cosa manca
 
 1. **Quanto si perde quando non ce la fa, tenendo.** Misurato solo per lo stile mordi-e-fuggi

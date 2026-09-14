@@ -15,6 +15,8 @@ uso: ./scripts/bot <comando>
                 live       il battito del daemon in tempo reale
                 flusso     ogni ingresso e ogni chiusura appena avvengono
                 report     la misura completa sul jsonl
+                compratori chi sta comprando adesso, e quanto, in tempo reale
+                chi        classifica dei compratori visti finora
                 stato      fotografia: e' vivo? da quanto? ultimo battito
                 su | giu | riavvia | reset
 
@@ -91,6 +93,18 @@ stonk)
         ;;
 
     report) exec node scripts/stonk-paper-report.js ;;
+
+    # chi compra, letto dall'evento che LaunchLab emette su ogni scambio: la dimensione
+    # costa zero chiamate, il nome del portafoglio una sola, e solo sopra la soglia.
+    compratori)
+        pgrep -f "scripts/stonk-compratori.js" >/dev/null 2>&1 \
+            || { echo "(non gira: nohup node scripts/stonk-compratori.js >> logs/stonk-compratori.log 2>&1 &)" >&2; }
+        tail -F -n 40 logs/stonk-compratori.log
+        ;;
+
+    chi)
+        exec node scripts/stonk-chi.js "${3:-}"
+        ;;
 
     stato)
         if vivo_stonk; then
