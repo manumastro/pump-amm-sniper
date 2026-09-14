@@ -121,6 +121,42 @@ function main() {
     }
   }
 
+  // === La salita, al millisecondo ===
+  // Il censimento all'indietro sulle 127 curve diceva che le curve LENTE ad arrivare al 5%
+  // rendono di piu'. Sul campione casuale quel segnale si e' sgonfiato, quindi qui non si
+  // decide niente: si guarda. La differenza rispetto al censimento e' lo strumento — li' il
+  // blockTime a scatti di un secondo, qui Date.now() — e meta' delle curve arriva al 5% in
+  // meno di un secondo, cioe' dentro un singolo scatto di quello vecchio.
+  const salitaDi = new Map();
+  for (const i of ingressi) salitaDi.set(`${i.pool}|${i.modo}`, i);
+  const conSalita = chiuse.filter((c) => {
+    const i = salitaDi.get(`${c.pool}|${c.modo}`);
+    return i && typeof i.ms5 === 'number' && i.ms5 > 0 && i.daNascita;
+  });
+  if (conSalita.length >= 20) {
+    console.log('\n=== LA SALITA AL 5%, MISURATA AL MILLISECONDO ===');
+    console.log('(solo le curve prese dalla nascita: per le altre non sappiamo da quando salgono)');
+    const FASCE = [[0, 100], [100, 1000], [1000, 5000], [5000, 30000], [30000, Infinity]];
+    const etichetta = ([a, b]) => (b === Infinity ? `oltre ${a / 1000}s`
+      : a >= 1000 ? `${a / 1000}-${b / 1000}s` : `${a}-${b}ms`);
+    // le POSIZIONI non sono prove indipendenti: ogni ingresso ne apre 18 sulla stessa curva,
+    // quindi si conta anche quante curve diverse ci sono sotto. E' quello il campione vero.
+    console.log('quanto ci mette al 5%     curve   posizioni   in guadagno   mediano     medio     somma');
+    for (const f of FASCE) {
+      const g = conSalita.filter((c) => {
+        const ms = salitaDi.get(`${c.pool}|${c.modo}`).ms5;
+        return ms >= f[0] && ms < f[1];
+      });
+      if (!g.length) continue;
+      const r = g.map((c) => c.rendimento).sort((x, y) => x - y);
+      const curve = new Set(g.map((c) => c.pool)).size;
+      console.log(etichetta(f).padEnd(24) + String(curve).padStart(7) + String(g.length).padStart(12)
+        + `${r.filter((x) => x > 0).length}/${r.length}`.padStart(14)
+        + pct(q(r, 0.5)).padStart(10) + pct(r.reduce((x, y) => x + y, 0) / r.length).padStart(10)
+        + n(r.reduce((x, y) => x + y, 0), 2).padStart(10));
+    }
+  }
+
   console.log('\n=== COSA SUCCEDE DOPO L INGRESSO ===');
   const perPool = {};
   for (const c of chiuse) (perPool[c.pool] = perPool[c.pool] || []).push(c);
