@@ -45,6 +45,7 @@ const MAX_INGRESSO = Number(process.env.STONK_MAX_INGRESSO || '0.025');
 // il pool_state e' l'indice 5 dei conti dell'istruzione di creazione di LaunchLab
 const INDICE_POOL_STATE = 5;
 const CREAZIONI_AL_SEC = Number(process.env.STONK_CREAZIONI_AL_SEC || '4');
+const SCADENZE_AL_SEC = Number(process.env.STONK_SCADENZE_AL_SEC || '10');
 
 // Le uscite in prova: stessa entrata, tutte misurate insieme. Sono guadagni di PREZZO
 // rispetto all'ingresso, non livelli di raccolta: cosi' la stessa regola vuol dire la stessa
@@ -86,7 +87,7 @@ const stream = fs.createWriteStream(OUT, { flags: 'a' });
 const seguite = new Map();   // pool -> { sottoSoglia, aperte: Map<regola, Posizione> }
 const tasse = new Map();     // mint -> aliquota per lato
 const contatori = {
-  notifiche: 0, aperte: 0, chiuse: 0, parziali: 0, ingressi: 0, ingressiSopra: 0,
+  notifiche: 0, aperte: 0, chiuse: 0, parziali: 0, scadenzeRisolte: 0, ingressi: 0, ingressiSopra: 0,
   poolSotto: 0, poolSopra: 0, troppoAlte: 0,
   nate: 0, nateSopra: 0, log: 0, logCreazioni: 0, sottoscrizioni: 0, scartate: {},
 };
@@ -209,6 +210,40 @@ function registraVista(pool, s, c, f, ora, da) {
   });
 }
 
+/**
+ * Le posizioni scadute si chiudono chiedendo la pool all'RPC, non aspettando che passi qualcuno.
+ *
+ * La curva la vediamo solo quando qualcuno la scambia: quando scadeva il tempo non avevamo un
+ * prezzo a cui chiudere e la posizione restava appesa al prossimo scambio altrui. Misurato: `t10`
+ * chiudeva dopo 24 secondi di mediana e `t30` dopo 59. Rendeva ingiusta proprio la prova che
+ * serviva di piu', perche' FiFawHqx esce a 4 secondi mandando una transazione, non aspettando.
+ */
+const scadenzeInCorso = new Set();
+
+async function giroScadenze() {
+  const ora = Date.now();
+  const dovute = [];
+  for (const [pool, s] of seguite) {
+    if (!s.aperte.size || scadenzeInCorso.has(pool)) continue;
+    for (const [nome, p] of s.aperte) {
+      const regola = REGOLE.find((r) => r.nome === nome);
+      if (regola && ora - p.apertaIl >= regola.scadenzaMs) { dovute.push(pool); break; }
+    }
+  }
+  for (const pool of dovute.slice(0, SCADENZE_AL_SEC)) {
+    scadenzeInCorso.add(pool);
+    try {
+      const conto = await rpc('getAccountInfo', [pool, { encoding: 'base64', commitment: 'confirmed' }]);
+      const c = conto && conto.value && curva.leggiPoolState(Buffer.from(conto.value.data[0], 'base64'), b58);
+      if (c) { contatori.scadenzeRisolte += 1; await aggiorna(pool, c); }
+    } catch (e) {
+      console.error('scadenza:', String(e).slice(0, 140));
+    } finally {
+      scadenzeInCorso.delete(pool);
+    }
+  }
+}
+
 function scrivi(record) {
   stream.write(JSON.stringify(record) + '\n');
 }
@@ -287,6 +322,7 @@ function battito() {
     `pool=${seguite.size}`, `notifiche=${contatori.notifiche}`,
     `ingressi=${contatori.ingressi}`, `posizioni=${contatori.aperte}`,
     `chiuse=${contatori.chiuse}`, `aperte=${aperte}`, `parziali=${contatori.parziali}`,
+    `scadenze=${contatori.scadenzeRisolte}`,
     `log=${contatori.log}/${contatori.logCreazioni}`, `sub=${contatori.sottoscrizioni}`,
     `nate=${contatori.nate}`, `scartate=${JSON.stringify(contatori.scartate)}`, `nate_gia_sopra=${contatori.nateSopra}`,
     `pool_sotto=${contatori.poolSotto}`, `pool_sopra=${contatori.poolSopra}`,
@@ -356,6 +392,7 @@ function collega() {
 fs.mkdirSync(LOG_DIR, { recursive: true });
 setInterval(battito, HEARTBEAT_MS);
 setInterval(giroCreazioni, 1000);
+setInterval(giroScadenze, 1000);
 collega();
 for (const seg of ['SIGINT', 'SIGTERM']) {
   process.on(seg, () => { battito(); stream.end(); process.exit(0); });

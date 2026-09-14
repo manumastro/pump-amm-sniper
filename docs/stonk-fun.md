@@ -462,6 +462,11 @@ sessione, invece di una per volta. Le regole sono tre famiglie, e i nomi nel rep
 Su tutte vale lo stesso stop: -10% di prezzo dall'ingresso. E si compra solo fra l'1,5% e il **2,5%**
 di raccolta: sopra non si entra affatto.
 
+Quando una posizione scade, la pool **si chiede all'RPC** invece di aspettare che passi qualcuno:
+la curva si vede solo sugli scambi altrui, e senza questa chiamata `t10` chiudeva dopo 24 secondi di
+mediana e `t30` dopo 59. Resta comunque una differenza dal vero: noi leggiamo un prezzo, un bot vero
+manda una transazione e la paga con lo slittamento.
+
 La logica di decisione sta in `src/services/stonk/paper.ts` ed e' pura: lo script e' solo il
 daemon che le porta i dati. Le soglie e il perche' di ognuna stanno in `docs/controls.md` §51.
 

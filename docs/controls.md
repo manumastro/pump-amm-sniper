@@ -2768,6 +2768,7 @@ mediana d'ingresso di `FiFawHqx` (1,58%), l'operatore studiato in `docs/stonk-fu
 | `STONK_FRAZIONE_META` | 0,5 | quanta parte si vende all'obiettivo nelle regole `m`. Mezzo e' un punto di partenza, non una misura |
 | `STONK_MAX_APERTE` | 8.000 | solo un tetto di memoria. Era 400: con `STONK_ANCHE_SOPRA` le posizioni vive insieme sono migliaia (mezz'ora di scadenza per decine di ingressi al minuto), il tetto veniva toccato in dieci minuti e gli ingressi sparivano in silenzio |
 | `STONK_CREAZIONI_AL_SEC` | 4 | ~150 nascite all'ora, ognuna con qualche ritentativo |
+| `STONK_SCADENZE_AL_SEC` | 10 | quante pool con posizioni scadute risolvere al secondo chiedendole all'RPC. Serve perche' la curva la vediamo solo quando qualcuno la scambia: senza, una posizione scaduta resta appesa al prossimo scambio altrui, e `t10` chiudeva dopo 24 secondi di mediana, `t30` dopo 59. Rendeva ingiusta proprio la prova delle uscite a tempo, che e' quella che copia FiFawHqx |
 
 La tassa sui trasferimenti **non** e' un controllo: si legge dal mint a ogni ingresso, perche' vale
 1% o 3% a scelta di chi lancia e sul giro completo la differenza e' 4 punti.
