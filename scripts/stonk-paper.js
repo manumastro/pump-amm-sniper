@@ -29,6 +29,11 @@ const RICADUTA = Number(process.env.STONK_RICADUTA || '0.01');
 const SCADENZA_MS = Number(process.env.STONK_SCADENZA_MS || '1800000');
 const HEARTBEAT_MS = Number(process.env.STONK_HEARTBEAT_MS || '60000');
 const MAX_APERTE = Number(process.env.STONK_MAX_APERTE || '400');
+// le curve che incontriamo gia' sopra la soglia: comprarle o no e' una domanda aperta, quindi
+// si comprano e si taggano `modo: sopra`, cosi' il report confronta i due ingressi sulla stessa
+// sessione invece di ragionarci sopra. MAX_INGRESSO evita di entrare su una curva quasi piena.
+const ANCHE_SOPRA = process.env.STONK_ANCHE_SOPRA !== 'false';
+const MAX_INGRESSO = Number(process.env.STONK_MAX_INGRESSO || '0.30');
 // il pool_state e' l'indice 5 dei conti dell'istruzione di creazione di LaunchLab
 const INDICE_POOL_STATE = 5;
 const CREAZIONI_AL_SEC = Number(process.env.STONK_CREAZIONI_AL_SEC || '4');
@@ -46,7 +51,11 @@ const REGOLE = (process.env.STONK_USCITE || '0.02,0.03,0.05,0.08,0.12,0.20,0.50,
 const stream = fs.createWriteStream(OUT, { flags: 'a' });
 const seguite = new Map();   // pool -> { sottoSoglia, aperte: Map<regola, Posizione> }
 const tasse = new Map();     // mint -> aliquota per lato
-const contatori = { notifiche: 0, aperte: 0, chiuse: 0, ingressi: 0, saltateSopra: 0, nate: 0, nateSopra: 0, log: 0, logCreazioni: 0, sottoscrizioni: 0, scartate: {} };
+const contatori = {
+  notifiche: 0, aperte: 0, chiuse: 0, ingressi: 0, ingressiSopra: 0,
+  poolSotto: 0, poolSopra: 0, troppoAlte: 0,
+  nate: 0, nateSopra: 0, log: 0, logCreazioni: 0, sottoscrizioni: 0, scartate: {},
+};
 const codaCreazioni = [];
 
 function endpointWs() {
@@ -131,6 +140,7 @@ async function registraCreazione(voce) {
   // essere nata sopra (dev buy grosso) o averla superata in quei due secondi. Contate insieme.
   if (f < ENTRATA) s.sottoSoglia = true;
   else contatori.nateSopra += 1;
+  registraVista(pool, s, c, f, Date.now(), 'nascita');
 }
 
 async function giroCreazioni() {
@@ -147,6 +157,24 @@ async function giroCreazioni() {
   }
 }
 
+/**
+ * Il primo incontro con una pool, scritto una volta sola: a che punto era la raccolta e da
+ * quanti secondi la curva esisteva. Serve a rispondere con una misura a "quando le vediamo,
+ * a che punto sono?" — prima c'era solo un contatore di notifiche, che contava la stessa
+ * pool decine di volte e faceva sembrare l'imbuto molto peggiore di com'e'.
+ */
+function registraVista(pool, s, c, f, ora, da) {
+  if (s.vista) return;
+  s.vista = true;
+  const sopra = f >= ENTRATA;
+  if (sopra) contatori.poolSopra += 1; else contatori.poolSotto += 1;
+  scrivi({
+    tipo: 'vista', t: ora, pool, mint: c.baseMint, da, sopra, stato: c.stato,
+    f: Number(f.toFixed(6)),
+    secondiDallaNascita: s.nascita ? Number(((ora - s.nascita) / 1000).toFixed(1)) : null,
+  });
+}
+
 function scrivi(record) {
   stream.write(JSON.stringify(record) + '\n');
 }
@@ -154,7 +182,7 @@ function scrivi(record) {
 function chiudiPosizione(pool, nome, p, c, motivo, ora) {
   paper.chiudi(p, c, motivo, ora);
   scrivi({
-    tipo: 'chiusa', t: ora, pool, regola: nome, mint: p.mint, quote: p.quoteMint,
+    tipo: 'chiusa', t: ora, pool, regola: nome, mint: p.mint, quote: p.quoteMint, modo: p.modo,
     piattaforma: p.piattaforma, tassa: p.costi.trasferimentoPerLato,
     fIngresso: Number(p.fIngresso.toFixed(6)), fUscita: Number(p.chiusa.fUscita.toFixed(6)),
     fMassima: Number(p.fMassima.toFixed(6)), fMinima: Number(p.fMinima.toFixed(6)),
@@ -179,27 +207,33 @@ async function aggiorna(pool, c) {
     if (motivo) { chiudiPosizione(pool, nome, p, c, motivo, ora); s.aperte.delete(nome); }
   }
 
+  registraVista(pool, s, c, f, ora, 'scambio');
+
   if (c.stato === 2) return;
   if (f < ENTRATA) { s.sottoSoglia = true; return; }
-  // attraversamento: sopra la soglia ma l'avevamo vista sotto, e non e' gia' in posizione
-  if (!s.sottoSoglia || s.aperte.size || s.giaEntrata) {
-    if (!s.sottoSoglia && !s.giaEntrata) contatori.saltateSopra += 1;
-    return;
-  }
+  if (s.giaEntrata || s.aperte.size) return;
+  // due ingressi diversi, misurati insieme: l'attraversamento vero (l'avevamo vista sotto) e
+  // la pool incontrata quando era gia' oltre. Sopra MAX_INGRESSO non si entra comunque.
+  let modo = null;
+  if (s.sottoSoglia) modo = 'attraversamento';
+  else if (ANCHE_SOPRA && f <= MAX_INGRESSO) modo = 'sopra';
+  else { if (!s.troppoAlta) { s.troppoAlta = true; contatori.troppoAlte += 1; } return; }
   if (contatori.aperte - contatori.chiuse >= MAX_APERTE) return;
 
   s.giaEntrata = true;
   contatori.ingressi += 1;
+  if (modo === 'sopra') contatori.ingressiSopra += 1;
   const tassa = await leggiTassa(c.baseMint, c.piattaforma);
   const costi = { scambioPerLato: SCAMBIO_PER_LATO, trasferimentoPerLato: tassa };
   for (const regola of REGOLE) {
     if (regola.obiettivo <= f) continue;
     const p = paper.apri(pool, c, regola, TAGLIA, costi, ora);
+    p.modo = modo;
     s.aperte.set(regola.nome, p);
     contatori.aperte += 1;
   }
   scrivi({
-    tipo: 'ingresso', t: ora, pool, mint: c.baseMint, quote: c.quoteMint,
+    tipo: 'ingresso', t: ora, pool, mint: c.baseMint, quote: c.quoteMint, modo,
     piattaforma: c.piattaforma, tassa, f: Number(f.toFixed(6)),
     bersaglio: c.bersaglio, quoteDecimali: c.quoteDecimali, regole: s.aperte.size,
     dallaNascita: !!s.nascita,
@@ -216,7 +250,9 @@ function battito() {
     `chiuse=${contatori.chiuse}`, `aperte=${aperte}`,
     `log=${contatori.log}/${contatori.logCreazioni}`, `sub=${contatori.sottoscrizioni}`,
     `nate=${contatori.nate}`, `scartate=${JSON.stringify(contatori.scartate)}`, `nate_gia_sopra=${contatori.nateSopra}`,
-    `incontrate_sopra=${contatori.saltateSopra}`, `coda=${codaCreazioni.length}`,
+    `pool_sotto=${contatori.poolSotto}`, `pool_sopra=${contatori.poolSopra}`,
+    `ingressi_sopra=${contatori.ingressiSopra}`, `troppo_alte=${contatori.troppoAlte}`,
+    `coda=${codaCreazioni.length}`,
   ].join(' '));
 }
 

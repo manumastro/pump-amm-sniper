@@ -2761,6 +2761,8 @@ mediana d'ingresso di `FiFawHqx` (1,58%), l'operatore studiato in `docs/stonk-fu
 | `STONK_SCADENZA_MS` | 1.800.000 | mezz'ora: oltre, la posizione dice piu' sul capitale fermo che sulla curva |
 | `STONK_TAGLIA_FRAZIONE` | 0,002 | lo 0,2% del bersaglio, **non** una cifra fissa: i quote sono 21 asset con scale da 11 a 31 milioni di unita', e solo rapportandosi al bersaglio l'impatto sul prezzo resta lo stesso su tutti (~1,1% a curva vuota) |
 | `STONK_FEE_SCAMBIO` | 0,0125 | l'1,25% dichiarato da Raydium+stonk, per lato |
+| `STONK_ANCHE_SOPRA` | true | compra anche le curve incontrate **gia'** oltre la soglia, taggandole `modo: sopra`. Non e' una scelta: e' la domanda "varrebbe la pena comprarle lo stesso?" girata al campo, cosi' il report confronta i due ingressi sulla stessa sessione |
+| `STONK_MAX_INGRESSO` | 0,30 | oltre il 30% di raccolta non si entra comunque: sopra di li' il margine che resta fino alla migrazione non copre i costi piu' il rischio di ricaduta |
 | `STONK_MAX_APERTE` | 400 | solo un tetto di memoria |
 | `STONK_CREAZIONI_AL_SEC` | 4 | ~150 nascite all'ora, ognuna con qualche ritentativo |
 

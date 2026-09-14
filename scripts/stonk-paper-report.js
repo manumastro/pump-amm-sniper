@@ -17,11 +17,12 @@ function leggi() {
   return {
     ingressi: righe.filter((r) => r.tipo === 'ingresso'),
     chiuse: righe.filter((r) => r.tipo === 'chiusa'),
+    viste: righe.filter((r) => r.tipo === 'vista'),
   };
 }
 
 function main() {
-  const { ingressi, chiuse } = leggi();
+  const { ingressi, chiuse, viste } = leggi();
   if (!chiuse.length) { console.log('nessuna posizione chiusa in logs/stonk-paper.jsonl'); return; }
 
   const da = Math.min(...ingressi.map((r) => r.t), ...chiuse.map((r) => r.t));
@@ -39,6 +40,30 @@ function main() {
   const piatt = {};
   for (const r of ingressi) piatt[`${r.piattaforma} ${pct(r.tassa, 0)}`] = (piatt[`${r.piattaforma} ${pct(r.tassa, 0)}`] || 0) + 1;
   console.log('piattaforma e tassa:', JSON.stringify(piatt));
+
+  if (viste.length) {
+    console.log('\n=== A CHE PUNTO LE INCONTRIAMO ===');
+    const sotto = viste.filter((v) => !v.sopra);
+    const sopra = viste.filter((v) => v.sopra);
+    console.log('pool incontrate      ', viste.length,
+      ` (${sotto.length} sotto soglia, ${sopra.length} gia sopra = ${pct(sopra.length / viste.length, 0)})`);
+    const fs_ = sopra.map((v) => v.f).sort((x, y) => x - y);
+    if (fs_.length) {
+      console.log('quando sono gia sopra, la raccolta e:  mediana', pct(q(fs_, 0.5), 2),
+        ' 25esimo', pct(q(fs_, 0.25), 2), ' 75esimo', pct(q(fs_, 0.75), 2), ' max', pct(q(fs_, 1), 2));
+      const scaglioni = [[0.015, 0.03], [0.03, 0.05], [0.05, 0.10], [0.10, 0.30], [0.30, 1.01]];
+      for (const [a_, b_] of scaglioni) {
+        const n_ = fs_.filter((x) => x >= a_ && x < b_).length;
+        console.log(`  ${pct(a_, 1).padStart(6)} - ${pct(b_, 0).padEnd(6)} ${String(n_).padStart(5)}  ${pct(n_ / fs_.length, 0)}`);
+      }
+    }
+    const eta = viste.filter((v) => v.secondiDallaNascita !== null && v.secondiDallaNascita !== undefined)
+      .map((v) => v.secondiDallaNascita).sort((x, y) => x - y);
+    if (eta.length) {
+      console.log('secondi dalla nascita al primo incontro (solo le nate mentre guardavamo, n=' + eta.length + '):',
+        'mediana', n(q(eta, 0.5), 1), ' 25esimo', n(q(eta, 0.25), 1), ' 75esimo', n(q(eta, 0.75), 1));
+    }
+  }
 
   console.log('\n=== PER REGOLA D USCITA ===');
   console.log('regola    n   raggiunta  ricaduta  scadenza  migrata |  rend.medio  mediano  peggiore  migliore |  secondi');
@@ -70,6 +95,24 @@ function main() {
       'in guadagno', `${String(vincenti).padStart(4)} (${pct(vincenti / g.length, 0).padStart(5)})`,
       '  totale', pct(somma / g.length).padStart(9), 'per posizione',
       '  cumulato', n(somma, 2).padStart(8));
+  }
+
+  const modi = [...new Set(chiuse.map((c) => c.modo || 'attraversamento'))];
+  if (modi.length > 1) {
+    console.log('\n=== ATTRAVERSAMENTO CONTRO COMPRARLE GIA SOPRA ===');
+    console.log('modo               regola    n   raggiunta |  rend.medio  mediano  peggiore');
+    for (const modo of modi.sort()) {
+      for (const nome of ordine) {
+        const g = chiuse.filter((c) => (c.modo || 'attraversamento') === modo && c.regola === nome);
+        if (!g.length) continue;
+        const r = g.map((c) => c.rendimento).sort((x, y) => x - y);
+        console.log(
+          modo.padEnd(18), nome.padEnd(7), String(g.length).padStart(4),
+          String(g.filter((c) => c.motivo === 'obiettivo').length).padStart(10), ' |',
+          pct(r.reduce((x, y) => x + y, 0) / r.length).padStart(11),
+          pct(q(r, 0.5)).padStart(8), pct(q(r, 0)).padStart(9));
+      }
+    }
   }
 
   console.log('\n=== COSA SUCCEDE DOPO L INGRESSO ===');

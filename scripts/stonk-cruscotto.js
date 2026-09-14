@@ -99,7 +99,9 @@ function leggiBattito() {
         posizioni: g("posizioni"), chiuse: g("chiuse"), aperte: g("aperte"),
         log: lg ? Number(lg[1]) : null, creazioni: lg ? Number(lg[2]) : null,
         sub: g("sub"), nate: g("nate"), nateSopra: g("nate_gia_sopra"),
-        sopra: g("incontrate_sopra"), coda: g("coda"), scartate,
+        poolSotto: g("pool_sotto"), poolSopra: g("pool_sopra"),
+        ingressiSopra: g("ingressi_sopra"), troppoAlte: g("troppo_alte"),
+        coda: g("coda"), scartate,
         ingresso: cfg ? cfg[1] : null, uscite: cfg ? cfg[2] : null,
     };
 }
@@ -116,7 +118,8 @@ function vivo() {
 
 const stato = {
     offset: 0, resto: "",
-    ingressi: 0, dallaNascita: 0, fIngresso: [], piattaforme: {},
+    ingressi: 0, dallaNascita: 0, fIngresso: [], piattaforme: {}, modi: {},
+    visteSotto: 0, visteSopra: [], etaPrimoIncontro: [],
     regole: new Map(),
     ultimeChiuse: [],
     da: null, a: null,
@@ -127,8 +130,15 @@ function assorbi(rec) {
         stato.da = stato.da === null ? rec.t : Math.min(stato.da, rec.t);
         stato.a = stato.a === null ? rec.t : Math.max(stato.a, rec.t);
     }
+    if (rec.tipo === "vista") {
+        if (rec.sopra) stato.visteSopra.push(rec.f); else stato.visteSotto += 1;
+        if (typeof rec.secondiDallaNascita === "number") stato.etaPrimoIncontro.push(rec.secondiDallaNascita);
+        return;
+    }
     if (rec.tipo === "ingresso") {
         stato.ingressi += 1;
+        const m = rec.modo || "attraversamento";
+        stato.modi[m] = (stato.modi[m] || 0) + 1;
         if (rec.dallaNascita) stato.dallaNascita += 1;
         stato.fIngresso.push(rec.f);
         const k = `${rec.piattaforma} ${(100 * rec.tassa).toFixed(0)}%`;
@@ -206,20 +216,30 @@ function vistaAdesso(b, pid) {
  */
 function vistaImbuto(b, w) {
     if (!b || b.nate === null) return [C.grigio + " (ancora niente)" + C.r];
-    const utili = Math.max(0, b.nate - b.nateSopra);
+    const sotto = b.poolSotto || 0;
+    const sopra = b.poolSopra || 0;
+    const viste = sotto + sopra;
     const largo = Math.max(8, w - 36);
-    const max = Math.max(b.nate, b.sopra, 1);
-    const riga = (et, n) => ` ${riempi(et, 23)}${String(n).padStart(6)}  ${barra(n, max, largo)}`;
-    const viste = b.nate + b.sopra;
-    return [
-        riga("nascite prese dai log", b.nate),
-        riga("  gia' oltre soglia", b.nateSopra),
-        riga("  utili (sotto soglia)", utili),
-        riga("incontrate gia' sopra", b.sopra),
+    const riga = (et, n2, max) => ` ${riempi(et, 23)}${String(n2).padStart(6)}  ${barra(n2, max, largo)}`;
+    const righe = [
+        riga("pool incontrate", viste, viste || 1),
+        riga("  sotto soglia", sotto, viste || 1),
+        riga("  gia' oltre", sopra, viste || 1),
         "",
-        " " + riempi("ingressi veri", 23) + C.b + String(b.ingressi).padStart(6) + C.r
-        + C.grigio + `   ${viste ? pc(b.ingressi / viste, 1) : "?"} di quello che vediamo` + C.r,
+        riga("nascite dai log", b.nate, Math.max(b.nate, 1)),
+        riga("  gia' oltre a 1a lettura", b.nateSopra, Math.max(b.nate, 1)),
     ];
+    const f = stato.visteSopra.slice().sort((x, y) => x - y);
+    if (f.length) {
+        righe.push("");
+        righe.push(C.grigio + " quando le troviamo gia' oltre, sono a:" + C.r);
+        righe.push(`   mediana ${pc(q(f, 0.5))}   25esimo ${pc(q(f, 0.25))}   75esimo ${pc(q(f, 0.75))}`);
+    }
+    righe.push("");
+    righe.push(" " + riempi("ingressi", 23) + C.b + String(b.ingressi).padStart(6) + C.r
+        + C.grigio + `   di cui ${b.ingressiSopra || 0} comprate gia' sopra`
+        + (b.troppoAlte ? `, ${b.troppoAlte} scartate troppo alte` : "") + C.r);
+    return righe;
 }
 
 function vistaIngressi() {
@@ -231,6 +251,10 @@ function vistaIngressi() {
         righe.push(" raccolta  " + C.grigio
             + `  mediana ${pc(q(f, 0.5))}   min ${pc(q(f, 0))}   max ${pc(q(f, 1))}` + C.r);
     }
+    const m = Object.entries(stato.modi).sort((a, b2) => b2[1] - a[1]);
+    if (m.length) righe.push(" modo      " + C.grigio + "  " + m.map(([k, v]) => `${k} x${v}`).join("   ") + C.r);
+    const e = stato.etaPrimoIncontro.slice().sort((x, y) => x - y);
+    if (e.length) righe.push(" eta'      " + C.grigio + `  primo incontro a ${q(e, 0.5).toFixed(1)}s dalla nascita (n=${e.length})` + C.r);
     const p = Object.entries(stato.piattaforme).sort((a, b2) => b2[1] - a[1]);
     if (p.length) righe.push(" tipo      " + C.grigio + "  " + p.map(([k, v]) => `${k} x${v}`).join("   ") + C.r);
     return righe;
