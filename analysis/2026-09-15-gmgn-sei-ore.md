@@ -100,24 +100,90 @@ stesso modo, e la stabilita' nelle due meta' non protegge da questo: la selezion
 entrambe. **Quel risultato era un artefatto della selezione.** Entrare presto e' una
 *conseguenza* dell'aver comprato il token che poi e' salito, non una causa del guadagno.
 
-## 5. Uscire a scaglioni, invece, regge
+## 5. Uscire a scaglioni: sembra reggere, e invece non regge
 
-Stesso trattamento, esito opposto:
+Il confronto grezzo sopravvive dove la selezione non aiuta, e questo lo distingue dal ritardo
+d'ingresso:
 
     insieme                     uscita            giri   vinti   resa pesata
-    token selezionati           in una volta       380     91%        +38,7%
-    token selezionati           in 3+ pezzi        324     97%        +82,8%
     altri token delle sei ore   in una volta     1.166     25%        −20,6%
     altri token delle sei ore   in 3+ pezzi        345     45%         −0,6%
     tutto il resto del libro    in una volta    10.849     23%        −14,2%
     tutto il resto del libro    in 3+ pezzi      1.527     59%        +15,9%
 
-L'effetto sopravvive dove la selezione non aiuta, e sui conti interi: i 93 portafogli che
-escono a scaglioni fanno +2,8% pesato e +273 SOL, i 93 che escono in un colpo −7,1% e −212 SOL.
+Regge anche **a parita' di tempo passato in posizione**, che era l'obiezione ovvia (in tre
+secondi non puoi vendere in cinque pezzi):
 
-Resta pero' vero che la direzione della causa non e' dimostrata: si esce in cinque pezzi solo
-se la posizione dura e sale. E' l'unico segnale che non si e' sgonfiato, non e' una strategia
-dimostrata.
+    tenuta          in un colpo        in 2 pezzi        in 3+ pezzi
+    0-20s           22% · −11,9%       45% · +1,2%       63% · +19,3%
+    20-60s          25% · −12,3%       31% · −10,1%      65% · +15,3%
+    60-300s         26% · −19,4%       35% · −8,6%       55% · +14,9%
+    5-30 min        23% · −22,4%       40% · −9,5%       55% · +8,6%
+    oltre 30 min    12% · −30,3%       23% · −11,3%      48% · +12,0%
+
+Sembra chiuso. **Non lo e'**, e due prove indipendenti lo mostrano.
+
+**Prima prova: l'abitudine, scelta su meta' tempo e misurata sull'altra.** 164 portafogli con
+almeno cinque giri in ciascuna meta' della finestra, divisi in terzi per pezzi di uscita nella
+prima meta' e misurati sulla seconda:
+
+    abitudine nella 1a meta'   conti   giri   vinti   resa pesata   SOL netto
+    esce in un colpo (1,10)       54  2.524     29%        −3,8%        −82,6
+    in mezzo         (1,44)       54  2.634     28%        −2,3%        −56,8
+    esce a pezzi     (2,73)       56  2.163     31%        −4,4%       −146,7
+
+Scarto fra estremi: **−0,6 punti di resa pesata, p = 0,90**. L'abitudine non prevede niente.
+
+**Seconda prova, ed e' quella che chiude la questione: il controfattuale sul resto.** Su 1.334
+posizioni in cui tutte le compre precedono la prima vendita e non si rientra dopo, il prezzo
+della prima vendita e' noto — e' quello che *lui* ha ottenuto. Allora si puo' chiedere: quel
+che gli restava in mano, venduto dopo, ha reso piu' o meno che venderlo subito a quel prezzo?
+
+    valore del resto se venduto subito    2.176 SOL
+    incassato davvero                     2.003 SOL
+    differenza                             −173 SOL   (−8,0%)
+    giri in cui tenere ha pagato          462 su 1.334 (35%)
+    rapporto mediano incassato/subito     0,943
+
+**Tenere il resto costa l'8%, e paga solo una volta su tre.** Peggiora quanto piu' si tiene
+(−11,5% fra un minuto e cinque) e quanto meno si e' tolto dal tavolo al primo colpo (−10,0%
+per chi ne vende meno di un quarto).
+
+E infatti, provando tutte le abitudini d'uscita fuori campione, l'unica con segno e' l'opposta
+di quella che il dato grezzo suggeriva:
+
+    abitudine (scelta sulla 1a meta')          resa pesata sulla 2a      p
+    vende TUTTO al primo colpo                 −0,2% contro −9,2%     0,010
+    puntate piccole contro grosse              −1,3% contro −8,0%     0,037
+    attesa corta prima di vendere              −2,0% contro −8,3%     0,146
+    tenuta corta                               −2,0% contro −4,8%     0,570
+    numero di pezzi                            −3,8% contro −4,4%     0,902
+
+**Chi vende tutto in un colpo perde meno di chi esce a scaglioni.** L'uscita a pezzi nel dato
+grezzo e' il token che sale a dettare la scaletta, non la scaletta a produrre il guadagno:
+stessa forma dell'errore del ritardo d'ingresso, scoperta con due prove invece che una.
+
+## 5-bis. Quello che invece prevede davvero: essere gia' stati bravi
+
+Stesso metodo, stessa meta' di tempo, ma dividendo per **risultato** della prima meta' invece
+che per abitudine:
+
+    terzo (per resa nella 1a meta')   conti   giri   vinti   resa pesata   SOL netto
+    peggiori                             54  1.573     21%        −8,6%       −194,6
+    in mezzo                             54  2.949     32%        −3,1%        −85,1
+    migliori                             56  2.799     32%        −0,2%         −6,4
+
+**+11,1 punti di giri in guadagno (p < 0,0001) e +8,3 punti di resa pesata (p = 0,024).**
+La bravura esiste ed e' persistente — come su stonk.fun — ma non sta in nessuna delle abitudini
+d'uscita misurabili. Il ritratto dei migliori contro i peggiori:
+
+    attesa mediana prima di vendere      21s contro 42s
+    tenuta mediana                       29s contro 62s
+    taglia mediana                     0,88 contro 1,04 SOL
+    giri nella seconda meta'             50 contro 29
+
+Sono piu' svelti, operano di piu' e puntano un po' meno per volta. Anche i migliori, comunque,
+chiudono la seconda meta' a **−0,2%**: nessun terzo di questa popolazione guadagna.
 
 ## 6. Su quali programmi — e i terminali a pagamento non danno vantaggio
 
@@ -171,11 +237,17 @@ perde 60,9 SOL. Avere piu' conti non e' di per se' un segno di bravura.
 2. **La velocita' non e' il vantaggio che sembrava.** Fuori dalla selezione entrare nei primi
    cinque secondi e' la fascia peggiore. Questo *toglie* urgenza al lavoro sulla latenza: non
    c'e' un premio misurabile ad arrivare primi, su questo universo e in questa finestra.
-3. **L'unico segnale sopravvissuto riguarda l'uscita**, ed e' lo stesso di stonk.fun: chi esce
-   a pezzi fa meglio di chi esce in un colpo. Anche li' era l'uscita, non la scelta del token.
+3. **Nemmeno l'uscita a scaglioni e' una strategia.** Fuori campione non prevede niente
+   (p = 0,90) e il controfattuale diretto dice che tenere il resto dopo il primo colpo costa
+   l'8% e paga una volta su tre. Se una regola si deve scrivere, e' l'opposta: **vendere tutto
+   al primo colpo**, che fuori campione fa −0,2% contro −9,2%.
 4. **Nessun terminale compra un vantaggio.** Andare dritti sul DEX e' l'unica riga non negativa.
-5. Il mercato resta a somma quasi zero anche per i selezionati-per-vincere: +1,8% pesato,
-   −8,3% mediano, e il 90% del guadagno lordo in un decimo delle posizioni.
+5. **La bravura esiste e persiste** (+11,1 punti di giri vinti fuori campione, p < 0,0001) ma
+   non e' spiegata da nessuna abitudine che sappiamo misurare: pezzi d'uscita, tenuta, taglia,
+   attesa. Chi regge e' solo piu' svelto e piu' attivo. Non e' una regola copiabile.
+6. Il mercato resta a somma quasi zero anche per i selezionati-per-vincere: +1,8% pesato,
+   −8,3% mediano, il 90% del guadagno lordo in un decimo delle posizioni, e perfino il terzo
+   migliore chiude la seconda meta' della finestra in perdita.
 
 **Quello che non si puo' chiudere.** Sei ore sono una finestra sola: lo studio di stonk.fun ha
 gia' mostrato che il livello generale cambia fra due meta' della stessa giornata. E i portafogli
