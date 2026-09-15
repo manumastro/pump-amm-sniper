@@ -1,5 +1,12 @@
 # I 100 token nuovi di gmgn, e chi ci guadagna davvero
 
+> **Corretto il 15 settembre 2026.** La conclusione sulla fascia d'ingresso 1-5 secondi
+> (+45,8% pesato) e' un artefatto della selezione: i portafogli erano scelti perche' gmgn
+> li elencava fra i primi per profitto su quei token, e su un token che sale i primi
+> compratori vincono per costruzione. Su un campione dieci volte piu' grande e con il
+> confronto dentro/fuori selezione l'effetto sparisce: vedi
+> [2026-09-15-gmgn-sei-ore.md](2026-09-15-gmgn-sei-ore.md), sezione 4.
+
 **14 settembre 2026.** Fuori dal perimetro di stonk.fun: i 100 token piu' recenti visibili su
 gmgn (70 pump.fun, 29 Raydium LaunchLab, 1 Meteora), i portafogli che ci compaiono fra i primi
 per profitto, e la ricostruzione **on-chain** di cosa fanno davvero.
