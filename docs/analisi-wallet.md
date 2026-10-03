@@ -110,6 +110,37 @@ attivi. Mai su publicnode, mai da dexscreener.
 (`getTokenSupply`). Non dipende dal prezzo di oggi, al contrario di "mcap attuale × prezzo
 d'ingresso ÷ prezzo attuale", che si rompe quando cambia la pool di riferimento.
 
+## 4b. Robinhood Chain (id 4663)
+
+Arbitrum Orbit, ~10 blocchi al secondo. Su fomo e' la catena con piu' capitale dei big (44%).
+Verificato il 2026-10-03 su uno swap di @seralberttrades.
+
+**Come ci arriva fomo.** Il token si compra/vende con USDC su Solana attraverso **Relay**: su
+Solana l'USDC va a `99vQwt…` (Relay: Depository), su Robinhood il token arriva o parte dal
+wallet. Le due meta' dello stesso swap stanno su due catene e si accoppiano per orario e importo.
+
+**Il wallet.** Anche qui l'indirizzo che fomo mostra (`evmAddress` del profilo, `address` degli
+swap) e' vuoto: nonce 0, saldo 0, nessun codice. Il wallet vero e' un **EOA con delega
+EIP-7702** (codice `0xef0100` + implementazione `0xe6cae83b…`) che opera via **ERC-4337**:
+transazione inviata dal bundler di fomo `0x4337016838785634c63fce393bfc6222564436c4` (184.551
+transazioni al 3/10) all'EntryPoint v0.8 `0x4337084d9e255ff0702461cf8895ce9e3b5ff108`
+(`handleOps`). Il bundler e' l'equivalente del co-firmatario Solana.
+
+**Trovarlo.** Dallo swap fomo (token, quantita', ora): `eth_getLogs` con `address` = token,
+`topics` = `Transfer`, ±400 blocchi attorno al blocco dell'ora (ricerca binaria su
+`eth_getBlockByNumber`), e l'indirizzo che manda o riceve la quantita' esatta. ~200 ms.
+
+**Leggerne la storia.**
+
+| fonte | cosa da' | limite |
+|---|---|---|
+| RPC pubblico `https://rpc.mainnet.chain.robinhood.com` | log e ricevute | `eth_getLogs` senza `address`: 30.000 blocchi (~50 minuti); con `address`: 10M blocchi (~12 giorni) |
+| Blockscout `https://robinhoodchain.blockscout.com/api/v2/addresses/<wallet>/token-transfers` | tutti i trasferimenti del wallet, qualunque token, 50 per pagina (`next_page_params`) | dietro Cloudflare: si chiama dal browser Playwright aperto su quel dominio; 150 richieste per finestra |
+| Alchemy (`robinhood-mainnet.g.alchemy.com`) | rete supportata | **non abilitata** sulla nostra app: va attivata dalla dashboard |
+
+Strada scelta: Blockscout per la storia completa del wallet, RPC pubblico per la controprova
+della singola transazione. Non serve un piano a pagamento.
+
 ## 5. Le misure
 
 **Il giro.** Una posizione nasce col primo acquisto e si chiude quando la quantita' venduta
