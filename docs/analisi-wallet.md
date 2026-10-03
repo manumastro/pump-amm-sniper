@@ -260,6 +260,17 @@ capitalizzazione, volume, nascita), `userToken` (costo, realizzato, ingresso med
 `activeTrade` (aperture, chiusure, trasferimenti), `valuation` (se entra nel PnL); in testa
 `otherPnl`, `livePerpPnl`, `otherEquity`.
 
+## 5c. Riconoscere un trader automatico
+
+Per utente, dagli swap fomo: swap al giorno sul periodo coperto, pausa piu' lunga di ogni
+giornata con almeno 20 swap (una persona dorme), tenuta mediana e quota di giri sotto i 2
+minuti, raffiche (azioni a meno di 10 s dalla precedente). Dalla catena: quota di swap firmati
+dal wallet senza il co-firmatario (chiave esportata, programma proprio). Per il copy-trading:
+per ogni primo acquisto di un token nell'ora, chi l'ha comprato 0-30 s prima; il "leader" piu'
+frequente, confrontato col verso opposto (l'utente che lo precede), che misura il caso.
+**Le taglie ripetute non sono un segnale**: su fomo $498/$995/$99 sono i bottoni dell'app al
+netto della commissione. Risultati: `analysis/2026-10-04-fomo-automatici.md`.
+
 **La trappola del gregge.** "I token comprati da molti big rendono di piu'" e' sempre vero a
 posteriori, perche' un token si affolla quando sale. Si misura solo con l'informazione del
 momento: quanti erano gia' dentro *prima* dell'ingresso (qui nelle 6 ore precedenti), poi si
