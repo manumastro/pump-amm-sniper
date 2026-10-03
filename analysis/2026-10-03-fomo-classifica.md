@@ -18,6 +18,11 @@ Materiale, tutto degli ultimi 30 giorni:
 
 Il metodo, riusabile per qualunque trader, e' in `docs/analisi-wallet.md`.
 
+> **Superato in parte da `analysis/2026-10-03-fomo-solana-robinhood.md`** (stesso giorno, 1.879
+> utenti, Solana *e* Robinhood Chain). Cambiano due cose: la persistenza della bravura (§7, qui
+> p = 0,10) col campione grande diventa significativa (p = 0,00) ma resta di segno negativo; e
+> Robinhood, qui letta dai dati fomo, e' ricostruita on-chain e conferma le perdite.
+
 ---
 
 ## 1. Come funziona fomo on-chain

@@ -19,7 +19,8 @@ vinto non dice niente finche' non lo si misura dove non e' stato scelto.**
 | **gmgn** | i primi 100 per profitto di ogni token, etichetta del terminale | lo storico fuori da quel token | `docs/verifica-onchain.md` §1 |
 | **dexscreener** | coppie, capitalizzazione e prezzo **attuali** | i token morti (spariscono: 1.434 su 4.333 nello studio fomo), lo storico, **la nascita**: `pairCreatedAt` e' spesso la pool dopo la migrazione (28% dei token oltre un'ora dopo la catena, 394 eta' negative) | `api.dexscreener.com/tokens/v1/solana/<fino a 30 mint>` |
 | **solscan** | la transazione singola, leggibile da chiunque | niente che la catena non abbia | link `https://solscan.io/tx/<firma>` come controprova |
-| **RPC Helius** (`SVS_INDEX_RPC`) | storia completa; `getTransactionsForAddress` con filtro per orario | — | §4 |
+| **RPC Helius** (`SVS_INDEX_RPC`) | storia completa; `getTransactionsForAddress` con filtro per orario | crediti del piano: esauriti il 2026-10-03 dopo ~3,1M transazioni (`429 max usage reached`) | §4 |
+| **Alchemy Robinhood** (`robinhood-mainnet`, chiave di `SVS_HEAVY_RPC`) | tutti i trasferimenti ERC-20 di un wallet con `alchemy_getAssetTransfers` | `eth_getLogs` a 10 blocchi sul piano gratuito | §4b |
 | **RPC Alchemy** (`SVS_HEAVY_RPC`) | storia completa con `getSignaturesForAddress` | filtro per orario | |
 | **RPC publicnode** (`SVS_UNSTAKED_RPC`) | letture di account | **la storia oltre ~1 giorno** (misurato il 2026-10-03, `docs/rpc.md`) | mai per ricostruire il passato |
 
@@ -41,6 +42,21 @@ Mai stamparlo, mai scriverlo su file.
 Uno swap ha `inTokenAddress`/`outTokenAddress`, le quantita' (`inHumanAmount`/`outHumanAmount`),
 il valore in dollari, l'ora, il router (`DFLOW`, `JUPITER`, `OKX`, `RELAY`). Su fomo il contante
 e' **USDC**: sta da una parte in 88.583 swap su 89.975.
+
+    /v2/users/{id}/followers            gli ultimi 200 follower (senza paginazione)
+
+**Un campione oltre la classifica.** I follower dei ~380 utenti in classifica danno ~30.000
+utenti distinti (3 ottobre 2026), da cui si estrae a caso la folla. Sono i follower *piu'
+recenti*: il campione pende verso utenti nuovi e attivi, va detto.
+
+**I 429 dell'API rompono i dati in silenzio.** Con 4 richieste in parallelo fomo risponde 429
+dal 4% al 14% delle volte. Una pagina che fallisce anche dopo i tentativi interrompe la
+paginazione e l'utente resta con meta' degli swap, o con zero, senza nessun errore. Al primo
+download lo era il 9% degli utenti (182 su 1.879; 46 su 50 dei top sospetti erano davvero
+incompleti). Le impronte: numero di swap multiplo di 25, tutti dentro la finestra e meno di
+quelli del profilo; profilo mancante; zero swap. Si riscaricano con una funzione che segna ogni
+utente in cui anche una sola chiamata e' fallita, e si tengono solo quelli puliti. Il token di
+sessione dura ~1 ora: si legge a ogni chiamata l'header piu' recente che l'app stessa ha usato.
 
 ## 3. Le trappole, in ordine di quanto costano
 
@@ -106,6 +122,16 @@ limit: 1 })`. Senza, si pagina `getSignaturesForAddress` fino alla pagina non pi
 l'ultimo elemento dell'ultima pagina (`docs/verifica-onchain.md`, regola 2) — lento sui token
 attivi. Mai su publicnode, mai da dexscreener.
 
+**La storia del wallet, in due letture.** `getTransactionsForAddress(wallet)` restituisce
+solo le transazioni che toccano l'indirizzo del wallet: un **accredito** di token (che tocca
+solo il conto token) non c'e' — e cosi' spariscono i pagamenti di Relay delle vendite su altre
+catene. Il filtro `tokenAccounts: 'balanceChanged'` li include, ma include anche migliaia di
+airdrop di spam: su @bigbabba il tetto di 6.000 transazioni si riempiva coprendo solo 8 giorni,
+e 43 wallet su 120 risultavano troncati. La lettura giusta e' doppia: il **wallet senza filtro**
+(swap e uscite, firmati dall'utente) piu' il **conto USDC del wallet** (indirizzo associato:
+`PublicKey.findProgramAddressSync([wallet, TOKEN_PROGRAM, USDC], ATA_PROGRAM)`), unite per
+firma. @bigbabba: 22.223 transazioni, tutto il mese, 4 minuti.
+
 **Capitalizzazione all'ingresso** = prezzo pagato (dollari ÷ token ricevuti) × supply
 (`getTokenSupply`). Non dipende dal prezzo di oggi, al contrario di "mcap attuale × prezzo
 d'ingresso ÷ prezzo attuale", che si rompe quando cambia la pool di riferimento.
@@ -127,19 +153,52 @@ transazioni al 3/10) all'EntryPoint v0.8 `0x4337084d9e255ff0702461cf8895ce9e3b5f
 (`handleOps`). Il bundler e' l'equivalente del co-firmatario Solana.
 
 **Trovarlo.** Dallo swap fomo (token, quantita', ora): `eth_getLogs` con `address` = token,
-`topics` = `Transfer`, ±400 blocchi attorno al blocco dell'ora (ricerca binaria su
-`eth_getBlockByNumber`), e l'indirizzo che manda o riceve la quantita' esatta. ~200 ms.
+`topics` = `Transfer`, ±400 blocchi attorno al blocco dell'ora (stimato per interpolazione e
+rifinito con 2-3 `eth_getBlockByNumber`); fra gli indirizzi che mandano o ricevono la quantita'
+esatta, quello con codice `0xef0100…` (la quantita' passa anche per router e pool). Riuscito
+per il 99% dei top e il 97,5% della folla. I bundler sono una flotta: indirizzi diversi che
+iniziano tutti con `0x4337`, stesso EntryPoint.
 
-**Leggerne la storia.**
+**Leggerne la storia: Alchemy `alchemy_getAssetTransfers`**, sul piano gratuito (la rete va
+abilitata dalla dashboard; dopo l'abilitazione ci vuole qualche minuto). Per wallet: `toAddress`
+e poi `fromAddress`, `category: ['erc20']`, `withMetadata: true` (ora del blocco), fino a 1.000
+per pagina con `pageKey`. Quattro wallet in 2,7 secondi; gli swap fomo ritrovati con quantita'
+identica 87/87, 414/414, 539/539, 144/162. La nascita di un token e' la stessa chiamata con
+`fromAddress` = indirizzo zero, `contractAddresses: [token]`, `order: 'asc'`, `maxCount: 1`.
+Sul piano gratuito l'errore di frequenza arriva come *stringa* (`"error": "Rate limit
+exceeded"`), non come oggetto: un gestore che guarda solo `error.message` non lo riconosce.
 
-| fonte | cosa da' | limite |
-|---|---|---|
-| RPC pubblico `https://rpc.mainnet.chain.robinhood.com` | log e ricevute | `eth_getLogs` senza `address`: 30.000 blocchi (~50 minuti); con `address`: 10M blocchi (~12 giorni) |
-| Blockscout `https://robinhoodchain.blockscout.com/api/v2/addresses/<wallet>/token-transfers` | tutti i trasferimenti del wallet, qualunque token, 50 per pagina (`next_page_params`) | dietro Cloudflare: si chiama dal browser Playwright aperto su quel dominio; 150 richieste per finestra |
-| Alchemy (`robinhood-mainnet.g.alchemy.com`) | rete supportata | **non abilitata** sulla nostra app: va attivata dalla dashboard |
+Le alternative, misurate e scartate:
 
-Strada scelta: Blockscout per la storia completa del wallet, RPC pubblico per la controprova
-della singola transazione. Non serve un piano a pagamento.
+| fonte | perche' no |
+|---|---|
+| Alchemy `eth_getLogs` | piano gratuito: 10 blocchi per richiesta (un secondo di catena) |
+| RPC pubblico `rpc.mainnet.chain.robinhood.com` | `eth_getLogs`: 30.000 blocchi senza `address`, 10M con un `address`, **100.000 con una lista di address**; 429 con "reset in 60 seconds" gia' sopra ~4 richieste al secondo: un utente in 45 minuti |
+| Blockscout `robinhoodchain.blockscout.com/api/v2/addresses/<w>/token-transfers` | completo e gratuito ma dietro Cloudflare (solo dal browser) e ~1 richiesta al secondo: 2.000 trasferimenti in 200 secondi |
+| Relay `api.relay.link/requests/v2?user=<wallet>` | il registro perfetto (entrambe le catene, importi, commissioni, hash) ma v2 e' in dismissione (24/11/2026) e concede ~2 richieste al minuto; la v3 vuole `x-api-key` |
+
+**Come si legge un wallet fomo su Robinhood.** Movimenti raggruppati per transazione:
+
+- **consegna o ritiro via Relay**: il token arriva dal router `0xb92fe925…` o parte verso il
+  deposito `0x4cd00e38…`, in una transazione inviata da un solver al contratto `0xccc88a9d…`.
+  Il contante sta dall'altra parte del ponte: USDC che esce dal wallet Solana (acquisto) o vi
+  entra (vendita), di norma entro pochi secondi (mediana 1-2s). Si accoppiano con lo swap fomo
+  della stessa quantita' (scarto d'importo < 6%) o, se fomo non c'e', per vicinanza d'orario.
+  Verifica obbligatoria: rifare il risultato sui soli giri senza gambe "solo orario" (su fomo:
+  −19,2% contro +0,4% dei giri con gambe solo-orario, quindi la perdita non viene
+  dall'accoppiamento) e coi soli importi dichiarati dalla piattaforma;
+- **contante locale**: **USDG** (Global Dollar, 6 decimali) e' il dollaro del wallet EVM; USDG
+  che si muove da solo e' contante in viaggio, USDG e token opposti nella stessa transazione
+  sono uno scambio locale;
+- **airdrop**: lo stesso token mandato a 50-100 indirizzi in una transazione. Su @bigbabba 2.177
+  transazioni su 3.270. Non sono operazioni: un giro e' contaminato solo se l'utente ha venduto
+  piu' di quanto ha comprato;
+- **azioni tokenizzate**: GME, GOOGL, AAPL, HOOD, SPCX e altre sono token di Robinhood Chain e i
+  big le scambiano come i memecoin.
+
+**Tutto cio' che non e' Solana passa da Relay** (Robinhood, BSC, Base, Ethereum: sui primi 170
+utenti studiati, ~36.400 swap fuori da Solana, 31 non Relay), quindi lo stesso schema vale per
+le altre catene EVM.
 
 ## 5. Le misure
 
@@ -201,5 +260,17 @@ possano rifare:
   scambi fuori dall'app, criterio dei solidi.
 - **meccanica**: 300 transazioni del co-firmatario lette per intero.
 - **seguaci**: per ogni acquisto di un trader, le transazioni del token da −5 a +15 minuti.
+- **mappa_rh**: wallet EVM vero dai log del token (RPC pubblico di Robinhood).
+- **catena** (seconda versione): due letture per wallet (wallet e conto USDC), un file per
+  wallet, ogni pagina ridotta subito a variazioni di saldo (la versione che accumulava le
+  transazioni intere ha esaurito la memoria), 8 wallet in parallelo.
+- **rh_storia**: trasferimenti ERC-20 del wallet EVM da Alchemy; **rh_meta**: nascita (primo
+  conio) e supply dei token EVM.
+- **giri2**: giri su entrambe le catene, gambe Relay accoppiate all'USDC su Solana; segna per
+  ogni giro quante gambe sono accoppiate solo per orario, per poterle escludere in verifica.
+- **analisi2**: risultati per strato e catena, solidi, stili, prova fuori campione con e senza
+  il giro migliore, eta' e capitalizzazione, folla dietro i top.
+- **integra**: rimette nei file principali i riscaricamenti dell'API e rimette in coda solo le
+  mappature senza wallet.
 - **catena**: tutte le transazioni di un wallet vero in 30 giorni, ridotte a variazioni di
   saldo (USDC, SOL, token).

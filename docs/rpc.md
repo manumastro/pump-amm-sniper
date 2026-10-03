@@ -73,6 +73,19 @@ prima transazione di un indirizzo in una chiamata: la nascita di un mint senza p
 Richiede `maxSupportedTransactionVersion: 1` — esistono gia' transazioni di versione 1, e con 0
 la chiamata fallisce.
 
+**Crediti Helius esauriti il 2026-10-03.** Dopo ~3,1 milioni di transazioni lette con
+`getTransactionsForAddress` (1.757 wallet fomo, `analysis/2026-10-03-fomo-solana-robinhood.md`)
+Helius risponde `429 max usage reached` a ogni chiamata: non e' un limite di frequenza, e' la
+quota del piano. Fino al rinnovo `SVS_INDEX_RPC` non serve.
+
+**Robinhood Chain (id 4663).** Alchemy `robinhood-mainnet.g.alchemy.com` (stessa chiave di
+`SVS_HEAVY_RPC`, rete da abilitare nella dashboard): `alchemy_getAssetTransfers` funziona sul
+piano gratuito ed e' la strada per la storia di un wallet; `eth_getLogs` e' limitato a **10
+blocchi** (un secondo). L'errore di frequenza arriva come stringa (`"error": "Rate limit
+exceeded"`). L'RPC pubblico `rpc.mainnet.chain.robinhood.com`: `eth_getLogs` fino a 30.000
+blocchi senza `address`, 10M con uno, 100.000 con una lista; 429 "reset in 60 seconds" oltre ~4
+richieste al secondo.
+
 `getProgramAccounts` su publicnode risponde 403 (richiede un token), e anche
 `getMultipleAccountsInfo` con troppi account in una volta. Il bot non usa il primo, e il secondo
 passa da `getAccountsChunked()`. Non e un problema, ma spiega i 403 se compaiono.
