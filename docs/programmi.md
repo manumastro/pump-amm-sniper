@@ -47,11 +47,32 @@ grande li usano **45 e 76 conti**. Non erano privati, era piccolo il campione. R
 identificati `L2TExMFKdjpN9…` (13 conti), `99vQwtBwYtrqq…` (54), `68kTkdQsd9Wh…` (21),
 `Dsug6JqUcLJa…` (13), `4DvQwk6W2k…` (3), `AKbotMAGJm…` (3).
 
+**Identificati il 2026-10-03** dalle etichette di solscan, guardando le transazioni di fomo:
+`proVF4pMXVaYqmy4NjniPh4pqKNfMmsihgd4wdkCX3u` e' **OKX: DEX Router**, `99vQwtBwYtrqqD9YSXbdum3KBdxPAVxYTaQ3cfnJSrN2`
+e' **Relay: Depository** (il ponte verso le altre catene: l'USDC parte da Solana e il token
+arriva su Robinhood Chain, BSC, Base o Ethereum).
+
 **Nessun attrezzo compra un vantaggio.** Misurato sul libro dei 344 portafogli **tolti i token
 per cui gmgn li aveva eletti** (altrimenti si misura la selezione, non l'attrezzo): Axiom 149
 conti, 6.151 giri, **−797 SOL, −8,6% pesato**; Padre −91 SOL, −5,8%; Jupiter −101, −5,9%; gmgn
 −32, −5,4%; DFlow/bullx −14, −13,0%. L'unica riga non negativa e' **andare dritti sul DEX**
 (52 conti, +25 SOL, +1,2%).
+
+## Chi firma (le app custodiali e gasless)
+
+Alcune app non hanno un programma proprio: passano da un aggregatore (DFlow, Jupiter, OKX) e si
+riconoscono da **chi paga la transazione**.
+
+| indirizzo | cos'e' | prova |
+|---|---|---|
+| `AgmLJBMDCqWynYnQiPCuj9ewsNNsBJXyzoUhD9LJzN51` | **fomo** ("Fomo Co-signer" su solscan) | 162 wallet di utenti fomo su 165 agganciati; co-firma col wallet dell'utente e paga il gas; ~526 tx/min il 2026-10-03 |
+| `R4rNJHaffSUotNmqSKNEfDcJE8A7zJUkaoM5Jkd7cYX` | **Fomo Fees Vault** (solscan), multisig | riceve la commissione di ogni swap fomo in USDC sul conto `HrTf9CzXR1dRH4Sof5QrpmGWwpwAf3qZzwCsEjQpXcSq`; 1,25M USDC il 2026-10-03 |
+
+Il co-firmatario finanzia anche la creazione dei wallet degli utenti (solscan: "Funded by Fomo
+Co-signer"). Una transazione fomo ha sempre due firmatari, co-firmatario per primo (paga) e
+utente; il router e' DFlow (72% su 300 transazioni), Relay (13%), OKX (11%), Jupiter (2%).
+Gli indirizzi che fomo mostra nei profili non sono questi wallet e non hanno storia on-chain;
+come si risale a quello vero e' in `docs/analisi-wallet.md` §4.
 
 ## Rumore di fondo, da ignorare
 
