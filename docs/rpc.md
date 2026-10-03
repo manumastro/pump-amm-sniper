@@ -78,6 +78,14 @@ la chiamata fallisce.
 Helius risponde `429 max usage reached` a ogni chiamata: non e' un limite di frequenza, e' la
 quota del piano. Fino al rinnovo `SVS_INDEX_RPC` non serve.
 
+**Alchemy gratuito: il tetto e' la velocita', non il mese.** Il piano da' 30M CU al mese
+(2,5M usate al 2026-10-03 dopo due studi fomo) e **300 CU al secondo**. `getTransaction` pesa
+molto: due processi a 18 richieste al secondo l'uno hanno toccato 572 CU/s e da li' quasi ogni
+chiamata torna 429 (16 su 40 in una raffica), e ognuno rallenta l'altro. Un solo processo
+Alchemy alla volta, ~6 `getTransaction` al secondo: la storia di un conto USDC fomo molto
+attivo (3.000 transazioni in 10 ore) richiede minuti. Ethereum, Base e BNB vanno abilitate
+dalla dashboard come Robinhood (`ETH_MAINNET is not enabled for this app`).
+
 **Robinhood Chain (id 4663).** Alchemy `robinhood-mainnet.g.alchemy.com` (stessa chiave di
 `SVS_HEAVY_RPC`, rete da abilitare nella dashboard): `alchemy_getAssetTransfers` funziona sul
 piano gratuito ed e' la strada per la storia di un wallet; `eth_getLogs` e' limitato a **10

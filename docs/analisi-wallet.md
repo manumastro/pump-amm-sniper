@@ -200,6 +200,18 @@ Le alternative, misurate e scartate:
 utenti studiati, ~36.400 swap fuori da Solana, 31 non Relay), quindi lo stesso schema vale per
 le altre catene EVM.
 
+## 4c. Ritrovare il wallet Solana dai saldi
+
+Quando la via del token (§4) costa troppo — senza Helius, `getSignaturesForAddress` su un mint
+molto scambiato pagina migliaia di firme per arrivare all'orario: 8 utenti in un'ora — si usano
+i saldi. Da `/balances` si prendono le posizioni piu' grandi **rispetto alla supply**
+(quantita' × prezzo ÷ capitalizzazione), per ognuna `getTokenLargestAccounts` (i 20 conti
+maggiori del token) e si cerca il conto col saldo dichiarato da fomo (scarto < 0,1%); il suo
+owner (`getAccountInfo` jsonParsed) e' il wallet. Due-tre chiamate a prova: 46 wallet su 91 in
+pochi minuti. **Verifica obbligatoria**: almeno una transazione recente co-firmata da
+`AgmLJ…`; sui wallet invasi dallo spam bisogna guardarne 25, e quelli senza nessuna co-firma si
+scartano (4 su 46 il 2026-10-03).
+
 ## 5. Le misure
 
 **Il giro.** Una posizione nasce col primo acquisto e si chiude quando la quantita' venduta
@@ -225,6 +237,28 @@ wallet su 112; la meta' dei rimanenti vive di uno o due colpi.
 **Il confronto di stile.** Le stesse misure (eta' del token, capitalizzazione all'ingresso,
 tenuta, dimensione, tagli) sui solidi e sugli altri. Se non differiscono, lo stile non spiega il
 risultato — ed e' quello che e' successo su fomo.
+
+## 5b. Il PnL di classifica, come se si chiudesse adesso
+
+Il PnL di una classifica fomo e' realizzato **piu' aperto**: per le 24 ore quasi solo aperto
+(`analysis/2026-10-03-fomo-top150.md`). Tre passi:
+
+- **realizzato nella finestra**: vendite nella finestra meno il costo medio degli acquisti visti
+  (30 giorni di swap); per i token comprati prima, il prezzo medio d'ingresso di `/balances`
+  (`userToken.averageEntryPriceUsd`). Le vendite senza costo noto si tengono a parte e danno un
+  intervallo (costo ignoto escluso / contato zero). L'aperto e' la differenza;
+- **vendere adesso**: ogni posizione di `/balances` a prezzo e liquidita' di dexscreener, incasso
+  = (L/2 × V) ÷ (L/2 + V). `tokens/v1` restituisce **una sola coppia per token** (la maggiore):
+  per la liquidita' di tutti i pool serve `token-pairs/v1/<catena>/<token>`, una chiamata a
+  token, che quadruplica la liquidita' sui 174 token che fanno il 97% del valore. Si riportano
+  entrambi come intervallo; e, sommando gli stessi token fra utenti, quanto incasserebbero
+  vendendo insieme;
+- **i perpetual**: `/balances` ha `livePerpPnl` (perp aperti), che fomo somma al PnL.
+
+`/balances` per posizione: `balance.shiftedBalance` (quantita'), `tokenFilterResult` (prezzo,
+capitalizzazione, volume, nascita), `userToken` (costo, realizzato, ingresso medio),
+`activeTrade` (aperture, chiusure, trasferimenti), `valuation` (se entra nel PnL); in testa
+`otherPnl`, `livePerpPnl`, `otherEquity`.
 
 **La trappola del gregge.** "I token comprati da molti big rendono di piu'" e' sempre vero a
 posteriori, perche' un token si affolla quando sale. Si misura solo con l'informazione del
