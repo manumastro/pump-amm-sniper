@@ -3,15 +3,16 @@
 //   con Helius getTransactionsForAddress filtrato per orario (100 tx complete per chiamata);
 //   se Helius non risponde, Alchemy getSignaturesForAddress + getTransaction (lento: 300 CU/s).
 // EVM: alchemy_getAssetTransfers in entrata e in uscita su Robinhood, Ethereum, Base e BSC.
-// Uso: node storia.js [tutte|sol|evm] [classifica | id...]
-//   classifica = i 150 di 24h, 7g e 30g dell'ultima lettura; senza niente: tutti quelli col wallet
+// Uso: node storia.js [tutte|sol|evm] [classifica | nuovi | id...]
+//   classifica = i 150 di 24h, 7g e 30g dell'ultima lettura; nuovi = wallet senza storia; niente: tutti
 const fs = require('fs'); const path = require('path');
 const { PublicKey } = require('@solana/web3.js');
 const { DATI, rpc, leggi, scrivi, USDC, RETI_EVM } = require('./comune');
 const [quale = 'tutte', ...scelti] = process.argv.slice(2);
 const W = leggi('wallet.json');
 const ultima = () => { const L = leggi('classifiche/' + fs.readdirSync(path.join(DATI, 'classifiche')).sort().at(-1)); return [...new Set(['24h', '7d', '30d'].flatMap(p => (L[p] || []).map(x => x.id)))]; };
-const ids = scelti[0] === 'classifica' ? ultima() : scelti.length ? scelti : Object.keys(W);
+const senzaStoria = () => Object.keys(W).filter(u => (W[u].sol && !fs.existsSync(path.join(DATI, 'catena/sol', u + '.json'))) || (W[u].evm && !fs.existsSync(path.join(DATI, 'catena/evm', u + '.json'))));
+const ids = scelti[0] === 'classifica' ? ultima() : scelti[0] === 'nuovi' ? senzaStoria() : scelti.length ? scelti : Object.keys(W);
 const ORA = Math.floor(Date.now() / 1000), INIZIO = ORA - 30 * 86400;
 const conto = w => PublicKey.findProgramAddressSync([new PublicKey(w).toBuffer(), new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA').toBuffer(), new PublicKey(USDC).toBuffer()], new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL'))[0].toBase58();
 function riga(t, w) {
