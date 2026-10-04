@@ -21,7 +21,7 @@ dati in `dati/fomo/` (fuori da git, ~1,5 GB). Metodo in `docs/analisi-wallet.md`
 5. **Saldi on-chain** (subito dopo lo scarico, se no i saldi si spostano): `node scripts/fomo/saldi.js`.
 6. **Report classifiche**: `python3 scripts/fomo/classifiche.py` → `dati/fomo/risultati/classifiche-<ora>.md`.
 7. **Automatici** (quando serve): `python3 scripts/fomo/automatici.py`.
-8. **Storie on-chain** (lungo, in background): `node scripts/fomo/storia.js` — `sol` o `evm` per una sola parte.
+8. **Storie on-chain** (lungo, in background): `node scripts/fomo/storia.js tutte classifica` (i 150 dell'ultima classifica) o `node scripts/fomo/storia.js` (tutti); `sol` o `evm` al posto di `tutte` per una sola parte.
 
 ## Cartelle in `dati/fomo/`
 
