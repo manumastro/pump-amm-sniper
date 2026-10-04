@@ -47,9 +47,9 @@ mossi), non *a che prezzo*.
 
 ## 2. Lettura diretta dell'account
 
-L'ultima parola. L'endpoint sta in `SVS_UNSTAKED_RPC` nel `.env` — **mai stamparlo**, contiene la
-chiave. `getAccountInfo` sull'indirizzo della curva, poi gli offset di
-`src/services/dex/pumpBondingCurve.ts` (`virtualTokenReserves` 8, `virtualSolReserves` 16,
+L'ultima parola. Le chiavi stanno in `.env.fomo` (`scripts/fomo/comune.js` costruisce gli
+endpoint) — **mai stamparle**. `getAccountInfo` sull'indirizzo della curva, poi gli offset del layout della curva pump.fun (il codice dello sniper, su `main`:
+`src/services/dex/pumpBondingCurve.ts`) (`virtualTokenReserves` 8, `virtualSolReserves` 16,
 `realTokenReserves` 24, `realSolReserves` 32, `complete` 48).
 
 Il prezzo e' `virtualSol / virtualToken`; la liquidita' e' `realSolReserves`, non quella virtuale.

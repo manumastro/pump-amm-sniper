@@ -19,10 +19,10 @@ vinto non dice niente finche' non lo si misura dove non e' stato scelto.**
 | **gmgn** | i primi 100 per profitto di ogni token, etichetta del terminale | lo storico fuori da quel token | `docs/verifica-onchain.md` §1 |
 | **dexscreener** | coppie, capitalizzazione e prezzo **attuali** | i token morti (spariscono: 1.434 su 4.333 nello studio fomo), lo storico, **la nascita**: `pairCreatedAt` e' spesso la pool dopo la migrazione (28% dei token oltre un'ora dopo la catena, 394 eta' negative) | `api.dexscreener.com/tokens/v1/solana/<fino a 30 mint>` |
 | **solscan** | la transazione singola, leggibile da chiunque | niente che la catena non abbia | link `https://solscan.io/tx/<firma>` come controprova |
-| **RPC Helius** (`SVS_INDEX_RPC`) | storia completa; `getTransactionsForAddress` con filtro per orario | crediti del piano: esauriti il 2026-10-03 dopo ~3,1M transazioni (`429 max usage reached`) | §4 |
-| **Alchemy Robinhood** (`robinhood-mainnet`, chiave di `SVS_HEAVY_RPC`) | tutti i trasferimenti ERC-20 di un wallet con `alchemy_getAssetTransfers` | `eth_getLogs` a 10 blocchi sul piano gratuito | §4b |
-| **RPC Alchemy** (`SVS_HEAVY_RPC`) | storia completa con `getSignaturesForAddress` | filtro per orario | |
-| **RPC publicnode** (`SVS_UNSTAKED_RPC`) | letture di account | **la storia oltre ~1 giorno** (misurato il 2026-10-03, `docs/rpc.md`) | mai per ricostruire il passato |
+| **RPC Helius** (`FOMO_HELIUS_KEY`) | storia completa; `getTransactionsForAddress` con filtro per orario | crediti mensili: il primo piano li ha finiti il 2026-10-03 dopo ~3,1M transazioni (`429 max usage reached`) | §4 |
+| **Alchemy EVM** (Robinhood, Ethereum, Base, BSC; `FOMO_ALCHEMY_KEY`) | tutti i trasferimenti ERC-20 di un wallet con `alchemy_getAssetTransfers`; saldi | `eth_getLogs` a 10 blocchi sul piano gratuito; 300 CU/s per tutte le reti | §4b |
+| **RPC Alchemy Solana** (`FOMO_ALCHEMY_KEY`) | storia completa con `getSignaturesForAddress`; saldi e maggiori detentori | niente filtro per orario; 300 CU/s | |
+| **RPC publicnode** | letture di account | **la storia oltre ~1 giorno** (misurato il 2026-10-03, `docs/rpc.md`) | mai per ricostruire il passato |
 
 ## 2. fomo.family: leggere l'API
 

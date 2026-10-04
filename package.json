@@ -1,31 +1,9 @@
 {
-  "name": "pump-amm-sniper",
-  "version": "0.1.0",
+  "name": "fomo-studi",
+  "version": "0.2.0",
   "private": true,
-  "description": "Standalone Pump.fun AMM sniper",
-  "scripts": {
-    "build": "tsc",
-    "start": "ts-node src/pumpAmmSniper.ts",
-    "start:paper": "ts-node src/pumpAmmSniper.ts >> paper.log 2>&1",
-    "report:paper": "node scripts/paper-report-daemon.js",
-    "forensics:rug-loss": "ts-node --transpile-only scripts/rug-loss-forensics.ts",
-    "report:paper:bg": "nohup npm run report:paper >> logs/paper-report-daemon.log 2>&1 &",
-    "clean": "rm -rf dist",
-    "test": "node --test test/*.test.js"
-  },
+  "description": "Studi on-chain sui trader di fomo.family (Solana, Robinhood Chain, EVM)",
   "dependencies": {
-    "@meteora-ag/cp-amm-sdk": "^1.4.8",
-    "@pump-fun/pump-swap-sdk": "^1.20.0",
-    "@solana/spl-token": "^0.4.15",
-    "@solana/web3.js": "^1.99.0",
-    "bn.js": "^5.2.5",
-    "bs58": "^6.0.0",
-    "dotenv": "^16.4.5"
-  },
-  "devDependencies": {
-    "@types/bn.js": "^5.2.0",
-    "@types/node": "^22.20.2",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.7.2"
+    "@solana/web3.js": "^1.99.0"
   }
 }

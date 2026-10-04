@@ -1,22 +1,11 @@
-# pump-amm-sniper
+# fomo-studi
 
-Standalone sniper for Pump.fun AMM pools only.
+Studi on-chain sui trader di [fomo.family](https://fomo.family): chi guadagna davvero, come operano,
+come funziona l'app su Solana, Robinhood Chain ed EVM.
 
-## Setup
+- `analysis/` — gli studi (indice in `analysis/README.md`)
+- `docs/` — il metodo (`analisi-wallet.md`, `verifica-onchain.md`, `programmi.md`, `rpc.md`)
+- `scripts/fomo/` — la pipeline (istruzioni nel suo `README.md`)
 
-1. Install dependencies:
-
-   npm install
-
-2. Create `.env` from example and fill values:
-
-   cp .env.example .env
-
-3. Run:
-
-   npm run start
-
-## Notes
-
-- Program monitored: `pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA`
-- WSOL mint used: `So11111111111111111111111111111111111111112`
+Chiavi in `.env.fomo` (modello in `.env.fomo.example`), dati in `dati/fomo/`: entrambi fuori da git.
+Lo sniper da cui e' nato il repo vive sul branch `main`.
