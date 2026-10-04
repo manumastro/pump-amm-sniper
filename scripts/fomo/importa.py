@@ -7,6 +7,8 @@ raw = open(sys.argv[1]).read(); d = json.loads(raw)
 if isinstance(d, str): d = json.loads(d)
 ora = d['inizio'][:16].replace(':', '')
 scrivi(f'classifiche/{ora}.json', dict(preso=d['inizio'], **{k: v for k, v in d['classifiche'].items()}))
+# fotografia di questa lettura (rank, PnL, posizioni, perp): serve per confrontare una lettura con la dopo
+scrivi(f'istantanee/{ora}.json', {u: dict(profilo=v['profilo'], bal=v['bal'], altro=v['altro'], preso=v['preso']) for u, v in d['utenti'].items()})
 k = lambda s: (s['t'], s['i'], s['o'], s['ia'], s['oa'])
 nuovi = swap = 0
 for u, v in d['utenti'].items():

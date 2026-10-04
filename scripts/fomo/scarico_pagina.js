@@ -1,10 +1,10 @@
-// Funzione da eseguire DENTRO la pagina fomo.family (Playwright, browser_evaluate) dopo il login.
+// Funzione eseguita DENTRO la pagina fomo.family dopo il login (la lancia avvia_scarico.js).
 // Non contiene credenziali: usa l'header che l'app stessa manda, catturato avvolgendo window.fetch,
-// e lo rilegge a ogni chiamata (il token di sessione dura ~1 ora). __NOTI__ (id -> ora dell'ultimo
-// swap gia' salvato) e __EXTRA__ (id da scaricare oltre alle classifiche) li inserisce
-// prepara_scarico.py. Avvia lo scarico e torna subito; lo stato si legge con window.__fomoStato().
-async () => {
-  const NOTI = __NOTI__, EXTRA = __EXTRA__, GIORNI = 30;
+// e lo rilegge a ogni chiamata (il token di sessione dura ~1 ora). NOTI: id -> ora dell'ultimo swap
+// gia' salvato (si scarica solo il nuovo); EXTRA: id da scaricare oltre alle classifiche.
+// Avvia lo scarico e torna subito; lo stato si legge con window.__fomoStato().
+async ({ NOTI, EXTRA }) => {
+  const GIORNI = 30;
   if (!window.__fomoH) {
     const of = window.fetch;
     window.fetch = async function (input, init) {
@@ -13,8 +13,11 @@ async () => {
       return of.apply(this, arguments);
     };
   }
-  const clic = () => document.querySelectorAll('button').forEach(b => { if (/^(24H|7D)$/i.test(b.innerText.trim())) b.click(); });
-  if (!window.__fomoH) { clic(); await new Promise(r => setTimeout(r, 4000)); }
+  // l'app ha la classifica in memoria: per farle fare una chiamata (e catturarne l'header) si
+  // cambiano i periodi uno dopo l'altro e si scorre la pagina, fino a 15 secondi
+  const bottoni = () => [...document.querySelectorAll('button')].filter(b => /^(24H|7D|30D|ALL)$/i.test(b.innerText.trim()));
+  const clic = () => { const bb = bottoni(); if (bb.length) bb[Math.floor(Math.random() * bb.length)].click(); window.scrollTo(0, document.body.scrollHeight); };
+  for (let i = 0; i < 15 && !window.__fomoH; i++) { clic(); await new Promise(r => setTimeout(r, 1000)); }
   if (!window.__fomoH) return 'nessun header: fare il login e aprire la classifica';
   clearInterval(window.__fomoRinnovo); window.__fomoRinnovo = setInterval(clic, 240000);
   const get = async p => {

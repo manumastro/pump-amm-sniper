@@ -5,17 +5,15 @@ dati in `dati/fomo/` (fuori da git, ~1,5 GB). Metodo in `docs/analisi-wallet.md`
 
 ## Il giro quotidiano
 
-1. **Login** a fomo.family nel browser Playwright (lo fa la persona), poi aprire la classifica.
-2. **Scarico** (solo il nuovo rispetto ai dati salvati):
+1. **Login** a fomo.family nel browser Playwright (lo fa la persona).
+2. **Scarico** (solo il nuovo rispetto ai dati salvati; in piu' gli id di `dati/fomo/extra.json`, facoltativo):
    ```
-   python3 scripts/fomo/prepara_scarico.py          # scrive dati/fomo/grezzi/scarico.js
+   python3 scripts/fomo/servi.py &        # ponte locale su 127.0.0.1:8765, importa da solo
    ```
-   Leggere `dati/fomo/grezzi/scarico.js` e passarlo a `browser_evaluate`; lo stato con
-   `() => window.__fomoStato()`; a `fine` valorizzato, salvare con
-   `browser_evaluate(() => JSON.stringify(window.__fomoScarico), filename=".playwright-mcp/scarico.json")`.
-   ```
-   python3 scripts/fomo/importa.py .playwright-mcp/scarico.json
-   ```
+   poi `browser_run_code_unsafe` con `filename: scripts/fomo/avvia_scarico.js` (apre la classifica,
+   cattura l'header, lancia lo scarico) e `filename: scripts/fomo/chiudi_scarico.js` (aspetta fino a
+   9 minuti; finito, manda lo scarico al ponte che lo importa; se no restituisce lo stato e si
+   rilancia). Nessun dato passa dalla conversazione; l'header non esce mai dalla pagina.
 3. **Wallet nuovi**: `node scripts/fomo/wallet.js` (solo chi non ce l'ha).
 4. **Prezzi e liquidita'**: `python3 scripts/fomo/prezzi.py`.
 5. **Saldi on-chain** (subito dopo lo scarico, se no i saldi si spostano): `node scripts/fomo/saldi.js`.
@@ -40,8 +38,8 @@ dati in `dati/fomo/` (fuori da git, ~1,5 GB). Metodo in `docs/analisi-wallet.md`
 
 - **Alchemy gratuito**: 300 CU al secondo per tutte le reti insieme (`ALCHEMY_PER_SEC`, di
   default 10 richieste al secondo). Un solo script Alchemy alla volta.
-- **Helius gratuito**: crediti mensili. Lo usano `storia.js` (lettura veloce del conto USDC,
-  100 transazioni per chiamata) e `wallet.js` (solo se il metodo dei saldi fallisce). Esaurito,
-  `storia.js` passa da solo ad Alchemy.
+- **Helius gratuito**: tutte le letture Solana (`comune.js`, rete `sol`); `storia.js` usa
+  `getTransactionsForAddress` (100 transazioni complete per chiamata, filtro per orario). A crediti
+  finiti Solana passa da sola ad Alchemy. Helius non copre le catene EVM: quelle restano su Alchemy.
 - **fomo**: circa 4-9 utenti al minuto per uno scarico completo a 30 giorni; incrementale molto meno.
 - **dexscreener**: `tokens/v1` da' solo la coppia maggiore; `token-pairs/v1` tutti i pool.

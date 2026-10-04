@@ -1,5 +1,6 @@
 // Basi comuni della pipeline fomo: chiavi da .env.fomo (mai dal .env dello sniper), cartella dati,
 // chiamate RPC con un regolatore di frequenza per fornitore (Alchemy gratuito: 300 CU/s in tutto).
+// Solana: Helius per tutto, Alchemy come riserva quando Helius finisce i crediti.
 const fs = require('fs');
 const path = require('path');
 const RADICE = path.resolve(__dirname, '../..');
@@ -29,7 +30,17 @@ async function turno(f) {
     await sleep(g.prossimo - ora);
   }
 }
+// Solana passa da Helius (piu' veloce); a crediti finiti, da solo su Alchemy.
+let heliusFinito = false;
 async function rpc(rete, method, params) {
+  if (rete === 'sol' && !heliusFinito) {
+    try { return await rpc1('helius', method, params); }
+    catch (e) { if (!/crediti esauriti/.test(e.message)) throw e; heliusFinito = true; console.error('Helius esaurito: Solana passa ad Alchemy'); }
+  }
+  if (rete === 'helius' && heliusFinito) throw new Error('crediti esauriti: helius');
+  return rpc1(rete, method, params);
+}
+async function rpc1(rete, method, params) {
   const f = FORNITORE(rete);
   for (let t = 0; t < 10; t++) {
     try {
@@ -41,11 +52,11 @@ async function rpc(rete, method, params) {
       if (j.error) {
         const m = typeof j.error === 'string' ? j.error : (j.error.message || '');
         if (/max usage reached/i.test(m)) throw new Error('crediti esauriti: ' + rete);
-        if (j.error.code === 429 || /rate|too many|exceed/i.test(m)) { reg[f].fermo = Date.now() + (f === 'rhpub' ? 61000 : 1500 * (t + 1)); continue; }
-        throw new Error(m.slice(0, 200));
+        if (j.error.code === 429 || /rate.?limit|too many requests/i.test(m)) { reg[f].fermo = Date.now() + (f === 'rhpub' ? 61000 : 1500 * (t + 1)); continue; }
+        const err = new Error(m.slice(0, 200)); err.definitivo = true; throw err;   // errore dell'RPC: ripetere non serve
       }
       return j.result;
-    } catch (e) { if (t === 9 || /crediti esauriti|invalid|not enabled/i.test(e.message)) throw e; await sleep(800 * (t + 1)); }
+    } catch (e) { if (t === 9 || e.definitivo || /crediti esauriti|invalid|not enabled/i.test(e.message)) throw e; await sleep(800 * (t + 1)); }
   }
   throw new Error('troppi tentativi ' + rete + ' ' + method);
 }
