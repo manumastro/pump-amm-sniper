@@ -120,7 +120,12 @@ dati in `dati/fomo/` (fuori da git, ~1,5 GB). Metodo in `docs/analisi-wallet.md`
   entrambe. **Chiamate (6/10):** in sottofondo per ogni candidato solo le 20 tesi piu' recenti (servono ai segnali
   tesi e bravi), niente piu' feed degli acquisti ("entrati entro il 30%" usa il prezzo medio d'ingresso degli holder);
   **tutte le tesi si caricano quando si apre un token nella pagina** (`GET /tesi?tok=`, fino a 20 pagine da 50, di nuovo
-  ogni 5 minuti finche' resta aperto), e il token aperto va in testa alla lista di Axiom, che ne legge subito i post su X.
+  ogni 5 minuti finche' resta aperto), e il token aperto va in testa alla lista di Axiom, che ne legge subito i post su X. **Callout pump.fun (6/10):** pump.fun ha i suoi callout (una posizione con una tesi allegata, la fonte
+  "PUMP" di Axiom): `GET frontend-api-v3.pump.fun/mint-positions/<mint>?sortBy=LATEST|CLOSED_PNL&withThesis=true&pageSize=50`,
+  pubblica e senza login, con posizione e PnL verificati da pump.fun e se l'autore ha gia' venduto. bonding_live la legge
+  direttamente (niente browser): due chiamate a token, ogni 3 minuti per i 10 token tradabili piu' caldi e all'apertura di
+  un token; su 429 pausa di 2 minuti. Entrano nella stessa lista di tesi fomo e callout Axiom (stessa persona riconosciuta
+  dall'handle X o dal nome). I callout GMGN restano fuori (solo via WebSocket di Axiom).
 - **Axiom nella pagina live** (6/10, solo REST, sul modello di fomo-mcp): con il login ad Axiom fatto dalla persona in una
   scheda axiom.trade del browser Playwright e `servi.py` acceso, si lancia `scripts/axiom/avvia_sessione.js` con
   `browser_run_code_unsafe` (come `avvia_token.js`): a ogni rinnovo della sessione fatto dalla pagina e ogni 2 minuti manda

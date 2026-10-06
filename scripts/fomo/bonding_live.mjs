@@ -161,7 +161,7 @@ function axiomCampi(t, ora) {
     ax_tweets: xs.sort((a, b) => (b.followers || 0) - (a.followers || 0)).slice(0, 8).map(w => ({ ...w, anche: [...(t.tesi || []).map(x => x.x), ...(A.callouts || []).map(c => c.x || c.h)].some(h => h && h.toLowerCase() === String(w.handle || '').toLowerCase()) })),
   };
 }
-// Voci sul token: tesi fomo e callout Axiom (e GMGN/pump.fun se ci sono) in una sola lista, una riga per persona.
+// Voci sul token: tesi fomo, callout Axiom e callout pump.fun in una sola lista, una riga per persona.
 // La stessa persona su fomo e su Axiom si riconosce dall'handle X (fomo: campo twitter dell'autore; Axiom: xHandle del
 // caller) o, se manca, dallo stesso nome: le due fonti si completano (fomo da' posizione e PnL dell'autore, Axiom lo
 // storico del caller). Conta la prima volta che una persona ne ha parlato: voci10 = persone nuove negli ultimi 10 minuti.
@@ -170,6 +170,7 @@ function voci(t, ora) {
   const V = [];
   for (const x of t.tesi || []) V.push({ src: 'fomo', h: x.u, x: x.x, t: x.t, mc: x.mc, pos: x.pos, pnl: x.pnl, venduto: x.venduto, dev: x.dev, like: x.like, txt: x.txt,
     bravo: bravo(x.uid), info: R[x.uid]?.pos30 && R[x.uid].pos30 < 1e6 ? '#' + R[x.uid].pos30 + ' fomo 30g' : null });
+  for (const c of t.pumpM?.values() || []) V.push({ ...c, bravo: false, info: null });
   for (const c of (t.ax?.callouts || []).filter(conta)) V.push({ src: c.src, h: c.h, x: c.x || null, t: c.t, mc: c.mc, pos: c.pos, pnl: c.pnl, venduto: c.venduto, txt: c.body, picco: c.picco,
     bravo: bravoAx(c), info: c.ncall != null ? c.ncall + ' callout, win ' + Math.round((c.wr || 0) * 100) + '%, PnL ' + usdK(c.pnl_caller || 0) : c.kol ? 'KOL' + (c.follower ? ' ' + Math.round(c.follower / 1000) + 'k' : '') : null });
   const G = new Map();
@@ -239,6 +240,46 @@ async function dettagli(t) {
   for (const x of t.chi || []) x.curva_ingresso = pf ? curvaPump(x.mc_ingresso) : null;
   t.primi_presto = (t.chi || []).filter(x => x.curva_ingresso != null && x.curva_ingresso <= 30).length;
 }
+// pump.fun: un "callout" e' una posizione con una tesi allegata (GET frontend-api-v3.pump.fun/mint-positions/<mint>,
+// pubblica, senza login; e' la fonte "PUMP" dei callout di Axiom). Dà anche la posizione verificata da pump.fun (quanto
+// tiene, PnL, se ha chiuso). Con withThesis=true restano solo le posizioni con una tesi: LATEST da' quelle aperte,
+// CLOSED_PNL chi ha gia' venduto; due chiamate per avere tutti i callout del token (al massimo 50 per tipo). Solo mint pump.fun.
+const PUMP_API = 'https://frontend-api-v3.pump.fun/mint-positions/';
+const PUMP_H = { accept: 'application/json', origin: 'https://pump.fun', referer: 'https://pump.fun/',
+  'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36' };
+let pumpPausa = 0;
+async function pumpCallout(t, ordini) {
+  if (!t.tok.endsWith('pump') || Date.now() < pumpPausa) return;
+  const M = (t.pumpM ||= new Map());
+  for (const o of ordini) {
+    try {
+      const r = await fetch(PUMP_API + t.tok + '?sortBy=' + o + '&withThesis=true&pageSize=50', { headers: PUMP_H, signal: AbortSignal.timeout(15000) });
+      S.pump_chiamate = (S.pump_chiamate || 0) + 1;
+      if (r.status === 429) { pumpPausa = Date.now() + 120000; log('pump.fun 429: pausa di 2 minuti'); return; }
+      if (!r.ok) continue;
+      for (const p of (await r.json()).positions || []) {
+        const c = p.callout; if (!c?.calloutId || p.lowQuality) continue;
+        const tiene = (p.amountHeld || 0) > 0;
+        M.set(c.calloutId, { id: c.calloutId, src: 'pump', h: p.userName || String(p.walletAddress || '').slice(0, 6), x: p.xUsername || null, t: c.calloutTimestamp,
+          mc: c.calledOutAtMcap ? Math.round(+c.calledOutAtMcap) : null, pos: tiene ? Math.round((p.costBasisUsd || 0) + (p.pnlUsd || 0)) : 0,
+          pnl: Math.round(tiene ? (p.pnlUsd || 0) + (p.realizedPnlUsd || 0) : (p.realizedPnlUsd || p.pnlUsd || 0)), venduto: !tiene,
+          picco: c.maxMultiplier ? +(+c.maxMultiplier).toFixed(2) : null, like: +c.likes || 0, txt: String(c.thesis || '').slice(0, 400) });
+      }
+    } catch (e) {}
+    await pausa(400);
+  }
+  t.pump_q = adesso();
+}
+(async () => {
+  // in sottofondo i 10 token tradabili piu' caldi nati da meno di 6 ore, ogni 3 minuti
+  for (;;) {
+    const ora = adesso();
+    const L = candidati().filter(t => prop(t) === 'si' && ora - t.nato < 6 * 3600).sort((a, b) => (ritmo(b, ora).in5 ?? 0) - (ritmo(a, ora).in5 ?? 0)).slice(0, 10)
+      .filter(t => !t.pump_q || ora - t.pump_q > 180);
+    for (const t of L) await pumpCallout(t, ['LATEST', 'CLOSED_PNL']);
+    await pausa(5000);
+  }
+})();
 // tutte le tesi di un token aperto nella pagina (al massimo 20 pagine da 50), di nuovo al piu' ogni 60 s
 async function tesiTutte(t) {
   if (t.tutte_in || (t.tutte_q && adesso() - t.tutte_q < 60)) return;
@@ -252,6 +293,7 @@ async function tesiTutte(t) {
       lastId = it.at(-1).id;
     }
     t.tutte_q = adesso();
+    await pumpCallout(t, ['LATEST', 'CLOSED_PNL']);
     await classifica((t.tesi || []).map(x => x.uid));
   } catch (e) { log('tesi di ' + t.sym + ': ' + e.message.slice(0, 80)); }
   finally { t.tutte_in = false; }
