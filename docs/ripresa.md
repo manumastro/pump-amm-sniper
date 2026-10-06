@@ -46,20 +46,17 @@ verificare con la prop firm.
 
 ## Da fare
 
-0. **Demone Axiom** (`scripts/axiom/axiom_live.mjs`, sull'altro PC): processo Node autonomo come fomo-mcp, con
-   playwright-core e il Chrome installato in un **profilo persistente dedicato** (`dati/axiom/profilo/`): la prima volta
-   si apre con la finestra e la persona fa il login, poi gira senza finestra e la sessione resta nel profilo. Dentro la
-   pagina axiom.trade:
-   - apre **un solo** WebSocket `wss://horn.axiom.trade/ws` e si iscrive ai token di `GET /axiom-lista` di bonding_live
-     (`{type:'view', view:[{chain:'sol', tokenAddress}]}`; arrivano 'replay' e 'post' dalle fonti axiom, gmgn, pumpfun,
-     fomo: fomo si scarta); normalizza i callout come fa `avvia_axiom.js` (funzione `norm`);
-   - legge `api8.axiom.trade/x-tweets?tokenAddress=&limit=50&all=1` uno alla volta, primi 15 token, ogni 2 minuti;
-   - manda tutto a `POST /axiom` di bonding_live ogni 15 s (formato `{q, ws:{stato}, dati:{tok:{callouts, tweets}}}`,
-     gia' gestito da bonding_live.mjs e dalla pagina);
-   - lascia che sia la pagina di Axiom a rinnovare la sessione (sul Mac `refresh-access-token` rispondeva 401 gia' dal
-     login: verificare che col profilo persistente il rinnovo funzioni e che la sessione regga piu' di 30 minuti);
-   - su 401/403, chiusura 4401/4403 o "Session invalid" si ferma e lo scrive nello stato; su 429 aspetta e rallenta;
-     ricollega il WebSocket con attese crescenti. Partire con pochi token e alzare solo se regge.
+0. ~~Demone Axiom~~ **fatto il 6/10 su Windows** (`scripts/axiom/`), ma **solo REST, niente WebSocket** (scelta della
+   persona), sul modello di fomo-mcp. Nella scheda Axiom loggata del browser Playwright gira `avvia_sessione.js` (come
+   `avvia_token.js`): a ogni rinnovo della pagina e ogni 2 minuti manda a `servi.py` il cookie d'accesso, i cookie
+   Cloudflare e lo user-agent (-> `~/.config/axiom/sessione`); il refresh token resta nella scheda. `axiom_live.mjs` e' un
+   processo Node con un Chrome headless (playwright-core di `~/fomo-mcp`) che legge `callouts-feed` (gli ultimi 200 callout
+   Axiom Solana, ~2 ore, una chiamata al minuto) e `x-tweets` (primi 15 token, uno alla volta, ogni 2 minuti), con al massimo
+   10 token (`AXIOM_MAX`), e manda tutto a `POST /axiom` di bonding_live. Su 401/403/"Session invalid" smette di chiamare e
+   aspetta una sessione nuova; su 429 si ferma e rallenta. Il 6/10 il rinnovo della sessione dalla pagina funzionava
+   (refresh-access-token 200, cookie nuovo arrivato al demone) e le prime 22 chiamate erano senza errori; il test lungo
+   (30 minuti, poi alzare i token) non e' stato fatto. **Manca rispetto al WebSocket:** callout GMGN e commenti pump.fun
+   (solo via `horn`). Il ponte WebSocket (`scripts/fomo/avvia_axiom.js`) non si usa.
 1. Misura on-chain del prezzo al segnale su 50-100 token (decide se il segnale e' sfruttabile).
 2. Tarare le soglie dei runner con `storia.jsonl`.
 3. Aggiornare il documento di studio su Claude Docs ("Studio fomo.family", link in `docs/memoria-claude/fomo-family.md`).
@@ -83,6 +80,11 @@ verificare con la prop firm.
    Claude Code `browser_run_code_unsafe` con `scripts/fomo/avvia_token.js`, poi
    `FOMO_TOKEN_FILE=~/.config/fomo-mcp/token node scripts/fomo/bonding_live.mjs` (su Windows PowerShell:
    `$env:FOMO_TOKEN_FILE="$HOME\.config\fomo-mcp\token"; node scripts/fomo/bonding_live.mjs`).
+7. **Axiom** (facoltativo): login ad Axiom in una scheda del browser di Playwright, `browser_run_code_unsafe` con
+   `scripts/axiom/avvia_sessione.js`, poi `node scripts/axiom/axiom_live.mjs >> dati/axiom/axiom.log 2>&1` (in background;
+   stato in `dati/axiom/stato.json`, la pagina live lo mostra). Come per fomo, il ponte vive nel browser di Playwright: va
+   rilanciato a ogni nuova sessione di Claude Code. Su Windows i processi in background si lanciano dalla shell Bash (Git
+   Bash) con `>> log 2>&1`: da PowerShell lo stderr finisce nel log come errore.
 
 Note Windows: tutti gli script che importano fomo-mcp (`bonding_live.mjs`, `bonding_ora.mjs`, `simula.js`, `tesi.js`,
 `bonding.js`, `bonding_studio.js`, `narrativa_fomo.mjs`, `profilo.mjs`) lo fanno con un URL `file://` (`pathToFileURL`)

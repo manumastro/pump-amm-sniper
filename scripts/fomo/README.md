@@ -114,16 +114,20 @@ dati in `dati/fomo/` (fuori da git, ~1,5 GB). Metodo in `docs/analisi-wallet.md`
   Per default pagina e tabella mostrano solo i token tradabili sulla prop firm della persona ("Only pump/bonk/bags/brrr
   tokens are tradeable": mint che finisce in pump, bonk, BAGS o brrr) e, segnati `pump?`, quelli sul programma di pump.fun
   con un mint diverso (es. agencypad), da verificare con la prop firm.
-- **Axiom nella pagina live** (6/10; sul Mac bloccato dopo 11 minuti, da rifare sull'altro PC come demone, vedi `docs/ripresa.md`): con il login ad Axiom fatto dalla persona nel browser Playwright e una scheda
-  axiom.trade aperta, si lancia `scripts/fomo/avvia_axiom.js` con `browser_run_code_unsafe` (come `avvia_token.js`).
-  Dentro la scheda loggata (cookie di sessione mai letti ne' stampati) apre il WebSocket `wss://horn.axiom.trade/ws`
-  della sezione Callouts e si iscrive ai token di `GET /axiom-lista` (candidati tradabili nati da < 6 ore, max 60):
-  arrivano lo storico ('replay') e i nuovi ('post') dei callout di tre fonti, Axiom, GMGN (con KOL e follower) e
-  pump.fun (commenti; contano solo se chi scrive tiene >= $50); quelli di fomo si scartano (ci sono gia' le tesi).
-  Post su X che citano il contratto: `api8.axiom.trade/x-tweets`, uno alla volta, primi 15 token, ogni 2 minuti.
-  Tutto va a `POST /axiom` ogni 15 s. Solo letture: mai callout, voti o trade. **Attenzione:** il 6/10 dopo 11 minuti
-  Axiom ha chiuso la sessione ("Session invalid", dopo alcune 429 con un carico piu' alto e con il rinnovo della sessione
-  che falliva gia' dal login); il ponte ora si ferma da solo su 401/403/4401/4403 e la pagina lo mostra.
+- **Axiom nella pagina live** (6/10, solo REST, sul modello di fomo-mcp): con il login ad Axiom fatto dalla persona in una
+  scheda axiom.trade del browser Playwright e `servi.py` acceso, si lancia `scripts/axiom/avvia_sessione.js` con
+  `browser_run_code_unsafe` (come `avvia_token.js`): a ogni rinnovo della sessione fatto dalla pagina e ogni 2 minuti manda
+  a `servi.py` (`POST /axiom-sessione`) il cookie d'accesso, i cookie Cloudflare e lo user-agent, scritti in
+  `~/.config/axiom/sessione` (mai a schermo; il refresh token non esce dalla scheda, cosi' non ci sono rinnovi concorrenti).
+  Poi il demone: `node scripts/axiom/axiom_live.mjs >> dati/axiom/axiom.log 2>&1 &` (stato in `dati/axiom/stato.json`).
+  Un Chrome headless (playwright-core di `~/fomo-mcp`, il Chrome installato) su un guscio vuoto di `https://axiom.trade/`
+  fa solo GET, una alla volta: `api8.axiom.trade/callouts-feed?v=2` (ultimi 200 callout Axiom Solana, ~2 ore) ogni minuto,
+  `x-tweets` per i primi 15 token ogni 2 minuti; token da `GET /axiom-lista` ogni 30 s, al massimo `AXIOM_MAX`=10 (si alza
+  solo se la sessione regge); a `POST /axiom` ogni 15 s i token cambiati, ogni 2 minuti tutti. Su 401/403/"Session invalid"
+  smette di chiamare e lo scrive nello stato (la pagina lo mostra) finche' non arriva una sessione nuova; su 429 pausa da
+  1 minuto in su e intervalli raddoppiati. Solo letture: mai callout, voti o trade. Via REST non ci sono i callout GMGN e i
+  commenti pump.fun (arrivavano solo dal WebSocket `horn` di `scripts/fomo/avvia_axiom.js`, che non si usa: sul Mac il
+  6/10 ha fatto chiudere la sessione dopo 11 minuti).
 - **Tesi sui token in bonding** (domanda: i token che ricevono presto tante tesi di trader bravi si graduano
   piu' spesso?): `nohup node scripts/fomo/tesi.js >/dev/null 2>>dati/fomo/tesi/tesi.err &`. **Non e' acceso** (4/10: si e'
   scelto di fare lo studio a richiesta, con un'istantanea); i dati raccolti dalle 14:42 alle 15:02 del 4/10 restano in
