@@ -18,7 +18,7 @@ In diretta: `bonding_live.mjs` (pagina http://127.0.0.1:8787, bonding_live.html;
 
 **Potenziali runner (5/10):** la persona vuole in cima l'incrocio dei segnali (token giovani che crescono in holder fomo, tesi, bravi, soldi entrati): sezione della pagina e righe "potenziali runner" sopra la tabella di bonding_tabella.py.
 
-**Axiom (6/10):** la persona ha fatto il login ad Axiom nel browser Playwright; `avvia_axiom.js` (browser_run_code_unsafe) porta callout Axiom e post X sul contratto nella pagina live (segnali 'tesi' e 'x'). Va rilanciato con avvia_token.js a ogni nuova sessione. GMGN: niente tesi, X/TG tracker solo con login (non fatto).
+**Axiom (6/10): abbandonato.** Il ponte (avvia_axiom.js) ha fatto chiudere la sessione e bloccare la rete di casa; la persona non vuole riprovare, nemmeno col solo WebSocket, per paura del ban. Axiom e GMGN solo a mano; non proporre di riattivarlo.
 
 **Why:** la persona l'ha detto esplicitamente ("l'output deve essere sempre cosi', lo scope ora è questo").
 **How to apply:** non cambiare colonne/ordine; studio su X sospeso finche' non lo richiede. Vedi [[fomo-family]], [[coda-non-media]].

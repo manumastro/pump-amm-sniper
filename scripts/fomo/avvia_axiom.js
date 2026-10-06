@@ -1,3 +1,5 @@
+// NON USARE (6/10): Axiom ha chiuso la sessione e bloccato la rete dopo questo ponte; la persona ha deciso di non
+// riprovare per non rischiare il ban dell'account. Resta solo come documentazione dell'API.
 // Per browser_run_code_unsafe (filename: scripts/fomo/avvia_axiom.js), con bonding_live.mjs acceso e il login ad Axiom
 // fatto dalla persona nel browser Playwright (serve una scheda axiom.trade aperta). Solo letture: nessun callout, voto o trade.
 //  - Callout, in tempo reale: WebSocket wss://horn.axiom.trade/ws (lo stesso della sezione Callouts di Axiom), aperto

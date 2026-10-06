@@ -29,9 +29,10 @@ verificare con la prop firm.
 - **`scripts/fomo/avvia_token.js`**: da lanciare con Playwright (`browser_run_code_unsafe`) nel browser dove la persona e'
   loggata a fomo: cattura il token d'accesso e lo manda a `servi.py` (porta 8765), che lo scrive in
   `~/.config/fomo-mcp/token`. Si ferma quando si chiude la sessione di Claude Code: **va rilanciato ogni mattina**.
-- **`scripts/fomo/avvia_axiom.js`**: ponte verso Axiom (WebSocket dei callout + post su X). **Fermo**: il 6/10 Axiom ha
-  chiuso la sessione dopo 11 minuti e poi ha risposto 404 a tutto dalla rete di casa (probabile blocco dell'IP dopo
-  alcune 429 del ponte). Da riprovare solo col WebSocket, pochi token, 30 minuti di prova; se scollega di nuovo, lasciare.
+- **`scripts/fomo/avvia_axiom.js`**: ponte verso Axiom (WebSocket dei callout + post su X). **Abbandonato, non va
+  rilanciato** (decisione della persona, 6/10): Axiom ha chiuso la sessione dopo 11 minuti e poi ha risposto 404 a tutto
+  dalla rete di casa (probabile blocco dell'IP dopo alcune 429 del ponte); riprovare, anche col solo WebSocket,
+  rischia il ban dell'account. Axiom e GMGN si guardano solo a mano.
 - **`scripts/fomo/simula.js`**: simulazione su carta (regole + ombre di @Tekkerrss e @NinjaTradeCr), in pausa.
 
 ## Cosa si e' capito (caso per caso, mai medie: vedi `docs/memoria-claude/coda-non-media.md`)
@@ -47,8 +48,7 @@ verificare con la prop firm.
 
 1. Misura on-chain del prezzo al segnale su 50-100 token (decide se il segnale e' sfruttabile).
 2. Tarare le soglie dei runner con `storia.jsonl`.
-3. Axiom: solo se torna raggiungibile, prova prudente col solo WebSocket.
-4. Aggiornare il documento di studio su Claude Docs ("Studio fomo.family", link in `docs/memoria-claude/fomo-family.md`).
+3. Aggiornare il documento di studio su Claude Docs ("Studio fomo.family", link in `docs/memoria-claude/fomo-family.md`).
 
 ## Rimettere in piedi su un altro PC
 
