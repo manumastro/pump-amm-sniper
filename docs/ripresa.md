@@ -29,10 +29,10 @@ verificare con la prop firm.
 - **`scripts/fomo/avvia_token.js`**: da lanciare con Playwright (`browser_run_code_unsafe`) nel browser dove la persona e'
   loggata a fomo: cattura il token d'accesso e lo manda a `servi.py` (porta 8765), che lo scrive in
   `~/.config/fomo-mcp/token`. Si ferma quando si chiude la sessione di Claude Code: **va rilanciato ogni mattina**.
-- **`scripts/fomo/avvia_axiom.js`**: ponte verso Axiom (WebSocket dei callout + post su X). **Abbandonato, non va
-  rilanciato** (decisione della persona, 6/10): Axiom ha chiuso la sessione dopo 11 minuti e poi ha risposto 404 a tutto
-  dalla rete di casa (probabile blocco dell'IP dopo alcune 429 del ponte); riprovare, anche col solo WebSocket,
-  rischia il ban dell'account. Axiom e GMGN si guardano solo a mano.
+- **`scripts/fomo/avvia_axiom.js`**: primo ponte verso Axiom (WebSocket dei callout + post su X), lanciato dalla sessione
+  di Claude. Sul Mac il 6/10 Axiom ha chiuso la sessione dopo 11 minuti e poi ha risposto 404 a tutto da quella rete
+  (blocco dell'IP, probabilmente per le 429 del ponte). La persona assicura che dall'altro PC Axiom funziona: **la
+  lettura di Axiom si rifa' li', come demone autonomo sul modello di fomo-mcp** (vedi "Da fare"). GMGN per ora no.
 - **`scripts/fomo/simula.js`**: simulazione su carta (regole + ombre di @Tekkerrss e @NinjaTradeCr), in pausa.
 
 ## Cosa si e' capito (caso per caso, mai medie: vedi `docs/memoria-claude/coda-non-media.md`)
@@ -46,6 +46,20 @@ verificare con la prop firm.
 
 ## Da fare
 
+0. **Demone Axiom** (`scripts/axiom/axiom_live.mjs`, sull'altro PC): processo Node autonomo come fomo-mcp, con
+   playwright-core e il Chrome installato in un **profilo persistente dedicato** (`dati/axiom/profilo/`): la prima volta
+   si apre con la finestra e la persona fa il login, poi gira senza finestra e la sessione resta nel profilo. Dentro la
+   pagina axiom.trade:
+   - apre **un solo** WebSocket `wss://horn.axiom.trade/ws` e si iscrive ai token di `GET /axiom-lista` di bonding_live
+     (`{type:'view', view:[{chain:'sol', tokenAddress}]}`; arrivano 'replay' e 'post' dalle fonti axiom, gmgn, pumpfun,
+     fomo: fomo si scarta); normalizza i callout come fa `avvia_axiom.js` (funzione `norm`);
+   - legge `api8.axiom.trade/x-tweets?tokenAddress=&limit=50&all=1` uno alla volta, primi 15 token, ogni 2 minuti;
+   - manda tutto a `POST /axiom` di bonding_live ogni 15 s (formato `{q, ws:{stato}, dati:{tok:{callouts, tweets}}}`,
+     gia' gestito da bonding_live.mjs e dalla pagina);
+   - lascia che sia la pagina di Axiom a rinnovare la sessione (sul Mac `refresh-access-token` rispondeva 401 gia' dal
+     login: verificare che col profilo persistente il rinnovo funzioni e che la sessione regga piu' di 30 minuti);
+   - su 401/403, chiusura 4401/4403 o "Session invalid" si ferma e lo scrive nello stato; su 429 aspetta e rallenta;
+     ricollega il WebSocket con attese crescenti. Partire con pochi token e alzare solo se regge.
 1. Misura on-chain del prezzo al segnale su 50-100 token (decide se il segnale e' sfruttabile).
 2. Tarare le soglie dei runner con `storia.jsonl`.
 3. Aggiornare il documento di studio su Claude Docs ("Studio fomo.family", link in `docs/memoria-claude/fomo-family.md`).

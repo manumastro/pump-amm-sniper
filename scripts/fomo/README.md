@@ -114,7 +114,7 @@ dati in `dati/fomo/` (fuori da git, ~1,5 GB). Metodo in `docs/analisi-wallet.md`
   Per default pagina e tabella mostrano solo i token tradabili sulla prop firm della persona ("Only pump/bonk/bags/brrr
   tokens are tradeable": mint che finisce in pump, bonk, BAGS o brrr) e, segnati `pump?`, quelli sul programma di pump.fun
   con un mint diverso (es. agencypad), da verificare con la prop firm.
-- **Axiom nella pagina live** (6/10, **abbandonato: non rilanciare**, rischio di ban dell'account): con il login ad Axiom fatto dalla persona nel browser Playwright e una scheda
+- **Axiom nella pagina live** (6/10; sul Mac bloccato dopo 11 minuti, da rifare sull'altro PC come demone, vedi `docs/ripresa.md`): con il login ad Axiom fatto dalla persona nel browser Playwright e una scheda
   axiom.trade aperta, si lancia `scripts/fomo/avvia_axiom.js` con `browser_run_code_unsafe` (come `avvia_token.js`).
   Dentro la scheda loggata (cookie di sessione mai letti ne' stampati) apre il WebSocket `wss://horn.axiom.trade/ws`
   della sezione Callouts e si iscrive ai token di `GET /axiom-lista` (candidati tradabili nati da < 6 ore, max 60):
