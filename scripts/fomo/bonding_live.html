@@ -210,7 +210,11 @@ function disegna() {
     '<div style="display:flex;justify-content:space-between;align-items:start;gap:8px;padding-right:34px"><div style="min-width:0"><div class="sym">' + esc(t.sym) + etProp(t) + '</div><div class="nome">' + esc(t.nome) + '</div></div><span class="badge ' + etaC(t.eta_min) + '">' + eta(t.eta_min) + '</span></div>' +
     luci(t) + spark(t.serie, 240, 40, ora) +
     '<div class="riga"><div><div class="etich">mcap</div><b>' + usd(t.mcap) + '</b></div><div><div class="etich">holder</div><b>' + t.holder_fomo + '</b></div><div style="text-align:right"><div class="etich">curva</div>' + barra(t) + '</div></div></a>'
-  ).join('') : '<div class="vuoto">Nessun token giovane ha almeno due segnali accesi in questo momento.</div>';
+  ).join('') : (() => {
+    // se il filtro della prop firm nasconde dei runner, lo si dice (prima sembrava che non ce ne fossero)
+    const nascosti = S.dati.filter(t => t.runner && !vede(t));
+    return '<div class="vuoto">' + (nascosti.length ? 'Nessun runner tradabile sulla prop firm. ' + nascosti.length + ' nascost' + (nascosti.length > 1 ? 'i' : 'o') + ' dal filtro perché il mint non finisce in pump/bonk/bags/brrr: <b>' + nascosti.map(t => esc(t.sym)).join(', ') + '</b> (togli la spunta per vederl' + (nascosti.length > 1 ? 'i' : 'o') + ').' : 'Nessun token giovane ha almeno due segnali accesi in questo momento.') + '</div>';
+  })();
   // usciti
   $('grad').innerHTML = (S.usciti || []).length ? S.usciti.map(u => '<a class="' + (u.motivo === 'graduato' ? '' : 'fuori') + '" href="' + link(u) + '" target="_blank" title="' + esc(u.motivo) + ' alle ' + new Date(u.q).toLocaleTimeString() + '">' + (u.motivo === 'graduato' ? '🎓 ' : '') + esc(u.sym) + ' · ' + eta(u.eta_min) + ' · ' + u.holder_fomo + ' holder</a>').join('') : '<span class="n">nessuno</span>';
   // tabella
