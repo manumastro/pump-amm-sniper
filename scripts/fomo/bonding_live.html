@@ -86,7 +86,35 @@ tr.det td{background:var(--pan2);text-align:left;white-space:normal;padding:12px
 .det .voce .testa{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}.det .voce .txt{margin-top:2px;color:var(--fg)}
 .f-fomo{background:rgba(90,169,255,.16);color:var(--blu)}
 .leg{color:var(--mu);font-size:12px;margin-top:10px}
-@media (max-width:640px){.wrap{padding:12px 16px}h1{font-size:17px}}
+.velo{position:fixed;inset:0;background:rgba(5,7,10,.62);backdrop-filter:blur(3px);display:none;align-items:flex-start;justify-content:center;padding:4vh 16px;z-index:50;overflow:auto}
+.velo.on{display:flex}
+.mod{background:var(--bg);border:1px solid var(--li);border-radius:18px;width:100%;max-width:1040px;box-shadow:0 24px 80px rgba(0,0,0,.45);overflow:hidden}
+.mod .testa{display:flex;gap:14px;align-items:flex-start;padding:18px 20px;background:var(--pan);border-bottom:1px solid var(--li)}
+.mod .testa .av{width:46px;height:46px;border-radius:12px;background:var(--pan2);display:grid;place-items:center;font-weight:800;font-size:18px;flex:none}
+.mod .testa h3{margin:0;font-size:22px;letter-spacing:-.01em}.mod .testa .nm{color:var(--mu);font-size:13px}
+.mod .link{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}.mod .link a{font-size:12px;border:1px solid var(--li);border-radius:999px;padding:3px 10px;color:var(--mu)}.mod .link a:hover{color:var(--fg);border-color:var(--mu)}
+.mod .chiudi{margin-left:auto;background:none;border:1px solid var(--li);color:var(--mu);border-radius:10px;width:34px;height:34px;font-size:18px;cursor:pointer;flex:none}
+.mod .corpo{padding:16px 20px 20px;display:grid;gap:16px}
+.kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+.kpi div{background:var(--pan);border:1px solid var(--li);border-radius:12px;padding:10px 12px}.kpi small{display:block;color:var(--mu);font-size:11px;text-transform:uppercase;letter-spacing:.06em}.kpi b{font-size:18px}
+.sez{background:var(--pan);border:1px solid var(--li);border-radius:14px;padding:14px 16px}
+.sez>h4{margin:0 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--mu);font-weight:600;display:flex;align-items:center;gap:8px}
+.ai{border-color:var(--blu);background:linear-gradient(180deg,rgba(90,169,255,.08),transparent 60%),var(--pan)}
+.ai .md h3{font-size:13px;margin:12px 0 4px;color:var(--blu)}.ai .md h3:first-child{margin-top:0}.ai .md p{margin:4px 0}.ai .md ul{margin:4px 0;padding-left:18px}.ai .md li{margin:2px 0}
+.gira{width:12px;height:12px;border:2px solid var(--li);border-top-color:var(--blu);border-radius:50%;animation:gira .8s linear infinite;display:inline-block}
+@keyframes gira{to{transform:rotate(360deg)}}
+.filtri{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}.filtri button{background:var(--pan2);border:1px solid var(--li);color:var(--mu);border-radius:999px;padding:4px 11px;font:inherit;font-size:12px;cursor:pointer}.filtri button.on{color:var(--fg);border-color:var(--mu);font-weight:600}
+.voci{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+.vc{background:var(--pan2);border:1px solid var(--li);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.vc.br{border-color:var(--giallo)}
+.vc .t1{display:flex;align-items:center;gap:8px}.vc .ini{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:12px;flex:none}
+.vc .who{font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.vc .when{margin-left:auto;color:var(--mu);font-size:12px;white-space:nowrap}
+.vc .chips{display:flex;gap:5px;flex-wrap:wrap}.vc .chips span{font-size:11px;border-radius:6px;padding:1px 7px;background:var(--pan);color:var(--mu)}
+.vc .chips .su{color:var(--verde);background:var(--verde-bg)}.vc .chips .giu{color:var(--ross);background:var(--ross-bg)}
+.vc q{display:block;quotes:none;font-size:13px;line-height:1.4;color:var(--fg);border-left:2px solid var(--li);padding-left:8px}
+.xs .tw{display:flex;gap:8px;padding:7px 0;border-bottom:1px solid var(--li);font-size:13px}.xs .tw:last-child{border-bottom:0}
+.vc .chips .f-fomo,.f-fomo{background:rgba(90,169,255,.16);color:var(--blu)}.vc .chips .f-axiom,.f-axiom{background:var(--aranc-bg);color:var(--aranc)}.vc .chips .f-pump,.f-pump{background:var(--verde-bg);color:var(--verde)}.vc .chips .f-gmgn,.f-gmgn{background:var(--giallo-bg);color:var(--giallo)}
+@media (max-width:640px){.wrap{padding:12px 16px}h1{font-size:17px}.velo{padding:0}.mod{border-radius:0;min-height:100vh}}
 </style>
 </head>
 <body>
@@ -115,11 +143,11 @@ tr.det td{background:var(--pan2);text-align:left;white-space:normal;padding:12px
     <thead><tr><th>#</th><th class="s">token</th><th>età</th><th>mcap</th><th class="s">curva</th><th class="s">holder fomo (ultima ora)</th><th>+5 min</th><th>holder/min</th><th>valore fomo</th><th>in verde</th><th>bravi</th><th>tesi + callout (+10 min) · 𝕏</th><th class="s">segnali</th><th>app</th></tr></thead>
     <tbody id="b"></tbody>
   </table></div>
-  <div class="leg">+5 min = utenti fomo entrati negli ultimi 5 minuti (in grigio corsivo se la serie è più corta di 5 minuti) · holder/min = holder fomo diviso minuti di vita · bravi = fra i primi 1000 di fomo a 30 giorni con PnL positivo · tesi + callout = persone che ne hanno scritto su fomo, Axiom o pump.fun (una sola volta se è la stessa persona) · app = si vede nella scheda Bonding dell'app · clic su una riga per tesi, callout e post su X.</div>
+  <div class="leg">+5 min = utenti fomo entrati negli ultimi 5 minuti (in grigio corsivo se la serie è più corta di 5 minuti) · holder/min = holder fomo diviso minuti di vita · bravi = fra i primi 1000 di fomo a 30 giorni con PnL positivo · tesi + callout = persone che ne hanno scritto su fomo, Axiom o pump.fun (una sola volta se è la stessa persona) · app = si vede nella scheda Bonding dell'app · clic su una riga o su una carta per la scheda del token (sommario del sub agent, tesi e callout, post su X).</div>
 </div>
+<div class="velo" id="velo"><div class="mod" id="mod" role="dialog" aria-modal="true"></div></div>
 <script>
 const $ = id => document.getElementById(id);
-const aperti = new Set();
 let ord = 'runner', solo3 = false, soloProp = true, S = null;
 try { ord = localStorage.getItem('ord') || 'runner'; solo3 = localStorage.getItem('solo3') === '1'; soloProp = localStorage.getItem('soloProp') !== '0'; } catch (e) {}
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';');
@@ -156,7 +184,8 @@ const caldo = t => t.eta_min < 180 && (t.in5 ?? 0) >= 3;
 // prop firm: tradabili solo i mint che finiscono in pump, bonk, bags o brrr
 const vede = t => !soloProp || t.prop === 'si';
 const etProp = t => t.prop !== 'si' ? ' <span class="badge e3" title="il mint non finisce in pump/bonk/bags/brrr: non tradabile sulla prop firm">no prop</span>' : '';
-const FONTE = { fomo: 'f-fomo', axiom: 'e1', gmgn: 'e2', pump: 'e3' };
+const FONTE = { fomo: 'f-fomo', axiom: 'f-axiom', gmgn: 'f-gmgn', pump: 'f-pump' };
+const NOMEF = { fomo: 'fomo', axiom: 'Axiom', pump: 'pump.fun', gmgn: 'GMGN' };
 const voce = v => '<div class="voce"><div class="testa">' + v.fonti.map(f => '<span class="badge ' + (FONTE[f] || 'e3') + '">' + f + '</span>').join('') +
   ' <b>' + esc(v.h) + '</b>' + (v.bravo ? ' <span class="stella">★</span>' : '') + (v.dev ? ' <span class="badge e0">dev</span>' : '') +
   (v.x && v.x.toLowerCase() !== String(v.h).toLowerCase() ? ' <a class="n" href="https://x.com/' + esc(v.x) + '" target="_blank">@' + esc(v.x) + '</a>' : '') +
@@ -177,7 +206,7 @@ function disegna() {
   // carte: potenziali runner
   const run = S.dati.filter(t => t.runner && vede(t)).sort(ORD.runner).slice(0, 12);
   $('carte').innerHTML = run.length ? run.map(t =>
-    '<a class="carta' + (t.segnali.length >= 3 ? ' fuoco' : '') + '" href="' + link(t) + '" target="_blank"><span class="conta">' + t.segnali.length + '/5</span>' +
+    '<a class="carta' + (t.segnali.length >= 3 ? ' fuoco' : '') + '" href="' + link(t) + '" target="_blank" data-t="' + t.tok + '"><span class="conta">' + t.segnali.length + '/5</span>' +
     '<div style="display:flex;justify-content:space-between;align-items:start;gap:8px;padding-right:34px"><div style="min-width:0"><div class="sym">' + esc(t.sym) + etProp(t) + '</div><div class="nome">' + esc(t.nome) + '</div></div><span class="badge ' + etaC(t.eta_min) + '">' + eta(t.eta_min) + '</span></div>' +
     luci(t) + spark(t.serie, 240, 40, ora) +
     '<div class="riga"><div><div class="etich">mcap</div><b>' + usd(t.mcap) + '</b></div><div><div class="etich">holder</div><b>' + t.holder_fomo + '</b></div><div style="text-align:right"><div class="etich">curva</div>' + barra(t) + '</div></div></a>'
@@ -200,15 +229,86 @@ function disegna() {
       '<td>' + (t.n_voci || '<span class="n">—</span>') + (t.voci10 > 0 ? ' <span class="chip ' + (t.voci10 >= 2 ? 'c2' : 'c1') + '">+' + t.voci10 + '</span>' : '') + (t.ax ? ' <span class="n">· 𝕏 ' + t.ax_x + '</span>' : '') + '</td>' +
       '<td class="s">' + punti(t) + '</td>' +
       '<td><span class="app' + (t.nell_app ? '' : ' no') + '" title="' + (t.nell_app ? 'nella scheda Bonding dell\'app' : 'solo nelle liste nascoste') + '"></span></td></tr>';
-    if (aperti.has(t.tok)) {
-      h += '<tr class="det"><td></td><td colspan="13">' +
-        '<div class="bl"><b>Tesi e callout (fomo, Axiom, pump.fun) · ' + (t.n_voci || 0) + ' persone · ' + (t.tesi_in ? 'carico tutte le tesi…' : t.tesi_tutte ? 'tutte le tesi' : 'ultime tesi') + '</b>' + (t.voci && t.voci.length ? t.voci.map(voce).join('') : '<span class="n">' + (t.dettagli && !t.tesi_in ? 'nessuna' : 'in lettura…') + (t.ax ? '' : ' · Axiom non letto per questo token') + '</span>') + '</div>' +
-        (t.ax_tweets && t.ax_tweets.length ? '<div class="bl"><b>Post su X che citano il contratto</b>' + t.ax_tweets.map(w => '<div class="ts"><a href="https://x.com/' + esc(w.handle) + '/status/' + esc(w.id) + '" target="_blank"><b>@' + esc(w.handle) + '</b></a>' + (w.anche ? ' <span class="badge f-fomo" title="ha anche scritto una tesi o un callout">anche tesi</span>' : '') + ' <span class="n">' + (w.followers >= 1000 ? Math.round(w.followers / 1000) + 'k' : w.followers) + ' follower' + (w.verified ? ' · ' + esc(w.verified) : '') + (w.promo ? ' · promo' : '') + ' · ' + faq(w.t) + '</span>: ' + esc(w.text) + '</div>').join('') + '</div>' : '') +
-        '<div class="n">holder fomo ' + t.holder_fomo + ' (' + usd(t.valore_fomo) + ')' + (t.bravi_holder.length ? ' · bravi fra gli holder: ' + esc(t.bravi_holder.join(', ')) : '') + ' · ' + esc(t.tok) + ' · liquidità ' + usd(t.liq) + ' · holder on-chain ' + t.holder_catena + '</div></td></tr>';
-    }
   });
   $('b').innerHTML = h;
 }
+// ---- modale del token: numeri, segnali, sommario del sub agent, voci per persona, post su X
+let aperto = null, filtro = 'tutte', firmaMod = '';
+const segnoUsd = v => (v >= 0 ? '+' : '−') + usd(Math.abs(v));
+function md(testo) {
+  // markdown minimo (### titoli, - elenchi, **grassetto**) su testo gia' escapato
+  const r = []; let lista = false;
+  const b = x => x.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+  for (const riga of esc(testo).split(/\r?\n/)) {
+    const l = riga.trim();
+    if (!l) { if (lista) { r.push('</ul>'); lista = false; } continue; }
+    if (/^#{1,4} /.test(l)) { if (lista) { r.push('</ul>'); lista = false; } r.push('<h3>' + b(l.replace(/^#+ /, '')) + '</h3>'); }
+    else if (/^[-*] /.test(l)) { if (!lista) { r.push('<ul>'); lista = true; } r.push('<li>' + b(l.slice(2)) + '</li>'); }
+    else { if (lista) { r.push('</ul>'); lista = false; } r.push('<p>' + b(l) + '</p>'); }
+  }
+  if (lista) r.push('</ul>');
+  return r.join('');
+}
+const FILTRI = [['tutte', 'Tutte'], ['fomo', 'fomo'], ['axiom', 'Axiom'], ['pump', 'pump.fun'], ['tiene', 'Tiene ancora'], ['venduto', 'Ha venduto'], ['bravi', '★ Bravi']];
+const passa = (v, f) => f === 'tutte' || (f === 'tiene' ? !v.venduto && v.pos > 0 : f === 'venduto' ? v.venduto : f === 'bravi' ? v.bravo : v.fonti.includes(f));
+function cartaVoce(v) {
+  const f0 = v.fonti[0], col = (v.pnl || 0) >= 0 ? 'su' : 'giu';
+  const chips = [v.fonti.map(f => '<span class="' + FONTE[f] + '">' + NOMEF[f] + '</span>').join(''),
+    v.mc ? '<span>call a ' + usd(v.mc) + '</span>' : '',
+    v.venduto ? '<span class="' + col + '">venduto' + (v.pnl != null ? ' ' + segnoUsd(v.pnl) : '') + '</span>'
+      : v.pos ? '<span class="' + col + '">tiene ' + usd(v.pos) + (v.pnl ? ' · ' + segnoUsd(v.pnl) : '') + '</span>' : '',
+    v.picco ? '<span>picco ' + v.picco + 'x</span>' : '', v.n > 1 ? '<span>' + v.n + ' interventi</span>' : '',
+    v.info ? '<span>' + esc(v.info) + '</span>' : '', v.dev ? '<span class="giu">dev</span>' : ''].join('');
+  return '<div class="vc' + (v.bravo ? ' br' : '') + '"><div class="t1"><span class="ini ' + FONTE[f0] + '">' + esc(String(v.h || '?').slice(0, 1).toUpperCase()) + '</span>' +
+    '<span class="who">' + esc(v.h) + (v.bravo ? ' <span class="stella">★</span>' : '') + '</span>' +
+    (v.x ? '<a class="n" href="https://x.com/' + esc(v.x) + '" target="_blank">@' + esc(v.x) + '</a>' : '') +
+    '<span class="when">' + faq(v.primo) + '</span></div>' +
+    '<div class="chips">' + chips + '</div>' + (v.txt ? '<q>' + esc(v.txt) + '</q>' : '') + '</div>';
+}
+function copia(ev, tok) { ev.preventDefault(); try { navigator.clipboard.writeText(tok); ev.target.textContent = 'copiato'; } catch (e) {} }
+function modale() {
+  if (!aperto || !S || !S.dati) return;
+  const t = S.dati.find(x => x.tok === aperto);
+  if (!t) { $('mod').innerHTML = '<div class="testa"><div>Il token non è più fra i candidati.</div><button class="chiudi" onclick="chiudi()">×</button></div>'; return; }
+  const firma = JSON.stringify([t.voci, t.sommario, t.ax_tweets, t.mcap, t.holder_fomo, t.in5, t.segnali, filtro, t.tesi_in]);
+  if (firma === firmaMod) return;
+  firmaMod = firma;
+  const V = (t.voci || []).filter(v => passa(v, filtro)), sm = t.sommario;
+  const conta = k => (t.voci || []).filter(v => passa(v, k)).length;
+  const sv = $('velo').scrollTop;
+  const lavora = sm && (sm.stato === 'in corso' || sm.stato === 'in coda');
+  const testaAi = 'Sommario del sub agent' + (lavora ? ' <span class="gira"></span> <span style="text-transform:none;letter-spacing:0">' + (sm.stato === 'in coda' ? 'in coda…' : 'analizza…') + '</span>'
+    : sm && sm.q ? ' <span class="n" style="text-transform:none;letter-spacing:0">' + faq(new Date(sm.q * 1000).toISOString()) + '</span>' : '');
+  const corpoAi = sm && sm.testo ? (sm.stato === 'errore' ? '<div class="n">non riuscito: ' + esc(sm.testo) + '</div>' : '<div class="md">' + md(sm.testo) + '</div>')
+    : '<div class="n">' + (t.tesi_in ? 'carico tutte le tesi, poi parte l\'analisi…' : 'in attesa…') + '</div>';
+  const tw = w => '<div class="tw"><div style="min-width:0"><a href="https://x.com/' + esc(w.handle) + '/status/' + esc(w.id) + '" target="_blank"><b>@' + esc(w.handle) + '</b></a> <span class="n">' +
+    (w.followers >= 1000 ? Math.round(w.followers / 1000) + 'k' : w.followers) + ' follower' + (w.promo ? ' · promo' : '') + ' · ' + faq(w.t) + '</span>' +
+    (w.anche ? ' <span class="badge f-fomo">anche tesi</span>' : '') + '<div>' + esc(w.text) + '</div></div></div>';
+  $('mod').innerHTML =
+    '<div class="testa"><div class="av">' + esc(String(t.sym || '?').slice(0, 2)) + '</div><div style="min-width:0">' +
+    '<h3>' + esc(t.sym) + etProp(t) + ' <span class="badge ' + etaC(t.eta_min) + '">' + eta(t.eta_min) + '</span></h3>' +
+    '<div class="nm">' + esc(t.nome) + (t.lp ? ' · ' + esc(t.lp) : '') + '</div>' +
+    '<div class="link"><a href="' + link(t) + '" target="_blank">fomo</a>' +
+    (t.tok.endsWith('pump') ? '<a href="https://pump.fun/coin/' + t.tok + '" target="_blank">pump.fun</a>' : '') +
+    '<a href="https://solscan.io/token/' + t.tok + '" target="_blank">solscan</a>' +
+    '<a href="#" onclick="copia(event,\'' + t.tok + '\')">copia mint</a></div></div>' +
+    '<button class="chiudi" onclick="chiudi()" aria-label="chiudi">×</button></div>' +
+    '<div class="corpo">' +
+    '<div class="kpi"><div><small>mcap</small><b>' + usd(t.mcap) + '</b></div><div><small>curva</small>' + barra(t) + '</div>' +
+    '<div><small>holder fomo</small><b>' + t.holder_fomo + '</b> ' + chip(t) + '</div><div><small>valore fomo</small><b>' + usd(t.valore_fomo) + '</b></div>' +
+    '<div><small>liquidità</small><b>' + usd(t.liq) + '</b></div><div><small>holder on-chain</small><b>' + t.holder_catena + '</b></div></div>' +
+    luci(t) +
+    '<div class="sez ai"><h4>' + testaAi + '</h4>' + corpoAi + '</div>' +
+    '<div class="sez"><h4>Tesi e callout · ' + (t.n_voci || 0) + ' persone' + (t.tesi_in ? ' <span class="gira"></span>' : '') + '</h4>' +
+    '<div class="filtri">' + FILTRI.map(([k, d]) => '<button class="' + (filtro === k ? 'on' : '') + '" data-f="' + k + '">' + d + ' ' + conta(k) + '</button>').join('') + '</div>' +
+    (V.length ? '<div class="voci">' + V.map(cartaVoce).join('') + '</div>' : '<div class="n">nessuna voce' + (filtro !== 'tutte' ? ' con questo filtro' : '') + '</div>') + '</div>' +
+    (t.ax_tweets && t.ax_tweets.length ? '<div class="sez xs"><h4>Post su X che citano il contratto · ' + t.ax_x + '</h4>' + t.ax_tweets.map(tw).join('') + '</div>' : '') +
+    (t.bravi_holder.length ? '<div class="n">★ bravi fra gli holder fomo: ' + esc(t.bravi_holder.join(', ')) + '</div>' : '') +
+    '</div>';
+  $('velo').scrollTop = sv;
+}
+function apri(tok) { aperto = tok; filtro = 'tutte'; firmaMod = ''; $('velo').classList.add('on'); $('velo').scrollTop = 0; document.body.style.overflow = 'hidden'; chiedi(tok); modale(); }
+function chiudi() { aperto = null; $('velo').classList.remove('on'); document.body.style.overflow = ''; }
 function testa() {
   if (!S) return;
   if (S.soglie) $('legsegn').textContent = 'Segnali: holder = almeno ' + S.soglie.holder5 + ' utenti fomo entrati in 5 min · tesi = almeno ' + S.soglie.tesi10 + ' persone nuove con una tesi fomo o un callout Axiom/pump.fun in 10 min · bravi = un trader bravo fra holder o tesi · soldi = almeno $' + S.soglie.soldi5 + ' messi dagli utenti fomo in 5 min · x = almeno ' + S.soglie.x10 + ' post su X non spam/promo in 10 min, o uno di un account con ' + Math.round(S.soglie.x_grande / 1000) + 'k+ follower in 30 min. Axiom: ' + (S.axiom_q ? 'aggiornato ' + Math.round((Date.now() - Date.parse(S.axiom_q)) / 1000) + ' s fa' + (S.axiom_ws ? ', ' + S.axiom_ws.stato : '') : 'non collegato') + ' (callout Axiom e post su X). Soglie scelte a mano, non ancora tarate sullo storico.';
@@ -218,7 +318,7 @@ function testa() {
   $('err').style.display = S.errore ? 'block' : 'none'; $('err').textContent = S.errore || '';
 }
 async function giro() {
-  try { S = await (await fetch('stato.json', { cache: 'no-store' })).json(); disegna(); }
+  try { S = await (await fetch('stato.json', { cache: 'no-store' })).json(); disegna(); modale(); }
   catch (e) { S = S || {}; S.errore = 'server non raggiungibile: bonding_live.mjs è acceso?'; }
   testa();
 }
@@ -228,8 +328,11 @@ $('soloProp').onchange = e => { soloProp = e.target.checked; try { localStorage.
 $('solo3').onchange = e => { solo3 = e.target.checked; try { localStorage.setItem('solo3', solo3 ? '1' : '0'); } catch (x) {} disegna(); };
 // aprire un token chiede al server tutte le sue tesi (e ad Axiom i post su X subito): in sottofondo si leggono solo le ultime
 const chiedi = t => fetch('tesi?tok=' + encodeURIComponent(t)).catch(() => {});
-$('b').onclick = ev => { const r = ev.target.closest('tr.r'); if (!r) return; const t = r.dataset.t; if (aperti.has(t)) aperti.delete(t); else { aperti.add(t); chiedi(t); } disegna(); };
-setInterval(() => aperti.forEach(chiedi), 5 * 60 * 1000);
+$('b').onclick = ev => { const r = ev.target.closest('tr.r'); if (r) apri(r.dataset.t); };
+$('carte').onclick = ev => { const a = ev.target.closest('a.carta'); if (!a || ev.ctrlKey || ev.metaKey) return; ev.preventDefault(); apri(a.dataset.t); };
+$('velo').onclick = ev => { if (ev.target === $('velo')) return chiudi(); const b = ev.target.closest('.filtri button'); if (b) { filtro = b.dataset.f; firmaMod = ''; modale(); } };
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && aperto) chiudi(); });
+setInterval(() => { if (aperto) chiedi(aperto); }, 5 * 60 * 1000);
 giro(); setInterval(giro, 2000); setInterval(testa, 1000);
 </script>
 </body>

@@ -125,7 +125,12 @@ dati in `dati/fomo/` (fuori da git, ~1,5 GB). Metodo in `docs/analisi-wallet.md`
   pubblica e senza login, con posizione e PnL verificati da pump.fun e se l'autore ha gia' venduto. bonding_live la legge
   direttamente (niente browser): due chiamate a token, ogni 3 minuti per i 10 token tradabili piu' caldi e all'apertura di
   un token; su 429 pausa di 2 minuti. Entrano nella stessa lista di tesi fomo e callout Axiom (stessa persona riconosciuta
-  dall'handle X o dal nome). I callout GMGN restano fuori (solo via WebSocket di Axiom).
+  dall'handle X o dal nome). I callout GMGN restano fuori (solo via WebSocket di Axiom). **Scheda del token (6/10):** il clic su una riga o una carta apre un
+  modale (numeri, segnali, tesi e callout per persona con filtri fomo/Axiom/pump.fun/tiene/ha venduto/bravi, post su X) e
+  avvia un **sub agent**: `GET /sommario` non c'e', parte da solo dopo `GET /tesi` (tutte le tesi caricate). E' Claude Code
+  in modalita' non interattiva (`claude -p --tools "" --strict-mcp-config`, senza strumenti ne' MCP; i testi delle voci gli
+  arrivano come dati), modello `SOMMARIO_MODELLO` (default sonnet), CLI in `CLAUDE_BIN` (default l'installazione npm
+  globale); uno alla volta, rifatto solo con voci nuove o dopo 10 minuti. Scrive In breve, Chi ne parla, Narrativa, Rischi.
 - **Axiom nella pagina live** (6/10, solo REST, sul modello di fomo-mcp): con il login ad Axiom fatto dalla persona in una
   scheda axiom.trade del browser Playwright e `servi.py` acceso, si lancia `scripts/axiom/avvia_sessione.js` con
   `browser_run_code_unsafe` (come `avvia_token.js`): a ogni rinnovo della sessione fatto dalla pagina e ogni 2 minuti manda
