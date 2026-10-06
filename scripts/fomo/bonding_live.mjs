@@ -253,7 +253,9 @@ function scrivi(ciclo) {
   });
   for (const x of dati) { x.segnali = segnali(x); x.runner = x.eta_min < 360 && (x.segnali.length >= 2 || (x.eta_min < 30 && x.segnali.includes('holder'))); }
   Object.assign(S, { soglie: SOGLIE, aggiornato: iso(), ciclo_s: ciclo, universo: [...T.values()].filter(t => vivo(t, ora) && ora - t.in_lista < 600).length, candidati: dati.length, criteri: { MIN_H, MAX_ORE }, sol_usd: solUsd, dati });
-  fs.writeFileSync(STATO + '.tmp', JSON.stringify(S)); fs.renameSync(STATO + '.tmp', STATO);
+  fs.writeFileSync(STATO + '.tmp', JSON.stringify(S));
+  // su Windows il rename fallisce (EPERM/EBUSY) se qualcuno sta leggendo stato.json: si riprova al giro dopo, senza cadere
+  try { fs.renameSync(STATO + '.tmp', STATO); } catch (e) { if (!['EPERM', 'EBUSY', 'EACCES'].includes(e.code)) throw e; }
 }
 
 // giro principale: liste e holder di continuo

@@ -12,3 +12,4 @@ dist/
 /*.json
 !package*.json
 logs/
+__pycache__/
