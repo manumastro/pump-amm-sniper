@@ -5,6 +5,7 @@
 #   GET  /segui_lista.json, /segui_pagina.js   chi seguire da vicino (dati/fomo/segui/lista.json)
 #   GET  /dettagli_lista.json, POST /dettagli   curve, posizioni e commenti dei migliori (dati/fomo/dettagli/)
 #   POST /token          il token d'accesso fresco per fomo-mcp (~/.config/fomo-mcp/token)
+#   POST /axiom-sessione la sessione Axiom per axiom_live.mjs (~/.config/axiom/sessione: cookie d'accesso e Cloudflare, user-agent)
 #   POST /segui          swap nuovi dei seguiti, in dati/fomo/segui/<giorno>.jsonl (prezzi dopo, con foto_catena.js)
 #   POST /scarico        la pagina manda lo scarico; finisce in dati/fomo/grezzi/ e viene importato
 # Uso: python3 scripts/fomo/servi.py   (resta acceso durante lo scarico; Ctrl-C per chiudere)
@@ -56,6 +57,15 @@ class H(BaseHTTPRequestHandler):
                 d = os.path.expanduser('~/.config/fomo-mcp'); os.makedirs(d, mode=0o700, exist_ok=True)
                 f = os.path.join(d, 'token'); fd = os.open(f, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
                 os.write(fd, t.encode()); os.close(fd); print('token fomo-mcp aggiornato', flush=True)
+            self.send_response(200); self._cors(); self.end_headers(); self.wfile.write(b'ok'); return
+        if self.path == '/axiom-sessione':
+            # sessione Axiom (scripts/axiom/avvia_sessione.js -> axiom_live.mjs): solo nel file, mai stampata
+            n = int(self.headers['content-length']); j = json.loads(self.rfile.read(n))
+            if any(c.get('name') == 'auth-access-token' for c in j.get('cookies', [])):
+                d = os.path.expanduser('~/.config/axiom'); os.makedirs(d, mode=0o700, exist_ok=True)
+                f = os.path.join(d, 'sessione'); fd = os.open(f + '.tmp', os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+                os.write(fd, json.dumps(j).encode()); os.close(fd); os.replace(f + '.tmp', f)
+                print('sessione axiom aggiornata', flush=True)
             self.send_response(200); self._cors(); self.end_headers(); self.wfile.write(b'ok'); return
         if self.path == '/dettagli':
             n = int(self.headers['content-length']); d = json.loads(self.rfile.read(n))
