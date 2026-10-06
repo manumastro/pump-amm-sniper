@@ -1,9 +1,10 @@
 // Funzione eseguita DENTRO la pagina fomo.family dopo il login (la lancia avvia_scarico.js).
 // Non contiene credenziali: usa l'header che l'app stessa manda, catturato avvolgendo window.fetch,
 // e lo rilegge a ogni chiamata (il token di sessione dura ~1 ora). NOTI: id -> ora dell'ultimo swap
-// gia' salvato (si scarica solo il nuovo); EXTRA: id da scaricare oltre alle classifiche.
+// gia' salvato (si scarica solo il nuovo); EXTRA: id da scaricare oltre alle classifiche; RIEMPI: id
+// di cui riscaricare tutti i 30 giorni (storie tagliate dal vecchio tetto di 1.500 swap).
 // Avvia lo scarico e torna subito; lo stato si legge con window.__fomoStato().
-async ({ NOTI, EXTRA }) => {
+async ({ NOTI, EXTRA, RIEMPI = [] }) => {
   const GIORNI = 30;
   if (!window.__fomoH) {
     const of = window.fetch;
@@ -34,21 +35,21 @@ async ({ NOTI, EXTRA }) => {
     const j = await get('/v2/leaderboard' + (p ? '/' + p : ''));
     S.classifiche[p || 'sempre'] = (j?.responseObject?.leaderboard || []).map(u => { const o = { ...u }; delete o.profilePictureLink; delete o.description; delete o.thumbhash; return o; });
   }
-  const ids = [...new Set([...Object.values(S.classifiche).flat().map(u => u.id), ...EXTRA])];
+  const ids = RIEMPI.length ? RIEMPI : [...new Set([...Object.values(S.classifiche).flat().map(u => u.id), ...EXTRA])];
   S.totale = ids.length;
   const limite = Date.now() - GIORNI * 86400e3;
   const uno = async id => {
     let fallito = false; const g = async p => { const j = await get(p); if (!j) fallito = true; return j; };
-    const fino = NOTI[id] ? Date.parse(NOTI[id]) : limite;
+    const fino = NOTI[id] && !RIEMPI.includes(id) ? Date.parse(NOTI[id]) : limite;
     const l = (await g(`/v2/users/${id}/leaderboard`))?.responseObject || {};
     const sw = []; let last = null, more = true, n = 0;
-    while (more && n < 60) { const j = await g(`/v2/users/${id}/swaps` + (last ? `?lastSwapIdV2=${last}` : '')); const ro = j?.responseObject; if (!ro?.swaps?.length) break;
+    while (more && n < 600) { const j = await g(`/v2/users/${id}/swaps` + (last ? `?lastSwapIdV2=${last}` : '')); const ro = j?.responseObject; if (!ro?.swaps?.length) break;
       sw.push(...ro.swaps); more = ro.hasNextPage; last = ro.swaps.at(-1).id; n++; if (Date.parse(ro.swaps.at(-1).createdAt) <= fino) break; }
     const tr = []; last = null; more = true; let m = 0;
     while (more && m < 20) { const j = await g(`/v2/users/${id}/transfers` + (last ? `?lastTransferId=${last}` : '')); const ro = j?.responseObject; if (!ro?.transfers?.length) break;
       tr.push(...ro.transfers); more = ro.hasNextPage; last = ro.transfers.at(-1).id; m++; if (Date.parse(ro.transfers.at(-1).createdAt) <= fino) break; }
     const bro = (await g(`/v2/users/${id}/balances`))?.responseObject || {};
-    S.utenti[id] = { fallito, preso: new Date().toISOString(), troncato: n >= 60 && Date.parse(sw.at(-1)?.createdAt || 0) > fino,
+    S.utenti[id] = { fallito, preso: new Date().toISOString(), troncato: n >= 600 && Date.parse(sw.at(-1)?.createdAt || 0) > fino,
       profilo: { handle: l.userHandle, createdAt: l.createdAt, followers: l.followers, swapCount: l.swapCount, numTrades: l.numTrades, totalVolume: l.totalVolume, rank: l.rank, rank24h: l.rank24h, rank7d: l.rank7d, rank30d: l.rank30d },
       altro: { otherPnl: bro.otherPnl, livePerpPnl: bro.livePerpPnl, otherEquity: bro.otherEquity },
       bal: (bro.balances || []).map(b => ({ tok: b.balance?.tokenAddress, q: b.balance?.shiftedBalance, net: b.tokenFilterResult?.token?.networkId ?? b.userToken?.networkId, sym: b.tokenFilterResult?.token?.symbol,

@@ -20,7 +20,7 @@ def patrimonio(bal, PX):
         p = PX.get(f"{b['net']}:{norm(b['tok'])}")
         if p and p['px']:
             V = b['q'] * p['px']; y = (p.get('liq_tot') or p['liq'] or 0) / 2; spot += V; liq += y * V / (y + V) if y > 0 else 0
-        else: spot += b['q'] * (b.get('px') or 0)   # nessuna coppia su dexscreener: non si vende
+        else: spot += b['q'] * (b.get('px') or 0)   # nessun prezzo dalla catena: non si vende
     return spot, liq
 t0, t1 = ts(A['preso']), ts(B['preso'])
 M = statistics.median; ris = {}

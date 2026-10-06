@@ -8,9 +8,12 @@
 
 **Chiavi.** Gli studi leggono **solo `.env.fomo`** (`FOMO_ALCHEMY_KEY`, `FOMO_HELIUS_KEY`): sono chiavi riservate agli studi, mai nel `.env` dello sniper e mai sotto i nomi che lo sniper legge (`SVS_*`). Alchemy gratuito: 300 CU al secondo per tutte le reti, un solo script Alchemy alla volta. Helius gratuito: crediti mensili, da spendere solo dove serve (`storia.js`). Mai publicnode per la storia (~16 ore).
 
+**Si studia la coda, non la media.** I trader che contano sono pochissimi (29 su 1.328 nello studio del 4/10) e i guadagni stanno in pochissimi giri (nella bonding pump.fun: senza i 10 giri migliori su 2.988 il risultato passa da +$118k a −$9k). Medie e mediane descrivono la massa che perde, non chi ci si vuole ispirare: ogni risultato si presenta **caso per caso** (chi, quale token, quale transazione, quanto), con la concentrazione esplicita (quanto pesano i primi 1, 10, 50) e il numero sempre accanto alla quota. Una mediana si usa solo per dire com'e' la massa, mai come ritratto dei migliori, e va detto ogni volta.
+
 **Regole.** Un numero letto su un sito (PnL di fomo, gmgn, dexscreener) non e' un dato finche' non lo si verifica on-chain (`docs/verifica-onchain.md`) · un trader scelto perche' ha vinto si misura dove non e' stato scelto: altra meta' del periodo, senza il giro migliore · ogni conclusione porta la transazione che la dimostra · le credenziali vivono solo in `.env.fomo`, mai nel repo e mai a schermo · gli script di pipeline stanno in `scripts/fomo/`, quelli usa-e-getta nello scratchpad · `node --check` per controllare un file JS · documentazione e commit in italiano · il documento di studio per la persona e' su Claude Docs ("Studio fomo.family") e va aggiornato quando cambiano i risultati.
 
 **Documenti** — leggere quello di competenza *prima* di agire:
+- **`docs/ripresa.md`** — stato attuale (dashboard dei token in bonding, prop firm, cosa e' dimostrato e cosa no) e come rimettere tutto in piedi su un altro PC; le memorie di Claude sono copiate in `docs/memoria-claude/`.
 - **`scripts/fomo/README.md`** — il giro quotidiano, le cartelle dei dati, i limiti dei fornitori.
 - **`docs/analisi-wallet.md`** — come si studia un trader: fonti, trappole, dal profilo al wallet vero, giri, solidi, classifiche "come se si chiudesse", trader automatici, prova fuori campione.
 - **`docs/verifica-onchain.md`** — come si misura sulla catena; controprove su solscan/blockscout.

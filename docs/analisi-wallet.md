@@ -17,7 +17,7 @@ vinto non dice niente finche' non lo si misura dove non e' stato scelto.**
 |---|---|---|---|
 | **fomo.family** | classifiche 24h/7g/30g/sempre, tutti gli swap e i trasferimenti di un utente, saldi | il wallet on-chain vero (vedi §3), le commissioni | API dietro login, §2 |
 | **gmgn** | i primi 100 per profitto di ogni token, etichetta del terminale | lo storico fuori da quel token | `docs/verifica-onchain.md` §1 |
-| **dexscreener** | coppie, capitalizzazione e prezzo **attuali** | i token morti (spariscono: 1.434 su 4.333 nello studio fomo), lo storico, **la nascita**: `pairCreatedAt` e' spesso la pool dopo la migrazione (28% dei token oltre un'ora dopo la catena, 394 eta' negative) | `api.dexscreener.com/tokens/v1/solana/<fino a 30 mint>` |
+| **dexscreener** | **non e' una fonte** (nessuno script lo legge piu'): da guardare a occhio e da non prendere per buono | i token morti (spariscono: 1.434 su 4.333 nello studio fomo), lo storico, **la nascita** (`pairCreatedAt` e' spesso la pool dopo la migrazione: 28% dei token oltre un'ora dopo la catena, 394 eta' negative) | prezzo e liquidita' solo dalla catena, §5b |
 | **solscan** | la transazione singola, leggibile da chiunque | niente che la catena non abbia | link `https://solscan.io/tx/<firma>` come controprova |
 | **RPC Helius** (`FOMO_HELIUS_KEY`) | storia completa; `getTransactionsForAddress` con filtro per orario | crediti mensili: il primo piano li ha finiti il 2026-10-03 dopo ~3,1M transazioni (`429 max usage reached`) | §4 |
 | **Alchemy EVM** (Robinhood, Ethereum, Base, BSC; `FOMO_ALCHEMY_KEY`) | tutti i trasferimenti ERC-20 di un wallet con `alchemy_getAssetTransfers`; saldi | `eth_getLogs` a 10 blocchi sul piano gratuito; 300 CU/s per tutte le reti | §4b |
@@ -87,8 +87,9 @@ agganci. Per cercare uno swap on-chain la finestra e' ±40s.
 Il risultato sulla stessa finestra e' scelto per essere buono. Si sceglie su un periodo e si
 misura sul successivo (§5).
 
-**3.7 I token morti spariscono da dexscreener.** Ignorarli toglie dal campione proprio i lanci
-andati male. Eta' e capitalizzazione si ricavano on-chain (§4).
+**3.7 I token morti spariscono dai siti di grafici** (dexscreener). Ignorarli toglie dal campione
+proprio i lanci andati male. Prezzo, eta' e capitalizzazione si ricavano on-chain (§4, §5b): un
+token che nessuno scambia da 7 giorni vale 0.
 
 ## 4. Dalla piattaforma alla catena
 
@@ -247,12 +248,18 @@ Il PnL di una classifica fomo e' realizzato **piu' aperto**: per le 24 ore quasi
   (30 giorni di swap); per i token comprati prima, il prezzo medio d'ingresso di `/balances`
   (`userToken.averageEntryPriceUsd`). Le vendite senza costo noto si tengono a parte e danno un
   intervallo (costo ignoto escluso / contato zero). L'aperto e' la differenza;
-- **vendere adesso**: ogni posizione di `/balances` a prezzo e liquidita' di dexscreener, incasso
-  = (L/2 × V) ÷ (L/2 + V). `tokens/v1` restituisce **una sola coppia per token** (la maggiore):
-  per la liquidita' di tutti i pool serve `token-pairs/v1/<catena>/<token>`, una chiamata a
-  token, che quadruplica la liquidita' sui 174 token che fanno il 97% del valore. Si riportano
-  entrambi come intervallo; e, sommando gli stessi token fra utenti, quanto incasserebbero
-  vendendo insieme;
+- **vendere adesso**: ogni posizione di `/balances` a prezzo e liquidita' **letti dalla catena**
+  (`scripts/fomo/prezzi.py`), incasso = (L/2 × V) ÷ (L/2 + V), con L del pool piu' profondo
+  (`liq`) e di tutti i pool trovati (`liq_tot`), riportati come intervallo; e, sommando gli
+  stessi token fra utenti, quanto incasserebbero vendendo insieme. Solana: dalle transazioni del
+  mint (`prezzi_catena.js`, Helius; il SOL dal pool SOL/USDC di riferimento). Reti EVM
+  (`prezzi_evm.js`): il pool si ritrova dalla ricevuta di uno scambio del token (le tx stanno in
+  `catena/evm/`), o dalle factory note se Relay ha consegnato dal suo magazzino, e se ne legge lo
+  **stato** con `eth_call` (v2 `getReserves`; v3 `slot0`+`liquidity`; v4 `extsload` sul
+  PoolManager); contro → dollari con le stabili a 1 e il nativo dal pool di riferimento della
+  rete. Liquidita': v2 riserve vere, v3 saldi veri del pool, v4 2 × lato contante **virtuale**
+  (x = L/√P, y = L·√P: per pool a intervallo stretto sovrastima). Senza pool o senza scambi da 7
+  giorni (stato uguale a 7 giorni prima): null, vale 0. Le reti senza modulo (Monad, 5042): 0;
 - **i perpetual**: `/balances` ha `livePerpPnl` (perp aperti), che fomo somma al PnL.
 
 `/balances` per posizione: `balance.shiftedBalance` (quantita'), `tokenFilterResult` (prezzo,
@@ -301,7 +308,7 @@ possano rifare:
 - **chainmeta**: supply (Alchemy) e nascita on-chain (Helius, una chiamata) di ogni token.
 - **concilia**: swap fomo contro transazioni on-chain (commissione), giri fomo contro giri
   ricostruiti dalla catena, accoppiati per token e primo acquisto entro 60s.
-- **classifica**: giri on-chain di tutti i wallet, posizioni aperte ai prezzi di dexscreener,
+- **classifica**: giri on-chain di tutti i wallet, posizioni aperte ai prezzi letti dalla catena,
   scambi fuori dall'app, criterio dei solidi.
 - **meccanica**: 300 transazioni del co-firmatario lette per intero.
 - **seguaci**: per ogni acquisto di un trader, le transazioni del token da −5 a +15 minuti.

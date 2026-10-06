@@ -1,0 +1,6 @@
+- [CREATOR_RISK_PARSED_TX_LIMIT resta a 50](creator-risk-parsed-tx-limit.md) — abbassarlo sembra un risparmio RPC ma allenta il filtro che fa il 79% dei blocchi
+- [34 chiavi del .env restano commentate](env-ignorato-da-config-ts.md) — erano ignorate dal codice, e i numeri validati vengono da config.ts
+- [Un daemon "controllato" con node -e resta vivo](daemon-avviato-a-mano.md) — usare node --check; se dopo un reset tornano dati vecchi, guardare ps
+- [fomo.family](fomo-family.md) — pipeline scripts/fomo, dati in dati/fomo, chiavi solo in .env.fomo, documento di studio
+- [Si studia la coda, non la media](coda-non-media.md) — i migliori sono pochissimi: caso per caso, mai ritratti da mediane
+- [Scope: tabella bonding fomo](bonding-tabella.md) — tabella per ritmo, solo token pump/bonk/bags/brrr (prop firm); pagina live bonding_live.mjs

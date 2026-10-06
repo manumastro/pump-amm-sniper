@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bonding fomo live</title>
+<!-- Pagina di bonding_live.mjs: legge stato.json ogni 2 secondi. -->
+<style>
+:root{
+  --bg:#0f1115;--pan:#171a21;--pan2:#1e222b;--li:#2a2f3a;--fg:#e9ecf1;--mu:#8a93a3;
+  --verde:#2fd27a;--verde-bg:rgba(47,210,122,.14);--ross:#ff5d5d;--ross-bg:rgba(255,93,93,.14);
+  --aranc:#ff9f3f;--aranc-bg:rgba(255,159,63,.16);--giallo:#f5cf4a;--giallo-bg:rgba(245,207,74,.14);
+  --blu:#5aa9ff;--barra:#2c3240;
+}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){
+  --bg:#f5f6f8;--pan:#fff;--pan2:#f0f2f5;--li:#e2e5ea;--fg:#14171c;--mu:#6b7380;
+  --verde:#0f9d58;--verde-bg:rgba(15,157,88,.12);--ross:#d93025;--ross-bg:rgba(217,48,37,.1);
+  --aranc:#e8710a;--aranc-bg:rgba(232,113,10,.12);--giallo:#b58900;--giallo-bg:rgba(181,137,0,.12);--blu:#1a73e8;--barra:#e3e6eb}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:1400px;margin:0 auto;padding:16px}
+header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+h1{font-size:20px;margin:0;font-weight:700;letter-spacing:-.01em}
+.stato{display:flex;align-items:center;gap:8px;color:var(--mu);font-size:13px;background:var(--pan);border:1px solid var(--li);padding:6px 12px;border-radius:999px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--verde);box-shadow:0 0 0 0 var(--verde);animation:pulse 1.6s infinite}
+.dot.lento{background:var(--giallo);animation:none}.dot.err{background:var(--ross);animation:none}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(47,210,122,.55)}70%{box-shadow:0 0 0 8px rgba(47,210,122,0)}100%{box-shadow:0 0 0 0 rgba(47,210,122,0)}}
+#err{display:none;background:var(--ross-bg);color:var(--ross);border:1px solid var(--ross);padding:10px 14px;border-radius:10px;margin-bottom:14px;font-weight:600}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--mu);margin:22px 0 10px;font-weight:600}
+h2 small{text-transform:none;letter-spacing:0;font-weight:400}
+.carte{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.carta{background:var(--pan);border:1px solid var(--li);border-radius:14px;padding:14px;position:relative;overflow:hidden}
+.carta.fuoco{border-color:var(--aranc);box-shadow:0 0 0 1px var(--aranc) inset}
+.carta .sym{font-size:20px;font-weight:800;letter-spacing:-.01em}
+.carta .nome{color:var(--mu);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.carta .riga{display:flex;justify-content:space-between;align-items:baseline;gap:14px;margin-top:10px}
+.carta .grande{font-size:28px;font-weight:800;line-height:1}
+.carta .etich{color:var(--mu);font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+.carta svg{display:block;width:100%;height:44px;margin-top:10px}
+.luci{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:12px}
+.luce{display:flex;align-items:center;gap:7px;border-radius:8px;padding:6px 8px;background:var(--pan2);color:var(--mu);font-size:12px;line-height:1.2}
+.luce b{font-size:14px;color:inherit}
+.luce i{width:8px;height:8px;border-radius:50%;background:var(--li);flex:none}
+.luce.on{background:var(--verde-bg);color:var(--verde)}.luce.on i{background:var(--verde);box-shadow:0 0 6px var(--verde)}
+.punti{display:inline-flex;gap:3px;vertical-align:middle}.punti i{width:9px;height:9px;border-radius:50%;background:var(--li)}.punti i.on{background:var(--verde)}
+.carta .conta{position:absolute;top:0;right:0;background:var(--verde);color:#06210f;font-weight:800;font-size:12px;padding:3px 10px;border-bottom-left-radius:10px}
+.vuoto{color:var(--mu);background:var(--pan);border:1px dashed var(--li);border-radius:14px;padding:18px;text-align:center}
+.grad{display:flex;gap:8px;flex-wrap:wrap}
+.grad a{background:var(--verde-bg);color:var(--verde);border-radius:999px;padding:4px 12px;font-size:13px;font-weight:600}
+.grad a.fuori{background:var(--pan2);color:var(--mu)}
+.comandi{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:22px 0 10px}
+.seg{display:inline-flex;background:var(--pan);border:1px solid var(--li);border-radius:10px;padding:3px}
+.seg button{background:none;border:0;color:var(--mu);font:inherit;font-size:13px;padding:6px 12px;border-radius:7px;cursor:pointer}
+.seg button.on{background:var(--pan2);color:var(--fg);font-weight:600}
+label.tog{display:flex;align-items:center;gap:6px;color:var(--mu);font-size:13px;cursor:pointer}
+.tab{background:var(--pan);border:1px solid var(--li);border-radius:14px;overflow:auto}
+table{border-collapse:collapse;width:100%;min-width:980px}
+th{position:sticky;top:0;background:var(--pan);color:var(--mu);font-weight:500;font-size:12px;text-align:right;padding:10px 10px;border-bottom:1px solid var(--li);white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid var(--li);text-align:right;white-space:nowrap;vertical-align:middle}
+th.s,td.s{text-align:left}
+tr.r{cursor:pointer}tr.r:hover td{background:var(--pan2)}
+tr.r.fuoco td:first-child{box-shadow:inset 3px 0 0 var(--aranc)}
+tr.r.nuovo td{background:var(--giallo-bg)}
+@keyframes lampo{from{background:var(--giallo-bg)}to{background:transparent}}
+.n{color:var(--mu);font-size:12px}
+.tk b{font-size:15px}.tk .nome{color:var(--mu);font-size:12px;margin-left:6px;max-width:160px;display:inline-block;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}
+.badge{display:inline-block;border-radius:6px;padding:2px 8px;font-size:12px;font-weight:600}
+.e0{background:var(--ross-bg);color:var(--ross)}.e1{background:var(--aranc-bg);color:var(--aranc)}.e2{background:var(--giallo-bg);color:var(--giallo)}.e3{background:var(--pan2);color:var(--mu)}
+.chip{display:inline-block;min-width:40px;text-align:center;border-radius:6px;padding:2px 8px;font-weight:700;font-size:13px}
+.c3{background:var(--verde);color:#06210f}.c2{background:var(--verde-bg);color:var(--verde)}.c1{color:var(--verde)}.c0{color:var(--mu)}.cn{background:var(--ross-bg);color:var(--ross)}
+.barra{display:inline-flex;align-items:center;gap:8px}
+.barra i{display:block;width:80px;height:7px;border-radius:4px;background:var(--barra);overflow:hidden}
+.barra i u{display:block;height:100%;background:var(--blu)}
+.barra i u.alta{background:var(--verde)}
+.hold{display:inline-flex;align-items:center;gap:8px}.hold b{font-size:15px;min-width:28px;text-align:right}
+.hold svg{width:84px;height:24px}
+.app{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--blu)}.app.no{background:transparent;border:1px solid var(--mu)}
+.stella{color:var(--giallo);font-weight:700}
+tr.det td{background:var(--pan2);text-align:left;white-space:normal;padding:12px 16px}
+.det .bl{margin-bottom:8px}.det .bl b{color:var(--mu);font-weight:500;font-size:12px;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px}
+.det .in{display:inline-block;background:var(--pan);border:1px solid var(--li);border-radius:6px;padding:2px 8px;margin:2px 4px 2px 0;font-size:12px}
+.det .in.br{border-color:var(--giallo)}
+.det .ts{color:var(--fg);font-size:13px;margin:3px 0}
+.leg{color:var(--mu);font-size:12px;margin-top:10px}
+@media (max-width:640px){.wrap{padding:12px 16px}h1{font-size:17px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Bonding fomo · live</h1>
+    <div class="stato"><span class="dot" id="dot"></span><span id="info">in attesa…</span></div>
+  </header>
+  <div id="err"></div>
+
+  <h2>Potenziali runner <small>— nati da meno di 6 ore con almeno 2 segnali accesi (o da meno di 30 minuti con holder in corsa)</small></h2>
+  <div class="leg" style="margin:-4px 0 10px" id="legsegn"></div>
+  <div class="carte" id="carte"></div>
+
+  <h2>Usciti nell'ultima ora</h2>
+  <div class="grad" id="grad"></div>
+
+  <div class="comandi">
+    <div class="seg" id="ord">
+      <button data-o="runner">Runner</button><button data-o="ritmo">Ritmo</button><button data-o="giovani">Più giovani</button><button data-o="holder">Holder fomo</button><button data-o="curva">Curva</button><button data-o="valore">Valore</button>
+    </div>
+    <label class="tog"><input type="checkbox" id="solo3"> solo nati da meno di 3 ore</label>
+    <label class="tog"><input type="checkbox" id="soloProp"> solo tradabili sulla prop firm (pump/bonk/bags/brrr)</label>
+  </div>
+  <div class="tab"><table>
+    <thead><tr><th>#</th><th class="s">token</th><th>età</th><th>mcap</th><th class="s">curva</th><th class="s">holder fomo (ultima ora)</th><th>+5 min</th><th>holder/min</th><th>valore fomo</th><th>in verde</th><th>bravi</th><th>tesi fomo (+10 min) · callout · 𝕏</th><th class="s">segnali</th><th>app</th></tr></thead>
+    <tbody id="b"></tbody>
+  </table></div>
+  <div class="leg">+5 min = utenti fomo entrati negli ultimi 5 minuti (in grigio corsivo se la serie è più corta di 5 minuti) · holder/min = holder fomo diviso minuti di vita · bravi = fra i primi 1000 di fomo a 30 giorni con PnL positivo · app = si vede nella scheda Bonding dell'app · clic su una riga per ingressi e tesi.</div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const aperti = new Set();
+let ord = 'runner', solo3 = false, soloProp = true, S = null;
+try { ord = localStorage.getItem('ord') || 'runner'; solo3 = localStorage.getItem('solo3') === '1'; soloProp = localStorage.getItem('soloProp') !== '0'; } catch (e) {}
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';');
+const usd = v => v == null ? '—' : v >= 1e6 ? '$' + (v / 1e6).toFixed(1) + 'M' : v >= 1000 ? '$' + Math.round(v / 1000) + 'k' : '$' + Math.round(v);
+const eta = m => m < 60 ? Math.round(m) + ' min' : m < 1440 ? (m / 60).toFixed(m < 600 ? 1 : 0) + ' h' : (m / 1440).toFixed(1) + ' g';
+const etaC = m => m < 15 ? 'e0' : m < 60 ? 'e1' : m < 180 ? 'e2' : 'e3';
+const link = t => 'https://fomo.family/tokens/solana/' + t.tok;
+function chip(t) {
+  const v = t.in5; if (v == null) return '<span class="chip c0">—</span>';
+  const c = v >= 5 ? 'c3' : v >= 2 ? 'c2' : v > 0 ? 'c1' : v < 0 ? 'cn' : 'c0';
+  return '<span class="chip ' + c + '"' + (t.in5_parziale ? ' style="font-style:italic;opacity:.75"' : '') + '>' + (v > 0 ? '+' : '') + v + '</span>';
+}
+function spark(serie, w, h, ora) {
+  if (!serie || serie.length < 2) return '<svg viewBox="0 0 ' + w + ' ' + h + '"></svg>';
+  const t0 = Math.max(ora - 3600, serie[0][0]), span = Math.max(ora - t0, 60), ys = serie.map(p => p[1]), lo = Math.min(...ys), hi = Math.max(...ys, lo + 1);
+  const X = t => Math.max(0, (t - t0) / span * w), Y = v => h - 2 - (v - lo) / (hi - lo) * (h - 4);
+  let d = '', p0 = serie[0]; d += 'M' + X(p0[0]).toFixed(1) + ',' + Y(p0[1]).toFixed(1);
+  for (const p of serie.slice(1)) d += 'H' + X(p[0]).toFixed(1) + 'V' + Y(p[1]).toFixed(1);
+  d += 'H' + w;
+  const su = ys.at(-1) > ys[0];
+  const col = su ? 'var(--verde)' : 'var(--mu)';
+  return '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none"><path d="' + d + ' V' + h + ' H' + X(p0[0]).toFixed(1) + 'Z" fill="' + (su ? 'var(--verde-bg)' : 'transparent') + '"/><path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="1.6"/></svg>';
+}
+function barra(t) {
+  const c = Math.max(0, Math.min(100, t.curva));
+  return '<span class="barra"><i><u class="' + (c >= 80 ? 'alta' : '') + '" style="width:' + c + '%"></u></i>' + Math.round(c) + '%' + (t.curva_da ? '<span class="n" title="letta sulla catena">⛓</span>' : '') + '</span>';
+}
+const SEGN = [['holder', 'holder / 5 min'], ['tesi', 'tesi+callout / 10 min'], ['bravi', 'bravi'], ['soldi', 'entrati / 5 min'], ['x', 'post X / 10 min']];
+const segnVal = (t, k) => k === 'holder' ? (t.in5 == null ? '—' : (t.in5 > 0 ? '+' : '') + t.in5) : k === 'tesi' ? (t.tesi10 == null && !t.ax ? '—' : '+' + ((t.tesi10 || 0) + (t.ax_callout10 || 0))) : k === 'x' ? (!t.ax ? '—' : '+' + t.ax_x10 + (t.ax_x_grande ? ' ★' : '')) : k === 'bravi' ? String(new Set([...t.bravi_holder.map(x => x.split(' ')[0]), ...t.bravi_tesi, ...(t.ax_bravi || [])]).size) : (t.valore5 == null ? '—' : (t.valore5 >= 0 ? '+' : '−') + usd(Math.abs(t.valore5)));
+const luci = t => '<div class="luci">' + SEGN.map(([k, d]) => '<div class="luce' + (t.segnali.includes(k) ? ' on' : '') + '"><i></i><span><b>' + segnVal(t, k) + '</b><br>' + d + '</span></div>').join('') + '</div>';
+const punti = t => '<span class="punti" title="' + SEGN.map(([k, d]) => (t.segnali.includes(k) ? '● ' : '○ ') + d + ': ' + segnVal(t, k)).join('\n') + '">' + SEGN.map(([k]) => '<i class="' + (t.segnali.includes(k) ? 'on' : '') + '"></i>').join('') + '</span>';
+const faq = q => { const m = (Date.now() - Date.parse(q)) / 60000; return m < 60 ? Math.round(m) + ' min fa' : Math.round(m / 60) + ' h fa'; };
+const caldo = t => t.eta_min < 180 && (t.in5 ?? 0) >= 3;
+const vede = t => !soloProp || t.prop !== 'no';
+// etichetta prop firm: 'forse' = programma pump.fun ma mint senza 'pump'
+const etProp = t => t.prop === 'forse' ? ' <span class="badge e2" title="sul programma di pump.fun ma il mint non finisce in pump: da verificare con la prop firm">pump?</span>' : t.prop === 'no' ? ' <span class="badge e3" title="' + esc(t.lp || 'launchpad non pump/bonk/bags/brrr') + '">no prop</span>' : '';
+const ORD = {
+  runner: (a, b) => b.segnali.length - a.segnali.length || (b.in5 ?? -1) - (a.in5 ?? -1) || (b.tesi10 ?? 0) - (a.tesi10 ?? 0),
+  ritmo: (a, b) => (b.in5 ?? -1) - (a.in5 ?? -1) || b.al_min - a.al_min,
+  giovani: (a, b) => a.eta_min - b.eta_min,
+  holder: (a, b) => b.holder_fomo - a.holder_fomo,
+  curva: (a, b) => b.curva - a.curva || b.valore_fomo - a.valore_fomo,
+  valore: (a, b) => b.valore_fomo - a.valore_fomo,
+};
+function disegna() {
+  if (!S || !S.dati) return;
+  const ora = Date.now() / 1000;
+  // carte: potenziali runner
+  const run = S.dati.filter(t => t.runner && vede(t)).sort(ORD.runner).slice(0, 12);
+  $('carte').innerHTML = run.length ? run.map(t =>
+    '<a class="carta' + (t.segnali.length >= 3 ? ' fuoco' : '') + '" href="' + link(t) + '" target="_blank"><span class="conta">' + t.segnali.length + '/5</span>' +
+    '<div style="display:flex;justify-content:space-between;align-items:start;gap:8px;padding-right:34px"><div style="min-width:0"><div class="sym">' + esc(t.sym) + etProp(t) + '</div><div class="nome">' + esc(t.nome) + '</div></div><span class="badge ' + etaC(t.eta_min) + '">' + eta(t.eta_min) + '</span></div>' +
+    luci(t) + spark(t.serie, 240, 40, ora) +
+    '<div class="riga"><div><div class="etich">mcap</div><b>' + usd(t.mcap) + '</b></div><div><div class="etich">holder</div><b>' + t.holder_fomo + '</b></div><div style="text-align:right"><div class="etich">curva</div>' + barra(t) + '</div></div></a>'
+  ).join('') : '<div class="vuoto">Nessun token giovane ha almeno due segnali accesi in questo momento.</div>';
+  // usciti
+  $('grad').innerHTML = (S.usciti || []).length ? S.usciti.map(u => '<a class="' + (u.motivo === 'graduato' ? '' : 'fuori') + '" href="' + link(u) + '" target="_blank" title="' + esc(u.motivo) + ' alle ' + new Date(u.q).toLocaleTimeString() + '">' + (u.motivo === 'graduato' ? '🎓 ' : '') + esc(u.sym) + ' · ' + eta(u.eta_min) + ' · ' + u.holder_fomo + ' holder</a>').join('') : '<span class="n">nessuno</span>';
+  // tabella
+  const D = S.dati.filter(t => (!solo3 || t.eta_min < 180) && vede(t)).sort(ORD[ord]);
+  let h = '';
+  D.forEach((t, i) => {
+    h += '<tr class="r' + (caldo(t) ? ' fuoco' : '') + (t.nuovo ? ' nuovo' : '') + '" data-t="' + t.tok + '">' +
+      '<td class="n">' + (i + 1) + '</td>' +
+      '<td class="s tk"><a href="' + link(t) + '" target="_blank" onclick="event.stopPropagation()"><b>' + esc(t.sym) + '</b></a><span class="nome">' + esc(t.nome) + '</span></td>' +
+      '<td><span class="badge ' + etaC(t.eta_min) + '">' + eta(t.eta_min) + '</span></td>' +
+      '<td>' + usd(t.mcap) + '</td><td class="s">' + barra(t) + '</td>' +
+      '<td class="s"><span class="hold"><b>' + t.holder_fomo + '</b>' + spark(t.serie, 84, 24, ora) + '</span></td>' +
+      '<td>' + chip(t) + '</td><td>' + t.al_min.toFixed(2) + '</td><td>' + usd(t.valore_fomo) + '</td>' +
+      '<td>' + (t.in_verde || '<span class="n">0</span>') + '</td>' +
+      '<td>' + (t.bravi_holder.length ? '<span class="stella">★ ' + t.bravi_holder.length + '</span>' : '<span class="n">—</span>') + '</td>' +
+      '<td>' + (t.tesi.length || '<span class="n">—</span>') + (t.ax ? ' <span class="n" title="callout per fonte (pump = commenti pump.fun) · post su X che citano il contratto">' + ['axiom', 'gmgn', 'pump'].filter(k => t.ax_fonti?.[k]).map(k => '· ' + k + ' ' + t.ax_fonti[k]).join(' ') + ' · 𝕏 ' + t.ax_x + '</span>' : '') + (t.tesi10 > 0 ? ' <span class="chip ' + (t.tesi10 >= 2 ? 'c2' : 'c1') + '">+' + t.tesi10 + '</span>' : '') + '</td>' +
+      '<td class="s">' + punti(t) + '</td>' +
+      '<td><span class="app' + (t.nell_app ? '' : ' no') + '" title="' + (t.nell_app ? 'nella scheda Bonding dell\'app' : 'solo nelle liste nascoste') + '"></span></td></tr>';
+    if (aperti.has(t.tok)) {
+      const testi = [...new Set(t.tesi.filter(x => x.txt.length > 20).map(x => '<div class="ts"><b>' + esc(x.u) + '</b>' + (t.bravi_tesi.includes(x.u) ? ' <span class="stella">★</span>' : '') + ': ' + esc(x.txt) + '</div>'))].slice(0, 6).join('');
+      h += '<tr class="det"><td></td><td colspan="13">' +
+        '<div class="bl"><b>Ingressi degli holder fomo (primo acquisto → medio)</b>' + (t.ingressi.length ? t.ingressi.map(x => '<span class="in' + (x.includes('*') ? ' br' : '') + '">' + esc(x) + '</span>').join('') : '<span class="n">' + (t.dettagli ? 'nessun dato' : 'in lettura…') + '</span>') + '</div>' +
+        (t.bravi_holder.length ? '<div class="bl"><b>Bravi fra gli holder</b>' + esc(t.bravi_holder.join(', ')) + '</div>' : '') +
+        (testi ? '<div class="bl"><b>Tesi fomo</b>' + testi + '</div>' : '') +
+        (t.ax_callouts && t.ax_callouts.length ? '<div class="bl"><b>Callout (Axiom, GMGN, pump.fun)</b>' + t.ax_callouts.map(c => '<div class="ts"><span class="badge ' + (c.src === 'gmgn' ? 'e2' : c.src === 'axiom' ? 'e1' : 'e3') + '">' + c.src + '</span> <b>' + esc(c.h) + '</b>' + (c.kol ? ' <span class="stella">KOL</span>' : '') + ' <span class="n">' + [c.ncall != null ? c.ncall + ' callout, win ' + Math.round((c.wr || 0) * 100) + '%, PnL ' + usd(c.pnl_caller) : '', c.follower ? Math.round(c.follower / 1000) + 'k follower' : '', c.mc ? 'a ' + usd(c.mc) : '', c.pos ? 'tiene ' + usd(c.pos) : '', c.picco ? 'picco ' + c.picco + 'x' : '', c.likes ? c.likes + ' like' : '', faq(c.t)].filter(Boolean).join(' · ') + '</span>: ' + esc(c.body) + '</div>').join('') + '</div>' : '') +
+        (t.ax_tweets && t.ax_tweets.length ? '<div class="bl"><b>Post su X che citano il contratto</b>' + t.ax_tweets.map(w => '<div class="ts"><a href="https://x.com/' + esc(w.handle) + '/status/' + esc(w.id) + '" target="_blank"><b>@' + esc(w.handle) + '</b></a> <span class="n">' + (w.followers >= 1000 ? Math.round(w.followers / 1000) + 'k' : w.followers) + ' follower' + (w.verified ? ' · ' + esc(w.verified) : '') + (w.promo ? ' · promo' : '') + ' · ' + faq(w.t) + '</span>: ' + esc(w.text) + '</div>').join('') + '</div>' : '') +
+        '<div class="n">' + esc(t.tok) + ' · liquidità ' + usd(t.liq) + ' · holder on-chain ' + t.holder_catena + ' · entrati entro il 30% della curva: ' + t.primi_presto + '</div></td></tr>';
+    }
+  });
+  $('b').innerHTML = h;
+}
+function testa() {
+  if (!S) return;
+  if (S.soglie) $('legsegn').textContent = 'Segnali: holder = almeno ' + S.soglie.holder5 + ' utenti fomo entrati in 5 min · tesi = almeno ' + S.soglie.tesi10 + ' tesi fomo o callout Axiom nuovi in 10 min · bravi = un trader bravo fra holder o tesi · soldi = almeno $' + S.soglie.soldi5 + ' messi dagli utenti fomo in 5 min · x = almeno ' + S.soglie.x10 + ' post su X non spam/promo in 10 min, o uno di un account con ' + Math.round(S.soglie.x_grande / 1000) + 'k+ follower in 30 min. Axiom: ' + (S.axiom_q ? 'aggiornato ' + Math.round((Date.now() - Date.parse(S.axiom_q)) / 1000) + ' s fa' + (S.axiom_ws ? ', WebSocket ' + S.axiom_ws.stato : '') : 'non collegato') + ' (callout di Axiom, GMGN e commenti pump.fun da chi tiene almeno $50). Soglie scelte a mano, non ancora tarate sullo storico.';
+  const fa = S.aggiornato ? (Date.now() - Date.parse(S.aggiornato)) / 1000 : 1e9;
+  $('dot').className = 'dot' + (S.errore ? ' err' : fa > 30 ? ' lento' : '');
+  $('info').textContent = S.aggiornato ? 'aggiornato ' + Math.round(fa) + ' s fa · giro ' + S.ciclo_s + ' s · ' + S.candidati + ' token con ≥' + S.criteri.MIN_H + ' holder fomo su ' + S.universo + ' seguiti' : 'primo giro in corso…';
+  $('err').style.display = S.errore ? 'block' : 'none'; $('err').textContent = S.errore || '';
+}
+async function giro() {
+  try { S = await (await fetch('stato.json', { cache: 'no-store' })).json(); disegna(); }
+  catch (e) { S = S || {}; S.errore = 'server non raggiungibile: bonding_live.mjs è acceso?'; }
+  testa();
+}
+for (const b of $('ord').children) { b.classList.toggle('on', b.dataset.o === ord); b.onclick = () => { ord = b.dataset.o; for (const x of $('ord').children) x.classList.toggle('on', x === b); try { localStorage.setItem('ord', ord); } catch (e) {} disegna(); }; }
+$('solo3').checked = solo3; $('soloProp').checked = soloProp;
+$('soloProp').onchange = e => { soloProp = e.target.checked; try { localStorage.setItem('soloProp', soloProp ? '1' : '0'); } catch (x) {} disegna(); };
+$('solo3').onchange = e => { solo3 = e.target.checked; try { localStorage.setItem('solo3', solo3 ? '1' : '0'); } catch (x) {} disegna(); };
+$('b').onclick = ev => { const r = ev.target.closest('tr.r'); if (!r) return; const t = r.dataset.t; aperti.has(t) ? aperti.delete(t) : aperti.add(t); disegna(); };
+giro(); setInterval(giro, 2000); setInterval(testa, 1000);
+</script>
+</body>
+</html>

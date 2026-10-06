@@ -31,15 +31,12 @@ detentori e con l'acquisto netto.
 Utili anche: `1 SOL ≈ N TOKEN` (prezzo spot, per confrontarlo col nostro), `PUMP Pool info` (SOL in
 pool e valore iniziale), `Token created`.
 
-**dexscreener** — la API pubblica basta e non serve il browser:
-
-```
-https://api.dexscreener.com/latest/dex/tokens/<mint>
-```
-
-Da' `pairAddress`, `priceNative`, `marketCap`, `pairCreatedAt`. Serve soprattutto a **confermare che
-la pool che stiamo leggendo appartiene davvero a quel mint**: il bug di pool sbagliata e' gia'
-comparso tre volte. Non ha storico, quindi non risponde alla domanda "qual e' stato il massimo".
+**dexscreener** — **non e' una fonte**: come gmgn, un numero letto li' non si prende per buono e
+nessuno script lo interroga piu'. Prezzo e liquidita' vengono solo dalla catena
+(`scripts/fomo/prezzi_catena.js` per Solana, `prezzi_evm.js` per le reti EVM). Che la pool letta
+appartenga davvero a quel mint (il bug di pool sbagliata e' gia' comparso tre volte) si controlla
+sulla catena: la pool e' l'owner che, nella stessa transazione, cede il token e riceve il contante
+(o il contrario), e su EVM `token0()`/`token1()` del pool o le valute della pool v4.
 
 **solscan** — `https://solscan.io/token/<mint>` o `/account/<pool>`, per l'elenco delle transazioni e
 i bilanci. Da usare quando serve sapere *cosa* e' successo (chi ha firmato, quanti SOL si sono
@@ -85,7 +82,7 @@ prezzo sale di 1.000-11.000x prima che il bot possa vedere il token. Esempio ver
 | nostro ingresso | 12:03:38 | 3.038,69 | 5.764.770 | 0,00052711 |
 | massimo | 15:56:52 | 4.058,50 | 4.328.577 | 0,00093761 |
 
-Dexscreener dice **+217.636%**. Dal nostro ingresso sono **+78%**. Il primo numero e' vero e
+Un sito di grafici (dexscreener) dice **+217.636%**. Dal nostro ingresso sono **+78%**. Il primo numero e' vero e
 inutile: descrive un movimento avvenuto in 16 secondi, a cui non potevamo partecipare.
 
 ### 2. Le firme non si ordinano per `blockTime`

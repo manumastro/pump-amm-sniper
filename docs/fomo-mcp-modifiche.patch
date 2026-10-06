@@ -1,0 +1,136 @@
+diff --git a/src/auth.ts b/src/auth.ts
+index 53bf65f..c7c2c93 100644
+--- a/src/auth.ts
++++ b/src/auth.ts
+@@ -39,6 +39,8 @@ export interface TokenTriple {
+ }
+ 
+ export function tokensFromEnv(): TokenTriple {
++  // modifica locale: con FOMO_TOKEN_FILE basta il token d'accesso, letto dal file a ogni chiamata
++  if (process.env.FOMO_TOKEN_FILE) return { identityToken: "", accessToken: "", refreshToken: "" };
+   const identityToken = process.env.FOMO_ID_TOKEN ?? "";
+   const accessToken = process.env.FOMO_ACCESS_TOKEN ?? "";
+   const refreshToken = process.env.FOMO_REFRESH_TOKEN ?? "";
+diff --git a/src/client.ts b/src/client.ts
+index a6b2fa1..4fee0c0 100644
+--- a/src/client.ts
++++ b/src/client.ts
+@@ -2,6 +2,7 @@
+ // Shapes below come from observed traffic; fields are left loose
+ // (Record<string, unknown>) where the app returns big metadata blobs.
+ 
++import { readFileSync } from "node:fs";
+ import { NeedsReauth } from "./auth.js";
+ import { browserFetch } from "./browser.js";
+ 
+@@ -43,10 +44,15 @@ export class FomoClient {
+     }
+     // NOTE: plain fetch/curl get 430-blocked at the edge, so traffic
+     // goes through headless Chrome (see browser.ts).
++    // modifica locale: se FOMO_TOKEN_FILE e' impostato, il token si rilegge dal file a ogni
++    // chiamata (lo tiene aggiornato il browser loggato), cosi' il server non scade dopo un'ora
++    const token = process.env.FOMO_TOKEN_FILE
++      ? readFileSync(process.env.FOMO_TOKEN_FILE, "utf8").trim()
++      : this.identityToken;
+     const res = await browserFetch(url.toString(), {
+       method,
+       headers: {
+-        authorization: `Bearer ${this.identityToken}`,
++        authorization: `Bearer ${token}`,
+         "content-type": "application/json",
+         accept: "application/json",
+         origin: "https://fomo.family",
+@@ -254,6 +260,25 @@ export class FomoClient {
+     }, MOBULA_BASE);
+   }
+ 
++  /**
++   * Discovery lists (the "Graduated" / "Bonding" / "Trending" tabs). The app reads them from
++   * Mobula pulse v2 (POST mobula-api.fomo.family/api/2/pulse, same bearer token).
++   * view: "graduated" -> model filtered-bonded (newest graduations first);
++   *       "pre-graduated" -> filtered-bonding (closest to graduation first, ~>=75% bonded);
++   *       "new" -> new (just created); "bonding"/"bonded" -> unfiltered lists.
++   * chains like ["solana:solana", "evm:8453"]. limit/offset page the list (limit up to 100).
++   * Rows carry bonded, bondingPercentage, bonded_at, createdAt, poolAddress, deployer,
++   * description, socials, holdersCount, marketCap, volume_*, insiders/bundlers/snipers stats.
++   */
++  async discoverTokens(view: string, chains: string[] = ["solana:solana"], limit = 50, offset = 0) {
++    const model = ({ graduated: "filtered-bonded", "pre-graduated": "filtered-bonding", trending: "trending" } as Record<string, string>)[view] ?? view;
++    const r = await this.request<Record<string, { data?: Record<string, unknown>[] }>>("POST", "/api/2/pulse", {
++      base: MOBULA_BASE,
++      body: { assetMode: true, views: [{ name: model, model, chainId: chains, limit, offset }] },
++    });
++    return r[model]?.data ?? [];
++  }
++
+   // ---- feed ----
+ 
+   tokenFeed(params: {
+@@ -262,23 +287,27 @@ export class FomoClient {
+     limit?: number;
+     threshold?: number;
+     excludeThesis?: boolean;
++    lastId?: string;
+   }) {
+-    const { tokenAddress, networkId, limit = 50, threshold = 1000, excludeThesis = true } = params;
++    const { tokenAddress, networkId, limit = 50, threshold = 1000, excludeThesis = true, lastId } = params;
++    // pagination: pass the id of the last item of the previous page as lastId
+     return this.get<unknown>("/feed/token", {
+       tokenAddress,
+       networkId,
+       limit,
+       threshold,
+       excludeThesis,
++      lastId,
+     });
+   }
+ 
+-  tokenThesis(tokenAddress: string, networkId: number, limit: number = 50, threshold: number = 1000) {
++  tokenThesis(tokenAddress: string, networkId: number, limit: number = 50, threshold: number = 1000, lastId?: string) {
+     return this.get<unknown>("/feed/token/thesis", {
+       tokenAddress,
+       networkId,
+       limit,
+       threshold,
++      lastId,
+     });
+   }
+ 
+diff --git a/src/server.ts b/src/server.ts
+index 682d32e..e6cd88d 100644
+--- a/src/server.ts
++++ b/src/server.ts
+@@ -103,11 +103,30 @@ tool("fomo_token_allow_list", "Detailed token allowlist", {}, () =>
+ tool("fomo_ohlcv", "Candles. chain like evm:4663, period like 1m", { address: z.string(), chain: z.string(), period: z.string().optional() }, (a: { address: string; chain: string; period?: string }) =>
+   client.ohlcv(a.address, a.chain, a.period ?? "1m"));
+ 
++// discovery (Graduated / Bonding / Trending tabs, via Mobula pulse): compact rows
++const compact = (x: Record<string, unknown>) => {
++  const s = (x.socials ?? {}) as Record<string, unknown>;
++  return {
++    address: x.address, chainId: x.chainId, symbol: x.symbol, name: x.name, source: x.source, pool: x.type,
++    bonded: x.bonded, bondingPercentage: x.bondingPercentage, createdAt: x.createdAt, bonded_at: x.bonded_at,
++    marketCap: x.marketCap, liquidity: x.liquidity, holders: x.holdersCount, volume_1h: x.volume_1h, volume_24h: x.volume_24h,
++    trades_1h: x.trades_1h, top10: x.top10Holdings, devHoldings: x.devHoldings, insiders: x.insidersHoldings,
++    bundlers: x.bundlersHoldings, snipers: x.snipersHoldings, deployer: x.deployer,
++    deployerTokensCount: x.deployerTokensCount, deployerMigrationsCount: x.deployerMigrationsCount,
++    poolAddress: x.poolAddress, description: typeof x.description === "string" ? x.description.slice(0, 300) : x.description,
++    twitter: s.twitter, website: s.website, telegram: s.telegram,
++  };
++};
++tool("fomo_discover_tokens", "Discovery lists: view = graduated | pre-graduated | new | trending | bonding | bonded (Mobula pulse). chains like [\"solana:solana\",\"evm:8453\"]. full=true returns raw rows (~300 fields each).", { view: z.string(), chains: z.array(z.string()).optional(), limit: z.number().optional(), offset: z.number().optional(), full: z.boolean().optional() }, async (a: { view: string; chains?: string[]; limit?: number; offset?: number; full?: boolean }) => {
++  const rows = await client.discoverTokens(a.view, a.chains ?? ["solana:solana"], a.limit ?? 50, a.offset ?? 0);
++  return a.full ? rows : rows.map(compact);
++});
++
+ // feed
+-tool("fomo_token_feed", "Swap feed for a token", { tokenAddress: z.string(), networkId: z.number(), limit: z.number().optional(), threshold: z.number().optional(), excludeThesis: z.boolean().optional() }, (a: { tokenAddress: string; networkId: number; limit?: number; threshold?: number; excludeThesis?: boolean }) =>
++tool("fomo_token_feed", "Swap feed for a token (fomo users' buys/sells with marketCap at the swap). Page with lastId = id of the last item", { tokenAddress: z.string(), networkId: z.number(), limit: z.number().optional(), threshold: z.number().optional(), excludeThesis: z.boolean().optional(), lastId: z.string().optional() }, (a: { tokenAddress: string; networkId: number; limit?: number; threshold?: number; excludeThesis?: boolean; lastId?: string }) =>
+   client.tokenFeed(a as never));
+-tool("fomo_token_thesis", "Thesis posts for a token", { ...tokenRef, limit: z.number().optional(), threshold: z.number().optional() }, (a: { tokenAddress: string; networkId: number; limit?: number; threshold?: number }) =>
+-  client.tokenThesis(a.tokenAddress, a.networkId, a.limit ?? 50, a.threshold ?? 1000));
++tool("fomo_token_thesis", "Thesis posts for a token (comment.marketCapAtCreation). Page with lastId", { ...tokenRef, limit: z.number().optional(), threshold: z.number().optional(), lastId: z.string().optional() }, (a: { tokenAddress: string; networkId: number; limit?: number; threshold?: number; lastId?: string }) =>
++  client.tokenThesis(a.tokenAddress, a.networkId, a.limit ?? 50, a.threshold ?? 1000, a.lastId));
+ tool("fomo_token_sorted_thesis", "Thesis posts with time paging", { ...tokenRef, limit: z.number().optional(), threshold: z.number().optional(), afterTime: z.string().optional(), beforeTime: z.string().optional() }, (a: { tokenAddress: string; networkId: number; limit?: number; threshold?: number; afterTime?: string; beforeTime?: string }) =>
+   client.tokenSortedThesis(a as never));
+ tool("fomo_trading_activity", "Global trading activity feed", { limit: z.number().optional(), threshold: z.number().optional() }, (a: { limit?: number; threshold?: number }) =>
