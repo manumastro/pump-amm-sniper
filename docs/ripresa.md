@@ -11,8 +11,8 @@ fomo al minuto 6 a ~$9k, graduato al minuto 19). Tutto e' **solo lettura e simul
 `/swaps/v2` o `requestSwapQuote`, nessun click su buy/trade/callout.
 
 La persona trada su una **prop firm** dove "Only pump/bonk/bags/brrr tokens are tradeable": si guardano solo i mint che
-finiscono in pump, bonk, BAGS o brrr; quelli sul programma pump.fun con mint diverso (es. agencypad) sono `pump?`, da
-verificare con la prop firm.
+finiscono in pump, bonk, BAGS o brrr. Quelli sul programma pump.fun con un mint diverso (es. agencypad) **non** sono
+tradabili (confermato dalla persona il 6/10): il filtro della pagina e della tabella li esclude.
 
 ## Il sistema
 

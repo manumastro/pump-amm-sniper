@@ -158,16 +158,41 @@ function axiomCampi(t, ora) {
     ax_x_grande: veri.some(w => da(w.t) <= 30 && (w.followers || 0) >= SOGLIE.x_grande),
     // per la pagina: prima i callout delle fonti piu' informative e di chi tiene, poi i piu' recenti
     ax_callouts: [...C].sort((a, b) => (bravoAx(b) - bravoAx(a)) || ((b.src !== 'pump') - (a.src !== 'pump')) || b.t.localeCompare(a.t)).slice(0, 12),
-    ax_tweets: xs.sort((a, b) => (b.followers || 0) - (a.followers || 0)).slice(0, 8),
+    ax_tweets: xs.sort((a, b) => (b.followers || 0) - (a.followers || 0)).slice(0, 8).map(w => ({ ...w, anche: [...(t.tesi || []).map(x => x.x), ...(A.callouts || []).map(c => c.x || c.h)].some(h => h && h.toLowerCase() === String(w.handle || '').toLowerCase()) })),
   };
+}
+// Voci sul token: tesi fomo e callout Axiom (e GMGN/pump.fun se ci sono) in una sola lista, una riga per persona.
+// La stessa persona su fomo e su Axiom si riconosce dall'handle X (fomo: campo twitter dell'autore; Axiom: xHandle del
+// caller) o, se manca, dallo stesso nome: le due fonti si completano (fomo da' posizione e PnL dell'autore, Axiom lo
+// storico del caller). Conta la prima volta che una persona ne ha parlato: voci10 = persone nuove negli ultimi 10 minuti.
+const usdK = v => (v < 0 ? '-' : '') + '$' + (Math.abs(v) >= 1000 ? Math.round(Math.abs(v) / 1000) + 'k' : Math.round(Math.abs(v)));
+function voci(t, ora) {
+  const V = [];
+  for (const x of t.tesi || []) V.push({ src: 'fomo', h: x.u, x: x.x, t: x.t, mc: x.mc, pos: x.pos, pnl: x.pnl, venduto: x.venduto, dev: x.dev, like: x.like, txt: x.txt,
+    bravo: bravo(x.uid), info: R[x.uid]?.pos30 && R[x.uid].pos30 < 1e6 ? '#' + R[x.uid].pos30 + ' fomo 30g' : null });
+  for (const c of (t.ax?.callouts || []).filter(conta)) V.push({ src: c.src, h: c.h, x: c.x || null, t: c.t, mc: c.mc, pos: c.pos, pnl: c.pnl, venduto: c.venduto, txt: c.body, picco: c.picco,
+    bravo: bravoAx(c), info: c.ncall != null ? c.ncall + ' callout, win ' + Math.round((c.wr || 0) * 100) + '%, PnL ' + usdK(c.pnl_caller || 0) : c.kol ? 'KOL' + (c.follower ? ' ' + Math.round(c.follower / 1000) + 'k' : '') : null });
+  const G = new Map();
+  for (const v of V.filter(v => v.t).sort((a, b) => a.t.localeCompare(b.t))) {
+    const k = String(v.x || v.h || '').toLowerCase(); const g = G.get(k);
+    if (!g) { G.set(k, { ...v, fonti: [v.src], n: 1, primo: v.t }); continue; }
+    g.n++; if (!g.fonti.includes(v.src)) g.fonti.push(v.src);
+    // l'ultima voce porta il testo; posizione e PnL restano quelli di fomo se ci sono, se no si prendono da Axiom
+    g.t = v.t; if (v.txt) g.txt = v.txt; g.bravo ||= v.bravo; g.info = [g.info, v.info].filter((s, i, a) => s && a.indexOf(s) === i).join(' · ') || null;
+    for (const c of ['x', 'pos', 'pnl', 'mc', 'picco']) if (g[c] == null) g[c] = v[c];
+    g.venduto ||= v.venduto; g.dev ||= v.dev;
+  }
+  const L = [...G.values()];
+  return { voci: L.sort((a, b) => b.primo.localeCompare(a.primo)).slice(0, 20), n_voci: L.length,
+    voci10: L.filter(g => (ora - Date.parse(g.primo) / 1000) / 60 <= 10).length, voci_bravi: L.filter(g => g.bravo).map(g => g.h) };
 }
 // potenziale runner: quattro segnali accesi o spenti, in chiaro (soglie scelte a mano, da tarare con storia.jsonl)
 const SOGLIE = { holder5: 5, tesi10: 2, soldi5: 300, x10: 2, x_grande: 10000 };
 function segnali(x) {
   const s = [];
   if ((x.in5 ?? 0) >= SOGLIE.holder5) s.push('holder');
-  if ((x.tesi10 ?? 0) + (x.ax_callout10 ?? 0) >= SOGLIE.tesi10) s.push('tesi');
-  if (x.bravi_holder.length + x.bravi_tesi.length + (x.ax_bravi?.length || 0) > 0) s.push('bravi');
+  if ((x.voci10 ?? 0) >= SOGLIE.tesi10) s.push('tesi');
+  if (x.bravi_holder.length + x.voci_bravi.length > 0) s.push('bravi');
   if ((x.valore5 ?? 0) >= SOGLIE.soldi5) s.push('soldi');
   if ((x.ax_x10 ?? 0) >= SOGLIE.x10 || x.ax_x_grande) s.push('x');
   return s;
@@ -197,7 +222,10 @@ async function dettagli(t) {
   t.det_t = adesso(); t.det_h = t.holder_fomo;
   if (!t.lp) { const [f] = await chiama(() => C.filterTokens([t.tok + ':' + SOLN])).catch(() => []); t.lp = f?.token?.launchpad?.launchpadName || null; }
   const r = await chiama(() => C.tokenThesis(t.tok, SOLN, 50, 0)).catch(() => null);
-  if (r) t.tesi = (r.items || []).map(x => ({ u: x.userHandle, uid: x.userId, mc: x.comment?.marketCapAtCreation, txt: String(x.comment?.comment || '').slice(0, 200) }));
+  if (r) t.tesi = (r.items || []).map(x => { const cm = x.comment || {}, at = x.authorTrade || {};
+    return { u: x.userHandle, uid: x.userId, t: x.createdAt || cm.createdAt, x: typeof x.twitter === 'string' ? x.twitter.replace(/^@/, '') : (x.twitter?.username || x.twitter?.handle || null),
+      mc: cm.marketCapAtCreation, txt: String(cm.comment || '').slice(0, 280), like: cm.numLikes || 0, pos: Math.round(at.usdValue || 0),
+      pnl: Math.round((at.realizedPnlUsd || 0) + (at.unrealizedPnlUsd || 0)), venduto: !!at.closedAt, dev: !!x.isDev }; });
   if (r) { const ts = (t.tesi_serie ||= []), n = t.tesi.length; if (!ts.length || ts.at(-1)[1] !== n || t.det_t - ts.at(-1)[0] > 120) ts.push([Math.round(t.det_t), n]); }
   const acq = {}; let lastId;
   for (let i = 0; i < 3; i++) {
@@ -230,8 +258,8 @@ async function dettagli(t) {
 })();
 
 // prop firm della persona: "Only pump/bonk/bags/brrr tokens are tradeable" = mint che finisce in pump, bonk, BAGS o brrr.
-// 'forse' = sul programma di pump.fun ma con un mint senza 'pump' (es. agencypad): da verificare con la prop firm.
-const prop = t => /(pump|bonk|bags|brrr)$/i.test(t.tok) ? 'si' : t.lp === 'Pump.fun' ? 'forse' : 'no';
+// Il 6/10 la persona ha confermato che i mint senza quel suffisso (anche se sul programma di pump.fun) non sono tradabili.
+const prop = t => /(pump|bonk|bags|brrr)$/i.test(t.tok) ? 'si' : 'no';
 // stato per la pagina
 function scrivi(ciclo) {
   const ora = adesso();
@@ -244,9 +272,8 @@ function scrivi(ciclo) {
       holder_fomo: t.holder_fomo, valore_fomo: t.valore_fomo, in5: r.in5, in5_parziale: r.parziale, al_min: +(t.holder_fomo / Math.max(eta, 1)).toFixed(2),
       serie: t.serie.filter(p => ora - p[0] <= 3600).map(p => [p[0], p[1]]), nuovo: ora - t.cand_da < 120,
       primi_presto: t.primi_presto ?? 0, bravi_holder: (t.chi || []).filter(x => bravo(x.uid)).map(x => `${x.u} ($${x.val})`),
-      tesi: t.tesi || [], bravi_tesi: [...new Set((t.tesi || []).filter(x => bravo(x.uid)).map(x => x.u))], ingressi: t.ingressi || [],
+      n_tesi: (t.tesi || []).length, ...voci(t, ora),
       in_verde: (t.chi || []).filter(x => x.pnl > 0).length, dettagli: !!t.det_t, lp: t.lp || null, prop: prop(t),
-      tesi10: crescita(t.tesi_serie, ora, t.nato, t.tesi?.length ?? null, 600).d,
       ...axiomCampi(t, ora),
       valore5: crescita(t.serie.map(p => [p[0], p[2]]), ora, t.nato, t.valore_fomo, 300).d,
     };
@@ -287,7 +314,7 @@ http.createServer((q, r) => {
   }
   if (q.url.startsWith('/axiom-lista')) { const ora = adesso(); r.writeHead(200, { 'content-type': 'application/json' });
     // token da leggere su Axiom: i candidati tradabili nati da meno di 6 ore, prima i runner
-    return r.end(JSON.stringify(candidati().filter(t => prop(t) !== 'no' && ora - t.nato < 6 * 3600).sort((a, b) => (ritmo(b, ora).in5 ?? 0) - (ritmo(a, ora).in5 ?? 0)).slice(0, 60).map(t => t.tok))); }
+    return r.end(JSON.stringify(candidati().filter(t => prop(t) === 'si' && ora - t.nato < 6 * 3600).sort((a, b) => (ritmo(b, ora).in5 ?? 0) - (ritmo(a, ora).in5 ?? 0)).slice(0, 60).map(t => t.tok))); }
   if (q.url.startsWith('/stato.json')) { r.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' }); return r.end(fs.existsSync(STATO) ? fs.readFileSync(STATO) : '{}'); }
   r.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' }); r.end(fs.readFileSync(PAGINA));
 }).listen(PORTA, '127.0.0.1', () => log(`pagina su http://127.0.0.1:${PORTA}`));

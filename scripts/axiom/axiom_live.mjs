@@ -85,7 +85,8 @@ async function chiama(tipo, url) {
 const norm = c => ({ id: c.id, src: 'axiom', t: c.createdAt, h: c.callerHandle || c.xHandle || '(anonimo)', body: String(c.body || '').slice(0, 200),
   mc: c.marketCapUsdAtPost != null ? Math.round(c.marketCapUsdAtPost) : null, pos: (c.verifiedHoldingUsd ?? c.holdingUsd) != null ? Math.round(c.verifiedHoldingUsd ?? c.holdingUsd) : null,
   picco: c.peakMultiple != null ? +(+c.peakMultiple).toFixed(2) : null, wr: c.caller?.winRate, ncall: c.caller?.calloutCount,
-  pnl_caller: c.caller?.realizedPnlUsd, verified: !!c.caller?.verified, voti: (c.agreeCount || 0) - (c.disagreeCount || 0) });
+  pnl_caller: c.caller?.realizedPnlUsd, verified: !!c.caller?.verified, voti: (c.agreeCount || 0) - (c.disagreeCount || 0),
+  x: c.xHandle || null, pnl: c.pnlUsd != null ? Math.round(c.pnlUsd) : null, venduto: !!c.soldAt });
 
 async function leggiFeed() {
   const j = await chiama('callouts-feed', API + '/callouts-feed?v=2'); if (!Array.isArray(j)) return;

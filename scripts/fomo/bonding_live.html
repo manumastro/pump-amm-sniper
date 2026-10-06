@@ -82,6 +82,9 @@ tr.det td{background:var(--pan2);text-align:left;white-space:normal;padding:12px
 .det .in{display:inline-block;background:var(--pan);border:1px solid var(--li);border-radius:6px;padding:2px 8px;margin:2px 4px 2px 0;font-size:12px}
 .det .in.br{border-color:var(--giallo)}
 .det .ts{color:var(--fg);font-size:13px;margin:3px 0}
+.det .voce{padding:6px 0;border-bottom:1px solid var(--li)}.det .voce:last-child{border-bottom:0}
+.det .voce .testa{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}.det .voce .txt{margin-top:2px;color:var(--fg)}
+.f-fomo{background:rgba(90,169,255,.16);color:var(--blu)}
 .leg{color:var(--mu);font-size:12px;margin-top:10px}
 @media (max-width:640px){.wrap{padding:12px 16px}h1{font-size:17px}}
 </style>
@@ -109,10 +112,10 @@ tr.det td{background:var(--pan2);text-align:left;white-space:normal;padding:12px
     <label class="tog"><input type="checkbox" id="soloProp"> solo tradabili sulla prop firm (pump/bonk/bags/brrr)</label>
   </div>
   <div class="tab"><table>
-    <thead><tr><th>#</th><th class="s">token</th><th>età</th><th>mcap</th><th class="s">curva</th><th class="s">holder fomo (ultima ora)</th><th>+5 min</th><th>holder/min</th><th>valore fomo</th><th>in verde</th><th>bravi</th><th>tesi fomo (+10 min) · callout · 𝕏</th><th class="s">segnali</th><th>app</th></tr></thead>
+    <thead><tr><th>#</th><th class="s">token</th><th>età</th><th>mcap</th><th class="s">curva</th><th class="s">holder fomo (ultima ora)</th><th>+5 min</th><th>holder/min</th><th>valore fomo</th><th>in verde</th><th>bravi</th><th>tesi + callout (+10 min) · 𝕏</th><th class="s">segnali</th><th>app</th></tr></thead>
     <tbody id="b"></tbody>
   </table></div>
-  <div class="leg">+5 min = utenti fomo entrati negli ultimi 5 minuti (in grigio corsivo se la serie è più corta di 5 minuti) · holder/min = holder fomo diviso minuti di vita · bravi = fra i primi 1000 di fomo a 30 giorni con PnL positivo · app = si vede nella scheda Bonding dell'app · clic su una riga per ingressi e tesi.</div>
+  <div class="leg">+5 min = utenti fomo entrati negli ultimi 5 minuti (in grigio corsivo se la serie è più corta di 5 minuti) · holder/min = holder fomo diviso minuti di vita · bravi = fra i primi 1000 di fomo a 30 giorni con PnL positivo · tesi + callout = persone che ne hanno scritto su fomo o su Axiom (una sola volta se è la stessa persona) · app = si vede nella scheda Bonding dell'app · clic su una riga per tesi, callout e post su X.</div>
 </div>
 <script>
 const $ = id => document.getElementById(id);
@@ -145,16 +148,23 @@ function barra(t) {
   return '<span class="barra"><i><u class="' + (c >= 80 ? 'alta' : '') + '" style="width:' + c + '%"></u></i>' + Math.round(c) + '%' + (t.curva_da ? '<span class="n" title="letta sulla catena">⛓</span>' : '') + '</span>';
 }
 const SEGN = [['holder', 'holder / 5 min'], ['tesi', 'tesi+callout / 10 min'], ['bravi', 'bravi'], ['soldi', 'entrati / 5 min'], ['x', 'post X / 10 min']];
-const segnVal = (t, k) => k === 'holder' ? (t.in5 == null ? '—' : (t.in5 > 0 ? '+' : '') + t.in5) : k === 'tesi' ? (t.tesi10 == null && !t.ax ? '—' : '+' + ((t.tesi10 || 0) + (t.ax_callout10 || 0))) : k === 'x' ? (!t.ax ? '—' : '+' + t.ax_x10 + (t.ax_x_grande ? ' ★' : '')) : k === 'bravi' ? String(new Set([...t.bravi_holder.map(x => x.split(' ')[0]), ...t.bravi_tesi, ...(t.ax_bravi || [])]).size) : (t.valore5 == null ? '—' : (t.valore5 >= 0 ? '+' : '−') + usd(Math.abs(t.valore5)));
+const segnVal = (t, k) => k === 'holder' ? (t.in5 == null ? '—' : (t.in5 > 0 ? '+' : '') + t.in5) : k === 'tesi' ? '+' + (t.voci10 || 0) : k === 'x' ? (!t.ax ? '—' : '+' + t.ax_x10 + (t.ax_x_grande ? ' ★' : '')) : k === 'bravi' ? String(new Set([...t.bravi_holder.map(x => x.split(' ')[0]), ...t.voci_bravi]).size) : (t.valore5 == null ? '—' : (t.valore5 >= 0 ? '+' : '−') + usd(Math.abs(t.valore5)));
 const luci = t => '<div class="luci">' + SEGN.map(([k, d]) => '<div class="luce' + (t.segnali.includes(k) ? ' on' : '') + '"><i></i><span><b>' + segnVal(t, k) + '</b><br>' + d + '</span></div>').join('') + '</div>';
 const punti = t => '<span class="punti" title="' + SEGN.map(([k, d]) => (t.segnali.includes(k) ? '● ' : '○ ') + d + ': ' + segnVal(t, k)).join('\n') + '">' + SEGN.map(([k]) => '<i class="' + (t.segnali.includes(k) ? 'on' : '') + '"></i>').join('') + '</span>';
 const faq = q => { const m = (Date.now() - Date.parse(q)) / 60000; return m < 60 ? Math.round(m) + ' min fa' : Math.round(m / 60) + ' h fa'; };
 const caldo = t => t.eta_min < 180 && (t.in5 ?? 0) >= 3;
-const vede = t => !soloProp || t.prop !== 'no';
-// etichetta prop firm: 'forse' = programma pump.fun ma mint senza 'pump'
-const etProp = t => t.prop === 'forse' ? ' <span class="badge e2" title="sul programma di pump.fun ma il mint non finisce in pump: da verificare con la prop firm">pump?</span>' : t.prop === 'no' ? ' <span class="badge e3" title="' + esc(t.lp || 'launchpad non pump/bonk/bags/brrr') + '">no prop</span>' : '';
+// prop firm: tradabili solo i mint che finiscono in pump, bonk, bags o brrr
+const vede = t => !soloProp || t.prop === 'si';
+const etProp = t => t.prop !== 'si' ? ' <span class="badge e3" title="il mint non finisce in pump/bonk/bags/brrr: non tradabile sulla prop firm">no prop</span>' : '';
+const FONTE = { fomo: 'f-fomo', axiom: 'e1', gmgn: 'e2', pump: 'e3' };
+const voce = v => '<div class="voce"><div class="testa">' + v.fonti.map(f => '<span class="badge ' + (FONTE[f] || 'e3') + '">' + f + '</span>').join('') +
+  ' <b>' + esc(v.h) + '</b>' + (v.bravo ? ' <span class="stella">★</span>' : '') + (v.dev ? ' <span class="badge e0">dev</span>' : '') +
+  (v.x && v.x.toLowerCase() !== String(v.h).toLowerCase() ? ' <a class="n" href="https://x.com/' + esc(v.x) + '" target="_blank">@' + esc(v.x) + '</a>' : '') +
+  ' <span class="n">' + [v.info, v.mc ? 'a ' + usd(v.mc) : '', v.venduto ? 'ha venduto' + (v.pnl != null ? ' (' + (v.pnl >= 0 ? '+' : '−') + usd(Math.abs(v.pnl)) + ')' : '') : v.pos ? 'tiene ' + usd(v.pos) + (v.pnl ? ' (' + (v.pnl >= 0 ? '+' : '−') + usd(Math.abs(v.pnl)) + ')' : '') : '',
+    v.picco ? 'picco ' + v.picco + 'x' : '', v.n > 1 ? v.n + ' interventi' : '', faq(v.primo)].filter(Boolean).join(' · ') + '</span></div>' +
+  (v.txt ? '<div class="txt">' + esc(v.txt) + '</div>' : '') + '</div>';
 const ORD = {
-  runner: (a, b) => b.segnali.length - a.segnali.length || (b.in5 ?? -1) - (a.in5 ?? -1) || (b.tesi10 ?? 0) - (a.tesi10 ?? 0),
+  runner: (a, b) => b.segnali.length - a.segnali.length || (b.in5 ?? -1) - (a.in5 ?? -1) || (b.voci10 ?? 0) - (a.voci10 ?? 0),
   ritmo: (a, b) => (b.in5 ?? -1) - (a.in5 ?? -1) || b.al_min - a.al_min,
   giovani: (a, b) => a.eta_min - b.eta_min,
   holder: (a, b) => b.holder_fomo - a.holder_fomo,
@@ -187,25 +197,21 @@ function disegna() {
       '<td>' + chip(t) + '</td><td>' + t.al_min.toFixed(2) + '</td><td>' + usd(t.valore_fomo) + '</td>' +
       '<td>' + (t.in_verde || '<span class="n">0</span>') + '</td>' +
       '<td>' + (t.bravi_holder.length ? '<span class="stella">★ ' + t.bravi_holder.length + '</span>' : '<span class="n">—</span>') + '</td>' +
-      '<td>' + (t.tesi.length || '<span class="n">—</span>') + (t.ax ? ' <span class="n" title="callout per fonte (pump = commenti pump.fun) · post su X che citano il contratto">' + ['axiom', 'gmgn', 'pump'].filter(k => t.ax_fonti?.[k]).map(k => '· ' + k + ' ' + t.ax_fonti[k]).join(' ') + ' · 𝕏 ' + t.ax_x + '</span>' : '') + (t.tesi10 > 0 ? ' <span class="chip ' + (t.tesi10 >= 2 ? 'c2' : 'c1') + '">+' + t.tesi10 + '</span>' : '') + '</td>' +
+      '<td>' + (t.n_voci || '<span class="n">—</span>') + (t.voci10 > 0 ? ' <span class="chip ' + (t.voci10 >= 2 ? 'c2' : 'c1') + '">+' + t.voci10 + '</span>' : '') + (t.ax ? ' <span class="n">· 𝕏 ' + t.ax_x + '</span>' : '') + '</td>' +
       '<td class="s">' + punti(t) + '</td>' +
       '<td><span class="app' + (t.nell_app ? '' : ' no') + '" title="' + (t.nell_app ? 'nella scheda Bonding dell\'app' : 'solo nelle liste nascoste') + '"></span></td></tr>';
     if (aperti.has(t.tok)) {
-      const testi = [...new Set(t.tesi.filter(x => x.txt.length > 20).map(x => '<div class="ts"><b>' + esc(x.u) + '</b>' + (t.bravi_tesi.includes(x.u) ? ' <span class="stella">★</span>' : '') + ': ' + esc(x.txt) + '</div>'))].slice(0, 6).join('');
       h += '<tr class="det"><td></td><td colspan="13">' +
-        '<div class="bl"><b>Ingressi degli holder fomo (primo acquisto → medio)</b>' + (t.ingressi.length ? t.ingressi.map(x => '<span class="in' + (x.includes('*') ? ' br' : '') + '">' + esc(x) + '</span>').join('') : '<span class="n">' + (t.dettagli ? 'nessun dato' : 'in lettura…') + '</span>') + '</div>' +
-        (t.bravi_holder.length ? '<div class="bl"><b>Bravi fra gli holder</b>' + esc(t.bravi_holder.join(', ')) + '</div>' : '') +
-        (testi ? '<div class="bl"><b>Tesi fomo</b>' + testi + '</div>' : '') +
-        (t.ax_callouts && t.ax_callouts.length ? '<div class="bl"><b>Callout (Axiom, GMGN, pump.fun)</b>' + t.ax_callouts.map(c => '<div class="ts"><span class="badge ' + (c.src === 'gmgn' ? 'e2' : c.src === 'axiom' ? 'e1' : 'e3') + '">' + c.src + '</span> <b>' + esc(c.h) + '</b>' + (c.kol ? ' <span class="stella">KOL</span>' : '') + ' <span class="n">' + [c.ncall != null ? c.ncall + ' callout, win ' + Math.round((c.wr || 0) * 100) + '%, PnL ' + usd(c.pnl_caller) : '', c.follower ? Math.round(c.follower / 1000) + 'k follower' : '', c.mc ? 'a ' + usd(c.mc) : '', c.pos ? 'tiene ' + usd(c.pos) : '', c.picco ? 'picco ' + c.picco + 'x' : '', c.likes ? c.likes + ' like' : '', faq(c.t)].filter(Boolean).join(' · ') + '</span>: ' + esc(c.body) + '</div>').join('') + '</div>' : '') +
-        (t.ax_tweets && t.ax_tweets.length ? '<div class="bl"><b>Post su X che citano il contratto</b>' + t.ax_tweets.map(w => '<div class="ts"><a href="https://x.com/' + esc(w.handle) + '/status/' + esc(w.id) + '" target="_blank"><b>@' + esc(w.handle) + '</b></a> <span class="n">' + (w.followers >= 1000 ? Math.round(w.followers / 1000) + 'k' : w.followers) + ' follower' + (w.verified ? ' · ' + esc(w.verified) : '') + (w.promo ? ' · promo' : '') + ' · ' + faq(w.t) + '</span>: ' + esc(w.text) + '</div>').join('') + '</div>' : '') +
-        '<div class="n">' + esc(t.tok) + ' · liquidità ' + usd(t.liq) + ' · holder on-chain ' + t.holder_catena + ' · entrati entro il 30% della curva: ' + t.primi_presto + '</div></td></tr>';
+        '<div class="bl"><b>Tesi e callout (fomo, Axiom) · ' + (t.n_voci || 0) + ' persone</b>' + (t.voci && t.voci.length ? t.voci.map(voce).join('') : '<span class="n">' + (t.dettagli ? 'nessuna' : 'in lettura…') + (t.ax ? '' : ' · Axiom non letto per questo token') + '</span>') + '</div>' +
+        (t.ax_tweets && t.ax_tweets.length ? '<div class="bl"><b>Post su X che citano il contratto</b>' + t.ax_tweets.map(w => '<div class="ts"><a href="https://x.com/' + esc(w.handle) + '/status/' + esc(w.id) + '" target="_blank"><b>@' + esc(w.handle) + '</b></a>' + (w.anche ? ' <span class="badge f-fomo" title="ha anche scritto una tesi o un callout">anche tesi</span>' : '') + ' <span class="n">' + (w.followers >= 1000 ? Math.round(w.followers / 1000) + 'k' : w.followers) + ' follower' + (w.verified ? ' · ' + esc(w.verified) : '') + (w.promo ? ' · promo' : '') + ' · ' + faq(w.t) + '</span>: ' + esc(w.text) + '</div>').join('') + '</div>' : '') +
+        '<div class="n">holder fomo ' + t.holder_fomo + ' (' + usd(t.valore_fomo) + ')' + (t.bravi_holder.length ? ' · bravi fra gli holder: ' + esc(t.bravi_holder.join(', ')) : '') + ' · ' + esc(t.tok) + ' · liquidità ' + usd(t.liq) + ' · holder on-chain ' + t.holder_catena + '</div></td></tr>';
     }
   });
   $('b').innerHTML = h;
 }
 function testa() {
   if (!S) return;
-  if (S.soglie) $('legsegn').textContent = 'Segnali: holder = almeno ' + S.soglie.holder5 + ' utenti fomo entrati in 5 min · tesi = almeno ' + S.soglie.tesi10 + ' tesi fomo o callout Axiom nuovi in 10 min · bravi = un trader bravo fra holder o tesi · soldi = almeno $' + S.soglie.soldi5 + ' messi dagli utenti fomo in 5 min · x = almeno ' + S.soglie.x10 + ' post su X non spam/promo in 10 min, o uno di un account con ' + Math.round(S.soglie.x_grande / 1000) + 'k+ follower in 30 min. Axiom: ' + (S.axiom_q ? 'aggiornato ' + Math.round((Date.now() - Date.parse(S.axiom_q)) / 1000) + ' s fa' + (S.axiom_ws ? ', ' + S.axiom_ws.stato : '') : 'non collegato') + ' (callout di Axiom, GMGN e commenti pump.fun da chi tiene almeno $50). Soglie scelte a mano, non ancora tarate sullo storico.';
+  if (S.soglie) $('legsegn').textContent = 'Segnali: holder = almeno ' + S.soglie.holder5 + ' utenti fomo entrati in 5 min · tesi = almeno ' + S.soglie.tesi10 + ' persone nuove con una tesi fomo o un callout Axiom in 10 min · bravi = un trader bravo fra holder o tesi · soldi = almeno $' + S.soglie.soldi5 + ' messi dagli utenti fomo in 5 min · x = almeno ' + S.soglie.x10 + ' post su X non spam/promo in 10 min, o uno di un account con ' + Math.round(S.soglie.x_grande / 1000) + 'k+ follower in 30 min. Axiom: ' + (S.axiom_q ? 'aggiornato ' + Math.round((Date.now() - Date.parse(S.axiom_q)) / 1000) + ' s fa' + (S.axiom_ws ? ', ' + S.axiom_ws.stato : '') : 'non collegato') + ' (callout Axiom e post su X). Soglie scelte a mano, non ancora tarate sullo storico.';
   const fa = S.aggiornato ? (Date.now() - Date.parse(S.aggiornato)) / 1000 : 1e9;
   $('dot').className = 'dot' + (S.errore ? ' err' : fa > 30 ? ' lento' : '');
   $('info').textContent = S.aggiornato ? 'aggiornato ' + Math.round(fa) + ' s fa · giro ' + S.ciclo_s + ' s · ' + S.candidati + ' token con ≥' + S.criteri.MIN_H + ' holder fomo su ' + S.universo + ' seguiti' : 'primo giro in corso…';

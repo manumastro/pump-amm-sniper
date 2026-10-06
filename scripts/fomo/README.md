@@ -112,8 +112,12 @@ dati in `dati/fomo/` (fuori da git, ~1,5 GB). Metodo in `docs/analisi-wallet.md`
   candidati nel tempo in `storia.jsonl` (per misurare quanti token col ritmo alto si graduano davvero). In markdown:
   `python3 scripts/fomo/bonding_tabella.py [min_curva] [--curva] [--tutti]`. Uno solo alla volta; se il login scade la pagina lo dice.
   Per default pagina e tabella mostrano solo i token tradabili sulla prop firm della persona ("Only pump/bonk/bags/brrr
-  tokens are tradeable": mint che finisce in pump, bonk, BAGS o brrr) e, segnati `pump?`, quelli sul programma di pump.fun
-  con un mint diverso (es. agencypad), da verificare con la prop firm.
+  tokens are tradeable": mint che finisce in pump, bonk, BAGS o brrr; quelli sul programma di pump.fun con un mint diverso,
+  es. agencypad, non sono tradabili, confermato il 6/10). Nel dettaglio di un token non c'e' piu' l'elenco degli ingressi
+  degli holder: **tesi fomo e callout Axiom stanno in una sola lista, una riga per persona** (la stessa persona su fomo e su
+  Axiom si riconosce dall'handle X o dal nome; fomo da' posizione e PnL dell'autore e se ha venduto, Axiom lo storico del
+  caller), poi i post su X; il segnale "tesi" conta le persone nuove in 10 minuti, senza contare due volte chi scrive su
+  entrambe.
 - **Axiom nella pagina live** (6/10, solo REST, sul modello di fomo-mcp): con il login ad Axiom fatto dalla persona in una
   scheda axiom.trade del browser Playwright e `servi.py` acceso, si lancia `scripts/axiom/avvia_sessione.js` con
   `browser_run_code_unsafe` (come `avvia_token.js`): a ogni rinnovo della sessione fatto dalla pagina e ogni 2 minuti manda
