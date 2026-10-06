@@ -202,7 +202,7 @@ function disegna() {
       '<td><span class="app' + (t.nell_app ? '' : ' no') + '" title="' + (t.nell_app ? 'nella scheda Bonding dell\'app' : 'solo nelle liste nascoste') + '"></span></td></tr>';
     if (aperti.has(t.tok)) {
       h += '<tr class="det"><td></td><td colspan="13">' +
-        '<div class="bl"><b>Tesi e callout (fomo, Axiom) · ' + (t.n_voci || 0) + ' persone</b>' + (t.voci && t.voci.length ? t.voci.map(voce).join('') : '<span class="n">' + (t.dettagli ? 'nessuna' : 'in lettura…') + (t.ax ? '' : ' · Axiom non letto per questo token') + '</span>') + '</div>' +
+        '<div class="bl"><b>Tesi e callout (fomo, Axiom) · ' + (t.n_voci || 0) + ' persone · ' + (t.tesi_in ? 'carico tutte le tesi…' : t.tesi_tutte ? 'tutte le tesi' : 'ultime tesi') + '</b>' + (t.voci && t.voci.length ? t.voci.map(voce).join('') : '<span class="n">' + (t.dettagli && !t.tesi_in ? 'nessuna' : 'in lettura…') + (t.ax ? '' : ' · Axiom non letto per questo token') + '</span>') + '</div>' +
         (t.ax_tweets && t.ax_tweets.length ? '<div class="bl"><b>Post su X che citano il contratto</b>' + t.ax_tweets.map(w => '<div class="ts"><a href="https://x.com/' + esc(w.handle) + '/status/' + esc(w.id) + '" target="_blank"><b>@' + esc(w.handle) + '</b></a>' + (w.anche ? ' <span class="badge f-fomo" title="ha anche scritto una tesi o un callout">anche tesi</span>' : '') + ' <span class="n">' + (w.followers >= 1000 ? Math.round(w.followers / 1000) + 'k' : w.followers) + ' follower' + (w.verified ? ' · ' + esc(w.verified) : '') + (w.promo ? ' · promo' : '') + ' · ' + faq(w.t) + '</span>: ' + esc(w.text) + '</div>').join('') + '</div>' : '') +
         '<div class="n">holder fomo ' + t.holder_fomo + ' (' + usd(t.valore_fomo) + ')' + (t.bravi_holder.length ? ' · bravi fra gli holder: ' + esc(t.bravi_holder.join(', ')) : '') + ' · ' + esc(t.tok) + ' · liquidità ' + usd(t.liq) + ' · holder on-chain ' + t.holder_catena + '</div></td></tr>';
     }
@@ -226,7 +226,10 @@ for (const b of $('ord').children) { b.classList.toggle('on', b.dataset.o === or
 $('solo3').checked = solo3; $('soloProp').checked = soloProp;
 $('soloProp').onchange = e => { soloProp = e.target.checked; try { localStorage.setItem('soloProp', soloProp ? '1' : '0'); } catch (x) {} disegna(); };
 $('solo3').onchange = e => { solo3 = e.target.checked; try { localStorage.setItem('solo3', solo3 ? '1' : '0'); } catch (x) {} disegna(); };
-$('b').onclick = ev => { const r = ev.target.closest('tr.r'); if (!r) return; const t = r.dataset.t; aperti.has(t) ? aperti.delete(t) : aperti.add(t); disegna(); };
+// aprire un token chiede al server tutte le sue tesi (e ad Axiom i post su X subito): in sottofondo si leggono solo le ultime
+const chiedi = t => fetch('tesi?tok=' + encodeURIComponent(t)).catch(() => {});
+$('b').onclick = ev => { const r = ev.target.closest('tr.r'); if (!r) return; const t = r.dataset.t; if (aperti.has(t)) aperti.delete(t); else { aperti.add(t); chiedi(t); } disegna(); };
+setInterval(() => aperti.forEach(chiedi), 5 * 60 * 1000);
 giro(); setInterval(giro, 2000); setInterval(testa, 1000);
 </script>
 </body>

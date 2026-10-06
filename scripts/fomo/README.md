@@ -117,7 +117,10 @@ dati in `dati/fomo/` (fuori da git, ~1,5 GB). Metodo in `docs/analisi-wallet.md`
   degli holder: **tesi fomo e callout Axiom stanno in una sola lista, una riga per persona** (la stessa persona su fomo e su
   Axiom si riconosce dall'handle X o dal nome; fomo da' posizione e PnL dell'autore e se ha venduto, Axiom lo storico del
   caller), poi i post su X; il segnale "tesi" conta le persone nuove in 10 minuti, senza contare due volte chi scrive su
-  entrambe.
+  entrambe. **Chiamate (6/10):** in sottofondo per ogni candidato solo le 20 tesi piu' recenti (servono ai segnali
+  tesi e bravi), niente piu' feed degli acquisti ("entrati entro il 30%" usa il prezzo medio d'ingresso degli holder);
+  **tutte le tesi si caricano quando si apre un token nella pagina** (`GET /tesi?tok=`, fino a 20 pagine da 50, di nuovo
+  ogni 5 minuti finche' resta aperto), e il token aperto va in testa alla lista di Axiom, che ne legge subito i post su X.
 - **Axiom nella pagina live** (6/10, solo REST, sul modello di fomo-mcp): con il login ad Axiom fatto dalla persona in una
   scheda axiom.trade del browser Playwright e `servi.py` acceso, si lancia `scripts/axiom/avvia_sessione.js` con
   `browser_run_code_unsafe` (come `avvia_token.js`): a ogni rinnovo della sessione fatto dalla pagina e ogni 2 minuti manda

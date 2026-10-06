@@ -183,7 +183,7 @@ function voci(t, ora) {
     g.venduto ||= v.venduto; g.dev ||= v.dev;
   }
   const L = [...G.values()];
-  return { voci: L.sort((a, b) => b.primo.localeCompare(a.primo)).slice(0, 20), n_voci: L.length,
+  return { voci: L.sort((a, b) => b.primo.localeCompare(a.primo)).slice(0, t.aperto_q && ora - t.aperto_q < 600 ? 1000 : 20), n_voci: L.length,
     voci10: L.filter(g => (ora - Date.parse(g.primo) / 1000) / 60 <= 10).length, voci_bravi: L.filter(g => g.bravo).map(g => g.h) };
 }
 // potenziale runner: quattro segnali accesi o spenti, in chiaro (soglie scelte a mano, da tarare con storia.jsonl)
@@ -215,35 +215,46 @@ async function uscite() {
   S.usciti = S.usciti.filter(u => ora - Date.parse(u.q) / 1000 < 3600).slice(0, 30);
 }
 
-// 4) dettagli in sottofondo: tesi, primo ingresso dal feed, classifica degli holder nuovi
+// 4) dettagli in sottofondo: launchpad, le tesi piu' recenti (una chiamata: servono ai segnali tesi e bravi), la classifica
+// degli autori e degli holder nuovi. Gli acquisti dal feed non si leggono piu' (6/10): il "primo ingresso" degli holder non si
+// mostra, e "entrati entro il 30%" usa il prezzo medio d'ingresso che fomo da' gia' con gli holder.
+// Tutte le tesi di sempre si caricano solo per i token aperti nella pagina (GET /tesi?tok=), vedi tesiTutte.
 const curvaPump = mc => { if (!mc) return null; const X = Math.sqrt(32190000 / (mc / solUsd)); return Math.max(0, Math.min(100, Math.round((1073 - X) / 793.1 * 100))); };
-const k = v => v >= 1000 ? '$' + Math.round(v / 1000) + 'k' : '$' + v;
+const unaTesi = x => { const cm = x.comment || {}, at = x.authorTrade || {};
+  return { id: x.id, u: x.userHandle, uid: x.userId, t: x.createdAt || cm.createdAt, x: typeof x.twitter === 'string' ? x.twitter.replace(/^@/, '') : (x.twitter?.username || x.twitter?.handle || null),
+    mc: cm.marketCapAtCreation, txt: String(cm.comment || '').slice(0, 400), like: cm.numLikes || 0, pos: Math.round(at.usdValue || 0),
+    pnl: Math.round((at.realizedPnlUsd || 0) + (at.unrealizedPnlUsd || 0)), venduto: !!at.closedAt, dev: !!x.isDev }; };
+const metti = (t, items) => { const M = (t.tesiM ||= new Map()); for (const x of items || []) if (x?.id) M.set(x.id, unaTesi(x)); t.tesi = [...M.values()].sort((a, b) => String(b.t).localeCompare(String(a.t))); };
+async function classifica(uids) {
+  const nuovi = [...new Set(uids)].filter(u => u && !R[u]);
+  await inParallelo(nuovi.map(u => async () => { const r = await chiama(() => C.getUserRank(u)); R[u] = { sempre: r?.rank?.pnl, m30: r?.rank30d?.pnl, g1: r?.rank24h?.pnl, pos30: r?.rank30d?.rank, letto: iso() }; }), 3);
+}
 async function dettagli(t) {
   t.det_t = adesso(); t.det_h = t.holder_fomo;
   if (!t.lp) { const [f] = await chiama(() => C.filterTokens([t.tok + ':' + SOLN])).catch(() => []); t.lp = f?.token?.launchpad?.launchpadName || null; }
-  const r = await chiama(() => C.tokenThesis(t.tok, SOLN, 50, 0)).catch(() => null);
-  if (r) t.tesi = (r.items || []).map(x => { const cm = x.comment || {}, at = x.authorTrade || {};
-    return { u: x.userHandle, uid: x.userId, t: x.createdAt || cm.createdAt, x: typeof x.twitter === 'string' ? x.twitter.replace(/^@/, '') : (x.twitter?.username || x.twitter?.handle || null),
-      mc: cm.marketCapAtCreation, txt: String(cm.comment || '').slice(0, 280), like: cm.numLikes || 0, pos: Math.round(at.usdValue || 0),
-      pnl: Math.round((at.realizedPnlUsd || 0) + (at.unrealizedPnlUsd || 0)), venduto: !!at.closedAt, dev: !!x.isDev }; });
-  if (r) { const ts = (t.tesi_serie ||= []), n = t.tesi.length; if (!ts.length || ts.at(-1)[1] !== n || t.det_t - ts.at(-1)[0] > 120) ts.push([Math.round(t.det_t), n]); }
-  const acq = {}; let lastId;
-  for (let i = 0; i < 3; i++) {
-    const f = await chiama(() => C.tokenFeed({ tokenAddress: t.tok, networkId: SOLN, limit: 100, threshold: 0, lastId })).catch(() => null);
-    const it = f?.items || []; for (const x of it) if (x.type === 'swap_buy' && x.userHandle) (acq[x.userHandle] ||= []).push({ q: x.createdAt, mc: x.marketCap });
-    if (it.length < 100) break; lastId = it.at(-1).id;
-  }
-  const nuovi = [...new Set([...(t.chi || []).map(x => x.uid), ...(t.tesi || []).map(x => x.uid)])].filter(u => u && !R[u]);
-  await inParallelo(nuovi.map(u => async () => { const r = await chiama(() => C.getUserRank(u)); R[u] = { sempre: r?.rank?.pnl, m30: r?.rank30d?.pnl, g1: r?.rank24h?.pnl, pos30: r?.rank30d?.rank, letto: iso() }; }), 3);
+  const r = await chiama(() => C.tokenThesis(t.tok, SOLN, 20, 0)).catch(() => null);
+  if (r) metti(t, r.items);
+  await classifica([...(t.chi || []).map(x => x.uid), ...(t.tesi || []).map(x => x.uid)]);
   const pf = t.tok.endsWith('pump');
-  for (const x of t.chi || []) {
-    const a = (acq[x.u] || []).sort((p, q) => p.q.localeCompare(q.q))[0];
-    if (a) { x.primo_mc = Math.round(a.mc); x.primo_q = a.q; }
-    x.primo_curva = pf ? curvaPump(x.primo_mc) : null; x.curva_ingresso = pf ? curvaPump(x.mc_ingresso) : null;
-  }
-  t.ingressi = (t.chi || []).filter(x => x.primo_mc || x.mc_ingresso).sort((a, b) => (a.primo_mc || a.mc_ingresso) - (b.primo_mc || b.mc_ingresso))
-    .map(x => `${x.u}${bravo(x.uid) ? '*' : ''} costo $${x.costo}: primo ${x.primo_mc ? k(x.primo_mc) + (x.primo_curva != null ? ' (' + x.primo_curva + '%)' : '') : '?'}, medio ${k(x.mc_ingresso || 0)}${x.curva_ingresso != null ? ' (' + x.curva_ingresso + '%)' : ''}`);
-  t.primi_presto = (t.chi || []).filter(x => x.primo_curva != null && x.primo_curva <= 30).length;
+  for (const x of t.chi || []) x.curva_ingresso = pf ? curvaPump(x.mc_ingresso) : null;
+  t.primi_presto = (t.chi || []).filter(x => x.curva_ingresso != null && x.curva_ingresso <= 30).length;
+}
+// tutte le tesi di un token aperto nella pagina (al massimo 20 pagine da 50), di nuovo al piu' ogni 60 s
+async function tesiTutte(t) {
+  if (t.tutte_in || (t.tutte_q && adesso() - t.tutte_q < 60)) return;
+  t.tutte_in = true;
+  try {
+    let lastId;
+    for (let p = 0; p < 20; p++) {
+      const r = await chiama(() => C.tokenThesis(t.tok, SOLN, 50, 0, lastId)); const it = r?.items || [];
+      metti(t, it);
+      if (!r?.hasNextPage || it.length < 50) break;
+      lastId = it.at(-1).id;
+    }
+    t.tutte_q = adesso();
+    await classifica((t.tesi || []).map(x => x.uid));
+  } catch (e) { log('tesi di ' + t.sym + ': ' + e.message.slice(0, 80)); }
+  finally { t.tutte_in = false; }
 }
 (async () => {
   let salvaClass = 0;
@@ -272,7 +283,7 @@ function scrivi(ciclo) {
       holder_fomo: t.holder_fomo, valore_fomo: t.valore_fomo, in5: r.in5, in5_parziale: r.parziale, al_min: +(t.holder_fomo / Math.max(eta, 1)).toFixed(2),
       serie: t.serie.filter(p => ora - p[0] <= 3600).map(p => [p[0], p[1]]), nuovo: ora - t.cand_da < 120,
       primi_presto: t.primi_presto ?? 0, bravi_holder: (t.chi || []).filter(x => bravo(x.uid)).map(x => `${x.u} ($${x.val})`),
-      n_tesi: (t.tesi || []).length, ...voci(t, ora),
+      n_tesi: (t.tesi || []).length, tesi_tutte: !!t.tutte_q, tesi_in: !!t.tutte_in, ...voci(t, ora),
       in_verde: (t.chi || []).filter(x => x.pnl > 0).length, dettagli: !!t.det_t, lp: t.lp || null, prop: prop(t),
       ...axiomCampi(t, ora),
       valore5: crescita(t.serie.map(p => [p[0], p[2]]), ora, t.nato, t.valore_fomo, 300).d,
@@ -312,9 +323,18 @@ http.createServer((q, r) => {
       catch (e) { r.writeHead(400); r.end('{}'); }
     });
   }
+  if (q.url.startsWith('/tesi?')) {
+    // la pagina ha aperto un token: tutte le tesi e, tramite /axiom-lista, i post su X subito
+    const tok = new URL(q.url, 'http://x').searchParams.get('tok'), t = T.get(tok);
+    r.writeHead(t ? 200 : 404, { 'content-type': 'application/json' });
+    if (t) { t.aperto_q = adesso(); tesiTutte(t); }
+    return r.end(JSON.stringify({ ok: !!t }));
+  }
   if (q.url.startsWith('/axiom-lista')) { const ora = adesso(); r.writeHead(200, { 'content-type': 'application/json' });
+    const aperti = [...T.values()].filter(t => t.aperto_q && ora - t.aperto_q < 600).sort((a, b) => b.aperto_q - a.aperto_q).map(t => t.tok);
     // token da leggere su Axiom: i candidati tradabili nati da meno di 6 ore, prima i runner
-    return r.end(JSON.stringify(candidati().filter(t => prop(t) === 'si' && ora - t.nato < 6 * 3600).sort((a, b) => (ritmo(b, ora).in5 ?? 0) - (ritmo(a, ora).in5 ?? 0)).slice(0, 60).map(t => t.tok))); }
+    const altri = candidati().filter(t => prop(t) === 'si' && ora - t.nato < 6 * 3600 && !aperti.includes(t.tok)).sort((a, b) => (ritmo(b, ora).in5 ?? 0) - (ritmo(a, ora).in5 ?? 0)).map(t => t.tok);
+    return r.end(JSON.stringify([...aperti, ...altri].slice(0, 60))); }
   if (q.url.startsWith('/stato.json')) { r.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' }); return r.end(fs.existsSync(STATO) ? fs.readFileSync(STATO) : '{}'); }
   r.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' }); r.end(fs.readFileSync(PAGINA));
 }).listen(PORTA, '127.0.0.1', () => log(`pagina su http://127.0.0.1:${PORTA}`));

@@ -6,7 +6,7 @@
 //    minuto per tutti i token; si tengono quelli dei token della lista. I callout GMGN e i commenti pump.fun arrivavano
 //    solo dal WebSocket: qui non ci sono.
 //  - post su X che citano il contratto: GET api8.axiom.trade/x-tweets, un token alla volta (1,5 s fra l'uno e l'altro),
-//    i primi 15 della lista, ogni 2 minuti.
+//    i primi 15 della lista, ogni 2 minuti; i token appena entrati in lista (quelli aperti nella pagina vanno in testa) subito.
 //  - lista dei token: GET http://127.0.0.1:8787/axiom-lista ogni 30 s, al massimo AXIOM_MAX (default 10);
 //    ogni 15 s i token cambiati (ogni 2 minuti tutti) vanno a POST /axiom nel formato di bonding_live ({q, ws:{stato}, dati:{tok:{callouts, tweets}}}).
 // La sessione la rinnova solo la pagina di Axiom (il refresh token non esce dalla scheda): il demone rilegge il file quando
@@ -94,19 +94,22 @@ async function leggiFeed() {
     const A = (per[tok] ||= {}); if (!A[c.id]) { A[c.id] = norm(c); if (lista.includes(tok)) sporchi.add(tok); } }
   S.ultimo_feed = new Date().toISOString();
 }
-async function leggiX() {
-  for (const tok of lista.slice(0, X_TOK)) {
+// post su X: i primi X_TOK della lista ogni x_ogni_s; i token appena entrati in lista (es. aperti nella pagina, che
+// bonding_live mette in testa) subito, sempre uno alla volta
+const subito = new Set();
+async function leggiX(quali = lista.slice(0, X_TOK)) {
+  for (const tok of quali) { subito.delete(tok);
     const j = await chiama('x-tweets', API + '/x-tweets?tokenAddress=' + tok + '&limit=50&all=1');
     if (S.fermo || Date.now() < pausaFino) return;
     if (j) { xs[tok] = (j.tweets || []).map(w => ({ t: w.tweet?.createdAt, id: w.tweet?.id, handle: w.tweet?.author?.handle, followers: w.tweet?.author?.followers || 0,
       verified: w.tweet?.author?.verified || null, text: String(w.tweet?.text || '').slice(0, 200), spam: !!w.spam, promo: !!w.promo })); sporchi.add(tok); }
     await dorme(1500);
   }
-  S.ultimo_x = new Date().toISOString();
+  if (quali.length > 1) S.ultimo_x = new Date().toISOString();
 }
 async function aggiornaLista() {
   try { const l = (await (await fetch(LIVE + '/axiom-lista')).json()).slice(0, MAX);
-    for (const t of l) if (!lista.includes(t)) sporchi.add(t);
+    for (const t of l) if (!lista.includes(t)) { sporchi.add(t); if (lista.length) subito.add(t); }
     lista = l; S.token = l.length; } catch (e) {}
 }
 let tPieno = 0;
@@ -133,6 +136,7 @@ for (;;) {
   if (ora - tLista >= 30000) { tLista = ora; await aggiornaLista(); }
   if (ora - tFeed >= S.feed_ogni_s * 1000) { tFeed = ora; await leggiFeed(); }
   if (ora - tX >= S.x_ogni_s * 1000) { tX = ora; await leggiX(); }
+  else if (subito.size) await leggiX([...subito].slice(0, 3));
   if (Date.now() - tInvio >= 15000) { tInvio = Date.now(); await manda(); scriviStato(); }
   if (Date.now() - tLog >= 300000) { tLog = Date.now(); log(`${S.fermo ? 'fermo: ' + S.fermo : S.stato}; chiamate ${S.chiamate}, 401/403 ${S.n401}, 429 ${S.n429}, altri ${S.altri_errori}; rinnovi pagina ${JSON.stringify(S.sessione?.rinnovi_pagina)}`); }
   await dorme(1000);
