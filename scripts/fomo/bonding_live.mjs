@@ -23,7 +23,7 @@ import { fileURLToPath, pathToFileURL } from 'url'; import { createRequire } fro
 const { FomoClient } = await import(pathToFileURL(path.join(os.homedir(), 'fomo-mcp', 'dist', 'client.js')).href);  // URL file:// anche su Windows
 const QUI = path.dirname(fileURLToPath(import.meta.url));
 const DIR = path.join(QUI, '../../dati/fomo/tesi/live'); fs.mkdirSync(DIR, { recursive: true });
-const CLASS = path.join(QUI, '../../dati/fomo/tesi/oneshot/classifica_autori.json');
+const CLASS = path.join(QUI, '../../dati/fomo/tesi/oneshot/classifica_autori.json'); fs.mkdirSync(path.dirname(CLASS), { recursive: true });  // su un PC nuovo dati/ e' vuota
 const STATO = path.join(DIR, 'stato.json'), STORIA = path.join(DIR, 'storia.jsonl'), PAGINA = path.join(QUI, 'bonding_live.html');
 const PORTA = +(process.env.PORTA || 8787), MIN_H = +(process.env.MIN_H || 5), MAX_ORE = +(process.env.MAX_ORE || 48);
 const GIOVANE = 3 * 3600, PARALLELO = 6;

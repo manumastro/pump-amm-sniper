@@ -4,6 +4,8 @@
   "private": true,
   "description": "Studi on-chain sui trader di fomo.family (Solana, Robinhood Chain, EVM)",
   "dependencies": {
-    "@solana/web3.js": "^1.99.0"
+    "@noble/hashes": "^1.8.0",
+    "@solana/web3.js": "^1.99.0",
+    "bs58": "^6.0.0"
   }
 }
