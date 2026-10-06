@@ -8,8 +8,10 @@ async (page) => {
   for (const p of page.context().pages()) { try { if (await p.evaluate(() => window.name) === 'fomo-lavoro') { lavoro = p; break; } } catch (e) {} }
   if (!lavoro) { lavoro = await page.context().newPage(); await lavoro.goto('https://fomo.family/leaderboard'); await lavoro.evaluate(() => { window.name = 'fomo-lavoro'; }); await lavoro.waitForTimeout(4000); }
   page = lavoro;
-  const tab = page;
+  let tab = page;
   const aggiorna = async (rifatto = false) => {
+    // se la scheda di lavoro e' stata chiusa se ne apre un'altra (prima il rinnovo si fermava senza dirlo)
+    if (tab.isClosed()) { tab = await page.context().newPage(); await tab.goto('https://fomo.family/leaderboard'); await tab.evaluate(() => { window.name = 'fomo-lavoro'; }); await tab.waitForTimeout(4000); }
     if (!tab.url().includes('/leaderboard')) { await tab.goto('https://fomo.family/leaderboard'); await tab.evaluate(() => { window.name = 'fomo-lavoro'; }); await tab.waitForTimeout(4000); }
     const tok = await tab.evaluate(async () => {
       if (!window.__fomoH) {
