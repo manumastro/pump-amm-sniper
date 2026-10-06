@@ -33,7 +33,7 @@ let chiamate = 0, altre = 0;
 const rpcc = (m, p) => (altre++, rpc('helius', m, p));
 const gtfa = (a, cfg) => (chiamate++, rpc('helius', 'getTransactionsForAddress', [a, { transactionDetails: 'full', encoding: 'jsonParsed', maxSupportedTransactionVersion: 1, limit: 100, ...cfg }]));
 let fomo;
-const cliente = async () => { if (!fomo) { const { FomoClient } = await import(path.join(require('os').homedir(), 'fomo-mcp/dist/client.js')); fomo = new FomoClient(''); } return fomo; };
+const cliente = async () => { if (!fomo) { const { FomoClient } = await import(require('url').pathToFileURL(path.join(require('os').homedir(), 'fomo-mcp', 'dist', 'client.js')).href); fomo = new FomoClient(''); } return fomo; };
 // la pagina di Chrome headless ogni tanto si ricarica da sola ("Target page ... closed"): si riprova
 const prova = async f => { for (let i = 0; ; i++) { try { return await f(); } catch (e) { if (i >= 3 || !/closed|Execution context|navigat/i.test(e.message)) throw e; await new Promise(r => setTimeout(r, 3000)); } } };
 

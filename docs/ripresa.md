@@ -84,7 +84,7 @@ verificare con la prop firm.
    `FOMO_TOKEN_FILE=~/.config/fomo-mcp/token node scripts/fomo/bonding_live.mjs` (su Windows PowerShell:
    `$env:FOMO_TOKEN_FILE="$HOME\.config\fomo-mcp\token"; node scripts/fomo/bonding_live.mjs`).
 
-Note Windows: `bonding_live.mjs` e `bonding_ora.mjs` importano fomo-mcp con un URL `file://` e funzionano anche li'; gli
-altri script che importano fomo-mcp (`simula.js`, `tesi.js`, `bonding.js`, `narrativa_fomo.mjs`, `profilo.mjs`) usano
-ancora un percorso semplice e su Windows vanno corretti allo stesso modo. Gli script `.sh` (zsh) su Windows non girano:
+Note Windows: tutti gli script che importano fomo-mcp (`bonding_live.mjs`, `bonding_ora.mjs`, `simula.js`, `tesi.js`,
+`bonding.js`, `bonding_studio.js`, `narrativa_fomo.mjs`, `profilo.mjs`) lo fanno con un URL `file://` (`pathToFileURL`)
+e funzionano anche li' (corretti il 6/10). Gli script `.sh` (zsh) su Windows non girano:
 servono WSL o Git Bash.

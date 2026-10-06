@@ -49,7 +49,7 @@ const r2 = x => (x == null || !isFinite(x) ? null : Math.round(x * 100) / 100);
 
 // ---- fomo: un client solo, richieste in fila con pausa, conteggio per tipo ----
 let fomo, ultima = 0; const conta = {}; let n429 = 0;
-const cliente = async () => { if (!fomo) { const { FomoClient } = await import(path.join(os.homedir(), 'fomo-mcp/dist/client.js')); fomo = new FomoClient(''); } return fomo; };
+const cliente = async () => { if (!fomo) { const { FomoClient } = await import(require('url').pathToFileURL(path.join(os.homedir(), 'fomo-mcp', 'dist', 'client.js')).href); fomo = new FomoClient(''); } return fomo; };
 async function chiama(tipo, f) {
   const c = await cliente();
   for (let i = 0; ; i++) {

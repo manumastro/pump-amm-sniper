@@ -20,7 +20,7 @@ const log = s => fs.appendFileSync(LOG, `${new Date().toISOString().slice(0, 19)
 const curvaDi = m => PublicKey.findProgramAddressSync([Buffer.from('bonding-curve'), new PublicKey(m).toBuffer()], PUMP)[0].toBase58();
 const ts = x => (x ? Math.floor(Date.parse(x) / 1000) : null);
 let fomo;
-const cliente = async () => { if (!fomo) { const { FomoClient } = await import(path.join(require('os').homedir(), 'fomo-mcp/dist/client.js')); fomo = new FomoClient(''); } return fomo; };
+const cliente = async () => { if (!fomo) { const { FomoClient } = await import(require('url').pathToFileURL(path.join(require('os').homedir(), 'fomo-mcp', 'dist', 'client.js')).href); fomo = new FomoClient(''); } return fomo; };
 // la pagina di Chrome headless ogni tanto si ricarica da sola ("Target page ... closed"): si riprova
 const prova = async f => { for (let i = 0; ; i++) { try { return await f(); } catch (e) { if (i >= 3 || !/closed|Execution context|navigat/i.test(e.message)) throw e; await sleep(3000); } } };
 // curva pump.fun: 8 discriminatore, poi u64 virtual_token, virtual_sol, real_token, real_sol, supply, bool complete

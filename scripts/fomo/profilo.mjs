@@ -3,8 +3,9 @@
 // client di fomo-mcp (Chrome headless: il fetch semplice viene bloccato). Token da ~/.config/fomo-mcp/token.
 // Uso: node scripts/fomo/profilo.mjs <handle> [<handle> ...]
 const fs = await import('fs');
-process.env.FOMO_TOKEN_FILE = process.env.HOME + '/.config/fomo-mcp/token';
-const { FomoClient } = await import(process.env.HOME + '/fomo-mcp/dist/client.js');
+const os = await import('os'), path = await import('path'), { pathToFileURL } = await import('url');
+process.env.FOMO_TOKEN_FILE = process.env.FOMO_TOKEN_FILE || path.join(os.homedir(), '.config', 'fomo-mcp', 'token');  // HOME non c'e' su Windows
+const { FomoClient } = await import(pathToFileURL(path.join(os.homedir(), 'fomo-mcp', 'dist', 'client.js')).href);
 const c = new FomoClient('x');
 const g = (p, q) => c.get(p, q);
 const DIR = new URL('../../dati/fomo/profili/', import.meta.url).pathname; fs.mkdirSync(DIR, { recursive: true });

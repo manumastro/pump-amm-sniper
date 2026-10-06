@@ -178,7 +178,7 @@ async function giro() {
   scrivi('stato.json', stato); scrivi('posizioni.json', S);
 }
 (async () => {
-  const { FomoClient } = await import(path.join(require('os').homedir(), 'fomo-mcp/dist/client.js'));
+  const { FomoClient } = await import(require('url').pathToFileURL(path.join(require('os').homedir(), 'fomo-mcp', 'dist', 'client.js')).href);
   C = new FomoClient('x');
   console.log(new Date().toISOString(), 'simulazione avviata (solo carta)');
   for (;;) {

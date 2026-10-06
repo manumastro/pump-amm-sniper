@@ -1,8 +1,8 @@
 // Cosa dice fomo di un token Solana, per il controllo di narrativa: nome, descrizione, social, nascita,
 // launchpad, e le tesi scritte dagli utenti fomo. Solo lettura (nessuno swap).
 // Uso: FOMO_TOKEN_FILE=~/.config/fomo-mcp/token node scripts/fomo/narrativa_fomo.mjs <mint>
-import os from 'os';
-const { FomoClient } = await import(os.homedir() + '/fomo-mcp/dist/client.js');
+import os from 'os'; import path from 'path'; import { pathToFileURL } from 'url';
+const { FomoClient } = await import(pathToFileURL(path.join(os.homedir(), 'fomo-mcp', 'dist', 'client.js')).href);  // URL file:// anche su Windows
 const C = new FomoClient('x'), SOLN = 1399811149, mint = process.argv[2];
 const prova = async f => { try { return await f(); } catch (e) { return { errore: e.message.slice(0, 100) }; } };
 const [f] = (await prova(() => C.filterTokens([mint + ':' + SOLN]))) || [];
