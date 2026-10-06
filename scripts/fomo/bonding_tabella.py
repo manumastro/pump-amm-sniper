@@ -15,7 +15,7 @@ print('giro delle %s UTC (%.0f min fa), %d token%s' % (S['aggiornato'][11:19], f
 if S.get('usciti'): print("usciti nell'ultima ora: " + ', '.join('%s (%s, %d min, %d holder)' % (t['sym'], t['motivo'], t['eta_min'], t['holder_fomo']) for t in S['usciti']))
 run = sorted([t for t in S['dati'] if t.get('runner') and ('--tutti' in sys.argv or t.get('prop') == 'si')], key=lambda t: (-len(t['segnali']), -(t['in5'] or 0)))
 if run:
-    print('potenziali runner (nati da < 6 ore, almeno 2 segnali su 5):')
+    print('potenziali runner (ancora in bonding, almeno 2 segnali su 5):')
     for t in run[:12]:
         v = dict(holder='holder %+d/5min' % (t['in5'] or 0), tesi='tesi+callout %+d/10min' % (t.get('voci10') or 0), bravi='bravi %d' % len(set([x.split(' ')[0] for x in t['bravi_holder']] + t.get('voci_bravi', []))), soldi='$%+d/5min' % (t['valore5'] or 0), x='X %+d/10min' % (t.get('ax_x10') or 0))
         print('  %d/5 [%s](https://fomo.family/tokens/solana/%s)%s %s min, %s: %s' % (len(t['segnali']), t['sym'].strip(), t['tok'], '', round(t['eta_min']), k(round(t['mcap'])), ', '.join(v[x] for x in t['segnali'])))

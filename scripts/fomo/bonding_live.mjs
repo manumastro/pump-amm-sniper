@@ -10,7 +10,7 @@
 // Ogni token porta 'segnali' (holder: >=5 holder fomo in 5 min; tesi: >=2 tesi fomo o callout Axiom nuovi in 10 min;
 // bravi: un bravo fomo fra holder o tesi, un KOL GMGN o un caller Axiom affidabile fra i callout;
 // x: >=2 post su X non spam/promo in 10 min o uno di un account con >=10k follower in 30 min (da Axiom); bravi: un bravo fra
-// holder o tesi; soldi: >=$300 entrati dagli utenti fomo in 5 min) e 'runner' (nato da < 6 ore con almeno 2 segnali,
+// holder o tesi; soldi: >=$300 entrati dagli utenti fomo in 5 min) e 'runner' (ancora in bonding, al massimo MAX_ORE, con almeno 2 segnali,
 // o da < 30 minuti col segnale holder): la sezione "Potenziali runner" della pagina.
 // Ogni token porta 'prop' (si/forse/no): tradabile sulla prop firm della persona (mint in pump/bonk/bags/brrr).
 // Solo lettura, nessuno swap.
@@ -271,10 +271,10 @@ async function pumpCallout(t, ordini) {
   t.pump_q = adesso();
 }
 (async () => {
-  // in sottofondo i 10 token tradabili piu' caldi nati da meno di 6 ore, ogni 3 minuti
+  // in sottofondo i 10 token tradabili piu' caldi (i runner, poi i nati da meno di 6 ore), ogni 3 minuti
   for (;;) {
     const ora = adesso();
-    const L = candidati().filter(t => prop(t) === 'si' && ora - t.nato < 6 * 3600).sort((a, b) => (ritmo(b, ora).in5 ?? 0) - (ritmo(a, ora).in5 ?? 0)).slice(0, 10)
+    const L = candidati().filter(t => prop(t) === 'si' && (t.runner || ora - t.nato < 6 * 3600)).sort((a, b) => (b.runner - a.runner) || (ritmo(b, ora).in5 ?? 0) - (ritmo(a, ora).in5 ?? 0)).slice(0, 10)
       .filter(t => !t.pump_q || ora - t.pump_q > 180);
     for (const t of L) await pumpCallout(t, ['LATEST', 'CLOSED_PNL']);
     await pausa(5000);
@@ -373,7 +373,8 @@ function scrivi(ciclo) {
       valore5: crescita(t.serie.map(p => [p[0], p[2]]), ora, t.nato, t.valore_fomo, 300).d,
     };
   });
-  for (const x of dati) { x.segnali = segnali(x); x.runner = x.eta_min < 360 && (x.segnali.length >= 2 || (x.eta_min < 30 && x.segnali.includes('holder'))); }
+  // 6/10: niente piu' limite delle 6 ore (PlaguePad, 12 ore, aveva 4 segnali su 5 ed era escluso): basta essere ancora in bonding
+  for (const x of dati) { x.segnali = segnali(x); x.runner = x.segnali.length >= 2 || (x.eta_min < 30 && x.segnali.includes('holder')); T.get(x.tok).runner = x.runner; }
   Object.assign(S, { soglie: SOGLIE, aggiornato: iso(), ciclo_s: ciclo, universo: [...T.values()].filter(t => vivo(t, ora) && ora - t.in_lista < 600).length, candidati: dati.length, criteri: { MIN_H, MAX_ORE }, sol_usd: solUsd, dati });
   fs.writeFileSync(STATO + '.tmp', JSON.stringify(S));
   // su Windows il rename fallisce (EPERM/EBUSY) se qualcuno sta leggendo stato.json: si riprova al giro dopo, senza cadere
@@ -416,8 +417,8 @@ http.createServer((q, r) => {
   }
   if (q.url.startsWith('/axiom-lista')) { const ora = adesso(); r.writeHead(200, { 'content-type': 'application/json' });
     const aperti = [...T.values()].filter(t => t.aperto_q && ora - t.aperto_q < 600).sort((a, b) => b.aperto_q - a.aperto_q).map(t => t.tok);
-    // token da leggere su Axiom: i candidati tradabili nati da meno di 6 ore, prima i runner
-    const altri = candidati().filter(t => prop(t) === 'si' && ora - t.nato < 6 * 3600 && !aperti.includes(t.tok)).sort((a, b) => (ritmo(b, ora).in5 ?? 0) - (ritmo(a, ora).in5 ?? 0)).map(t => t.tok);
+    // token da leggere su Axiom: i candidati tradabili runner o nati da meno di 6 ore, prima i runner
+    const altri = candidati().filter(t => prop(t) === 'si' && (t.runner || ora - t.nato < 6 * 3600) && !aperti.includes(t.tok)).sort((a, b) => (b.runner - a.runner) || (ritmo(b, ora).in5 ?? 0) - (ritmo(a, ora).in5 ?? 0)).map(t => t.tok);
     return r.end(JSON.stringify([...aperti, ...altri].slice(0, 60))); }
   if (q.url.startsWith('/stato.json')) { r.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' }); return r.end(fs.existsSync(STATO) ? fs.readFileSync(STATO) : '{}'); }
   r.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' }); r.end(fs.readFileSync(PAGINA));

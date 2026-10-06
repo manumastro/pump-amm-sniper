@@ -19,7 +19,7 @@ tradabili (confermato dalla persona il 6/10): il filtro della pagina e della tab
 - **`scripts/fomo/bonding_live.mjs`** + **`bonding_live.html`**: dashboard locale su http://127.0.0.1:8787. Un processo,
   un Chrome headless (via fomo-mcp), un giro ogni 5-9 s: liste `filtered-bonding`, `bonding`, `new` di fomo, holder fomo,
   tesi, feed, curva on-chain se fomo da' 0%. Al massimo 4 chiamate a fomo insieme (con 6 arrivano i 429).
-  - In cima i **potenziali runner**: token nati da < 6 ore con almeno 2 di 5 segnali (holder: >= 5 utenti fomo in 5 min;
+  - In cima i **potenziali runner**: token ancora in bonding (dal 6/10 senza il limite delle 6 ore) con almeno 2 di 5 segnali (holder: >= 5 utenti fomo in 5 min;
     tesi: >= 2 tesi fomo o callout nuovi in 10 min; bravi: un bravo fomo, un KOL GMGN o un caller Axiom affidabile;
     soldi: >= $300 messi dagli utenti fomo in 5 min; x: >= 2 post su X veri in 10 min o uno da 10k+ follower in 30 min).
     Le soglie sono **scelte a mano, non tarate**.

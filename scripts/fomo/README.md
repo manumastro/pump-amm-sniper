@@ -105,7 +105,7 @@ dati in `dati/fomo/` (fuori da git, ~1,5 GB). Metodo in `docs/analisi-wallet.md`
   (le tre liste, holder fomo dei token nati da < 3 ore e dei candidati; gli altri ogni 2 minuti), al massimo 4 chiamate
   a fomo insieme (`IN_VOLO`; con 6+ arrivano i 429), tesi/feed/classifica dei candidati in sottofondo. Il segnale e'
   il **ritmo**: holder fomo entrati negli ultimi 5 minuti (Agent Capital, 4/10: 5 wallet fomo al minuto 6, graduato
-  al 19). In cima i **potenziali runner**: token nati da < 6 ore con almeno 2 di 4 segnali accesi (holder: >= 5 utenti
+  al 19). In cima i **potenziali runner**: token ancora in bonding (dal 6/10 senza il limite delle 6 ore) con almeno 2 di 5 segnali accesi (holder: >= 5 utenti
   fomo in 5 min; tesi: >= 2 tesi nuove in 10 min; bravi: un bravo fra holder o tesi; soldi: >= $300 messi dagli utenti
   fomo in 5 min), o nati da < 30 minuti col segnale holder; soglie scelte a mano, da tarare con `storia.jsonl`. Poi i
   graduati dell'ultima ora, poi la tabella (ordine a scelta: runner, ritmo, piu' giovani, holder, curva, valore). Stato in `dati/fomo/tesi/live/stato.json`, holder dei
