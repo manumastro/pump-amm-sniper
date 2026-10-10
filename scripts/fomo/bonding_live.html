@@ -114,6 +114,9 @@ tr.det td{background:var(--pan2);text-align:left;white-space:normal;padding:12px
 .vc q{display:block;quotes:none;font-size:13px;line-height:1.4;color:var(--fg);border-left:2px solid var(--li);padding-left:8px}
 .xs .tw{display:flex;gap:8px;padding:7px 0;border-bottom:1px solid var(--li);font-size:13px}.xs .tw:last-child{border-bottom:0}
 .vc .chips .f-fomo,.f-fomo{background:rgba(90,169,255,.16);color:var(--blu)}.vc .chips .f-axiom,.f-axiom{background:var(--aranc-bg);color:var(--aranc)}.vc .chips .f-pump,.f-pump{background:var(--verde-bg);color:var(--verde)}.vc .chips .f-gmgn,.f-gmgn{background:var(--giallo-bg);color:var(--giallo)}
+.risc{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}.risc span{font-size:11px;border-radius:6px;padding:1px 7px;background:var(--ross-bg);color:var(--ross)}
+.su{color:var(--verde)}.giu{color:var(--ross)}
+#vista{margin-left:auto}#vista button b{font-weight:700;margin-left:4px}
 @media (max-width:640px){.wrap{padding:12px 16px}h1{font-size:17px}.velo{padding:0}.mod{border-radius:0;min-height:100vh}}
 </style>
 </head>
@@ -122,9 +125,27 @@ tr.det td{background:var(--pan2);text-align:left;white-space:normal;padding:12px
   <header>
     <h1>Bonding fomo · live</h1>
     <div class="stato"><span class="dot" id="dot"></span><span id="info">in attesa…</span></div>
+    <div class="seg" id="vista"><button data-v="bond">Bonding<b id="nB"></b></button><button data-v="grad">Graduati<b id="nG"></b></button></div>
   </header>
   <div id="err"></div>
 
+  <div id="vGrad" style="display:none">
+  <h2>Runner dopo la graduazione <small>— tradabili, graduati da meno di 24 ore, con un segnale del mercato (flusso o tenuta) e almeno 3 segnali su 7</small></h2>
+  <div class="leg" style="margin:-4px 0 10px" id="legG"></div>
+  <div class="carte" id="carteG"></div>
+  <div class="comandi">
+    <div class="seg" id="ordG">
+      <button data-o="runner">Runner</button><button data-o="flusso">Flusso 5 min</button><button data-o="recenti">Più recenti</button><button data-o="multiplo">× graduazione</button><button data-o="holder">Holder fomo</button>
+    </div>
+  </div>
+  <div class="tab"><table>
+    <thead><tr><th>#</th><th class="s">token</th><th>graduato</th><th>mcap</th><th>× grad.</th><th>dal max</th><th>liquidità</th><th>netto 5 min</th><th>compr./vend. 5 min</th><th>netto 1 h</th><th>1 h</th><th>organico</th><th>top10 · bund+ins</th><th>holder fomo</th><th>tesi + callout · 𝕏</th><th class="s">segnali</th><th class="s">rischi</th></tr></thead>
+    <tbody id="bG"></tbody>
+  </table></div>
+  <div class="leg">× grad. = mcap diviso il mcap alla graduazione (pump.fun: ~411 SOL) · dal max = distanza dal mcap massimo visto da quando lo seguiamo · netto = acquisti meno vendite del volume organico (Mobula) · compr./vend. = wallet che hanno comprato e venduto · organico = quota del volume dell'ultima ora che non è wash trading · top10 · bund+ins = % dell'offerta in mano ai primi 10 holder e a bundler + insider · rischi in chiaro, non spengono i segnali · clic su una riga per la scheda del token.</div>
+  </div>
+
+  <div id="vBond">
   <h2>Potenziali runner <small>— ancora in bonding con almeno 2 segnali accesi (o nati da meno di 30 minuti con holder in corsa)</small></h2>
   <div class="leg" style="margin:-4px 0 10px" id="legsegn"></div>
   <div class="carte" id="carte"></div>
@@ -144,12 +165,13 @@ tr.det td{background:var(--pan2);text-align:left;white-space:normal;padding:12px
     <tbody id="b"></tbody>
   </table></div>
   <div class="leg">+5 min = utenti fomo entrati negli ultimi 5 minuti (in grigio corsivo se la serie è più corta di 5 minuti) · holder/min = holder fomo diviso minuti di vita · bravi = fra i primi 1000 di fomo a 30 giorni con PnL positivo · tesi + callout = persone che ne hanno scritto su fomo, Axiom o pump.fun (una sola volta se è la stessa persona) · app = si vede nella scheda Bonding dell'app · clic su una riga o su una carta per la scheda del token (sommario del sub agent, tesi e callout, post su X).</div>
+  </div>
 </div>
 <div class="velo" id="velo"><div class="mod" id="mod" role="dialog" aria-modal="true"></div></div>
 <script>
 const $ = id => document.getElementById(id);
-let ord = 'runner', solo3 = false, soloProp = true, S = null;
-try { ord = localStorage.getItem('ord') || 'runner'; solo3 = localStorage.getItem('solo3') === '1'; soloProp = localStorage.getItem('soloProp') !== '0'; } catch (e) {}
+let ord = 'runner', solo3 = false, soloProp = true, S = null, vista = 'bond', ordG = 'runner';
+try { ord = localStorage.getItem('ord') || 'runner'; solo3 = localStorage.getItem('solo3') === '1'; soloProp = localStorage.getItem('soloProp') !== '0'; vista = localStorage.getItem('vista') || 'bond'; ordG = localStorage.getItem('ordG') || 'runner'; } catch (e) {}
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';');
 const usd = v => v == null ? '—' : v >= 1e6 ? '$' + (v / 1e6).toFixed(1) + 'M' : v >= 1000 ? '$' + Math.round(v / 1000) + 'k' : '$' + Math.round(v);
 const eta = m => m < 60 ? Math.round(m) + ' min' : m < 1440 ? (m / 60).toFixed(m < 600 ? 1 : 0) + ' h' : (m / 1440).toFixed(1) + ' g';
@@ -176,9 +198,14 @@ function barra(t) {
   return '<span class="barra"><i><u class="' + (c >= 80 ? 'alta' : '') + '" style="width:' + c + '%"></u></i>' + Math.round(c) + '%' + (t.curva_da ? '<span class="n" title="letta sulla catena">⛓</span>' : '') + '</span>';
 }
 const SEGN = [['holder', 'holder / 5 min'], ['tesi', 'tesi+callout / 10 min'], ['bravi', 'bravi'], ['soldi', 'entrati / 5 min'], ['x', 'post X / 10 min']];
-const segnVal = (t, k) => k === 'holder' ? (t.in5 == null ? '—' : (t.in5 > 0 ? '+' : '') + t.in5) : k === 'tesi' ? '+' + (t.voci10 || 0) : k === 'x' ? (!t.ax ? '—' : '+' + t.ax_x10 + (t.ax_x_grande ? ' ★' : '')) : k === 'bravi' ? String(new Set([...t.bravi_holder.map(x => x.split(' ')[0]), ...t.voci_bravi]).size) : (t.valore5 == null ? '—' : (t.valore5 >= 0 ? '+' : '−') + usd(Math.abs(t.valore5)));
-const luci = t => '<div class="luci">' + SEGN.map(([k, d]) => '<div class="luce' + (t.segnali.includes(k) ? ' on' : '') + '"><i></i><span><b>' + segnVal(t, k) + '</b><br>' + d + '</span></div>').join('') + '</div>';
-const punti = t => '<span class="punti" title="' + SEGN.map(([k, d]) => (t.segnali.includes(k) ? '● ' : '○ ') + d + ': ' + segnVal(t, k)).join('\n') + '">' + SEGN.map(([k]) => '<i class="' + (t.segnali.includes(k) ? 'on' : '') + '"></i>').join('') + '</span>';
+// graduati: due segnali del mercato prima dei cinque di fomo
+const SEGN_G = [['flusso', 'netto 5 min'], ['tenuta', '× graduazione'], ...SEGN];
+const segnList = t => t.g ? SEGN_G : SEGN;
+const pct = v => v == null ? '—' : (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(Math.round(v)) + '%';
+const pctD = v => v == null ? '—' : pct(v * 100);
+const segnVal = (t, k) => k === 'flusso' ? segnoUsd(t.g.netto5) : k === 'tenuta' ? (t.g.x_grad == null ? '—' : t.g.x_grad.toFixed(2) + '×') : k === 'holder' ? (t.in5 == null ? '—' : (t.in5 > 0 ? '+' : '') + t.in5) : k === 'tesi' ? '+' + (t.voci10 || 0) : k === 'x' ? (!t.ax ? '—' : '+' + t.ax_x10 + (t.ax_x_grande ? ' ★' : '')) : k === 'bravi' ? String(new Set([...t.bravi_holder.map(x => x.split(' ')[0]), ...t.voci_bravi]).size) : (t.valore5 == null ? '—' : (t.valore5 >= 0 ? '+' : '−') + usd(Math.abs(t.valore5)));
+const luci = t => '<div class="luci">' + segnList(t).map(([k, d]) => '<div class="luce' + (t.segnali.includes(k) ? ' on' : '') + '"><i></i><span><b>' + segnVal(t, k) + '</b><br>' + d + '</span></div>').join('') + '</div>';
+const punti = t => '<span class="punti" title="' + segnList(t).map(([k, d]) => (t.segnali.includes(k) ? '● ' : '○ ') + d + ': ' + segnVal(t, k)).join('\n') + '">' + segnList(t).map(([k]) => '<i class="' + (t.segnali.includes(k) ? 'on' : '') + '"></i>').join('') + '</span>';
 const faq = q => { const m = (Date.now() - Date.parse(q)) / 60000; return m < 60 ? Math.round(m) + ' min fa' : Math.round(m / 60) + ' h fa'; };
 const caldo = t => t.eta_min < 180 && (t.in5 ?? 0) >= 3;
 // prop firm: tradabili solo i mint che finiscono in pump, bonk, bags o brrr
@@ -235,6 +262,45 @@ function disegna() {
       '<td><span class="app' + (t.nell_app ? '' : ' no') + '" title="' + (t.nell_app ? 'nella scheda Bonding dell\'app' : 'solo nelle liste nascoste') + '"></span></td></tr>';
   });
   $('b').innerHTML = h;
+  disegnaG();
+}
+// ---- graduati
+const ORD_G = {
+  runner: (a, b) => b.runner - a.runner || b.segnali.length - a.segnali.length || b.g.netto5 - a.g.netto5,
+  flusso: (a, b) => b.g.netto5 - a.g.netto5,
+  recenti: (a, b) => a.g.da_grad_min - b.g.da_grad_min,
+  multiplo: (a, b) => (b.g.x_grad ?? -1) - (a.g.x_grad ?? -1),
+  holder: (a, b) => b.holder_fomo - a.holder_fomo || (b.in5 ?? -1) - (a.in5 ?? -1),
+};
+const risc = (t, n) => t.rischi && t.rischi.length ? '<div class="risc">' + t.rischi.slice(0, n).map(r => '<span>' + esc(r) + '</span>').join('') + '</div>' : '';
+const colore = v => v > 0 ? 'su' : v < 0 ? 'giu' : 'n';
+function disegnaG() {
+  const G = S.graduati || [], ora = Date.now() / 1000;
+  $('nB').textContent = (S.dati || []).filter(vede).length; $('nG').textContent = G.length;
+  const run = G.filter(t => t.runner).sort(ORD_G.runner).slice(0, 12);
+  $('carteG').innerHTML = run.length ? run.map(t =>
+    '<a class="carta' + (t.segnali.length >= 4 ? ' fuoco' : '') + '" href="' + link(t) + '" target="_blank" data-t="' + t.tok + '"><span class="conta">' + t.segnali.length + '/7</span>' +
+    '<div style="display:flex;justify-content:space-between;align-items:start;gap:8px;padding-right:34px"><div style="min-width:0"><div class="sym">' + esc(t.sym) + '</div><div class="nome">' + esc(t.nome) + '</div></div><span class="badge ' + etaC(t.g.da_grad_min) + '">🎓 ' + eta(t.g.da_grad_min) + ' fa</span></div>' +
+    luci(t) +
+    '<div class="riga"><div><div class="etich">mcap</div><b>' + usd(t.mcap) + '</b></div><div><div class="etich">× grad.</div><b>' + (t.g.x_grad == null ? '—' : t.g.x_grad.toFixed(1) + '×') + '</b></div><div><div class="etich">dal max</div><b class="' + colore(t.g.dal_max) + '">' + pctD(t.g.dal_max) + '</b></div><div style="text-align:right"><div class="etich">liquidità</div><b>' + usd(t.liq) + '</b></div></div>' +
+    risc(t, 4) + '</a>'
+  ).join('') : '<div class="vuoto">Nessun graduato tradabile ha adesso un segnale del mercato e almeno 3 segnali accesi.' + (G.length ? '' : ' (La lista dei graduati arriva entro 30 secondi dall\'avvio.)') + '</div>';
+  const D = [...G].sort(ORD_G[ordG] || ORD_G.runner);
+  $('bG').innerHTML = D.map((t, i) => { const g = t.g;
+    return '<tr class="r' + (t.runner ? ' fuoco' : '') + (t.nuovo ? ' nuovo' : '') + '" data-t="' + t.tok + '">' +
+      '<td class="n">' + (i + 1) + '</td>' +
+      '<td class="s tk"><a href="' + link(t) + '" target="_blank" onclick="event.stopPropagation()"><b>' + esc(t.sym) + '</b></a><span class="nome">' + esc(t.nome) + '</span></td>' +
+      '<td><span class="badge ' + etaC(g.da_grad_min) + '">' + eta(g.da_grad_min) + ' fa</span></td>' +
+      '<td>' + usd(t.mcap) + '</td><td>' + (g.x_grad == null ? '<span class="n">—</span>' : '<b class="' + (g.x_grad >= 1 ? 'su' : 'giu') + '">' + g.x_grad.toFixed(2) + '×</b>') + '</td>' +
+      '<td class="' + colore(g.dal_max) + '">' + pctD(g.dal_max) + '</td><td>' + usd(g.liq_usd) + '</td>' +
+      '<td class="' + colore(g.netto5) + '">' + segnoUsd(g.netto5) + '</td><td>' + g.comp5 + ' / ' + g.vend5 + '</td>' +
+      '<td class="' + colore(g.netto1h) + '">' + segnoUsd(g.netto1h) + '</td><td class="' + colore(g.p1h) + '">' + pct(g.p1h) + '</td>' +
+      '<td' + (g.organico != null && g.organico < 0.8 ? ' class="giu"' : '') + '>' + (g.organico == null ? '—' : Math.round(g.organico * 100) + '%') + '</td>' +
+      '<td>' + (g.liq_usd ? Math.round(g.top10) + '% · ' + Math.round(g.bundler + g.insider) + '%' : '<span class="n" title="pool non ancora indicizzato">—</span>') + '</td>' +
+      '<td>' + t.holder_fomo + ' ' + chip(t) + '</td>' +
+      '<td>' + (t.n_voci || '<span class="n">—</span>') + (t.voci10 > 0 ? ' <span class="chip ' + (t.voci10 >= 2 ? 'c2' : 'c1') + '">+' + t.voci10 + '</span>' : '') + (t.ax ? ' <span class="n">· 𝕏 ' + t.ax_x + '</span>' : '') + '</td>' +
+      '<td class="s">' + punti(t) + '</td>' +
+      '<td class="s">' + (t.rischi.length ? '<span class="badge e0" title="' + esc(t.rischi.join('\n')) + '">' + t.rischi.length + '</span>' : '<span class="n">—</span>') + '</td></tr>'; }).join('');
 }
 // ---- modale del token: numeri, segnali, sommario del sub agent, voci per persona, post su X
 let aperto = null, filtro = 'tutte', firmaMod = '';
@@ -269,12 +335,30 @@ function cartaVoce(v) {
     '<span class="when">' + faq(v.primo) + '</span></div>' +
     '<div class="chips">' + chips + '</div>' + (v.txt ? '<q>' + esc(v.txt) + '</q>' : '') + '</div>';
 }
+// scheda di un graduato: numeri del mercato dopo la graduazione, concentrazione, segnali di qualita', rischi
+function kpiG(t) {
+  const g = t.g, k = (s, v, c) => '<div><small>' + s + '</small><b' + (c ? ' class="' + c + '"' : '') + '>' + v + '</b></div>';
+  const flag = [g.dex_pagato ? 'DEX pagato' : '', g.boost ? 'boost dexscreener' : '', g.dev_migr > 1 ? 'il dev ha graduato ' + g.dev_migr + ' token' : '',
+    g.dev_token > 1 ? 'il dev ha lanciato ' + g.dev_token + ' token' : '', g.x_rinominato ? 'X rinominato ' + g.x_rinominato + ' volte' : '', g.tipo ? 'pool ' + g.tipo : ''].filter(Boolean);
+  return '<div class="kpi">' + k('mcap', usd(t.mcap)) + k('× graduazione', g.x_grad == null ? '—' : g.x_grad.toFixed(2) + '×', g.x_grad >= 1 ? 'su' : 'giu') +
+    k('dal massimo', pctD(g.dal_max) + ' <span class="n">(max ' + usd(g.mc_max) + ', ' + eta(g.max_min_fa) + ' fa)</span>', colore(g.dal_max)) + k('liquidità', usd(g.liq_usd)) +
+    k('holder fomo', t.holder_fomo + ' ' + chip(t)) + k('holder on-chain', t.holder_catena) + '</div>' +
+    '<div class="sez"><h4>Mercato dopo la graduazione</h4><div class="kpi">' +
+    k('netto 5 min', segnoUsd(g.netto5), colore(g.netto5)) + k('compratori / venditori 5 min', g.comp5 + ' / ' + g.vend5, colore(g.comp5 - g.vend5)) +
+    k('netto 1 ora', segnoUsd(g.netto1h), colore(g.netto1h)) + k('compratori / venditori 1 ora', g.comp1h + ' / ' + g.vend1h, colore(g.comp1h - g.vend1h)) +
+    k('prezzo 5 min · 1 ora', pct(g.p5) + ' · ' + pct(g.p1h)) + k('volume 5 min · 1 ora', usd(g.vol5) + ' · ' + usd(g.vol1h)) +
+    k('volume organico', g.organico == null ? '—' : Math.round(g.organico * 100) + '%', g.organico != null && g.organico < 0.8 ? 'giu' : '') +
+    k('top 10 holder', Math.round(g.top10) + '%') + k('bundler · insider', Math.round(g.bundler) + '% · ' + Math.round(g.insider) + '%') + k('sniper · dev', Math.round(g.sniper) + '% · ' + Math.round(g.dev) + '%') +
+    '</div>' + (flag.length ? '<div class="n" style="margin-top:8px">' + esc(flag.join(' · ')) + '</div>' : '') +
+    (t.rischi.length ? '<div class="risc">' + t.rischi.map(r => '<span>' + esc(r) + '</span>').join('') + '</div>' : '<div class="n" style="margin-top:8px">nessun rischio fra quelli che controlliamo</div>') + '</div>';
+}
 function copia(ev, tok) { ev.preventDefault(); try { navigator.clipboard.writeText(tok); ev.target.textContent = 'copiato'; } catch (e) {} }
 function modale() {
   if (!aperto || !S || !S.dati) return;
-  const t = S.dati.find(x => x.tok === aperto);
-  if (!t) { $('mod').innerHTML = '<div class="testa"><div>Il token non è più fra i candidati.</div><button class="chiudi" onclick="chiudi()">×</button></div>'; return; }
-  const firma = JSON.stringify([t.voci, t.sommario, t.ax_tweets, t.mcap, t.holder_fomo, t.in5, t.segnali, filtro, t.tesi_in]);
+  const t = [...S.dati, ...(S.graduati || [])].find(x => x.tok === aperto);
+  if (!t) { $('mod').innerHTML = '<div class="testa"><div>Il token non è più fra quelli seguiti.</div><button class="chiudi" onclick="chiudi()">×</button></div>'; return; }
+  const firma = JSON.stringify([t.voci, t.sommario, t.ax_tweets, t.mcap, t.holder_fomo, t.in5, t.segnali, filtro, t.tesi_in, t.g && [t.g.netto5, t.g.comp5, t.g.vend5, t.g.dal_max]]);
+  const g = t.g;
   if (firma === firmaMod) return;
   firmaMod = firma;
   const V = (t.voci || []).filter(v => passa(v, filtro)), sm = t.sommario;
@@ -290,17 +374,21 @@ function modale() {
     (w.anche ? ' <span class="badge f-fomo">anche tesi</span>' : '') + '<div>' + esc(w.text) + '</div></div></div>';
   $('mod').innerHTML =
     '<div class="testa"><div class="av">' + esc(String(t.sym || '?').slice(0, 2)) + '</div><div style="min-width:0">' +
-    '<h3>' + esc(t.sym) + etProp(t) + ' <span class="badge ' + etaC(t.eta_min) + '">' + eta(t.eta_min) + '</span></h3>' +
+    '<h3>' + esc(t.sym) + etProp(t) + ' <span class="badge ' + etaC(t.eta_min) + '">' + eta(t.eta_min) + '</span>' + (g ? ' <span class="badge f-pump">🎓 graduato ' + eta(g.da_grad_min) + ' fa</span>' : '') + '</h3>' +
     '<div class="nm">' + esc(t.nome) + (t.lp ? ' · ' + esc(t.lp) : '') + '</div>' +
     '<div class="link"><a href="' + link(t) + '" target="_blank">fomo</a>' +
     (t.tok.endsWith('pump') ? '<a href="https://pump.fun/coin/' + t.tok + '" target="_blank">pump.fun</a>' : '') +
+    // Axiom: la pagina del pool e' quella dove compare il pannello di Solana Tap
+    (g && g.pool ? '<a href="https://axiom.trade/meme/' + esc(g.pool) + '" target="_blank">Axiom</a><a href="https://dexscreener.com/solana/' + esc(g.pool) + '" target="_blank">dexscreener</a>' : '') +
+    (g && g.social && g.social.x ? '<a href="' + esc(g.social.x) + '" target="_blank">𝕏 del token</a>' : '') +
     '<a href="https://solscan.io/token/' + t.tok + '" target="_blank">solscan</a>' +
     '<a href="#" onclick="copia(event,\'' + t.tok + '\')">copia mint</a></div></div>' +
     '<button class="chiudi" onclick="chiudi()" aria-label="chiudi">×</button></div>' +
     '<div class="corpo">' +
+    (g ? kpiG(t) :
     '<div class="kpi"><div><small>mcap</small><b>' + usd(t.mcap) + '</b></div><div><small>curva</small>' + barra(t) + '</div>' +
     '<div><small>holder fomo</small><b>' + t.holder_fomo + '</b> ' + chip(t) + '</div><div><small>valore fomo</small><b>' + usd(t.valore_fomo) + '</b></div>' +
-    '<div><small>liquidità</small><b>' + usd(t.liq) + '</b></div><div><small>holder on-chain</small><b>' + t.holder_catena + '</b></div></div>' +
+    '<div><small>liquidità</small><b>' + usd(t.liq) + '</b></div><div><small>holder on-chain</small><b>' + t.holder_catena + '</b></div></div>') +
     luci(t) +
     '<div class="sez ai"><h4>' + testaAi + '</h4>' + corpoAi + '</div>' +
     '<div class="sez"><h4>Tesi e callout · ' + (t.n_voci || 0) + ' persone' + (t.tesi_in ? ' <span class="gira"></span>' : '') + '</h4>' +
@@ -316,6 +404,7 @@ function chiudi() { aperto = null; $('velo').classList.remove('on'); document.bo
 function testa() {
   if (!S) return;
   if (S.soglie) $('legsegn').textContent = 'Segnali: holder = almeno ' + S.soglie.holder5 + ' utenti fomo entrati in 5 min · tesi = almeno ' + S.soglie.tesi10 + ' persone nuove con una tesi fomo o un callout Axiom/pump.fun in 10 min · bravi = un trader bravo fra holder o tesi · soldi = almeno $' + S.soglie.soldi5 + ' messi dagli utenti fomo in 5 min · x = almeno ' + S.soglie.x10 + ' post su X non spam/promo in 10 min, o uno di un account con ' + Math.round(S.soglie.x_grande / 1000) + 'k+ follower in 30 min. Axiom: ' + (S.axiom_q ? 'aggiornato ' + Math.round((Date.now() - Date.parse(S.axiom_q)) / 1000) + ' s fa' + (S.axiom_ws ? ', ' + S.axiom_ws.stato : '') : 'non collegato') + ' (callout Axiom e post su X). Soglie scelte a mano, non ancora tarate sullo storico.';
+  if (S.soglie_g) $('legG').textContent = 'Segnali del mercato: flusso = almeno $' + S.soglie_g.netto5 + ' netti comprati (volume organico) in 5 min e più compratori che venditori · tenuta = sopra il mcap della graduazione e a non più del ' + Math.round(-S.soglie_g.dal_max * 100) + '% sotto il massimo visto. Poi i cinque segnali di fomo, Axiom e X come nel bonding. Soglie scelte a mano: storia_graduati.jsonl serve a tararle.';
   const fa = S.aggiornato ? (Date.now() - Date.parse(S.aggiornato)) / 1000 : 1e9;
   $('dot').className = 'dot' + (S.errore ? ' err' : fa > 30 ? ' lento' : '');
   $('info').textContent = S.aggiornato ? 'aggiornato ' + Math.round(fa) + ' s fa · giro ' + S.ciclo_s + ' s · ' + S.candidati + ' token con ≥' + S.criteri.MIN_H + ' holder fomo su ' + S.universo + ' seguiti' : 'primo giro in corso…';
@@ -332,8 +421,13 @@ $('soloProp').onchange = e => { soloProp = e.target.checked; try { localStorage.
 $('solo3').onchange = e => { solo3 = e.target.checked; try { localStorage.setItem('solo3', solo3 ? '1' : '0'); } catch (x) {} disegna(); };
 // aprire un token chiede al server tutte le sue tesi (e ad Axiom i post su X subito): in sottofondo si leggono solo le ultime
 const chiedi = t => fetch('tesi?tok=' + encodeURIComponent(t)).catch(() => {});
-$('b').onclick = ev => { const r = ev.target.closest('tr.r'); if (r) apri(r.dataset.t); };
-$('carte').onclick = ev => { const a = ev.target.closest('a.carta'); if (!a || ev.ctrlKey || ev.metaKey) return; ev.preventDefault(); apri(a.dataset.t); };
+$('b').onclick = $('bG').onclick = ev => { const r = ev.target.closest('tr.r'); if (r) apri(r.dataset.t); };
+$('carte').onclick = $('carteG').onclick = ev => { const a = ev.target.closest('a.carta'); if (!a || ev.ctrlKey || ev.metaKey) return; ev.preventDefault(); apri(a.dataset.t); };
+// vista: bonding o graduati
+const mostra = () => { $('vBond').style.display = vista === 'bond' ? '' : 'none'; $('vGrad').style.display = vista === 'grad' ? '' : 'none'; for (const x of $('vista').children) x.classList.toggle('on', x.dataset.v === vista); };
+for (const b of $('vista').children) b.onclick = () => { vista = b.dataset.v; try { localStorage.setItem('vista', vista); } catch (e) {} mostra(); };
+for (const b of $('ordG').children) { b.classList.toggle('on', b.dataset.o === ordG); b.onclick = () => { ordG = b.dataset.o; for (const x of $('ordG').children) x.classList.toggle('on', x === b); try { localStorage.setItem('ordG', ordG); } catch (e) {} if (S) disegnaG(); }; }
+mostra();
 $('velo').onclick = ev => { if (ev.target === $('velo')) return chiudi(); const b = ev.target.closest('.filtri button'); if (b) { filtro = b.dataset.f; firmaMod = ''; modale(); } };
 document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && aperto) chiudi(); });
 setInterval(() => { if (aperto) chiedi(aperto); }, 5 * 60 * 1000);

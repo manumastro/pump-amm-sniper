@@ -30,3 +30,26 @@ for t in sorted(S['dati'], key=(lambda t: (-t['curva'], -t['valore_fomo'])) if '
         round(t['curva']), t['sym'].strip(), t['tok'], (' 🆕' if t.get('nuovo') else ''), 'sì' if t['nell_app'] else 'no', ore,
         k(round(t['mcap'])), t['holder_fomo'], '' if d is None else '%+d' % d, k(t['valore_fomo']), t['primi_presto'],
         len(t['bravi_holder']), t.get('n_voci', 0)))
+
+# graduati (tradabili, graduati da meno di GRAD_ORE): prima i runner dopo la graduazione, poi la tabella per flusso netto a 5 minuti
+G = S.get('graduati') or []
+if G:
+    usd = lambda v: ('-' if v < 0 else '+') + k(abs(round(v)))
+    pc = lambda v: '—' if v is None else '%+d%%' % round(v * 100)
+    rg = sorted([t for t in G if t.get('runner')], key=lambda t: (-len(t['segnali']), -t['g']['netto5']))
+    print('\ngraduati: %d tradabili seguiti' % len(G))
+    if rg:
+        print('runner dopo la graduazione (un segnale del mercato e almeno 3 su 7):')
+        for t in rg[:12]:
+            g = t['g']
+            print('  %d/7 [%s](https://fomo.family/tokens/solana/%s) graduato %d min fa, %s (%sx, %s dal max): %s%s' % (
+                len(t['segnali']), t['sym'].strip(), t['tok'], g['da_grad_min'], k(round(t['mcap'])), '—' if g['x_grad'] is None else '%.2f' % g['x_grad'],
+                pc(g['dal_max']), ', '.join(t['segnali']), (' · rischi: ' + '; '.join(t['rischi'])) if t['rischi'] else ''))
+    print('\n| token | graduato | mcap | × grad | dal max | liq | netto 5m | compr/vend 5m | netto 1h | organico | top10 · bund+ins | holder fomo | +5 min | tesi+callout | segnali | rischi |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|')
+    for t in sorted(G, key=lambda t: -t['g']['netto5']):
+        g = t['g']; d = t.get('in5')
+        print('| [%s](https://fomo.family/tokens/solana/%s) | %d min | %s | %s | %s | %s | %s | %d/%d | %s | %s | %s | %d | %s | %d | %s | %s |' % (
+            t['sym'].strip(), t['tok'], g['da_grad_min'], k(round(t['mcap'])), '—' if g['x_grad'] is None else '%.2f' % g['x_grad'], pc(g['dal_max']),
+            k(g['liq_usd']), usd(g['netto5']), g['comp5'], g['vend5'], usd(g['netto1h']), '—' if g['organico'] is None else '%d%%' % round(g['organico'] * 100),
+            ('%d%% · %d%%' % (round(g['top10']), round(g['bundler'] + g['insider']))) if g['liq_usd'] else '—', t['holder_fomo'], '' if d is None else '%+d' % d, t.get('n_voci', 0),
+            ' '.join(t['segnali']) or '—', '; '.join(t['rischi']) or '—'))

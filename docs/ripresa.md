@@ -23,6 +23,11 @@ tradabili (confermato dalla persona il 6/10): il filtro della pagina e della tab
     tesi: >= 2 tesi fomo o callout nuovi in 10 min; bravi: un bravo fomo, un KOL GMGN o un caller Axiom affidabile;
     soldi: >= $300 messi dagli utenti fomo in 5 min; x: >= 2 post su X veri in 10 min o uno da 10k+ follower in 30 min).
     Le soglie sono **scelte a mano, non tarate**.
+  - **Graduati** (10/10, vista "Graduati"): i tradabili graduati da meno di 24 ore, coi numeri del mercato dopo la
+    graduazione (flusso netto organico, compratori/venditori, multiplo sulla graduazione, distanza dal massimo,
+    concentrazione, volume organico, dev seriale) da Mobula ogni 30 s; segnali in piu' "flusso" e "tenuta", rischi in
+    chiaro, link al pool su Axiom (pannello di Solana Tap). Dettagli in `scripts/fomo/README.md`. Soglie a mano, da tarare
+    con `storia_graduati.jsonl`.
   - Stato in `dati/fomo/tesi/live/stato.json`, storia degli holder in `storia.jsonl` (per tarare le soglie).
   - In markdown: `python3 scripts/fomo/bonding_tabella.py` (runner + tabella in ordine di ritmo; `--tutti`, `--curva`).
 - **`scripts/fomo/bonding_ora.mjs`**: la stessa foto, una volta sola.

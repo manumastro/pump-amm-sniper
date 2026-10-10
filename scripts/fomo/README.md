@@ -111,6 +111,20 @@ dati in `dati/fomo/` (fuori da git, ~1,5 GB). Metodo in `docs/analisi-wallet.md`
   graduati dell'ultima ora, poi la tabella (ordine a scelta: runner, ritmo, piu' giovani, holder, curva, valore). Stato in `dati/fomo/tesi/live/stato.json`, holder dei
   candidati nel tempo in `storia.jsonl` (per misurare quanti token col ritmo alto si graduano davvero). In markdown:
   `python3 scripts/fomo/bonding_tabella.py [min_curva] [--curva] [--tutti]`. Uno solo alla volta; se il login scade la pagina lo dice.
+  **Graduati (10/10):** vista "Graduati" della pagina (e seconda parte di bonding_tabella.py). I token tradabili graduati
+  da meno di `GRAD_ORE`=24 ore restano seguiti: ogni 30 s le liste Mobula `graduated` (filtrata dall'app) e `bonded` (tutte)
+  danno i numeri del mercato dopo la graduazione: flusso netto organico (acquisti meno vendite) e compratori/venditori a
+  5 minuti e a 1 ora, mcap alla graduazione (pump.fun: ~411 SOL) e multiplo, massimo visto e distanza dal massimo,
+  volume organico, concentrazione (top 10, bundler, insider, sniper, dev), DEX pagato, account X riciclato, token graduati
+  dallo stesso dev, pool. Ai cinque segnali si aggiungono **flusso** (>= $3k netti in 5 min e piu' compratori che
+  venditori) e **tenuta** (sopra la graduazione e a non piu' del 35% sotto il massimo); "bravi" conta solo un bravo che
+  ne ha scritto o che tiene almeno $1k (con centinaia di holder fomo un bravo c'e' quasi sempre). Runner dopo la
+  graduazione: un segnale del mercato e almeno 3 su 7. I **rischi** (bundler+insider >= 25%, top 10 >= 30%, dev >= 5%,
+  volume organico < 80%, liquidita' < $10k, dev con >= 3 graduati, account X riciclato, -50% dal massimo, pool non ancora
+  indicizzato) si leggono accanto e non spengono i segnali. La scheda di un graduato ha i link al pool su Axiom (dove
+  compare il pannello di Solana Tap) e dexscreener, e il sub agent scrive anche "Dopo la graduazione". Una riga al
+  minuto per token in `storia_graduati.jsonl`, per tarare soglie e segnali. Le graduazioni appena avvenute possono
+  arrivare da Mobula senza pool ne' concentrazione: la pagina mette "—".
   Per default pagina e tabella mostrano solo i token tradabili sulla prop firm della persona ("Only pump/bonk/bags/brrr
   tokens are tradeable": mint che finisce in pump, bonk, BAGS o brrr; quelli sul programma di pump.fun con un mint diverso,
   es. agencypad, non sono tradabili, confermato il 6/10). Nel dettaglio di un token non c'e' piu' l'elenco degli ingressi
