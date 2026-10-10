@@ -13,7 +13,10 @@ async (page) => {
     // se la scheda di lavoro e' stata chiusa se ne apre un'altra (prima il rinnovo si fermava senza dirlo)
     if (tab.isClosed()) { tab = await page.context().newPage(); await tab.goto('https://fomo.family/leaderboard'); await tab.evaluate(() => { window.name = 'fomo-lavoro'; }); await tab.waitForTimeout(4000); }
     if (!tab.url().includes('/leaderboard')) { await tab.goto('https://fomo.family/leaderboard'); await tab.evaluate(() => { window.name = 'fomo-lavoro'; }); await tab.waitForTimeout(4000); }
-    const tok = await tab.evaluate(async () => {
+    // da ottobre 2026 l'app non manda piu' l'header Authorization: il token d'accesso Privy viaggia nel cookie
+    // 'privy-token' di prod-api. Si prende quello; l'header resta come riserva se l'app torna al vecchio modo.
+    const ck = (await page.context().cookies('https://prod-api.fomo.family')).find(c => c.name === 'privy-token');
+    const tok = ck ? ck.value : await tab.evaluate(async () => {
       if (!window.__fomoH) {
         const of = window.fetch;
         window.fetch = async function (input, init) {

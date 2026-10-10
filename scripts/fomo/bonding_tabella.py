@@ -6,7 +6,9 @@
 # per default solo i token tradabili sulla prop firm, mint che finisce in pump/bonk/bags/brrr; --tutti: tutti)
 import json, os, sys
 from datetime import datetime, timezone
-S = json.load(open(os.path.join(os.path.dirname(__file__), '../../dati/fomo/tesi/live/stato.json')))
+# utf-8 esplicito: su Windows open() e print() usano cp1252 e si fermano sui nomi con emoji
+sys.stdout.reconfigure(encoding='utf-8')
+S = json.load(open(os.path.join(os.path.dirname(__file__), '../../dati/fomo/tesi/live/stato.json'), encoding='utf-8'))
 A = [x for x in sys.argv[1:] if not x.startswith('--')]
 MIN = float(A[0]) if A else 0
 k = lambda v: '$%dk' % round(v / 1000) if v >= 1000 else '$%d' % v

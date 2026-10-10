@@ -89,4 +89,9 @@ tradabili (confermato dalla persona il 6/10): il filtro della pagina e della tab
 Note Windows: tutti gli script che importano fomo-mcp (`bonding_live.mjs`, `bonding_ora.mjs`, `simula.js`, `tesi.js`,
 `bonding.js`, `bonding_studio.js`, `narrativa_fomo.mjs`, `profilo.mjs`) lo fanno con un URL `file://` (`pathToFileURL`)
 e funzionano anche li' (corretti il 6/10). Gli script `.sh` (zsh) su Windows non girano:
-servono WSL o Git Bash.
+servono WSL o Git Bash. Se `bonding_live.mjs` si ferma con `listen EACCES ... 8787`, Windows ha messo la porta tra
+quelle riservate (`netsh int ipv4 show excludedportrange protocol=tcp`, cambia a ogni riavvio): lanciare
+`bonding_live.mjs` e `axiom_live.mjs` con la stessa `PORTA=8788` (successo il 10/10).
+
+Dal 10/10 fomo non manda piu' il token nell'header `Authorization`: viaggia nel cookie `privy-token` di
+`prod-api.fomo.family`, ed e' da li' che lo prende `avvia_token.js` (l'header resta come riserva).

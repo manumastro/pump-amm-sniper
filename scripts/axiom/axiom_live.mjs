@@ -21,7 +21,8 @@ const QUI = path.dirname(fileURLToPath(import.meta.url));
 const DIR = path.join(QUI, '../../dati/axiom'); fs.mkdirSync(DIR, { recursive: true });
 const STATO = path.join(DIR, 'stato.json');
 const SESS = process.env.AXIOM_SESSIONE || path.join(os.homedir(), '.config', 'axiom', 'sessione');
-const LIVE = 'http://127.0.0.1:8787', API = 'https://api8.axiom.trade';
+// PORTA come in bonding_live.mjs (su Windows una porta puo' finire tra quelle riservate dopo un riavvio)
+const LIVE = 'http://127.0.0.1:' + (process.env.PORTA || 8787), API = 'https://api8.axiom.trade';
 const MAX = +(process.env.AXIOM_MAX || 10), X_TOK = 15;
 const log = m => console.log(new Date().toISOString() + ' ' + m);
 const dorme = ms => new Promise(r => setTimeout(r, ms));
